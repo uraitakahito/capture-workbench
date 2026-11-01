@@ -104,7 +104,12 @@ asks for it, the findings on that entry) and its contents.
   to, ▫ one the index does not. The records BrowserHive leaves for what it did not or could not
   capture (`WARC-Type: metadata`) are only visible here. A record of type 写し (`WARC-Type:
   resource`) is a copy BrowserHive made of the page's DOM before and after its scripts ran,
-  not a server response; the paired 記録 (`metadata`) record says so.
+  not a server response; the paired 記録 (`metadata`) record says so. Above the list, the
+  WARC's warcinfo (the record in which a WARC describes itself) is shown field by field, in the
+  order written. When a field's name is a Dublin Core term or a WARC 1.1 warcinfo field, the
+  third column says so (Dublin Core の語, or WARC 1.1 の warcinfo の欄) and links to its
+  definition; a name that is neither (one the producer chose) leaves it empty. wacz-validator
+  tells them apart; the dashboard only draws the `warcinfo` of the validation report.
 - **One record**: the WARC headers, the HTTP status line and headers, and the body. The body is
   shown as text, as a raster image, or as its size only.
 

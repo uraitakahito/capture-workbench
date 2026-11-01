@@ -100,6 +100,10 @@ wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力�
   ▪ は索引（CDXJ）が指すレコード、▫ は索引に無いものです。
   BrowserHive が残す「撮らなかった・撮れなかった」記録（`WARC-Type: metadata`）は、ここでしか見えません。
   種別の「写し」（`WARC-Type: resource`）は、BrowserHive が検索前と検索後の画面を DOM のまま写した物で、サーバの応答ではありません（組の「記録」がそう言います）。
+  一覧の上には、その WARC の warcinfo（WARC が自分自身を説明するレコード）の欄を、書かれた順に出します。
+  欄の名前が Dublin Core の語か WARC 1.1 の warcinfo の欄なら、3 列目にそう出て、その定義へリンクします。
+  どちらでもない名前（作り手が決めた名前）は空です。
+  見分けるのは wacz-validator で、dashboard は検証の報告の `warcinfo` を描くだけです。
 - **1 レコード**: WARC の見出し、HTTP の状態行と見出し、本文です。
   本文は文字か、raster の画像か、大きさだけです。
 

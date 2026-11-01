@@ -17,6 +17,9 @@ import {
   recordCells,
   recordOpener,
   waczHash,
+  warcinfoNote,
+  warcinfoOf,
+  warcinfoTag,
 } from "../public/wacz-view.js";
 
 const entry = (path, over = {}) => ({ path, present: true, expectedBy: [], issues: [], ...over });
@@ -83,6 +86,53 @@ test("レコードの列: 種別は日本語、無いものは空", () => {
 
 test("BrowserHive が組んだ写し（resource）は「写し」と呼ぶ", () => {
   assert.equal(recordCells({ type: "resource", contentType: "text/html; charset=utf-8", uri: "https://x/result", indexed: true }).type, "写し");
+});
+
+/** wacz-validator v0.39.0 の報告の warcinfo の 1 件（daemon が ja の label を付けた形）。 */
+const warcinfo = (entry, index, over = {}) => ({
+  entry,
+  index,
+  offset: 0,
+  date: "2026-11-01T09:30:00.000Z",
+  contentType: "application/warc-fields",
+  fields: [
+    { name: "format", value: "WARC File Format 1.1", vocabulary: "dcterms", ref: "http://purl.org/dc/terms/format", label: "Dublin Core の語" },
+    { name: "robots-policy", value: "ignore", vocabulary: null },
+  ],
+  ...over,
+});
+
+test("warcinfo: 報告から、選んだ本の記録だけを本の中の順で取る", () => {
+  const report = {
+    warcinfo: [
+      warcinfo("archive/data-000.warc.gz", 1),
+      warcinfo("archive/data-001.warc.gz", 1),
+      warcinfo("archive/data-000.warc.gz", 7),
+    ],
+  };
+  assert.deepEqual(
+    warcinfoOf(report, "archive/data-000.warc.gz").map((r) => r.index),
+    [1, 7],
+  );
+  assert.deepEqual(warcinfoOf(report, "archive/other.warc.gz"), []);
+});
+
+test("warcinfo: 報告に warcinfo が無ければ空（本に無いときと、v0.39.0 より前の daemon）", () => {
+  assert.deepEqual(warcinfoOf({ entries: [], issues: [] }, "archive/data.warc.gz"), []);
+});
+
+test("warcinfo の枠の見出しは、何件目の記録かと、書かれた時刻", () => {
+  assert.equal(warcinfoTag(warcinfo("archive/data.warc.gz", 1)), "warcinfo · 1 件目のレコード · 2026-11-01T09:30:00.000Z");
+  assert.equal(warcinfoTag(warcinfo("archive/data.warc.gz", 3, { date: undefined })), "warcinfo · 3 件目のレコード");
+});
+
+test("warcinfo: 本文を欄に分けなかった記録だけ、そう言う", () => {
+  assert.equal(warcinfoNote(warcinfo("archive/data.warc.gz", 1)), undefined);
+  assert.equal(
+    warcinfoNote(warcinfo("archive/data.warc.gz", 1, { contentType: "text/plain", fields: undefined })),
+    "本文は欄に分けていません（Content-Type: text/plain）。分けるのは application/warc-fields の、大きすぎない本文だけです",
+  );
+  assert.match(warcinfoNote(warcinfo("archive/data.warc.gz", 1, { contentType: undefined, fields: undefined })), /Content-Type: 無し/);
 });
 
 test("本文の言い方", () => {

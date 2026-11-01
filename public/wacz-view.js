@@ -114,6 +114,27 @@ export const recordCells = (row) => ({
   indexed: row.indexed,
 });
 
+// ── warcinfo ───────────────────────────────────────────────────────
+/**
+ * 報告の `warcinfo`（wacz-validator v0.39.0 から）のうち、この WARC の本の記録。本の中の順のまま。
+ * 本に warcinfo が無いか、報告が `warcinfo` を持たない daemon なら、空の並び。
+ */
+export const warcinfoOf = (report, entryPath) => (report.warcinfo ?? []).filter((record) => record.entry === entryPath);
+
+/** warcinfo の枠の見出し。本の何件目の記録で、いつ書かれたか。 */
+export const warcinfoTag = (record) =>
+  `warcinfo · ${String(record.index)} 件目のレコード${record.date === undefined ? "" : ` · ${record.date}`}`;
+
+/**
+ * 本文を欄に分けなかった記録の言い方（分けた記録は undefined）。分けるのは、`Content-Type` が
+ * `application/warc-fields` で、大きすぎない本文だけ（どこまでが大きすぎないかは検証器が決める）。
+ */
+export const warcinfoNote = (record) =>
+  record.fields !== undefined
+    ? undefined
+    : `本文は欄に分けていません（Content-Type: ${record.contentType ?? "無し"}）。` +
+      "分けるのは application/warc-fields の、大きすぎない本文だけです";
+
 /** 本文の言い方（text は本文そのものなので、ここでは扱わない）。 */
 export const bodyLabel = (body) => {
   if (body.kind === "image") return `${body.mime} · ${formatBytes(body.byteLength)}`;

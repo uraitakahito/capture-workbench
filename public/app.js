@@ -59,6 +59,9 @@ import {
   recordOpener,
   typeName,
   waczHash,
+  warcinfoNote,
+  warcinfoOf,
+  warcinfoTag,
 } from "/wacz-view.js";
 
 const $ = (id) => document.getElementById(id);
@@ -99,16 +102,19 @@ const tag = (name, text, className) => {
 
 const cell = (text, className) => tag("td", text, className);
 
+/** dashboard の外への行き先。新しいタブで開く。 */
+const link = (href, text) => {
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = text;
+  return a;
+};
+
 const linkCell = (href, text) => {
   const td = document.createElement("td");
-  if (href !== undefined) {
-    const a = document.createElement("a");
-    a.href = href;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.textContent = text;
-    td.append(a);
-  }
+  if (href !== undefined) td.append(link(href, text));
   return td;
 };
 
@@ -1677,7 +1683,8 @@ IN_START.lines.addEventListener("click", (event) => {
 /**
  * wacz-validator の tui（`render/tree.ts`）と同じ入力から同じ木を組む（検証の報告の `entries`）。中身は `/wacz/` の口に
  * **窓で**頼む —— 行の窓（200 行ずつ）、1 行を丸ごと（fields は daemon が割る）、
- * レコードの一覧（200 件ずつ）、1 レコード。窓の位置は dashboard が持つ。
+ * レコードの一覧（200 件ずつ）、1 レコード。窓の位置は dashboard が持つ。一覧の上の warcinfo の枠は
+ * 窓で頼まない —— 検証の報告の `warcinfo` に、欄と語彙まで載っている。
  */
 const WINDOW = 200;
 
@@ -1904,10 +1911,39 @@ const loadRecords = async (path, from) => {
   drawRecords();
 };
 
+/**
+ * warcinfo の記録 1 件の枠。名前と値は WARC が書いたまま。3 列目は、名前が Dublin Core の語か WARC 1.1 の
+ * warcinfo の欄かを検証器が決めた表示名で、その定義へリンクする。どちらでもない名前（作り手が決めた名前）は空。
+ */
+const warcinfoPanel = (record) => {
+  const panel = document.createElement("div");
+  panel.className = "vpart";
+  panel.append(tag("div", warcinfoTag(record), "vtag"));
+  const note = warcinfoNote(record);
+  if (note !== undefined) {
+    panel.append(tag("span", note, "muted"));
+    return panel;
+  }
+  const grid = document.createElement("div");
+  grid.className = "vfields vocab";
+  for (const field of record.fields) {
+    grid.append(
+      tag("span", field.name, "k data"),
+      tag("span", field.value, "v"),
+      field.ref === undefined || field.label === undefined ? tag("span", "") : link(field.ref, `${field.label} ↗`),
+    );
+  }
+  panel.append(grid);
+  return panel;
+};
+
 const drawRecords = () => {
   const { rows, next, total, filter, path } = wacz.records;
   const content = $("wacz-content");
   content.replaceChildren();
+
+  // その本の warcinfo。報告が持っていなければ（本に無い・古い daemon）枠を出さない
+  for (const record of warcinfoOf(wacz.report, path)) content.append(warcinfoPanel(record));
 
   // 種別の絞り。数は読んだ窓の中の数（全体の数は total）。
   const counts = new Map();
