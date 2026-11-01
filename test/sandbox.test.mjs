@@ -455,7 +455,7 @@ test("版の一覧は新しい順で、どの版にも source が無い。知ら
   assert.deepEqual(versionsOf(versions, "nope"), { status: 404, body: { error: "not found" } });
 });
 
-test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.6.0）", () => {
+test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.6.1）", () => {
   const fetch1 = versionOf(versions, "autofetch", "1");
   assert.equal(fetch1.status, 200);
   assert.equal(fetch1.body.sha256.slice(0, 12), "6aa6f4459d92");
@@ -481,9 +481,9 @@ test("受け皿の型は台本の file の中身。台本に無ければ 404（�
   assert.equal(types.body.version, 1);
   assert.match(types.body.source, /custom\.jsonl には残らない/);
   assert.equal(types.body.bytes, Buffer.byteLength(types.body.source, "utf8"));
-  // 写しは capture-scripts v0.6.0（受け皿に vars と secrets が在る）
-  assert.equal(types.body.sha256.slice(0, 12), "188051af2ec9");
-  assert.equal(types.body.bytes, 2223);
+  // 写しは capture-scripts v0.6.1（受け皿に vars と secrets が在る。注記の訳を直した版で、型は v0.6.0 と同じ）
+  assert.equal(types.body.sha256.slice(0, 12), "ba9c363034b8");
+  assert.equal(types.body.bytes, 2259);
   assert.match(types.body.source, /vars: Readonly<Record<string, string \| undefined>>/);
   const { hostTypes: _hostTypes, ...without } = scenario;
   assert.deepEqual(hostTypesOf(without), { status: 404, body: { error: "not found" } });
