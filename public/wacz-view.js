@@ -1,7 +1,7 @@
 /**
  * 中身の画面の純関数。**ブラウザが読むのと同じファイル**を `node --test` が読む（写しが腐らない）。
  *
- * 木の組み方と罫線は waxlens（wacz-validator の tui、`render/tree.ts`）と同じ入力・同じ
+ * 木の組み方と罫線は wacz-validator の tui（`render/tree.ts`）と同じ入力・同じ
  * 出力。試験入力も向こうと同じものを置いてある。1 行を field に割るのは daemon の
  * 仕事（`readLine` の `fields`）で、ここには無い。
  */

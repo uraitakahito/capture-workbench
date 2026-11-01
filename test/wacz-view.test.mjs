@@ -1,5 +1,5 @@
 /**
- * 中身の画面の純関数。木の罫線は waxlens（`render/tree.ts`）と同じ入力・同じ期待。
+ * 中身の画面の純関数。木の罫線は wacz-validator の tui（`render/tree.ts`）と同じ入力・同じ期待。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -21,7 +21,7 @@ import {
 
 const entry = (path, over = {}) => ({ path, present: true, expectedBy: [], issues: [], ...over });
 
-test("flat な path を §5.1 の木に組み、罫線を付ける（waxlens と同じ期待）", () => {
+test("flat な path を §5.1 の木に組み、罫線を付ける（wacz-validator の tui と同じ期待）", () => {
   const rows = flattenTree(
     buildTree([entry("archive/data.warc.gz"), entry("datapackage.json"), entry("pages/pages.jsonl")]),
   );

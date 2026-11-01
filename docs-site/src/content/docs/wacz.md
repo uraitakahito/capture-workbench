@@ -89,7 +89,7 @@ the selected entry and line are part of it too, so you can point at
 `#wacz/<archiveId>/indexes%2Findex.cdxj:66`.
 
 Opening it runs a validation, and the tree on the left is built from the report's entries. It
-uses the same input and the same box-drawing lines as wacz-validator's terminal UI (waxlens). On
+uses the same input and the same box-drawing lines as wacz-validator's terminal UI (`@wacz-validator/tui`). On
 the right are the details of the selected entry (size, STORE or DEFLATE, which part of the spec
 asks for it, the findings on that entry) and its contents.
 

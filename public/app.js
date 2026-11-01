@@ -1675,7 +1675,7 @@ IN_START.lines.addEventListener("click", (event) => {
 
 // ── 中身（WACZ の 1 本）────────────────────────────────────────────
 /**
- * waxlens と同じ入力から同じ木を組む（検証の報告の `entries`）。中身は `/wacz/` の口に
+ * wacz-validator の tui（`render/tree.ts`）と同じ入力から同じ木を組む（検証の報告の `entries`）。中身は `/wacz/` の口に
  * **窓で**頼む —— 行の窓（200 行ずつ）、1 行を丸ごと（fields は daemon が割る）、
  * レコードの一覧（200 件ずつ）、1 レコード。窓の位置は dashboard が持つ。
  */
