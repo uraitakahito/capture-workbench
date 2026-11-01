@@ -70,8 +70,11 @@ opened crawl's rules decided) need nothing here: they are reads, and pass throug
 This is the one route of the dashboard's server that writes. The form on the crawls view
 ([Screens](/screens/)) uses it. The server does not check the contents: it hands the body that
 passed the checks below to the ledger's `POST /api/crawls` as it is, and returns the answer as
-it is. The ledger is the one that checks and decides the seed URLs and the policy (depth, page
-limit, which scripts run).
+it is. The ledger is the one that checks and decides the seed URLs, the policy (depth, page
+limit, which scripts run) and the per-crawl variables (`variables`: the spelling and number of the
+names, the length of the values, and whether a ticked script declared each name). Whether a
+declared secret exists in Windmill is also the ledger's check; the dashboard never touches a
+secret's value (it lives in a Windmill variable, and is neither in the form nor in the body).
 
 - **Only JSON from the dashboard's own page gets through.** If the `Origin` is not the dashboard it
   is a 403, if the `content-type` is not JSON it is a 415, and a body over 1 MiB (seed URLs and any
@@ -83,9 +86,10 @@ limit, which scripts run).
 | The ledger's answer | When |
 | --- | --- |
 | 202 `{"crawlId": …}` | accepted (it does not wait for the crawl to finish) |
-| 400 `{"error": …}` | a seed URL that cannot be read, no registered scripts (with a `hint`), an unknown script id or the same id twice (with `ids`), and so on |
+| 400 `{"error": …}` | a seed URL that cannot be read, no registered scripts (with a `hint`), an unknown script id or the same id twice (with `ids`), a required variable missing or a variable no script declared (with `names`), a declared secret that is missing from Windmill or is not a secret there (with `secrets`: name and path), and so on |
 | 404 | the identity may not start crawls (`{"error":"not found"}`), or the ledger has nowhere to send crawls configured and does not serve the route at all |
 | 409 `{"error": …, "crawlId": …}` | a crawl is already running (one at a time, overall); `crawlId` is the one in the way |
+| 503 `{"error": "windmill unreachable"}` | the ledger could not ask Windmill whether a declared secret exists (the flow would not run either, so it does not start the crawl) |
 
 The checks are `writeRefusal` in `src/lib.mjs`, which the tests call directly.
 
