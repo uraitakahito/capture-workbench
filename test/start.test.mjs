@@ -12,6 +12,7 @@ import {
   asTemplate,
   bodyBytes,
   checkQuery,
+  declaredOf,
   defaultIds,
   hasNocheck,
   marksOf,
@@ -27,6 +28,7 @@ import {
   startAnswer,
   startBody,
   summaryOf,
+  variablesOf,
   withNocheck,
 } from "../public/start.js";
 
@@ -219,6 +221,86 @@ test("台帳が名指した ids を、文の後に添える", () => {
     startAnswer(400, { error: "duplicate script ids", ids: ["inline-a", "autofetch"] }).text,
     "400 —— duplicate script ids: inline-a, autofetch",
   );
+});
+
+// ── クロールごとの値（変数とシークレット。capture-ledger v0.67.0）────────────
+
+/** 台帳の `GET /api/scripts` の 1 行が運ぶ宣言（capture-scripts の catalog.json の `params`）。 */
+const QUERY = { name: "query", kind: "variable", required: false, summary: "法令名の検索語。省けばソースの既定" };
+const TOKEN = { name: "api_token", kind: "secret", required: true, summary: "会員 API のトークン" };
+const DECLARING = [
+  // 宣言を運ばない台帳（v0.66 まで）の行には params が無い
+  { id: "autoscroll", sites: [], enabled: true },
+  { id: "egov-law-search", sites: ["laws.e-gov.go.jp"], enabled: true, params: [QUERY] },
+  { id: "member-pages", sites: [], enabled: false, params: [TOKEN, { ...QUERY, required: true, summary: "別の説明" }] },
+];
+
+test("宣言はチェックしたスクリプトの物だけを台帳の並びで集め、同じ名前は 1 つにまとめる（必須はどれかが必須なら必須）", () => {
+  assert.deepEqual(declaredOf(DECLARING, ["egov-law-search"], "variable"), [
+    { name: "query", required: false, summary: QUERY.summary, by: ["egov-law-search"] },
+  ]);
+  assert.deepEqual(declaredOf(DECLARING, ["egov-law-search", "member-pages"], "variable"), [
+    { name: "query", required: true, summary: QUERY.summary, by: ["egov-law-search", "member-pages"] },
+  ]);
+  assert.deepEqual(declaredOf(DECLARING, ["member-pages"], "secret"), [
+    { name: "api_token", required: true, summary: TOKEN.summary, by: ["member-pages"] },
+  ]);
+  // params を運ばない行と、チェックを外した物は何も宣言しない
+  assert.deepEqual(declaredOf(DECLARING, ["autoscroll"], "variable"), []);
+  assert.deepEqual(declaredOf(DECLARING, [], "secret"), []);
+});
+
+test("送る変数は宣言された名前の値だけ。空白だけの欄と、宣言から外れた名前は送らず、値は削らない", () => {
+  const declared = declaredOf(DECLARING, ["egov-law-search"], "variable");
+  const values = new Map([
+    ["query", " 個人情報 "],
+    ["api_token", "x"],
+    ["gone", "y"],
+  ]);
+  assert.deepEqual(variablesOf(declared, values), { query: " 個人情報 " });
+  assert.deepEqual(variablesOf(declared, new Map([["query", " \t"]])), {});
+  assert.deepEqual(variablesOf(declared, new Map()), {});
+});
+
+test("startBody は変数が 1 つでも在るときだけ variables を持つ", () => {
+  assert.equal("variables" in startBody("https://site.test/", null, run(CATALOG), {}), false);
+  assert.equal("variables" in startBody("https://site.test/", null), false);
+  assert.deepEqual(startBody("https://laws.e-gov.go.jp/", null, run(CATALOG), { query: "個人情報" }), {
+    seeds: ["https://laws.e-gov.go.jp/"],
+    maxDepth: 0,
+    variables: { query: "個人情報" },
+  });
+});
+
+test("変数とシークレットの 400 は、台帳が名指した名前（シークレットは Windmill の path も）を文の後に添える", () => {
+  assert.equal(startAnswer(400, { error: "missing variables", names: ["query"] }).text, "400 —— missing variables: query");
+  assert.equal(
+    startAnswer(400, { error: "unknown variables", names: ["qeury", "waitms"] }).text,
+    "400 —— unknown variables: qeury, waitms",
+  );
+  assert.equal(
+    startAnswer(400, {
+      error: "unknown secrets",
+      secrets: [{ name: "api_token", path: "f/waggle_secrets/api_token", declaredBy: ["inline-probe"] }],
+      hint: "wmill variable add f/waggle_secrets/api_token --value … --secret",
+    }).text,
+    "400 —— unknown secrets: api_token（f/waggle_secrets/api_token）" +
+      "（wmill variable add f/waggle_secrets/api_token --value … --secret）",
+  );
+  assert.equal(
+    startAnswer(400, { error: "not a secret variable", secrets: [{ name: "api_token" }] }).text,
+    "400 —— not a secret variable: api_token",
+  );
+  assert.equal(
+    startAnswer(400, { error: "secrets cannot be passed as variables", names: ["api_token"] }).text,
+    "400 —— secrets cannot be passed as variables: api_token",
+  );
+  // 宣言の形が読めないその場の JS は、id と理由（hint）
+  assert.equal(
+    startAnswer(400, { error: "invalid params", script: "inline-probe", hint: "同じ名前が 2 度: q" }).text,
+    "400 —— invalid params: inline-probe（同じ名前が 2 度: q）",
+  );
+  assert.equal(startAnswer(503, { error: "windmill unreachable" }).text, "503 —— windmill unreachable");
 });
 
 test("本文の大きさは、門と同じく UTF-8 のバイトで数える", () => {

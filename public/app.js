@@ -15,6 +15,7 @@ import {
   asTemplate,
   bodyBytes,
   checkQuery,
+  declaredOf,
   defaultIds,
   hasNocheck,
   marksOf,
@@ -28,6 +29,7 @@ import {
   startAnswer,
   startBody,
   summaryOf,
+  variablesOf,
   withNocheck,
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
@@ -197,6 +199,58 @@ const ranOf = (one) => {
   return box;
 };
 
+/** 時刻を読める形に。読めない文字列（台帳が null を返した所など）はそのまま。 */
+const whenOf = (iso) => {
+  const ms = Date.parse(String(iso));
+  return Number.isNaN(ms) ? String(iso) : new Date(ms).toLocaleString("ja-JP");
+};
+
+/**
+ * 渡した値（台帳の `variables`。始めるときに行へ固定された名前と値）と、使ったシークレット（`secrets`。名前と
+ * Windmill の変数の path と、台帳が確かめたときの edited_at。途中で替わっていれば、どの段からか）。**値を持つのは
+ * 変数だけ** —— シークレットの値は台帳も WACZ も持たない。どちらも持たない台帳（v0.66 まで）の行は何も出さない。
+ */
+const valuesOf = (one) => {
+  const box = document.createElement("div");
+  box.className = "values";
+  if (one.variables === undefined && one.secrets === undefined) return box;
+  const vars = Object.entries(one.variables ?? {});
+  const secrets = one.secrets ?? [];
+  if (vars.length === 0 && secrets.length === 0) {
+    box.append(tag("p", "渡した値: なし", "muted"));
+    return box;
+  }
+  if (vars.length > 0) {
+    box.append(tag("p", "渡した値（変数。名前と値）"));
+    const table = document.createElement("table");
+    table.className = "vals";
+    for (const [name, value] of vars) {
+      const row = document.createElement("tr");
+      row.append(cell(name, "mono"), cell(String(value), "pre"));
+      table.append(row);
+    }
+    box.append(table);
+  }
+  if (secrets.length > 0) {
+    box.append(tag("p", "使ったシークレット（名前と Windmill の変数。値は記録に無い）"));
+    const list = document.createElement("ul");
+    list.className = "secrets";
+    for (const secret of secrets) {
+      const item = document.createElement("li");
+      item.append(tag("span", String(secret.name), "mono"), tag("span", String(secret.path), "mono muted"));
+      item.append(tag("span", `edited_at ${whenOf(secret.editedAt)}`, "muted"));
+      if (secret.rotated !== null && secret.rotated !== undefined) {
+        item.append(
+          tag("span", `段 ${String(secret.rotated.depth)} から替わった（${whenOf(secret.rotated.editedAt)}）`, "state warn"),
+        );
+      }
+      list.append(item);
+    }
+    box.append(list);
+  }
+  return box;
+};
+
 /** 動きの画面の言い方（新しいクロールの画面の選ぶ欄と同じ）。 */
 const ACTION_LABEL = Object.fromEntries(ACTIONS);
 
@@ -270,6 +324,7 @@ const detailOf = (one) => [
     ? []
     : [tag("p", `失敗の文: ${one.error}`, "state bad pre")]),
   ranOf(one),
+  valuesOf(one),
   decisionsOf(one),
   tag("p", failuresText(one), "pre"),
 ];
@@ -385,7 +440,14 @@ const chosen = new Map();
 /** そのスクリプトを走らせるか。人が付け外ししていれば、それに従う。 */
 const pickedOf = (script) => chosen.get(script.id) ?? script.enabled;
 
-/** 最後に描いたチェックの形（id と版と札と、既定に入るか）。同じなら描き直さない。 */
+/**
+ * 人が打ったクロールごとの変数の値（名前 → 文字列）。**描き直しと、202 の後の起点の消去をまたいで残す** —— 同じ語で
+ * 撮り直すことが多い。チェックを外して宣言から外れた名前の値も残り、付け直せば欄に戻る。送るのは宣言された名前だけ
+ * （`start.js` の `variablesOf`）。
+ */
+const values = new Map();
+
+/** 最後に描いたチェックの形（id と版と札と、既定に入るか、宣言した値）。同じなら描き直さない。 */
 let catalogKey;
 
 /**
@@ -393,7 +455,10 @@ let catalogKey;
  * 引くので、毎回作り直すと、押そうとしているチェックが手の下で入れ替わる。付け外しは `syncPicks`。
  */
 const drawPicks = (scripts) => {
-  const key = scripts.map((s) => `${s.id}@${String(s.version)}~${s.sites.join(" ")}~${String(s.enabled)}`).join(",");
+  // 宣言した値（params）も鍵に入れる —— 版が同じでも宣言が変われば、値の欄を描き直す
+  const key = scripts
+    .map((s) => `${s.id}@${String(s.version)}~${s.sites.join(" ")}~${String(s.enabled)}~${JSON.stringify(s.params ?? [])}`)
+    .join(",");
   if (key === catalogKey) return;
   catalogKey = key;
   const box = $("start-picks");
@@ -402,8 +467,10 @@ const drawPicks = (scripts) => {
   for (const script of scripts) {
     const input = document.createElement("input");
     input.type = "checkbox";
+    // 値の欄は change で描き直す。input は change より先に出るので、そこで checked を読むと 1 つ遅れる
     input.onchange = () => {
       chosen.set(script.id, input.checked);
+      drawValues();
     };
     const label = document.createElement("label");
     label.className = "pick";
@@ -451,6 +518,21 @@ const syncPicks = () => {
         ? "起点を書くと選べます"
         : `起点に ${script.sites.join("・")} がありません`;
   }
+  drawValues(); // 起点で選べる物が変わると、宣言された値も変わる
+};
+
+/**
+ * いま選んでいる物。起点のホストと、台帳の並びのスクリプトと、そのうち起点に合ってチェックの付いた物の id。
+ * `runOf`・`drawValues`・`variablesNow` が同じ物を見る（3 つがばらばらに選ぶと、欄に出た変数と送る変数がずれる）。
+ */
+const pickedNow = () => {
+  const hosts = seedHosts($("start-seeds").value);
+  const scripts = picks.map((pick) => pick.script);
+  return {
+    hosts,
+    scripts,
+    picked: scripts.filter((script) => onSeed(script, hosts) && pickedOf(script)).map((script) => script.id),
+  };
 };
 
 /**
@@ -458,13 +540,10 @@ const syncPicks = () => {
  * チェックの付いた物。既定の顔ぶれ（台帳が `scripts` を省いた頼みに選ぶ物）と同じなら、送らずに済む。
  */
 const runOf = () => {
-  const hosts = seedHosts($("start-seeds").value);
-  const scripts = picks.map((pick) => pick.script);
+  const { hosts, scripts, picked } = pickedNow();
   return {
     catalog: scripts.map((script) => script.id),
-    picked: scripts
-      .filter((script) => onSeed(script, hosts) && pickedOf(script))
-      .map((script) => script.id),
+    picked,
     defaults: defaultIds(scripts, hosts),
     inline: {
       name: $("start-inline-name").value,
@@ -472,6 +551,66 @@ const runOf = () => {
       source: $("start-inline-source").value,
     },
   };
+};
+
+/** 送る変数（`start.js` の `variablesOf`）。選んだスクリプトが宣言した名前のうち、欄に値の在る物。 */
+const variablesNow = () => {
+  const { scripts, picked } = pickedNow();
+  return variablesOf(declaredOf(scripts, picked, "variable"), values);
+};
+
+/** 最後に描いた宣言の形。同じなら描き直さない —— 打っている欄を手の下で作り直さない。 */
+let valuesKey;
+
+/**
+ * クロールごとの値の欄。選んだスクリプト（`pickedNow`）が宣言した変数を 1 行ずつ（名前・説明・値の欄。必須に印）、
+ * シークレットを名前の列に（値の欄は無い —— 値は Windmill の変数に人が置く）。宣言が 1 つも無ければ fieldset ごと隠す。
+ * 打った値は `values` に持ち、欄を作り直しても戻す。描き直すのはチェックの change と、起点が変わったとき（`syncPicks`）。
+ */
+const drawValues = () => {
+  const { scripts, picked } = pickedNow();
+  const vars = declaredOf(scripts, picked, "variable");
+  const secrets = declaredOf(scripts, picked, "secret");
+  const key = JSON.stringify([vars, secrets]);
+  if (key === valuesKey) return;
+  valuesKey = key;
+  $("start-values").hidden = vars.length === 0 && secrets.length === 0;
+  $("start-vars-table").hidden = vars.length === 0;
+  const body = $("start-vars");
+  body.replaceChildren();
+  for (const v of vars) {
+    const row = document.createElement("tr");
+    const head = document.createElement("td");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = `start-var-${v.name}`;
+    input.spellcheck = false;
+    input.value = values.get(v.name) ?? "";
+    if (v.required) input.placeholder = "必須";
+    input.addEventListener("input", () => values.set(v.name, input.value));
+    const name = tag("label", v.name, "mono");
+    name.htmlFor = input.id;
+    head.append(name);
+    if (v.required) head.append(tag("span", "必須", "req"));
+    if (v.summary !== "") head.append(tag("span", v.summary, "vsum"));
+    const box = document.createElement("td");
+    box.append(input);
+    row.append(head, box);
+    body.append(row);
+  }
+  const line = $("start-secrets");
+  line.hidden = secrets.length === 0;
+  line.replaceChildren();
+  if (secrets.length === 0) return;
+  line.append("使うシークレット: ");
+  secrets.forEach((s, i) => {
+    if (i > 0) line.append("、");
+    line.append(tag("span", s.name, "mono"));
+    if (s.required) line.append(tag("span", "必須", "req"));
+  });
+  line.append(
+    tag("span", "。値はここには書きません。Windmill の変数 f/waggle_secrets/<名前> に人が置き、台帳が在るかを確かめます", "muted"),
+  );
 };
 
 /**
@@ -534,7 +673,7 @@ const drawGutter = () => {
  */
 const syncStart = () => {
   const follow = followOf();
-  const body = startBody($("start-seeds").value, follow, runOf());
+  const body = startBody($("start-seeds").value, follow, runOf(), variablesNow());
   const limit = settings.writeLimit ?? Infinity;
   const size = sizeOf($("start-inline-source").value, bodyBytes(body), limit);
   const line = $("start-size");
@@ -755,7 +894,7 @@ const drawSource = () => {
  */
 const startCrawl = async (event) => {
   event.preventDefault();
-  const body = startBody($("start-seeds").value, followOf(), runOf());
+  const body = startBody($("start-seeds").value, followOf(), runOf(), variablesNow());
   if (body.seeds.length === 0) return;
   $("start-go").disabled = true;
   let status = 0;

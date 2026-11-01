@@ -230,6 +230,35 @@ tr.detail .tally li {
   color: var(--ink);
 }
 
+/* 渡した値（変数の名前と値）の表も中身の幅に。値は台帳の文のまま（改行も） */
+tr.detail .vals {
+  width: auto;
+  min-width: 0;
+  border-collapse: collapse;
+  margin: 0 0 6px;
+}
+
+tr.detail .vals td {
+  padding: 1px 12px 1px 0;
+  border: 0;
+  vertical-align: top;
+}
+
+/* 使ったシークレット: 名前・Windmill の path・確かめた版（走らせたものと同じ並べ方） */
+tr.detail .secrets {
+  margin: 0 0 6px;
+  padding-left: 1.2em;
+}
+
+tr.detail .secrets li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 2px 0;
+  color: var(--ink);
+}
+
 /* 落とした物の表は中身の幅に（table の既定の 100%・720px を継ぐと、例の URL が数から離れて右へ押された） */
 tr.detail .drops {
   width: auto;
@@ -669,6 +698,94 @@ body[data-face="start"] main {
 .start-row .pick .read {
   font-size: 12px;
   cursor: pointer;
+}
+
+/*
+ * クロールごとの値（チェックしたスクリプトが宣言した変数の欄と、使うシークレットの名前）。display を書いた fieldset には
+ * hidden 属性が効かないので、隠すときを書き足す（.start-js と同じ）。宣言が無ければ fieldset ごと出ない
+ */
+.start-values[hidden] {
+  display: none;
+}
+
+/*
+ * 変数の表は左の列（300px）に入る。全体の表の min-width（720px）と nowrap を外す（規則の表と同じ手）。
+ * 左が名前と説明（折り返す）、右が値の欄
+ */
+.vars {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.vars th {
+  text-align: left;
+  font-weight: normal;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--line);
+  white-space: normal;
+}
+
+.vars td {
+  padding: 4px;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.vars td:last-child {
+  width: 50%;
+}
+
+.vars td input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.vars td input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.vars td label {
+  cursor: pointer;
+}
+
+/* 宣言の説明（catalog.json の params の summary）。名前の下に小さく */
+.vars .vsum {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* 必須の印（required: true の宣言）。空のまま始めれば、台帳が 400 で名指す */
+.req {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bad) 14%, transparent);
+  color: var(--bad);
+  font-size: 11px;
+  line-height: 1.6;
+  vertical-align: baseline;
+}
+
+.start-secrets {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 
 /*

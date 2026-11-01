@@ -72,6 +72,41 @@ export const scriptsOf = ({ catalog, picked, defaults, inline }) => {
   ];
 };
 
+/**
+ * チェックしたスクリプトが宣言した、クロールごとの値（capture-scripts の `catalog.json` の `params`。台帳の
+ * `GET /api/scripts` が版ごとに運ぶ）。`kind`（`variable` か `secret`）で選び、**同じ名前は 1 つにまとめる** ——
+ * 名前の空間は 1 クロールに 1 つ（台帳の決まり）で、2 本のスクリプトが同じ名前を宣言すれば同じ値を読む。必須はどれかが
+ * 必須なら必須、説明は最初の宣言の物、`by` は宣言したスクリプトの id。並びは台帳の並びに宣言の順。
+ * `params` を運ばない台帳（v0.66 まで）の行は、何も宣言していないとして読む。
+ */
+export const declaredOf = (scripts, picked, kind) => {
+  const out = [];
+  for (const script of scripts) {
+    if (!picked.includes(script.id)) continue;
+    for (const param of script.params ?? []) {
+      if (param.kind !== kind) continue;
+      const seen = out.find((d) => d.name === param.name);
+      if (seen === undefined) {
+        out.push({ name: param.name, required: param.required === true, summary: param.summary ?? "", by: [script.id] });
+      } else {
+        seen.required = seen.required || param.required === true;
+        seen.by.push(script.id);
+      }
+    }
+  }
+  return out;
+};
+
+/**
+ * 送る変数（台帳の `variables`）。**宣言された名前のうち、欄に値の在る物だけ。** 空白だけの欄は送らない ——
+ * 送れば、スクリプトは「無い」（undefined。ソースの既定へ落ちる）ではなく空の文字列を読む。値は削らない。
+ * 宣言から外れた名前の値（チェックを外した後も `values` に残る）は送らない。綴り・長さ・数は検査しない（台帳が 400 で言う）。
+ */
+export const variablesOf = (declared, values) =>
+  Object.fromEntries(
+    declared.map(({ name }) => [name, values.get(name) ?? ""]).filter(([, value]) => value.trim() !== ""),
+  );
+
 /** 起点の欄から、送る起点。空行を落とすだけ（URL は検査しない）。 */
 const seedsOf = (text) =>
   text
@@ -129,9 +164,9 @@ export const rulesOf = (rows) => rows.map(({ action, pattern }) => ({ [action]: 
  *
  * 「このページだけ」（`follow` が null）なら `maxDepth: 0` を足す。「リンクを辿る」なら規則の並びを
  * 必ず送り、深さと枚数は書いたときだけ送る —— 空なら台帳の既定に任せ、既定の数を dashboard に写さない。
- * 走らせるものは `scriptsOf`。
+ * 走らせるものは `scriptsOf`。クロールごとの変数（`variablesOf`）は、1 つでも在るときだけ送る（空の object は送らない）。
  */
-export const startBody = (text, follow, run = NOTHING_CHOSEN) => {
+export const startBody = (text, follow, run = NOTHING_CHOSEN, variables = {}) => {
   const scripts = scriptsOf(run);
   return {
     seeds: seedsOf(text),
@@ -143,6 +178,7 @@ export const startBody = (text, follow, run = NOTHING_CHOSEN) => {
           rules: rulesOf(follow.rows),
         }),
     ...(scripts !== undefined && { scripts }),
+    ...(Object.keys(variables).length > 0 && { variables }),
   };
 };
 
@@ -259,18 +295,25 @@ export const startAnswer = (status, answer) => {
   }
   const said = answer.message ?? answer.error ?? "答えに文がありません";
   if (status === 0) return { kind: "bad", text: `dashboard 自身に届きません（${said}）` };
-  // 台帳が名指した物（知らないスクリプトの id・重ね・辿らない起点・規則の行）。文の後、hint の前に
+  // 台帳が名指した物（知らないスクリプトの id・重ね・辿らない起点・規則の行・変数の名前・シークレットの名前と
+  // Windmill の path）。文の後、hint の前に
   const named = Array.isArray(answer.ids)
     ? answer.ids
-    : Array.isArray(answer.seeds)
-      ? answer.seeds
-      : Array.isArray(answer.rules)
-        ? answer.rules.map((r) =>
-            r.coveredBy === undefined
-              ? `${String(r.rule)} 行目（${String(r.pattern)}）`
-              : `${String(r.rule)} 行目（${String(r.coveredBy)} 行目に覆われる）`,
-          )
-        : [];
+    : Array.isArray(answer.names)
+      ? answer.names
+      : Array.isArray(answer.secrets)
+        ? answer.secrets.map((s) => (s.path === undefined ? String(s.name) : `${String(s.name)}（${String(s.path)}）`))
+        : typeof answer.script === "string" // 宣言の形が読めないその場の JS（invalid params）
+          ? [answer.script]
+          : Array.isArray(answer.seeds)
+            ? answer.seeds
+            : Array.isArray(answer.rules)
+              ? answer.rules.map((r) =>
+                  r.coveredBy === undefined
+                    ? `${String(r.rule)} 行目（${String(r.pattern)}）`
+                    : `${String(r.rule)} 行目（${String(r.coveredBy)} 行目に覆われる）`,
+                )
+              : [];
   const ids = named.length === 0 ? "" : `: ${named.join(", ")}`;
   const hint = typeof answer.hint === "string" ? `（${answer.hint}）` : "";
   return { kind: "bad", text: `${String(status)} —— ${said}${ids}${hint}` };

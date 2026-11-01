@@ -16,6 +16,11 @@
  * (版の一覧・1 版・受け皿の型) にも答える。札 (`sites`) のある版はサイト用のスクリプトで、台帳と同じく
  * 起点のホストで選び、合わない名指しは 400 で断る。
  *
+ * クロールごとの値 (台帳 v0.67.0) も受ける。版の `params` (宣言) を一覧と 1 版の口に出し、頼みの `variables` を
+ * 宣言に照らして台帳と同じ文で 400 を言う。宣言したシークレットは、台本の `windmillSecrets` (在る secret 変数の名前)
+ * と `windmillVariables` (在るが secret でない変数の名前) を Windmill の代わりにして確かめ、受けた行に名前と path を持つ
+ * (値はどこにも無い —— 台帳と同じ)。
+ *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -101,12 +106,16 @@ export const inlineSource = (scripts, name) => {
   return { status: 200, body: { name, phase, source, sha256: script.sha256 } };
 };
 
+/** クロールごとの値 (台帳 v0.67.0 の行の `variables`・`secrets`)。台本の行に無ければ、何も渡さなかったクロール。 */
+const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [] });
+
 /**
  * /api/crawls/:id。台帳はほかの欄 (上限など) も返すが、dashboard が読むのは seeds・rules・
- * error・scripts・failures なので、そこまでにしてある。受けた行は走らせたものを行に持たない
- * (行の欄は一覧と揃えて試験が固定している) ので、`scripts` で渡す。規則は行に無ければ台帳の既定。
+ * error・scripts・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に持たない
+ * (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ台帳の既定。
+ * `secrets` は台帳 v0.67.0 と同じく `{ name, path, editedAt, rotated }` の列で、値は無い。
  */
-export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEFAULT_RULES) => ({
+export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEFAULT_RULES, values = valuesIn(c)) => ({
   crawlId: c.crawlId,
   seeds: c.seeds,
   rules,
@@ -115,6 +124,8 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   error: c.error ?? null,
   scripts: scripts.map(detailScript),
   failures: c.failures ?? [],
+  variables: values.variables,
+  secrets: values.secrets,
 });
 
 /**
@@ -329,6 +340,14 @@ export const crawlRulesCheck = (seedTexts, ruleTexts) => {
 
 /** その場の JS の名前の綴り (台帳の schema と同じ。`inline-` と合わせて 64 字まで)。 */
 const INLINE_NAME = /^[a-z][a-z0-9-]*$/;
+/** クロールごとの値の名前の綴り (台帳 v0.67.0 の schema と capture-scripts の check.mjs と同じ。64 字まで)。 */
+const VALUE_NAME = /^[a-z][a-z0-9_]*$/;
+/** 宣言したシークレットを置く Windmill のフォルダ (台帳と capture-scheduler の決まり)。 */
+const SECRETS_FOLDER = "f/waggle_secrets/";
+/** `POST /api/crawls` の body の鍵 (台帳 v0.67.0 の schema。`additionalProperties: false`)。外の鍵は 400。 */
+const BODY_KEYS = ["seeds", "fromTargets", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
+/** Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。試験が渡さなければ、何も置いていない Windmill。 */
+const NO_WINDMILL = { secrets: [], variables: [], editedAt: null };
 
 /**
  * Fastify が schema の誤りで返す本文の形 (台帳の 400 と同じ。dashboard は `message` を出す)。
@@ -353,7 +372,7 @@ const elementRefusal = (element, i) => {
       ? undefined
       : `${at}/catalog must NOT have fewer than 1 characters`;
   }
-  const { name, phase, source } = element.inline ?? {};
+  const { name, phase, source, params } = element.inline ?? {};
   if (typeof name !== "string" || !INLINE_NAME.test(name) || name.length > 57) {
     return `${at}/inline/name must match pattern "^[a-z][a-z0-9-]*$"`;
   }
@@ -363,7 +382,137 @@ const elementRefusal = (element, i) => {
   if (typeof source !== "string" || source === "") {
     return `${at}/inline/source must NOT have fewer than 1 characters`;
   }
+  return paramsRefusal(params, `${at}/inline`);
+};
+
+/**
+ * 宣言 (`params`) の形を見る (台帳 v0.67.0 の schema)。断るなら文を返す。名前は `^[a-z][a-z0-9_]*$` で 64 字まで、
+ * kind は variable か secret、required は真偽値、summary は文字列 (その場の JS では省ける)、知らない鍵は断る。
+ * 同じ名前が 2 度ある宣言は schema では見ず、`paramsReading` が台帳の `readParams` と同じ文で断る。
+ */
+const paramsRefusal = (params, at) => {
+  if (params === undefined) return undefined;
+  if (!Array.isArray(params)) return `${at}/params must be array`;
+  if (params.length > 32) return `${at}/params must NOT have more than 32 items`;
+  for (const [i, p] of params.entries()) {
+    const here = `${at}/params/${String(i)}`;
+    if (p === null || typeof p !== "object" || Array.isArray(p)) return `${here} must be object`;
+    for (const key of ["name", "kind"]) {
+      if (!(key in p)) return `${here} must have required property '${key}'`;
+    }
+    if (Object.keys(p).some((key) => !["name", "kind", "required", "summary"].includes(key))) {
+      return `${here} must NOT have additional properties`;
+    }
+    if (typeof p.name !== "string" || !VALUE_NAME.test(p.name) || p.name.length > 64) {
+      return `${here}/name must match pattern "^[a-z][a-z0-9_]*$"`;
+    }
+    if (p.kind !== "variable" && p.kind !== "secret") return `${here}/kind must be equal to one of the allowed values`;
+    if (p.required !== undefined && typeof p.required !== "boolean") return `${here}/required must be boolean`;
+    if (p.summary !== undefined && typeof p.summary !== "string") return `${here}/summary must be string`;
+  }
   return undefined;
+};
+
+/**
+ * その場の JS の宣言を、台帳の `readParams` (schema の後) と同じく読む。同じ名前が 2 度あれば 400
+ * `{ error: "invalid params", script, hint }` (文は台帳と同じ)。通れば、省いた required を false にした宣言。
+ */
+const paramsReading = (inline) => {
+  if (inline.params === undefined) return { params: undefined };
+  const out = [];
+  for (const p of inline.params) {
+    if (out.some((q) => q.name === p.name)) {
+      return {
+        status: 400,
+        body: { error: "invalid params", script: `inline-${inline.name}`, hint: `params に ${p.name} が 2 度ある` },
+      };
+    }
+    out.push({ name: p.name, kind: p.kind, required: p.required ?? false, ...(p.summary === undefined ? {} : { summary: p.summary }) });
+  }
+  return { params: out };
+};
+
+/**
+ * `variables` の形を見る (台帳の schema)。断るなら文を返す。名前は宣言と同じ綴りで 32 個まで、値は文字列で 4,096 字まで。
+ */
+const variablesRefusal = (variables) => {
+  if (variables === undefined) return undefined;
+  if (variables === null || typeof variables !== "object" || Array.isArray(variables)) return "body/variables must be object";
+  const names = Object.keys(variables);
+  if (names.length > 32) return "body/variables must NOT have more than 32 properties";
+  for (const name of names) {
+    if (!VALUE_NAME.test(name) || name.length > 64) return "body/variables property name must be valid";
+    if (typeof variables[name] !== "string") return `body/variables/${name} must be string`;
+    if (variables[name].length > 4096) return `body/variables/${name} must NOT have more than 4096 characters`;
+  }
+  return undefined;
+};
+
+/**
+ * クロールごとの値を、台帳 (v0.67.0 の `checkValues` と route) と同じ順で解く: 同じ名前を別の種類で宣言している →
+ * 必須の変数が無い → シークレットの名前を変数で渡している → 知らない変数 (宣言を添えないその場の JS が 1 本でも在れば
+ * 見ない —— その JS が読むかもしれない) → シークレットが多すぎる → 宣言したシークレットが Windmill に在るか → 在るが
+ * secret でない。宣言は走らせるものから集める (台帳のスクリプトは版の `params`、その場の JS は `inline.params`)。
+ * 同じ名前の宣言は 1 つにまとめる (名前順)。required でないシークレットが Windmill に無ければ、渡さないだけで断らない
+ * (スクリプトは undefined を読む)。通れば、行に固定する `variables` と `secrets` (名前・path・確かめたときの edited_at・
+ * 途中で替わったか) を返す。
+ */
+const resolveValues = (variables = {}, run, windmill) => {
+  const declared = new Map();
+  let undeclaredInline = false;
+  for (const s of run) {
+    const params = s.inline === undefined ? (s.params ?? []) : s.inline.params;
+    if (params === undefined) {
+      undeclaredInline = true;
+      continue;
+    }
+    for (const p of params) {
+      const entry = declared.get(p.name) ?? { kinds: new Set(), required: false, declaredBy: [] };
+      entry.kinds.add(p.kind);
+      entry.required = entry.required || p.required === true;
+      entry.declaredBy.push(s.id);
+      declared.set(p.name, entry);
+    }
+  }
+  const names = [...declared.keys()].sort();
+  const refuse = (body) => ({ status: 400, body });
+  const conflicting = names.filter((name) => declared.get(name).kinds.size > 1);
+  if (conflicting.length > 0) return refuse({ error: "conflicting params", names: conflicting });
+  const ofKind = (kind) => names.filter((name) => declared.get(name).kinds.has(kind));
+  const given = Object.keys(variables).sort();
+  const missing = ofKind("variable").filter((name) => declared.get(name).required && !(name in variables));
+  if (missing.length > 0) return refuse({ error: "missing variables", names: missing });
+  const secretNames = ofKind("secret");
+  const asVariable = given.filter((name) => secretNames.includes(name));
+  if (asVariable.length > 0) return refuse({ error: "secrets cannot be passed as variables", names: asVariable });
+  if (!undeclaredInline) {
+    const variableNames = ofKind("variable");
+    const unknown = given.filter((name) => !variableNames.includes(name));
+    if (unknown.length > 0) return refuse({ error: "unknown variables", names: unknown });
+  }
+  if (secretNames.length > 32) return refuse({ error: "too many secrets", count: secretNames.length, max: 32 });
+  const wanted = secretNames.map((name) => ({
+    name,
+    path: `${SECRETS_FOLDER}${name}`,
+    required: declared.get(name).required,
+    declaredBy: declared.get(name).declaredBy,
+  }));
+  const named = ({ name, path, declaredBy }) => ({ name, path, declaredBy });
+  const absent = wanted.filter((s) => !windmill.secrets.includes(s.name));
+  const plain = absent.filter((s) => windmill.variables.includes(s.name));
+  const unknownSecrets = absent.filter((s) => s.required && !windmill.variables.includes(s.name));
+  if (unknownSecrets.length > 0) {
+    return refuse({
+      error: "unknown secrets",
+      secrets: unknownSecrets.map(named),
+      hint: unknownSecrets.map((s) => `wmill variable add <value> ${s.path} --secret`).join(" / "),
+    });
+  }
+  if (plain.length > 0) return refuse({ error: "not a secret variable", secrets: plain.map(named) });
+  const secrets = wanted
+    .filter((s) => windmill.secrets.includes(s.name))
+    .map((s) => ({ name: s.name, path: s.path, editedAt: windmill.editedAt, rotated: null }));
+  return { variables, secrets };
 };
 
 /**
@@ -381,6 +530,18 @@ const resolveRun = (scripts, versions, hosts) => {
     const refused = elementRefusal(element, i);
     if (refused !== undefined) return schemaError(refused);
   }
+  // その場の JS の宣言を読む (台帳の readParams。schema の後、名指しを解く前)。省いた required は false に
+  const read = [];
+  for (const element of scripts) {
+    if (!("inline" in element)) {
+      read.push(element);
+      continue;
+    }
+    const reading = paramsReading(element.inline);
+    if (reading.status !== undefined) return reading;
+    read.push({ inline: { ...element.inline, ...(reading.params === undefined ? {} : { params: reading.params }) } });
+  }
+  scripts = read;
   const ids = scripts.map((r) => ("catalog" in r ? r.catalog : `inline-${r.inline.name}`));
   const twice = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
   if (twice.length > 0) {
@@ -468,6 +629,8 @@ export const catalogOf = (s, read = readBeside) =>
       createdAt: v.createdAt,
       source,
       options: v.options ?? {},
+      // 宣言 (catalog.json の params)。台帳 v0.67.0 は版ごとに持ち、一覧と 1 版の口に出す。無ければ空
+      params: v.params ?? [],
     };
   });
 
@@ -490,6 +653,21 @@ export const pickable = (versions) => {
   return latestOf(versions).map((v) => enabled.find((e) => e.id === v.id) ?? v);
 };
 
+/**
+ * `GET /api/scripts` の行。身元と札と enabled に、宣言 `params` を添える（台帳 v0.67.0。新しいクロールの画面が
+ * 変数の欄をこれから描く）。source・options・bytes は一覧に無い（台帳と同じ）。
+ */
+export const scriptRows = (versions) =>
+  pickable(versions).map(({ id, version, phase, sha256, sites, enabled, params }) => ({
+    id,
+    version,
+    phase,
+    sha256,
+    sites,
+    enabled,
+    params,
+  }));
+
 /** 札の無いスクリプトはいつでも、サイト用のスクリプトは札のどれかが起点のホストにあるとき（台帳の onSeed）。 */
 const onSeed = (sites, hosts) => sites.length === 0 || sites.some((site) => hosts.has(site));
 
@@ -508,11 +686,12 @@ export const versionsOf = (versions, id) => {
     status: 200,
     body: {
       id,
-      versions: mine.map(({ version, phase, sha256, sites, enabled, bytes, createdAt }) => ({
+      versions: mine.map(({ version, phase, sha256, sites, params, enabled, bytes, createdAt }) => ({
         version,
         phase,
         sha256,
         sites,
+        params,
         enabled,
         bytes,
         createdAt,
@@ -557,16 +736,20 @@ export const hostTypesOf = (s, read = readBeside) => {
  * すると何も始められない。409 を見たいなら、走っている間にもう 1 度始める。
  *
  * `versions` はスクリプトの版の並び (`catalogOf`)。起点のホスト (台帳と同じく `hostname`。ポートは見ない) で
- * 既定を選び、名指しを照らす。走らせたものは受けた行の `scripts` に持ち、一覧の行 (`submittedRow`) には
- * 出さない。
+ * 既定を選び、名指しを照らす。走らせたものと値は受けた行の `scripts`・`variables`・`secrets` に持ち、一覧の行
+ * (`submittedRow`) には出さない。`windmill` は Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。
  */
-export const submitCrawl = (rows, body, now, runsSeconds, versions) => {
-  // 消した鍵 (scriptIds・scope) は、知らない鍵として 400
-  if (body !== null && typeof body === "object" && ("scriptIds" in body || "scope" in body)) {
+export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = NO_WINDMILL) => {
+  // 知らない鍵 (消した scriptIds・scope も) は、schema の 400 (台帳は additionalProperties: false)
+  if (body !== null && typeof body === "object" && Object.keys(body).some((key) => !BODY_KEYS.includes(key))) {
     return schemaError("body must NOT have additional properties");
   }
   if (body !== null && typeof body === "object" && "rules" in body) {
     const refused = rulesRefusal(body.rules);
+    if (refused !== undefined) return schemaError(refused);
+  }
+  if (body !== null && typeof body === "object" && "variables" in body) {
+    const refused = variablesRefusal(body.variables);
     if (refused !== undefined) return schemaError(refused);
   }
   if (!Array.isArray(body?.seeds)) {
@@ -583,6 +766,9 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions) => {
   const hosts = new Set(body.seeds.map((seed) => new URL(seed).hostname));
   const run = resolveRun(body.scripts, versions, hosts);
   if (run.status !== undefined) return run;
+  // 値の誤り (必須の変数が無い・知らない変数・Windmill に無いシークレット) も、行を立てる前 —— 走行中でも 409 より先
+  const valued = resolveValues(body.variables, run.scripts, windmill);
+  if (valued.status !== undefined) return valued;
   const running = rows.find((row) => now < row.startedAt + row.runsSeconds * 1000);
   if (running !== undefined) {
     return {
@@ -601,6 +787,8 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions) => {
     runsSeconds,
     scripts: run.scripts,
     rules: ruled.rules,
+    variables: valued.variables,
+    secrets: valued.secrets,
   };
   rows.unshift(row);
   return { status: 202, body: { crawlId: row.crawlId } };
@@ -679,6 +867,13 @@ const submitted = [];
 /** 台本のスクリプトの版の並び。`emptyCatalog` なら空 (スクリプトが無い台帳。読む所には受け皿の型だけが残る)。 */
 const versionsIn = (s) => (s.emptyCatalog === true ? [] : catalogOf(s));
 
+/** 台本の Windmill の代わり。edited_at は台本の撮った時刻 (台帳は Windmill の答えの edited_at を写す)。 */
+const windmillOf = (s) => ({
+  secrets: s.windmillSecrets ?? [],
+  variables: s.windmillVariables ?? [],
+  editedAt: s.capturedAt,
+});
+
 const handle = (req, res, raw) => {
   const { pathname } = new URL(req.url ?? "/", "http://sandbox");
   const s = scenario();
@@ -694,7 +889,7 @@ const handle = (req, res, raw) => {
       send(res, 400, { error: "body is not valid JSON" });
       return;
     }
-    const answer = submitCrawl(submitted, body, Date.now(), s.submit?.runsSeconds ?? 15, versionsIn(s));
+    const answer = submitCrawl(submitted, body, Date.now(), s.submit?.runsSeconds ?? 15, versionsIn(s), windmillOf(s));
     send(res, answer.status, answer.body);
     return;
   }
@@ -737,7 +932,10 @@ const handle = (req, res, raw) => {
             const c = s.crawls.find((x) => x.crawlId === one[1]);
             return c === undefined ? undefined : crawlDetail(c);
           })()
-        : crawlDetail(submittedRow(mine, Date.now()), mine.scripts, mine.rules);
+        : crawlDetail(submittedRow(mine, Date.now()), mine.scripts, mine.rules, {
+            variables: mine.variables,
+            secrets: mine.secrets,
+          });
     send(res, detail === undefined ? 404 : 200, detail ?? { error: "not found" });
     return;
   }
@@ -746,16 +944,8 @@ const handle = (req, res, raw) => {
     return;
   }
   if (req.method === "GET" && pathname === "/api/scripts") {
-    // 各 id に 1 行、札と enabled つきで（台帳 v0.64.0。既定で走るのは、enabled の物のうち札の無い物と起点に合う物）
-    const scripts = pickable(versionsIn(s)).map(({ id, version, phase, sha256, sites, enabled }) => ({
-      id,
-      version,
-      phase,
-      sha256,
-      sites,
-      enabled,
-    }));
-    send(res, 200, { scripts });
+    // 各 id に 1 行、札と enabled と宣言つきで（台帳 v0.64.0。既定で走るのは、enabled の物のうち札の無い物と起点に合う物）
+    send(res, 200, { scripts: scriptRows(versionsIn(s)) });
     return;
   }
   // スクリプトを読む口（台帳 v0.60.0）。id は % を解いてから引く

@@ -150,12 +150,14 @@ const SHOTS = [
     },
     ready: () =>
       document.querySelector("#crawls tr.detail")?.textContent.includes("走らせたもの") &&
+      document.querySelector("#crawls tr.detail .values .vals") !== null &&
       document.querySelector("#crawls tr.detail .decided a") !== null,
     marks: [
       { n: 1, at: "#crawls tr.detail p" },
       { n: 2, at: "#crawls tr.detail button", edge: "box" },
-      { n: 3, at: "#crawls tr.detail .decided p" },
-      { n: 4, at: "#crawls tr.detail .decided > p:last-child" },
+      { n: 3, at: "#crawls tr.detail .values p" },
+      { n: 4, at: "#crawls tr.detail .decided p" },
+      { n: 5, at: "#crawls tr.detail .decided > p:last-child" },
     ],
   },
   {
@@ -168,12 +170,18 @@ const SHOTS = [
       const site = [...document.querySelectorAll("#start-picks label.pick")].find((l) =>
         l.textContent.startsWith("egov-law-search"),
       );
-      return site?.querySelector("input").checked === true && !document.getElementById("start-go").disabled;
+      // egov-law-search が宣言する変数 query の欄が出ている（宣言の無い台帳では fieldset ごと隠れる）
+      return (
+        site?.querySelector("input").checked === true &&
+        document.getElementById("start-var-query") !== null &&
+        !document.getElementById("start-go").disabled
+      );
     },
     marks: [
       { n: 1, at: 'label[for="start-seeds"]' },
       { n: 2, at: ".start-run legend" },
-      { n: 3, at: "#start-go", edge: "box" },
+      { n: 3, at: ".start-values legend" },
+      { n: 4, at: "#start-go", edge: "box" },
     ],
   },
   {

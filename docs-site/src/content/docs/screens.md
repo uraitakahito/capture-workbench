@@ -18,7 +18,7 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 | View | What it lists |
 | --- | --- |
 | Crawls | one row per crawl: state, pages captured, pages discovered, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, link to the run |
-| New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
+| New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
 | Archives | the WACZ files you can see; from a row, validate, open the contents, or open in [replay](https://github.com/uraitakahito/replay) (which plays a WACZ back in the browser) |
 | Scripts | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
 | Contents | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
@@ -54,23 +54,30 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   `lastJob` that the ledger returns, plus the Windmill origin and workspace the server hands out
   through `/healthz`. Rows where the ledger has no `lastJob` get no link.
 
-![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
+![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the values passed and the secrets used, the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
 
 ① what ran (in run order)\
 ② 欄に戻す (back to the form)\
-③ the count per rule\
-④ Windmill で調べる (inspect in Windmill), the link to inspect_crawl
+③ 渡した値 (the values passed: variables) and 使ったシークレット (the secrets used)\
+④ the count per rule\
+⑤ Windmill で調べる (inspect in Windmill), the link to inspect_crawl
 
-- **Click a row to see why it failed, what ran in the page, and the URLs that could not be
-  fetched.** Only then does the dashboard fetch `/api/crawls/:id`. The ledger's `error` comes first,
-  in its own words: a crawl that failed at the compile step captured nothing, so its list of failed
-  pages is empty and would otherwise read like a success. Next is what ran, in the order it ran:
-  registered scripts with their version and a 読む (read) link to the [scripts view](#scripts) at the
-  version the crawl ran, and scripts written in the form marked その場 (written on the spot) with
-  their size in bytes, each with a 欄に戻す (back to the form) button that takes you to the
-  [new crawl view](#start-a-crawl). A site script carries its sites, as a chip such as
-  `laws.e-gov.go.jp 用`. Last are the pages that failed, as many
-  as the ledger returns; if none did, it says so and lists the seed URLs.
+- **Click a row to see why it failed, what ran in the page, which values it was given, and the
+  URLs that could not be fetched.** Only then does the dashboard fetch `/api/crawls/:id`. The ledger's
+  `error` comes first, in its own words: a crawl that failed at the compile step captured nothing, so
+  its list of failed pages is empty and would otherwise read like a success. Next is what ran, in the
+  order it ran: registered scripts with their version and a 読む (read) link to the
+  [scripts view](#scripts) at the version the crawl ran, and scripts written in the form marked その場
+  (written on the spot) with their size in bytes, each with a 欄に戻す (back to the form) button that
+  takes you to the [new crawl view](#start-a-crawl). A site script carries its sites, as a chip such as
+  `laws.e-gov.go.jp 用`. Then come the values: the variables the crawl was started with (the ledger's
+  `variables`, name and value) and the secrets it used (`secrets`: the name, the path of the Windmill
+  variable, and its `edited_at` when the ledger checked that it existed). A secret's value never
+  appears: neither the ledger nor the WACZ holds it, only Windmill does. If the Windmill variable was
+  rewritten while the crawl ran, the row says from which level. A crawl given nothing reads 渡した値:
+  なし (values passed: none), and a row from an older ledger without values shows nothing here. Last
+  are the pages that failed, as many as the ledger returns; if none did, it says so and lists the seed
+  URLs.
 - **An opened row also shows what the crawl's rules decided** (the ledger's
   `/api/crawls/:id/decisions`, fetched together with the detail). First, per rule, the distinct URLs it
   matched, added up over the levels; a rule that never matched is marked 当たっていません (not hit),
@@ -96,19 +103,20 @@ tests read the same file the browser reads, so there is no copy to rot.
 ## Start a crawl
 
 The 新しいクロール (new crawl) view starts a crawl. The left column holds the seed URLs, the registered scripts,
-the depth and the 始める (start) button; the right column holds the box for a script of your own, and
-how to follow links. The box
+the per-crawl values (when a ticked script declares any), the depth and the 始める (start) button; the
+right column holds the box for a script of your own, and how to follow links. The box
 stretches to the bottom of the window and has line numbers on its left, so a large script can be
 pasted, read, fixed a little and run. Write the seed URLs one per line, choose このページだけ (this
 page only) or リンクを辿る (follow links), and press 始める. The right column has tabs: it switches to
 a window for reading a registered script, and, while リンクを辿る is chosen, to 辿り方 (how to
 follow).
 
-![The left column of the new crawl view: the seed URL (e-Gov Law Search), script checkboxes including autofetch left unticked as 既定では走らない and the site script egov-law-search, this page only or follow links, and 始める](../../assets/screens/start.webp)
+![The left column of the new crawl view: the seed URL (e-Gov Law Search), script checkboxes including autofetch left unticked as 既定では走らない and the site script egov-law-search, the field for the variable query that egov-law-search declares, this page only or follow links, and 始める](../../assets/screens/start.webp)
 
 ① seed URLs\
 ② スクリプト (scripts): the checkboxes and 読む (read)\
-③ 始める (start)
+③ クロールごとの値 (per-crawl values): the fields for the variables the ticked scripts declare\
+④ 始める (start)
 
 ![The right column of the new crawl view: the tab その場の JS, the name of the script, when it runs, and the script box](../../assets/screens/start-js.webp)
 
@@ -116,8 +124,8 @@ follow).
 ② JS の名前 (name of the script)\
 ③ the script box
 
-- **It sends the seed URLs, whether the depth is 0, and what runs — the last only when it differs
-  from the default.** このページだけ sends `maxDepth: 0`; リンクを辿る sends the rules, and the depth
+- **It sends the seed URLs, whether the depth is 0, what runs — only when it differs from the
+  default — and the per-crawl variables, only those with a value.** このページだけ sends `maxDepth: 0`; リンクを辿る sends the rules, and the depth
   and the page limit only when they are written (empty, they are the ledger's defaults). With the default set the seeds decide (of the scripts in
   the default, those without sites and the site scripts for a seed's host) ticked and no script of your own, the form
   sends no `scripts`, and the ledger picks the same set from the seeds. A ledger with no scripts is still a
@@ -133,8 +141,28 @@ follow).
   起点を書くと選べます (write a seed to choose). A box you unticked stays unticked when the seeds
   change. The rule is the ledger's: naming a site script that fits no seed gets a 400 from it.
   The example is `egov-law-search` from capture-scripts (sites `laws.e-gov.go.jp`), which searches law titles
-  for 「セキュリティ」 within [e-Gov Law Search](https://laws.e-gov.go.jp/); seed `https://laws.e-gov.go.jp/` to
-  choose it, as in the picture above.
+  within [e-Gov Law Search](https://laws.e-gov.go.jp/) for the word in the variable `query` (「セキュリティ」
+  when none is given); seed `https://laws.e-gov.go.jp/` to choose it, as in the picture above.
+- **When a ticked script declares values, the クロールごとの値 (per-crawl values) box appears.** A
+  script declares the names it reads in `params` in the `catalog.json` of
+  [capture-scripts](https://github.com/uraitakahito/capture-scripts); the ledger keeps them with each
+  version and `GET /api/scripts` carries them (from v0.67.0). A variable (`kind: variable`) becomes
+  one row with its name, its description and a field for the value: `query` in the picture above is
+  declared by `egov-law-search` as the search word, and the script reads it as `__bh.vars.query`. A
+  required declaration is marked 必須 (required). Only the fields with a value are sent, as
+  `variables`; an empty field is not sent and the script falls back to the default in its source.
+  The values are remembered: after a 202, and when unticking a script removes its rows, they stay,
+  and come back when the script is ticked again. The dashboard does not check them: the spelling of a
+  name (a lowercase letter, then lowercase letters, digits and `_`, up to 64 characters), at most 32
+  per crawl and values up to 4,096 characters are the ledger's rules, and when a required field is
+  empty or a name no script declared is sent, the ledger answers 400 naming it (under the left
+  column you read something like `400 —— missing variables: query`). A secret (`kind: secret`) is
+  listed under 使うシークレット (secrets used) by name only, with no field: its value is put by a
+  person into the Windmill variable `f/waggle_secrets/<name>`, the ledger checks that it exists
+  (otherwise a 400 naming it with its path), and Windmill resolves it for the script on every crawl.
+  The value never reaches the dashboard, the ledger or the WACZ. No bundled script declares a secret,
+  so this view passes variables only; the declaration of a script of your own (`inline.params`) can
+  be added only when calling the ledger's API directly.
 - **A script left out of the default is listed unticked.** It reads 既定では走らない (does not run
   by default) beside its name, as autofetch does in the picture above: a script whose entry in the
   `catalog.json` of [capture-scripts](https://github.com/uraitakahito/capture-scripts) says
@@ -213,8 +241,8 @@ follow).
   time, overall). An accepted crawl is running, so the footer starts polling every 2 seconds.
   Anything else (a 400, a 413, an unreachable server) stays in this view, in the ledger's own words
   under the left column.
-- **After a 202 the seed URLs are cleared and your script is kept,** since the usual next step is
-  to fix it and run again.
+- **After a 202 the seed URLs are cleared; your script and the values of the variables are kept,**
+  since the usual next step is to fix it and run again.
 - **欄に戻す (back to the form) brings you back here.** Open a row in the crawls view and press
   欄に戻す on a script of your own: this view opens with its name, phase and source. The source
   comes from the ledger's `/api/crawls/:id/inline/:name` (a crawl's detail only carries its size).
