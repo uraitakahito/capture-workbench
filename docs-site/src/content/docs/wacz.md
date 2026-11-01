@@ -102,7 +102,9 @@ asks for it, the findings on that entry) and its contents.
 - **Record list**: this is what you get for a `.warc.gz`. One row per record, walking the WARC
   from the start, 200 at a time, filterable by type. ▪ marks a record the index (CDXJ) points
   to, ▫ one the index does not. The records BrowserHive leaves for what it did not or could not
-  capture (`WARC-Type: metadata`) are only visible here.
+  capture (`WARC-Type: metadata`) are only visible here. A record of type 写し (`WARC-Type:
+  resource`) is a copy BrowserHive made of the page's DOM before and after its scripts ran,
+  not a server response; the paired 記録 (`metadata`) record says so.
 - **One record**: the WARC headers, the HTTP status line and headers, and the body. The body is
   shown as text, as a raster image, or as its size only.
 

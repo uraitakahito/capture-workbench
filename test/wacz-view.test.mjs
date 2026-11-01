@@ -81,6 +81,10 @@ test("レコードの列: 種別は日本語、無いものは空", () => {
   assert.equal(recordCells({ type: "revisit", indexed: false }).type, "revisit");
 });
 
+test("BrowserHive が組んだ写し（resource）は「写し」と呼ぶ", () => {
+  assert.equal(recordCells({ type: "resource", contentType: "text/html; charset=utf-8", uri: "https://x/result", indexed: true }).type, "写し");
+});
+
 test("本文の言い方", () => {
   assert.equal(bodyLabel({ kind: "image", mime: "image/png", byteLength: 2048 }), "image/png · 2.0 KiB");
   assert.equal(bodyLabel({ kind: "binary", byteLength: 10 }), "(binary · 10 B)");

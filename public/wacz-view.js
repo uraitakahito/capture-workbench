@@ -99,7 +99,8 @@ export const lineLabel = (line) => {
   return line.cut ? `${line.text} …（${formatBytes(line.bytes)}。一覧は 2 KiB まで）` : line.text;
 };
 
-const TYPE_NAMES = { response: "応答", request: "要求", metadata: "記録", warcinfo: "warcinfo" };
+// resource は BrowserHive が組んだ写し（検索前と検索後の DOM の写し。BrowserHive WARC Profile 1.1.0 の #snapshots）
+const TYPE_NAMES = { response: "応答", request: "要求", metadata: "記録", resource: "写し", warcinfo: "warcinfo" };
 
 /** レコードの種別の言い方。知らない種別はそのまま。 */
 export const typeName = (type) => TYPE_NAMES[type] ?? type;
