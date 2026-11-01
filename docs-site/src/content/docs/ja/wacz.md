@@ -99,6 +99,7 @@ wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力�
   WARC を頭から歩いた 1 件 1 行で、200 件ずつ読み、種別で絞れます。
   ▪ は索引（CDXJ）が指すレコード、▫ は索引に無いものです。
   BrowserHive が残す「撮らなかった・撮れなかった」記録（`WARC-Type: metadata`）は、ここでしか見えません。
+  種別の「写し」（`WARC-Type: resource`）は、BrowserHive が検索前と検索後の画面を DOM のまま写した物で、サーバの応答ではありません（組の「記録」がそう言います）。
 - **1 レコード**: WARC の見出し、HTTP の状態行と見出し、本文です。
   本文は文字か、raster の画像か、大きさだけです。
 
