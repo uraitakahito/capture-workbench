@@ -1115,6 +1115,24 @@ button:focus-visible {
   white-space: pre-wrap;
 }
 
+/*
+ * warcinfo の欄。名前はどれも WARC が書いたもの（長いこともある）。3 列目は語彙の表示名で、定義へリンクする。
+ * 値の列は値の幅まで —— 3 列目が右端へ離れない（長い値は、残りの幅で折り返す）
+ */
+.vfields.vocab {
+  grid-template-columns: 110px minmax(0, max-content) max-content;
+}
+
+.vfields.vocab .k {
+  overflow-wrap: anywhere;
+}
+
+/* 一覧の上の warcinfo の枠は、見出し（.vhead）の下の線と二重にしない */
+#wacz-content > .vpart:first-child {
+  margin-top: 0;
+  border-top: 0;
+}
+
 .vraw {
   margin: 0;
   width: 100%;
