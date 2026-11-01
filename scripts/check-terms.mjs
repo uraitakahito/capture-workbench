@@ -1,5 +1,5 @@
 /**
- * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 5 つ。
+ * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 6 つ。
  *
  * ## なぜ要るのか
  *
@@ -24,6 +24,10 @@
  *   （sandbox/scenario.json）とスクリプト 1 本の両方を指していた。dashboard は storage の目録を持たないので、
  *   「目録」は全部見る。「台本」は、代役を説明するファイル（SCENARIO）の外では全部、中では
  *   スクリプト 1 本の意味の形（TAIHON）だけを見る（capture-ledger と capture-scheduler も見張っている）
+ * - **network は「通信」と書く。** 2026-11 に「網」（network の 1 字の直訳）から「通信」へそろえた（この repo では
+ *   コメントの 3 か所。browserhive・capture-ledger・capture-scheduler も同じ日にそろえている）。「網」は読み手に
+ *   通じにくい。基盤のネットワーク（私設ネットワーク・default ネットワーク）は「ネットワーク」と書く。
+ *   「安全網」「網羅」は別の語で、見ない
  *
  * 書き手（人と Claude）は長くこの形で書いてきたので、見張らなければ戻ってくる。
  *
@@ -36,7 +40,8 @@
  *   - lockfile。この repo の言葉ではない
  *   - この file 自身。説明と、探す字そのものを書くため
  *   - sandbox/catalog/。capture-scripts のスクリプトの写しで、別の repo の言葉（autofetch.ts の「変種」は
- *     seed ではない）。直すと行番号が実物とずれる（読む所の行と下敷きの行を、代役で実物どおりに見るため）
+ *     seed ではなく、host.d.ts の「網」は capture-scripts の版の言葉）。直すと行番号が実物とずれる
+ *     （読む所の行と下敷きの行を、代役で実物どおりに見るため）
  *   - 「名乗り」を誰として見るかの意味で使っているか、「起点」を seed の意味で使っているか、
  *     「起こす」がクロールの意味か。語の意味は機械には見えないので、3 つ目と、4 つ目の全体の「画面」と、5 つ目の代役のファイルの中の
  *     「台本」は形の並びで見る
@@ -58,6 +63,8 @@ const COPIED = "sandbox/catalog/";
 const MIXED = /名乗りのトークン|名乗りを取|名乗るトークン|identity token/iu;
 /** 「種」を seed の意味に取れない形。capture-ledger と同じ（種類・種別・数の後の「種」）。 */
 const NOT_SEED = /種類|種別|\d\s?種/gu;
+/** 「網」を network の意味に取れない形（安全網・網羅）。capture-ledger・capture-scheduler と同じ。 */
+const NOT_NET = /安全網|網羅/gu;
 /** 画面のファイル。ここには「起こ」を 1 つも書かない（同梱の vendor は別の repo の言葉）。 */
 const SCREEN = "public/";
 const VENDOR = "public/vendor/";
@@ -113,6 +120,12 @@ const RULES = [
     say:
       "「目録」か、スクリプトの意味の「台本」が残っています。ページで走らせる物は「スクリプト」、" +
       "置き場は「台帳」（台帳に無い・台帳 v1）、札のある物は「サイト用のスクリプト」と書きます（代役の台本はそのまま）。",
+  },
+  {
+    find: (line) => line.replace(NOT_NET, "").includes("網"),
+    say:
+      "「網」が残っています。network は「通信」（通信の記録・通信が静まる・通信に載せる）、" +
+      "基盤のネットワークは「ネットワーク」と書きます。",
   },
 ];
 
