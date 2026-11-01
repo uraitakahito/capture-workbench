@@ -85,7 +85,7 @@ wacz-validator を出しても、動いている daemon は起こしたときの
 URL は `#wacz/<archiveId>` で、選んだ entry と行まで載ります（`#wacz/<archiveId>/indexes%2Findex.cdxj:66` のように指せます）。
 
 開くと検証が走り、左の木は報告の entry の一覧から組みます。
-wacz-validator の端末の画面（waxlens）と、同じ入力・同じ罫線です。
+wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力・同じ罫線です。
 右には、選んだ entry の詳細（大きさ・STORE か DEFLATE か・仕様のどこが求めるか・その entry への指摘）と中身が出ます。
 
 - **行**: 200 行ずつの窓です。
