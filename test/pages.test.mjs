@@ -114,6 +114,17 @@ test("結末は台帳の state をそのまま、理由があれば後ろに（s
   assert.equal(outcomeOf(page("3", { state: "someday", reason: undefined })), "someday");
 });
 
+test("結末: 終わったクロールの pending は、報告が来ないまま終わったと添える（走行中の pending はそのまま）", () => {
+  const pending = page("4", { state: "pending", taskId: null, logCounts: null });
+  assert.equal(outcomeOf(pending, "failed"), "pending（報告なし —— クロールが先に終わった）");
+  assert.equal(outcomeOf(pending, "succeeded"), "pending（報告なし —— クロールが先に終わった）");
+  assert.equal(outcomeOf(pending, "running"), "pending");
+  // クロールの状態が分からないときは、台帳の語だけ
+  assert.equal(outcomeOf(pending), "pending");
+  // ほかの状態には添えない
+  assert.equal(outcomeOf(page("5"), "failed"), "captured");
+});
+
 test("数: logCounts が null なら「—」（読んでいない）、0 は色なし、0 より大きい warn と error に色", () => {
   assert.deepEqual(tallyOf(null, "warn"), { text: "—", kind: "muted" });
   assert.deepEqual(tallyOf(undefined, "error"), { text: "—", kind: "muted" });

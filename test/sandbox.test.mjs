@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
+import { outcomeOf } from "../public/pages.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
 import {
@@ -986,4 +987,12 @@ test("代役は Claude を呼ばない —— 台本に無い行・名前の直�
   assert.equal(fixOf(passing, "search").status, 404);
   assert.deepEqual(diagnosisOf(200, diagnosticsOf(passing).body).kind, "clean");
   assert.equal(diagnosticsOf(undefined).status, 404);
+});
+
+test("代役の 5b0c0008（型で落ちた行）は、起点の頁を pending のまま持つ（台帳と同じ。画面は報告なしと添える）", () => {
+  const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0008"));
+  const answer = pageList(c, new URLSearchParams());
+  assert.equal(answer.status, 200);
+  assert.deepEqual(answer.body.pages.map((p) => [p.url, p.state]), [["https://sandbox.test/news", "pending"]]);
+  assert.equal(outcomeOf(answer.body.pages[0], c.state), "pending（報告なし —— クロールが先に終わった）");
 });
