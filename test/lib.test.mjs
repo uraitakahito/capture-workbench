@@ -12,6 +12,7 @@ import { Readable } from "node:stream";
 import {
   contentType,
   hostAllowed,
+  isWriteRoute,
   optional,
   readBody,
   safePath,
@@ -99,6 +100,30 @@ test("書く口は、ほかのオリジン・Origin の無い要求・JSON で�
   assert.equal(writeRefusal({ ...fromThisPage, "content-type": "text/plain" }, 7080)?.status, 415);
   assert.equal(writeRefusal({ ...fromThisPage, "content-type": undefined }, 7080)?.status, 415);
   assert.equal(writeRefusal({ ...fromThisPage, host: "evil.test:7080", origin: "http://evil.test:7080" }, 7080)?.status, 403);
+});
+
+test("書く口は、クロールを始める口と、その場の JS の直し方を訊く口の 2 つの形だけ", () => {
+  const id = "5b0c0008-6a1e-4000-8000-000000000008";
+  assert.equal(isWriteRoute("/api/crawls"), true);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner/fix`), true);
+  // 末尾の足し・query・ほかの段
+  assert.equal(isWriteRoute("/api/crawls/"), false);
+  assert.equal(isWriteRoute("/api/crawls?x=1"), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner/fix/`), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner/fix?x=1`), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner`), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/pages`), false);
+  assert.equal(isWriteRoute(`/api/archives/${id}/url`), false);
+});
+
+test("書く口は、% と . で台帳のほかの口へ回り込む形を断る", () => {
+  const id = "5b0c0008-6a1e-4000-8000-000000000008";
+  // fetch は URL の .. を畳む（%2e%2e も）。/api/crawls/../… は台帳の別の口に届いてしまう
+  assert.equal(isWriteRoute("/api/crawls/../inline/x/fix"), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/inline/../fix`), false);
+  assert.equal(isWriteRoute("/api/crawls/%2e%2e/inline/x/fix"), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}%2Fx/inline/close-banner/fix`), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close%2Dbanner/fix`), false);
 });
 
 test("書く口の本文は、上限ちょうどまで受け、1 バイト超えたら断る", async () => {

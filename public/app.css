@@ -214,6 +214,72 @@ tr.detail .ran li {
   color: var(--ink);
 }
 
+/*
+ * 取り直した型の誤りの表（スクリプト・行:列・code・文）も中身の幅に（.pagelist と同じく、table の既定の 100%・720px を
+ * 継がない）。文は折り返す
+ */
+tr.detail .typeerrors {
+  width: auto;
+  min-width: 0;
+  border-collapse: collapse;
+  margin: 0 0 6px;
+}
+
+tr.detail .typeerrors th,
+tr.detail .typeerrors td {
+  padding: 1px 12px 1px 0;
+  border: 0;
+  vertical-align: top;
+}
+
+tr.detail .typeerrors td:last-child {
+  overflow-wrap: anywhere;
+}
+
+/* 直し方の答え。走らせたものの行の下に、行の幅いっぱいで出す */
+tr.detail .ran .fix {
+  flex-basis: 100%;
+  margin: 2px 0 8px;
+  padding: 4px 10px 6px;
+  border-left: 3px solid var(--line);
+}
+
+tr.detail .ran .fix p,
+tr.detail .ran .fix ul {
+  margin: 4px 0;
+}
+
+tr.detail .ran .fix p button {
+  margin-right: 10px;
+}
+
+/* 差分: 消した行と足した行。行番号・印・行の 3 欄で、行は空白をそのまま折り返す */
+tr.detail .difflines {
+  width: auto;
+  min-width: 0;
+  border-collapse: collapse;
+  margin: 0 0 4px;
+}
+
+tr.detail .difflines td {
+  padding: 0 8px 0 0;
+  border: 0;
+}
+
+tr.detail .difflines td.code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-right: 4px;
+}
+
+tr.detail .difflines tr.del td {
+  background: color-mix(in srgb, var(--bad) 14%, transparent);
+}
+
+tr.detail .difflines tr.add td {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
 /* 規則が何を決めたか: 規則ごとの数（走らせたものと同じ並べ方）と、落とした物の表 */
 tr.detail .tally {
   margin: 0 0 6px;

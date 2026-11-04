@@ -1,6 +1,6 @@
 ---
 title: 中継の口
-description: dashboard のサーバが答える口 —— /healthz、台帳への素通し、クロールを始める口、WACZ の中身へ行く /wacz/ の口。Host の門、通すヘッダと、失敗の形
+description: dashboard のサーバが答える口 —— /healthz、台帳への素通し、書く口（クロールを始める・その場の JS の直し方を訊く）、WACZ の中身へ行く /wacz/ の口。Host の門、通すヘッダと、失敗の形
 ---
 
 dashboard のサーバは中継しかしません。
@@ -10,7 +10,8 @@ dashboard のロジックはブラウザの側（`public/`）に在り、サー�
 | 口 | 答えるもの |
 | --- | --- |
 | `GET /healthz` | サーバ自身（生存と、dashboard が要る設定） |
-| `POST /api/crawls` | 台帳へ（書く口はこれ 1 本） |
+| `POST /api/crawls` | 台帳へ（書く口。クロールを始める） |
+| `POST /api/crawls/:id/inline/:name/fix` | 台帳へ（書く口。その場の JS の型の誤りの直し方を訊く） |
 | `/api/*`（ほか） | 台帳へ素通し（GET だけ） |
 | `/wacz/:id/…` | 台帳に署名をもらい、daemon へ |
 | それ以外 | `public/` のファイル |
@@ -47,7 +48,7 @@ dashboard は開いたときにこれを読み、誰として見ているかと�
 ブラウザから直に叩く道が塞がっているので、同一オリジンにするために通します。
 
 - path と query はそのままで、台帳へは GET で通します。
-  GET 以外は 405 です（書く口は下の `POST /api/crawls` だけ）。
+  GET 以外は 405 です（書く口は下の `POST` の口だけ）。
 - アクセストークンを `Authorization: Bearer` で付けます。
   まだ持っていなければ、先に開発用 issuer から取得します。
 - **401 を受けたら、取得し直して 1 度だけやり直す。**
@@ -58,12 +59,12 @@ dashboard は開いたときにこれを読み、誰として見ているかと�
 
 どの口を読むかは dashboard（`public/app.js`）が決め、サーバは選びません。
 口の一覧（allowlist）は持っていません。
-だから台帳の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）も、ここでは何も要りません。どれも読む口で、一覧と同じく素通しです。
+だから台帳の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）も、ここでは何も要りません。どれも読む口で、一覧と同じく素通しです。
 ページの表の続きは、台帳が本文の `next` で言います（中継が返すのは状態と `content-type` と本文だけで、ほかのヘッダは落ちるため）。
 
 ## POST /api/crawls —— クロールを始める口
 
-dashboard のサーバが持つ、ただ 1 本の書く口です。
+dashboard のサーバが持つ書く口の 1 つです。
 新しいクロールの画面の欄（[画面](/screens/)）が使います。
 中身は検査せず、門を通った本文をそのまま台帳の `POST /api/crawls` へ渡し、答えをそのまま返します。
 起点の URL も方針（深さ・枚数・走らせるスクリプト）も、クロールごとの変数（`variables`。名前の綴り・数・値の長さ・スクリプトが宣言した名前か）も、検査して決めるのは台帳です。
@@ -84,6 +85,30 @@ dashboard のサーバが持つ、ただ 1 本の書く口です。
 | 503 `{"error": "windmill unreachable"}` | 宣言したシークレットが在るかを Windmill に訊けない（flow も動かないので、台帳はクロールを始めない） |
 
 門の判定は `src/lib.mjs` の `writeRefusal` に在り、試験から直接呼べます。
+
+## POST /api/crawls/:id/inline/:name/fix —— その場の JS の直し方を訊く口
+
+これも書く口です。
+型の検査で落ちたクロールを開き、型の誤りの在るその場の JS の「直し方を訊く」を押すと使います（[画面](/screens/)）。
+本文は `{}` です。
+台帳が Claude に訊き、**クロールが落ちたのと同じ型の検査に通った直しだけ**を、理由・置き換えた行・往復の回数・費用つきで返します。
+dashboard は答えを描くだけです。
+
+- 門とアクセストークンは `POST /api/crawls` と同じです（`Origin`・JSON・1 MiB）。
+- **中継するのは、この形ちょうどだけ。**
+  id は 16 進の数字とハイフン、名前は小文字・数字・ハイフンで、`/fix` の後ろには何も付きません。
+  `%` と `.` は通しません。
+  `fetch` は URL の `..`（`%2e%2e` も）を畳むので、通すと台帳のほかの口に POST が届いてしまいます。
+  形は `src/lib.mjs` の `isWriteRoute` に在ります。
+
+| 台帳の答え | いつ |
+| --- | --- |
+| 200 `{ rounds, source, edits, notes, compiled, usage }` | 検査に通った直しがある（`edits` は置き換えた範囲ごとの `before` と `after`、`usage.usd` は費用） |
+| 409 `scripts compile` | いまの組み合わせが型を通る（直す物が無い） |
+| 422 | 誤りがこの JS に無い、2 往復で通らなかった（回数と費用つき）、Claude が断った |
+| 429 `claude budget exhausted` | 組織がこの月の上限に届いた（`spentUsd` と `budgetUsd` つき）。Claude は呼ばない |
+| 502・503 | Claude か ts-compile-service が答えなかった |
+| 404 | 名乗りにクロールを始める許可が無い、クロールかその場の JS が無い、台帳に API の鍵が無く口ごと無い |
 
 ## /wacz/:id/… —— WACZ の中身へ行く口
 

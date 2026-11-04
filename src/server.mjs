@@ -21,12 +21,12 @@
  * 直に叩く道は塞がっているので、同一オリジンにするために通す。**ここに dashboard の
  * ロジックは置かない** —— 置いた瞬間に「台帳が知っていることの写し」が生まれる。
  *
- * ## 書く口は 1 本
+ * ## 書く口
  *
- * 書くのは `POST /api/crawls`（クロールを始める）だけで、中身は検査せずに台帳へ渡す。
- * 起点の URL も方針も、決めるのは台帳。代わりに門を通す —— 全部の口で Host を見て
- * （DNS rebinding）、書く口では dashboard のページからの JSON だけを受ける（CSRF）。
- * 門の判定は `lib.mjs` に在り、試験から直接呼べる。
+ * 書くのは `POST /api/crawls`（クロールを始める）と、`POST /api/crawls/:id/inline/:name/fix`（型で落ちた
+ * その場の JS の直し方を訊く）だけで、中身は検査せずに台帳へ渡す。起点の URL も方針も、直しが検査に通るかも、
+ * 決めるのは台帳。代わりに門を通す —— 全部の口で Host を見て（DNS rebinding）、書く口では dashboard の
+ * ページからの JSON だけを受ける（CSRF）。書く口の形と門の判定は `lib.mjs` に在り、試験から直接呼べる。
  *
  * ## 7080 であって 7000 ではない
  *
@@ -54,6 +54,7 @@ import { userInfo } from "node:os";
 import {
   contentType,
   hostAllowed,
+  isWriteRoute,
   optional,
   readBody,
   safePath,
@@ -277,17 +278,17 @@ const server = createServer((request, reply) => {
   }
 
   /**
-   * クロールを始める。**ただ 1 本の書く口**で、中身は検査しない —— 起点の URL も方針も
-   * 台帳が検査して決め、答え（202・400・404・409）をそのまま返す。門だけはここで見る。
+   * 書く口（`lib.mjs` の `isWriteRoute`）。**中身は検査しない** —— クロールを始める頼みも、直し方を訊く頼みも
+   * 台帳が検査して決め、答えをそのまま返す。門だけはここで見る。
    */
-  if (url === "/api/crawls" && request.method === "POST") {
+  if (isWriteRoute(url) && request.method === "POST") {
     const refusal = writeRefusal(request.headers, PORT);
     if (refusal !== undefined) {
       sendJson(reply, refusal.status, { error: refusal.error });
       return;
     }
     void readBody(request, WRITE_LIMIT)
-      .then((body) => toLedger("/api/crawls", "POST", body))
+      .then((body) => toLedger(url, "POST", body))
       .then((res) => relay(reply, res))
       .catch((err) => {
         failed(reply, err);
@@ -299,7 +300,7 @@ const server = createServer((request, reply) => {
     // 読む口は GET だけ。ほかの method を GET として通すと、書けたように見えてしまう。
     if (request.method !== "GET") {
       reply.writeHead(405, { allow: "GET", "content-type": "text/plain; charset=utf-8" });
-      reply.end("GET だけ（書く口は POST /api/crawls）\n");
+      reply.end("GET だけ（書く口は POST /api/crawls と POST /api/crawls/:id/inline/:name/fix）\n");
       return;
     }
     void toLedger(url)

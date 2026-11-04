@@ -33,7 +33,11 @@
     "        省けば lines から数える) で、ページの行の logCounts は log から組む。log の無いページはログを読めない —— 理由は",
     "        logReason、省けば taskId の無いページは not-captured、在れば no-log (ログを残す前の BrowserHive の取り込み)。",
     "        pages の無い行は一覧が空 (代役の省略)。5b0c0009 は時間切れのページ (warn と error の行) と、捨てた行・途中で切った行を持つ。",
-    "crawls の failures の page: 取れなかったページの行の id (台帳と同じ)。同じ行の pages に、同じ URL の failed の行を置く。"
+    "crawls の failures の page: 取れなかったページの行の id (台帳と同じ)。同じ行の pages に、同じ URL の failed の行を置く。",
+    "crawls の diagnosed・fixes: 型で落ちた行の、取り直した型の誤り (GET /api/crawls/:id/diagnostics の答えの本文) と、",
+    "        その場の JS の名前ごとの直し方の答え ({ status, body }。POST /api/crawls/:id/inline/:name/fix。CAPTURE-49)。",
+    "        代役は Claude を呼ばない —— fixes に無い名前は 404。diagnosed の無い行は、いまの組み合わせが型を通る答え。",
+    "        5b0c0008 は TS7006 の 1 件と、検査に通った直し (2〜3 行目。直した版は TypeScript 6.0.3 の strict で通ることを確かめた)。"
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,
@@ -185,6 +189,32 @@
       "waczCount": 0,
       "error": "[compile] compile 422 CompileFailed: 型の誤り 1 件。最初の 1 件: inline-close-banner.ts:2:18 TS7006 Parameter 'el' implicitly has an 'any' type.",
       "failures": [],
+      "diagnosed": {
+        "typescript": "6.0.3",
+        "diagnostics": [
+          { "script": "inline-close-banner", "line": 2, "col": 18, "code": "TS7006", "message": "Parameter 'el' implicitly has an 'any' type." }
+        ]
+      },
+      "fixes": {
+        "close-banner": {
+          "status": 200,
+          "body": {
+            "rounds": 1,
+            "source": "(() => {\n  const close = (el: HTMLElement | null) => el?.click();\n  close(document.querySelector<HTMLElement>(\"#onetrust-accept-btn-handler\"));\n})();\n",
+            "edits": [
+              {
+                "from": 2,
+                "to": 3,
+                "before": ["  const close = (el) => el.click();", "  close(document.querySelector(\"#onetrust-accept-btn-handler\"));"],
+                "after": ["  const close = (el: HTMLElement | null) => el?.click();", "  close(document.querySelector<HTMLElement>(\"#onetrust-accept-btn-handler\"));"]
+              }
+            ],
+            "notes": [{ "code": "TS7006", "line": 2, "why": "引数 el に HTMLElement | null の型を付け、ボタンが無ければ押さないようにした" }],
+            "compiled": { "typescript": "6.0.3", "hostTypes": "v0.7.0" },
+            "usage": { "inputTokens": 3410, "outputTokens": 1180, "cacheReadTokens": 0, "cacheWriteTokens": 2208, "usd": 0.0483 }
+          }
+        }
+      },
       "scripts": [
         {
           "id": "inline-close-banner",

@@ -35,6 +35,7 @@ import {
   withNocheck,
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
+import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, noteText } from "/fix.js";
 import { replayHref } from "/replay.js";
 import {
   dataOf,
@@ -190,6 +191,13 @@ const opened = new Map();
  */
 const views = new Map();
 
+/**
+ * 直し方を訊いた答え（`fixKey` → 待っている間は `{ asking: true }`、答えが来たら `{ status, body }`）。
+ * **行を閉じても忘れない** —— 訊いた答えには Claude を呼んだお金が掛かっている。忘れるのはページを読み直した時だけ。
+ */
+const fixes = new Map();
+const fixKey = (crawlId, name) => `${crawlId} ${name}`;
+
 const failuresText = (one) => {
   const failures = one.failures ?? [];
   return failures.length === 0
@@ -199,6 +207,83 @@ const failuresText = (one) => {
 
 /** 札の印（サイト用のスクリプトのホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。 */
 const siteChip = (sites, suffix = " 用") => tag("span", `${sites.join("・")}${suffix}`, "site");
+
+/** 差分の箱。**DOM で組む**（public/ では HTML を差し込まない）。消した行と足した行を、行番号と印で並べる。 */
+const diffBoxOf = (edits) => {
+  const box = document.createElement("div");
+  box.className = "diff";
+  for (const hunk of diffOf(edits)) {
+    box.append(tag("p", hunk.title, "muted"));
+    const lines = document.createElement("table");
+    lines.className = "difflines";
+    for (const line of hunk.lines) {
+      const row = document.createElement("tr");
+      row.className = line.sign === "-" ? "del" : "add";
+      row.append(cell(String(line.no), "num mono"), cell(line.sign, "mono"), cell(line.text, "mono code"));
+      lines.append(row);
+    }
+    box.append(lines);
+  }
+  return box;
+};
+
+/**
+ * 「直し方を訊く」と、訊いた答え。**押したときだけ Claude を呼ぶ**（型の誤りの表は呼ばずに出る）。台帳が返すのは
+ * 型の検査に通った直しだけで、理由・差分・回数と費用を出し、「直した版を欄に戻す」で新しいクロールの画面へ渡す。
+ */
+const fixOf = (crawlId, script) => {
+  const name = script.inline.name;
+  const state = fixes.get(fixKey(crawlId, name));
+  const asking = state?.asking === true;
+  const ask = button(
+    asking ? "訊いています…" : state === undefined ? "直し方を訊く" : "もう 1 度訊く",
+    () => void askFix(crawlId, name),
+  );
+  ask.disabled = asking;
+  if (state === undefined || asking) return [ask];
+  const said = fixAnswer(state.status, state.body);
+  const box = document.createElement("div");
+  box.className = "fix";
+  box.append(tag("p", said.text, `state ${said.kind}`));
+  if (state.status === 200 && typeof state.body.source === "string") {
+    const notes = document.createElement("ul");
+    for (const note of state.body.notes ?? []) notes.append(tag("li", noteText(note)));
+    const back = document.createElement("p");
+    back.append(
+      button("直した版を欄に戻す", () => intoForm(name, script.phase, state.body.source)),
+      tag("span", "確かめたのは型だけです。動きは差分を読み、撮って確かめてください", "muted"),
+    );
+    box.append(notes, diffBoxOf(state.body.edits), back);
+  } else if (Array.isArray(state.body.refusals) && state.body.refusals.length > 0) {
+    box.append(tag("p", `断った案: ${state.body.refusals.join(" ／ ")}`, "muted"));
+  }
+  return [ask, box];
+};
+
+/**
+ * 直し方を訊く。本文は `{}` の JSON —— 書く口の門は JSON だけを受ける（`post()` は content-type を付けないので
+ * 使わない。`startCrawl` と同じ fetch の形）。答えは `fixes` に覚え、その行だけを描き直す。
+ */
+const askFix = async (crawlId, name) => {
+  const key = fixKey(crawlId, name);
+  fixes.set(key, { asking: true });
+  redrawDetail(crawlId);
+  let status = 0;
+  let body = {};
+  try {
+    const res = await fetch(`/api/crawls/${crawlId}/inline/${enc(name)}/fix`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    status = res.status;
+    body = await res.json().catch(() => ({}));
+  } catch (err) {
+    body = { error: failedText(err) };
+  }
+  fixes.set(key, { status, body });
+  redrawDetail(crawlId);
+};
 
 /**
  * 走らせたもの。**並びが実行順。** 台帳のスクリプトは版を、その場で書いた物は「その場」と出す ——
@@ -222,6 +307,8 @@ const ranOf = (one) => {
     // 無いので、押したときに名前の口から取る
     if (script.inline !== undefined) {
       item.append(button("欄に戻す", () => void putBack(one.crawlId, script.inline.name)));
+      // 型の誤りの在るその場の JS には、直し方を訊く道も（押したときだけ Claude を呼ぶ）
+      if (hasErrorsIn(one.diagnosed, script.id)) item.append(...fixOf(one.crawlId, script));
     } else {
       // 走った版を読む。番号は使い回されうるので sha256 の頭も渡し、読む所が食い違いを言う
       const read = tag("a", "読む");
@@ -519,6 +606,53 @@ const pagesOf = (one) => {
 };
 
 /**
+ * 取り直した型の誤り（`GET /api/crawls/:id/diagnostics`）。**Claude は呼ばずに出る** —— 行の失敗の文は台帳の
+ * 上限で切られ、最初の数件しか無い。ここには全部が、スクリプト・行と列つきで並ぶ。
+ */
+const typeErrorsOf = (one) => {
+  const said = one.diagnosed;
+  if (said === undefined) return [];
+  if (said.kind === "trouble") return [tag("p", `型の誤りを取り直せません: ${said.text}`, "state bad")];
+  if (said.kind === "clean") {
+    return [tag("p", `取り直すと、いまの組み合わせは型を通ります（TypeScript ${said.typescript}）`, "muted")];
+  }
+  const table = document.createElement("table");
+  table.className = "typeerrors";
+  const head = document.createElement("tr");
+  head.append(tag("th", "スクリプト"), tag("th", "行:列"), tag("th", "code"), tag("th", "文"));
+  table.append(head);
+  for (const row of said.rows) {
+    const tr = document.createElement("tr");
+    tr.append(cell(row.where, "mono"), cell(row.at, "mono"), cell(row.code, "mono"), cell(row.message));
+    table.append(tr);
+  }
+  const box = document.createElement("div");
+  box.append(
+    tag("p", `型の誤り（組み合わせを ts-compile-service に送り直した。TypeScript ${said.typescript}・${String(said.rows.length)} 件）`),
+    table,
+  );
+  return [box];
+};
+
+/**
+ * 型の検査で落ちた行なら、誤りを取り直す（Claude は呼ばない）。**取り直せた答えは使い回す** —— 行に固定した
+ * 組み合わせは変わらないので、ページの続きを読むたびに ts-compile-service を呼ばない。取り直せなかった答えは、
+ * 行を開き直したときにもう 1 度訊く。
+ */
+const diagnosedOf = async (crawlId, detail) => {
+  if (!failedOnTypes(detail.error)) return undefined;
+  const before = opened.get(crawlId);
+  const kept = before instanceof Error ? undefined : before?.diagnosed;
+  if (kept !== undefined && kept.kind !== "trouble") return kept;
+  try {
+    const res = await fetch(`/api/crawls/${crawlId}/diagnostics`);
+    return diagnosisOf(res.status, await res.json().catch(() => ({})));
+  } catch (err) {
+    return diagnosisOf(0, { error: failedText(err) });
+  }
+};
+
+/**
  * 1 本の詳しい所。**失敗の文が先** —— compile の段で落ちたクロールは 1 枚も撮っていないので
  * failures が空で、それだけを出すと「取れなかったページはありません」と、成功のように読める。
  * 台帳の文は言い換えない。
@@ -527,6 +661,7 @@ const detailOf = (one) => [
   ...(one.error === null || one.error === undefined
     ? []
     : [tag("p", `失敗の文: ${one.error}`, "state bad pre")]),
+  ...typeErrorsOf(one),
   ranOf(one),
   valuesOf(one),
   decisionsOf(one),
@@ -577,7 +712,7 @@ const loadDetail = async (crawlId) => {
       api(`/api/crawls/${crawlId}/decisions`).catch(asError),
       readPages(api, crawlId, views.get(crawlId)?.want ?? 0).catch(asError),
     ]);
-    one = { ...detail, decided, pages };
+    one = { ...detail, decided, pages, diagnosed: await diagnosedOf(crawlId, detail) };
   } catch (err) {
     one = asError(err);
   }
@@ -846,9 +981,17 @@ const putBack = async (crawlId, name) => {
     trouble(`欄に戻せません: ${failedText(err)}`);
     return;
   }
+  intoForm(name, back.phase, back.source);
+};
+
+/**
+ * その場の JS を新しいクロールの画面の欄に入れ、その画面へ移る。「欄に戻す」と「直した版を欄に戻す」が使う
+ * （直した版は、名前と phase を元のまま、source だけを直した物にする）。**起点とスクリプトの選びは触らない。**
+ */
+const intoForm = (name, phase, source) => {
   $("start-inline-name").value = name;
-  $(back.phase === "preload" ? "start-inline-preload" : "start-inline-behavior").checked = true;
-  $("start-inline-source").value = back.source;
+  $(phase === "preload" ? "start-inline-preload" : "start-inline-behavior").checked = true;
+  $("start-inline-source").value = source;
   $("start-answer").hidden = true; // 前の答えは、戻した JS の物ではない
   location.hash = "start";
   // 画面とタブを今出す —— 隠れた箱には focus が効かない（hashchange が画面を出すのは、この後）
@@ -1734,7 +1877,7 @@ const askReplace = (at, doc, lines) => {
 /**
  * スクリプトの 1 版を、その場の JS の欄に写して新しいクロールの画面へ移る。**書きかけを黙って消さない** —— 欄が空で
  * なければ、置き換えるかを本文の上で訊く（replace は「置き換える」を押したときだけ true。訊くのは at の所）。
- * 入れ方は「欄に戻す」（putBack）と同じ。
+ * 入れ方は「欄に戻す」（intoForm）と同じ。
  */
 const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
   const box = $("start-inline-source");
