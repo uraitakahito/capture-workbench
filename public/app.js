@@ -39,6 +39,7 @@ import { replayHref } from "/replay.js";
 import {
   dataOf,
   droppedOf,
+  waczLogTarget,
   FILTERS,
   levelKind,
   linesAt,
@@ -390,6 +391,15 @@ const drawLog = (state) => {
   }
   const lost = droppedOf(dropped);
   if (lost !== undefined) bar.append(tag("span", lost, "state warn"));
+  // WACZ に封じた同じ行（profile を除けば答えの行と同じ）を、WACZ の画面で開く。同じタブで（hash の行き先）
+  const sealed = waczLogTarget(answer.page);
+  if (sealed !== undefined) {
+    const a = document.createElement("a");
+    a.href = waczHash(sealed.archiveId, sealed.path);
+    a.textContent = "WACZ の画面で開く";
+    a.title = `WACZ の ${sealed.path}（WACZ Profile 1.19.0 より前の WACZ には無い）`;
+    bar.append(a);
+  }
   const shown = linesAt(lines, state.filter);
   if (shown.length === 0) {
     box.replaceChildren(bar, tag("p", lines.length === 0 ? "行はありません" : "この絞り込みに当たる行はありません", "muted"));
