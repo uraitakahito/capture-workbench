@@ -577,7 +577,7 @@ const pagesOf = (one) => {
     const url = document.createElement("td");
     url.append(tag("span", String(page.url), "mono url"));
     const outcome = document.createElement("td");
-    outcome.append(tag("span", outcomeOf(page), "outcome"));
+    outcome.append(tag("span", outcomeOf(page, one.state), "outcome"));
     const toggle = document.createElement("td");
     toggle.append(button(log === undefined ? "ログ ▾" : "閉じる ▴", () => toggleOne(one.crawlId, page.id)));
     row.append(url, outcome, tallyCell(page.logCounts, "warn"), tallyCell(page.logCounts, "error"), toggle);

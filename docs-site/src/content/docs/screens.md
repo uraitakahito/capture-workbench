@@ -114,7 +114,11 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   together with the detail), after what the rules decided. They come in the order the ledger
   recorded them, each with its URL, its outcome, the number of warn and error lines in its log, and
   a ログ (log) button. The outcome is the ledger's state (`captured`, `failed` and so on), not
-  reworded, followed by the reason a page was skipped or failed, if any. The warn and error counts
+  reworded, followed by the reason a page was skipped or failed, if any. The ledger keeps a page
+  that never got a report as `pending` (whether it was captured is unknown), so in a crawl that has
+  ended such a page reads `pending（報告なし —— クロールが先に終わった）` (no report: the crawl
+  ended first) — a crawl that failed the type check captured nothing, and its seed would otherwise
+  look like it is still waiting. The warn and error counts
   are what the ledger counted in that capture's `.result.json`; a page whose counts the ledger has
   not read shows "—", which is not the same as 0. The table holds one batch from the ledger, with
   続きを読む (read on) when there is more. A ledger without the pages route gets a one-line note.

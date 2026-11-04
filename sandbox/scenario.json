@@ -37,7 +37,8 @@
     "crawls の diagnosed・fixes: 型で落ちた行の、取り直した型の誤り (GET /api/crawls/:id/diagnostics の答えの本文) と、",
     "        その場の JS の名前ごとの直し方の答え ({ status, body }。POST /api/crawls/:id/inline/:name/fix。CAPTURE-49)。",
     "        代役は Claude を呼ばない —— fixes に無い名前は 404。diagnosed の無い行は、いまの組み合わせが型を通る答え。",
-    "        5b0c0008 は TS7006 の 1 件と、検査に通った直し (2〜3 行目。直した版は TypeScript 6.0.3 の strict で通ることを確かめた)。"
+    "        5b0c0008 は TS7006 の 1 件と、検査に通った直し (2〜3 行目。直した版は TypeScript 6.0.3 の strict で通ることを確かめた)。",
+    "        5b0c0008 の pages は起点の 1 行だけで、pending のまま (型で落ちたクロールは 1 枚も撮らず、台帳は報告の来なかった頁を pending で残す)。"
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,
@@ -195,6 +196,9 @@
           { "script": "inline-close-banner", "line": 2, "col": 18, "code": "TS7006", "message": "Parameter 'el' implicitly has an 'any' type." }
         ]
       },
+      "pages": [
+        { "id": "801", "url": "https://sandbox.test/news", "depth": 0, "state": "pending", "reason": null }
+      ],
       "fixes": {
         "close-banner": {
           "status": 200,

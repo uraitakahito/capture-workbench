@@ -40,10 +40,17 @@ export const moreOf = (list) =>
  * 結末: 台帳の state をそのまま、理由（skip_reason）があれば後ろに。**state は言い分けない** —— 決めるのは
  * 台帳で、増えても dashboard を直さずに済む。
  */
-export const outcomeOf = (page) =>
-  page.reason === null || page.reason === undefined
-    ? String(page.state)
-    : `${String(page.state)}: ${page.reason}`;
+export const outcomeOf = (page, crawlState) => {
+  const said =
+    page.reason === null || page.reason === undefined
+      ? String(page.state)
+      : `${String(page.state)}: ${page.reason}`;
+  // 台帳は報告の来なかった頁を pending のまま残す（結末が分からない。台帳の POST /api/crawls/:id/failed の
+  // 注記）。終わったクロールでそのまま出すと、落ちたクロールの頁が「待っている」ように読める。台帳の語は残す
+  return page.state === "pending" && crawlState !== undefined && crawlState !== "running"
+    ? `${said}（報告なし —— クロールが先に終わった）`
+    : said;
+};
 
 /**
  * ページの行の、level ごとの数（warn か error）。`logCounts` が null なのは「台帳が、その取り込みの
