@@ -18,6 +18,13 @@ export const failedOnTypes = (error) => typeof error === "string" && /(?:^|\]\s*
 /** 台帳の答えの文。無ければそう言う。 */
 const saidOf = (body) => body?.error ?? body?.message ?? "答えに文がありません";
 
+/**
+ * 口が無い 404 か（Fastify の既定の文は "Route GET:… not found"）。行が無い・見えない 404 は "not found" で、
+ * こちらは台帳がその口を出していない —— どちらの口も、台帳の設定が無ければ口ごと出さない。
+ */
+const routeMissing = (status, body) =>
+  status === 404 && typeof body?.message === "string" && body.message.startsWith("Route ");
+
 /** 誤り 1 件の「どこ」（`2:18`）。行か列が無ければ、在る物だけ。 */
 const atOf = (d) =>
   d.line === undefined ? "—" : d.col === undefined ? String(d.line) : `${String(d.line)}:${String(d.col)}`;
@@ -44,8 +51,7 @@ export const diagnosisOf = (status, body) => {
     return { kind: "errors", typescript, rows };
   }
   if (status === 0) return { kind: "trouble", text: `dashboard 自身に届きません（${saidOf(body)}）` };
-  // 口が無い 404（Fastify の既定の文は "Route GET:… not found"）。行が無い・見えない 404 は "not found"
-  if (status === 404 && typeof body?.message === "string" && body.message.startsWith("Route ")) {
+  if (routeMissing(status, body)) {
     return {
       kind: "trouble",
       text: "404 —— 台帳がこの口を出していません（CAPTURE_LEDGER_TS_COMPILE_URL の無い配備）",
@@ -82,6 +88,12 @@ export const fixAnswer = (status, body) => {
     return { kind: "ok", text: `${by}に通った直し${spentOf(body)}` };
   }
   if (status === 0) return { kind: "bad", text: `dashboard 自身に届きません（${saidOf(body)}）` };
+  if (routeMissing(status, body)) {
+    return {
+      kind: "bad",
+      text: "404 —— 台帳がこの口を出していません（CAPTURE_LEDGER_ANTHROPIC_API_KEY の無い配備）。Claude は呼んでいません",
+    };
+  }
   if (status === 429 && typeof body?.spentUsd === "number" && typeof body?.budgetUsd === "number") {
     return {
       kind: "bad",

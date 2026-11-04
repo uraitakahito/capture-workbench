@@ -87,6 +87,10 @@ test("429 は、この月に使った額と上限を添える。ほかは台帳�
     text: "409 —— scripts compile",
   });
   assert.deepEqual(fixAnswer(503, { error: "ts-compile unreachable" }), { kind: "bad", text: "503 —— ts-compile unreachable" });
+  // 鍵の無い台帳は口ごと出さない（Fastify の 404）。行やその場の JS が無い 404 とは言い分ける
+  const noRoute = fixAnswer(404, { message: "Route POST:/api/crawls/x/inline/y/fix not found", error: "Not Found" });
+  assert.match(noRoute.text, /CAPTURE_LEDGER_ANTHROPIC_API_KEY/);
+  assert.deepEqual(fixAnswer(404, { error: "not found" }), { kind: "bad", text: "404 —— not found" });
   assert.equal(fixAnswer(0, { error: "fetch failed" }).kind, "bad");
 });
 
