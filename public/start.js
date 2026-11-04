@@ -39,7 +39,7 @@ export const onSeed = (script, hosts) =>
 
 /**
  * ふつうに押したか（左のボタンだけ・修飾キーなし）。チェックの横の「読む」は、このときだけ右の列で開く。
- * それ以外はブラウザに任せる（href はスクリプトの画面なので、別のタブで開くなど）。
+ * それ以外はブラウザに任せる（href はスクリプト集の画面なので、別のタブで開くなど）。
  */
 export const plainClick = (event) =>
   event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
@@ -354,7 +354,7 @@ export const withNocheck = (source, on) => {
 };
 
 /**
- * スクリプト 1 本を、その場の JS の下敷きにする（スクリプトの画面の「下敷きにする」）。**替えるのは 2 つの
+ * スクリプト 1 本を、その場の JS の下敷きにする（スクリプト集の画面の「下敷きにする」）。**替えるのは 2 つの
  * 形だけ** —— `__bh.opts["<id>"]` と `__bh.report("<id>"` の id を `inline-<名前>` に。台帳は
  * その場の JS を `inline-<名前>` の id で走らせるので、替えないと設定も報告も元の id のまま届く。
  *

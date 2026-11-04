@@ -13,8 +13,8 @@
         <button type="button" id="tab-crawls" class="on" data-face="crawls">クロール</button>
         <button type="button" id="tab-start" data-face="start">新しいクロール</button>
         <button type="button" id="tab-archives" data-face="archives">アーカイブ</button>
-        <button type="button" id="tab-scripts" data-face="scripts">スクリプト</button>
-        <button type="button" id="tab-wacz" data-face="wacz" hidden>中身</button>
+        <button type="button" id="tab-scripts" data-face="scripts">スクリプト集</button>
+        <button type="button" id="tab-wacz" data-face="wacz" hidden>WACZ</button>
       </nav>
       <p id="who" class="who">名乗りを確かめています…</p>
     </header>
@@ -63,7 +63,7 @@
             <fieldset class="start-run">
               <legend>スクリプト</legend>
               <!--
-                スクリプトのチェック。app.js がスクリプトの画面と同じ一覧から描く。外した物は、このクロールでは走らない。
+                スクリプトのチェック。app.js がスクリプト集の画面と同じ一覧から描く。外した物は、このクロールでは走らない。
                 サイト用のスクリプト（札のある物）は、起点のどれかが札のホストにあるときだけ押せる（台帳の決まり）。
                 名前の横の「読む」は、その版を右の列で開く（押せないチェックの横でも）
               -->
@@ -105,7 +105,7 @@
               <code>export</code> は書かない（ページで構文エラーになり、何も走らない）。その場の JS は、チェックしたスクリプトより先に走ります。
               JS の名前（<code>inline-</code> の後ろ）は、英小文字で始め、英小文字・数字・<code>-</code> で 57 字まで。
               <code>inline-</code> を付けた物がこの JS の id になります（報告の鍵も同じ）。
-              <!-- data-read: ふつうに押せば右の列で開く（app.js）。修飾キーならスクリプトの画面を別のタブで -->
+              <!-- data-read: ふつうに押せば右の列で開く（app.js）。修飾キーならスクリプト集の画面を別のタブで -->
               <a href="#scripts/types/host.d.ts" data-read>受け皿 <code>__bh</code> の型を読む</a>
             </p>
           </div>
@@ -179,8 +179,8 @@
               <p id="start-said" class="start-said" aria-live="polite"></p>
             </div>
             <!--
-              読む窓。スクリプトの 1 版か受け皿の型を、スクリプトの画面と同じ部品で出す（app.js の IN_START）。版の札と
-              行の URL は持たない —— 要るなら「スクリプトの画面で開く」。source は他人が書いたもの。文字は textContent で
+              読む窓。スクリプトの 1 版か受け皿の型を、スクリプト集の画面と同じ部品で出す（app.js の IN_START）。版の札と
+              行の URL は持たない —— 要るなら「スクリプト集の画面で開く」。source は他人が書いたもの。文字は textContent で
             -->
             <div id="start-read" class="start-read" hidden>
               <div id="start-read-head" class="vhead rhead"></div>
@@ -203,7 +203,7 @@
               <th>完全か</th>
               <th>仕様どおりか</th>
               <th></th>
-              <th>中身</th>
+              <th>WACZ</th>
               <th>行き先</th>
             </tr>
           </thead>
@@ -213,8 +213,8 @@
       </section>
 
       <!--
-        スクリプトの画面（読む所）。左に一覧（既定で走る版と受け皿の型）、右に書いたままの source。本文は
-        1 行 1 つの <li>（中身の画面の行の並びと同じ組み方）で、押した行が URL になる
+        スクリプト集の画面（読む所）。左に一覧（既定で走る版と受け皿の型）、右に書いたままの source。本文は
+        1 行 1 つの <li>（WACZ の画面の行の並びと同じ組み方）で、押した行が URL になる
         （#scripts/<id>[@版][:行]・履歴は増やさない）。版の札は見出しに、開いた id の分だけ。
         source は他人が書いたもの —— 文字は textContent で。色は worker（Shiki）が付け、1 色で描いた
         同じ <li> に後から塗る。塗れないときは #reading-colors に 1 行（本文は 1 色のまま読める）。
@@ -230,7 +230,7 @@
           <code>cd ../capture-ledger &amp;&amp; pnpm run scripts import .upstream/capture-scripts</code>
         </p>
         <div class="vgrid">
-          <nav id="reading-list" class="rlist" aria-label="スクリプト"></nav>
+          <nav id="reading-list" class="rlist" aria-label="スクリプト集"></nav>
           <div class="vmain">
             <div id="reading-head" class="vhead rhead"></div>
             <p id="reading-note" class="reading-note" hidden></p>

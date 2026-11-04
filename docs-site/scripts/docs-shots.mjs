@@ -57,7 +57,7 @@ const CHROME_BUILD = "152.0.7977.54";
 const CACHE = join(homedir(), ".cache", "puppeteer");
 const DPR = 1;
 /**
- * 撮る窓の幅。絵は全部この幅で撮る（どの絵も同じ縮尺の dashboard）。スクリプトの画面の読む所
+ * 撮る窓の幅。絵は全部この幅で撮る（どの絵も同じ縮尺の dashboard）。スクリプト集の画面の読む所
  * （窓 − 一覧 300 − 間 24 − 余白 40）が、ちょうど COLUMN になる。dashboard の組み方が変われば、幅の見張りが言う
  */
 const WINDOW = 996;

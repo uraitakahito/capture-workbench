@@ -107,7 +107,7 @@ test("dashboard のサーバに届かなければ、そう言う", () => {
 });
 
 /**
- * 走らせるものの欄。台帳のスクリプトは札の無い autofetch・autoscroll の 2 本（スクリプトの画面と同じ id 順）で、
+ * 走らせるものの欄。台帳のスクリプトは札の無い autofetch・autoscroll の 2 本（スクリプト集の画面と同じ id 順）で、
  * どちらも既定の顔ぶれとする（autofetch を既定から外した台帳は、下の `SCRIPTS`）。
  */
 const CATALOG = ["autofetch", "autoscroll"];

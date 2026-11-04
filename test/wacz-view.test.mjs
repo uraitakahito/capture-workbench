@@ -1,5 +1,5 @@
 /**
- * 中身の画面の純関数。木の罫線は wacz-validator の tui（`render/tree.ts`）と同じ入力・同じ期待。
+ * WACZ の画面の純関数。木の罫線は wacz-validator の tui（`render/tree.ts`）と同じ入力・同じ期待。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
