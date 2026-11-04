@@ -354,22 +354,20 @@ export const withNocheck = (source, on) => {
 };
 
 /**
- * スクリプト 1 本を、その場の JS の下敷きにする（スクリプト集の画面の「下敷きにする」）。**替えるのは 2 つの
- * 形だけ** —— `__bh.opts["<id>"]` と `__bh.report("<id>"` の id を `inline-<名前>` に。台帳は
- * その場の JS を `inline-<名前>` の id で走らせるので、替えないと設定も報告も元の id のまま届く。
+ * スクリプト 1 本を、その場の JS の下敷きにする（スクリプト集の画面の「下敷きにする」）。**替えるのは 1 つの
+ * 形だけ** —— `__bh.opts["<id>"]` の id を `inline-<名前>` に。台帳はその場の JS を `inline-<名前>` の id で
+ * 走らせ、設定もその id の下に置くので、替えないと元の id の設定を読む。報告（`__bh.report(data)`）とログの行は
+ * id を取らない —— 誰の行かは BrowserHive が付ける（capture-scripts v0.7.0 の受け皿から）。
  *
- * ほかの綴り（ログの文字列・コメントの地の文・`__bh.` の無い `opts["…"]`・別の id）は触らない。
+ * ほかの綴り（ログの文字列・コメントの地の文・`__bh.` の無い `opts["…"]`・別の id・report の引数）は触らない。
  * 替えた行の番号（1 から）を返す。名前の綴りは検査しない（台帳が 400 で言う）。
  */
 export const asTemplate = (source, fromId, name) => {
-  const to = `inline-${name}`;
-  const forms = [
-    [`__bh.opts["${fromId}"]`, `__bh.opts["${to}"]`],
-    [`__bh.report("${fromId}"`, `__bh.report("${to}"`],
-  ];
+  const from = `__bh.opts["${fromId}"]`;
+  const into = `__bh.opts["inline-${name}"]`;
   const changed = [];
   const lines = source.split("\n").map((line, i) => {
-    const out = forms.reduce((text, [from, into]) => text.split(from).join(into), line);
+    const out = line.split(from).join(into);
     if (out !== line) changed.push(i + 1);
     return out;
   });

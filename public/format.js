@@ -94,3 +94,6 @@ export const statsOf = (report) => {
     ...(hosts.length === 0 ? [] : [hosts.join(", ")]),
   ];
 };
+
+/** 数を 3 桁ずつ区切る（大きさの行・走らせたものの行・ページの表とログの行）。 */
+export const count = (n) => n.toLocaleString("en-US");

@@ -14,7 +14,7 @@
     "        頼まれた要素 inline (name・phase・source) を付ける (台帳は、その場の物にだけ返す)。",
     "        台帳のスクリプトの sha256 は、台帳のその版と同じ値にする。**5b0c0008 の autoscroll だけはわざと違う** ——",
     "        読む所が「このクロールが走らせた v1 とは中身が違う」と言うのを見る場 (版の番号は使い回される)。",
-    "catalog: スクリプトの版の並び。source は file (sandbox/catalog の写し・capture-scripts v0.6.1) から読み、",
+    "catalog: スクリプトの版の並び。source は file (sandbox/catalog の写し・capture-scripts v0.7.0) から読み、",
     "         sha256 と bytes は代役が source から数える。options と enabled は省けば {} と true。",
     "         /api/scripts は各 id に 1 行 (有効な版の中の最新、無ければ最新版を enabled: false で)。",
     "         autoscroll v2 は中身が同じで設定だけ違う版。autofetch は enabled: false —— capture-scripts の",
@@ -27,7 +27,13 @@
     "        確かめたときの editedAt・途中で替わったかの rotated)。台帳 v0.67.0 の形で、値を持つのは variables だけ。",
     "        5b0c0007 は、その場の JS が params で query (変数・必須) と api_token (シークレット) を宣言し、変数に「個人情報」を受けた行。",
     "windmillSecrets / windmillVariables: Windmill の代わり。始める口が、宣言したシークレットをこれに照らす —— windmillSecrets に在れば通り、",
-    "        windmillVariables に在れば「secret でない」の 400、どちらにも無い必須の物は「無い」の 400 (台帳と同じ文)。値はどこにも書かない。"
+    "        windmillVariables に在れば「secret でない」の 400、どちらにも無い必須の物は「無い」の 400 (台帳と同じ文)。値はどこにも書かない。",
+    "crawls の pages: 開いた行の「ページ」の表と、1 ページのログ (台帳の GET /api/crawls/:id/pages と …/pages/:page/log の形)。",
+    "        id は台帳と同じく数字だけの文字列で、一覧は id の昇順。log は BrowserHive の答えの log (lines と dropped。counts は",
+    "        省けば lines から数える) で、ページの行の logCounts は log から組む。log の無いページはログを読めない —— 理由は",
+    "        logReason、省けば taskId の無いページは not-captured、在れば no-log (ログを残す前の BrowserHive の取り込み)。",
+    "        pages の無い行は一覧が空 (代役の省略)。5b0c0009 は時間切れのページ (warn と error の行) と、捨てた行・途中で切った行を持つ。",
+    "crawls の failures の page: 取れなかったページの行の id (台帳と同じ)。同じ行の pages に、同じ URL の failed の行を置く。"
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,
@@ -93,7 +99,10 @@
       "pagesCaptured": 0,
       "pagesDiscovered": 0,
       "waczCount": 0,
-      "failures": [{ "url": "https://sandbox.test/odd", "depth": 0, "reason": "http 500" }]
+      "failures": [{ "url": "https://sandbox.test/odd", "depth": 0, "reason": "http 500", "page": "501" }],
+      "pages": [
+        { "id": "501", "url": "https://sandbox.test/odd", "depth": 0, "state": "failed", "reason": "http 500", "taskId": "019a5b0c-0501-7000-8000-000000000501" }
+      ]
     },
     {
       "crawlId": "5b0c0006-6a1e-4000-8000-000000000006",
@@ -107,8 +116,12 @@
       "waczCount": 0,
       "error": "[1] 撮る相手が答えない",
       "failures": [
-        { "url": "https://sandbox.test/slow", "depth": 0, "reason": "timeout" },
-        { "url": "https://sandbox.test/slow/next", "depth": 1, "reason": "timeout" }
+        { "url": "https://sandbox.test/slow", "depth": 0, "reason": "timeout", "page": "601" },
+        { "url": "https://sandbox.test/slow/next", "depth": 1, "reason": "timeout", "page": "602" }
+      ],
+      "pages": [
+        { "id": "601", "url": "https://sandbox.test/slow", "depth": 0, "state": "failed", "reason": "timeout", "taskId": "019a5b0c-0601-7000-8000-000000000601" },
+        { "id": "602", "url": "https://sandbox.test/slow/next", "depth": 1, "state": "failed", "reason": "timeout" }
       ]
     },
     {
@@ -145,19 +158,19 @@
           "id": "inline-search",
           "version": 1,
           "phase": "behavior",
-          "sha256": "d5772e436b7356b8ec74e3eefd55a7a60c5954ac1966c48887ca0676b65b85ba",
+          "sha256": "7df500bc549c173ed97af3ac2f31d77d046f2ceef59e30e5d75766850e508ae5",
           "inline": {
             "name": "search",
             "phase": "behavior",
-            "source": "(() => {\n  const query = globalThis.__bh.vars.query ?? \"\";\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.report(\"inline-search\", { query, token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\" });\n})();\n",
+            "source": "(() => {\n  const query = globalThis.__bh.vars.query ?? \"\";\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.log.info(\"検索語を入れて押した\", { query });\n  globalThis.__bh.report({ query, token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\" });\n})();\n",
             "params": [
               { "name": "query", "kind": "variable", "required": true, "summary": "ニュースの検索語" },
               { "name": "api_token", "kind": "secret", "required": false, "summary": "会員 API のトークン。Windmill の f/waggle_secrets/api_token に置く" }
             ]
           }
         },
-        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "6aa6f4459d9276c748b0a30c789e27cf224e2db75e949116789aecf2995aa384" },
-        { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "c9956819ffeadf3aa1cd138247330e1662372c2d47d4416bfefd4848e1bedc03" }
+        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "3f1de4b0630b5915344c3ebda0b1f4d6c48a1f7e69f56912b82dfbaf89117987" },
+        { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "4117c03456450619b28c720b33969fd6d4aa3905710e27f162fe78834ad5281f" }
       ]
     },
     {
@@ -180,8 +193,104 @@
           "sha256": "50ec1c71cd89b42c2bd98d313372fd49f01dabda740dd67d07b08c0c9c84fdf6",
           "inline": { "name": "close-banner", "phase": "behavior", "source": "(() => {\n  const close = (el) => el.click();\n  close(document.querySelector(\"#onetrust-accept-btn-handler\"));\n})();\n" }
         },
-        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "6aa6f4459d9276c748b0a30c789e27cf224e2db75e949116789aecf2995aa384" },
+        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "3f1de4b0630b5915344c3ebda0b1f4d6c48a1f7e69f56912b82dfbaf89117987" },
         { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "0e1f829de9ba863b754d83186765e225c7ebc4972dde4808e85656cd5032e3b4" }
+      ]
+    },
+    {
+      "crawlId": "5b0c0009-6a1e-4000-8000-000000000009",
+      "state": "succeeded",
+      "stopReason": "completed",
+      "seeds": ["https://sandbox.test/search"],
+      "startedSecondsAgo": 1200,
+      "tookSeconds": 96,
+      "pagesCaptured": 2,
+      "pagesDiscovered": 3,
+      "waczCount": 2,
+      "lastJobId": "019a5b0c-0009-7000-8000-000000000009",
+      "lastJobDepth": 1,
+      "variables": { "query": "個人情報" },
+      "failures": [
+        { "url": "https://sandbox.test/slow", "depth": 1, "reason": "timeout: Timeout: Task processing for https://sandbox.test/slow (45000ms) — behaviors, dpr 1", "page": "1202" }
+      ],
+      "scripts": [
+        {
+          "id": "inline-search",
+          "version": 1,
+          "phase": "behavior",
+          "sha256": "7df500bc549c173ed97af3ac2f31d77d046f2ceef59e30e5d75766850e508ae5",
+          "inline": {
+            "name": "search",
+            "phase": "behavior",
+            "source": "(() => {\n  const query = globalThis.__bh.vars.query ?? \"\";\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.log.info(\"検索語を入れて押した\", { query });\n  globalThis.__bh.report({ query, token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\" });\n})();\n",
+            "params": [{ "name": "query", "kind": "variable", "required": true, "summary": "ニュースの検索語" }]
+          }
+        },
+        { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "4117c03456450619b28c720b33969fd6d4aa3905710e27f162fe78834ad5281f" }
+      ],
+      "pages": [
+        {
+          "id": "1201",
+          "url": "https://sandbox.test/search",
+          "depth": 0,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1201-7000-8000-000000001201",
+          "archiveId": "a5b0c120-1201-4000-8000-000000001201",
+          "log": {
+            "lines": [
+              { "at": "2026-10-12T08:40:01.204Z", "ms": 1204, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "検索語を入れて押した", "data": { "query": "個人情報" } },
+              { "at": "2026-10-12T08:40:01.206Z", "ms": 1206, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "report", "data": { "query": "個人情報", "token": "none" } },
+              { "at": "2026-10-12T08:40:02.310Z", "ms": 2310, "dpr": 1, "source": "page", "level": "warn", "msg": "[Deprecation] Listener added for a synchronous 'DOMNodeInserted' DOM Mutation Event." },
+              { "at": "2026-10-12T08:40:09.870Z", "ms": 9870, "dpr": 1, "source": "script", "script": "autoscroll", "level": "info", "msg": "report", "data": { "stopped": "bottom reached after 7 steps", "reachedBottom": true, "scrollSteps": 7 } }
+            ]
+          }
+        },
+        {
+          "id": "1202",
+          "url": "https://sandbox.test/slow",
+          "depth": 1,
+          "state": "failed",
+          "reason": "timeout: Timeout: Task processing for https://sandbox.test/slow (45000ms) — behaviors, dpr 1",
+          "taskId": "019a5b0c-1202-7000-8000-000000001202",
+          "archiveId": null,
+          "log": {
+            "lines": [
+              { "at": "2026-10-12T08:40:13.020Z", "ms": 1020, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "検索語を入れて押した", "data": { "query": "個人情報" } },
+              { "at": "2026-10-12T08:40:13.021Z", "ms": 1021, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "report", "data": { "query": "個人情報", "token": "none" } },
+              { "at": "2026-10-12T08:40:26.873Z", "ms": 14873, "dpr": 1, "source": "page", "level": "error", "msg": "Uncaught TypeError: Cannot read properties of null (reading 'textContent')" },
+              { "at": "2026-10-12T08:40:57.002Z", "ms": 45002, "dpr": 1, "source": "browserhive", "level": "error", "msg": "capture timed out", "data": { "timeoutMs": 45000, "step": "behaviors, dpr 1" } }
+            ]
+          }
+        },
+        {
+          "id": "1203",
+          "url": "https://sandbox.test/feed",
+          "depth": 1,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1203-7000-8000-000000001203",
+          "archiveId": "a5b0c120-1203-4000-8000-000000001203",
+          "log": {
+            "lines": [
+              { "at": "2026-10-12T08:41:00.980Z", "ms": 980, "dpr": 1, "source": "page", "level": "info", "msg": "tick 1" },
+              { "at": "2026-10-12T08:41:00.990Z", "ms": 990, "dpr": 1, "source": "page", "level": "info", "msg": "tick 2" },
+              { "at": "2026-10-12T08:41:01.000Z", "ms": 1000, "dpr": 1, "source": "browserhive", "level": "warn", "msg": "dropped 1204 lines to stay within the capture's log limits", "data": { "dropped": 1204 } },
+              { "at": "2026-10-12T08:41:13.050Z", "ms": 13050, "dpr": 1, "source": "page", "level": "info", "msg": "tick 1207" },
+              { "at": "2026-10-12T08:41:13.060Z", "ms": 13060, "dpr": 1, "source": "page", "level": "info", "msg": "state: {\"items\":[{\"id\":1,\"title\":\"記事 1\"},{\"id\":2,\"title\":\"記事 2\"},{\"id\":3,\"title\":\"記事 3\"},{\"id\":4,\"title\":\"記事 4\"},{\"id\":5,\"title\":\"記事 5\"},{\"id\":6,\"title\":\"記事 6\"},{\"id\":7,\"title\":\"記事 7\"},{\"id\":8,\"title\":\"記事 8\"},{\"id\":9,\"title\":\"記事 9\"},{\"id\":10,\"title\":\"記事 10\"},{\"id\":11,\"title\":\"記事 11\"},{\"id\":12,\"title\":\"記事 12\"},{\"id\":13,\"title\":\"記事 13\"},{\"id\":14,\"title\":\"記事 14\"},{\"id\":15,\"title\":\"記事 15\"},{\"id\":16,\"title\":\"記事 16\"},{\"id\":17,\"title\":\"記事 17\"},{\"id\":18,\"title\":\"記事 18\"},{\"id\":19,\"title\":\"記事 19\"},{\"id\":20,\"title\":\"記事 20\"},{\"id\":21,\"title\":\"記事 21\"},{\"id\":22,\"title\":\"記事 22\"},{\"id\":23,\"title\":\"記事 23\"},{\"id\":24,\"title\":\"記事 24\"},{\"id\":25,\"title\":\"記事 25\"},{\"id\":26,\"title\":\"記事 26\"},{\"id\":27,\"title\":\"記事 27\"},{\"id\":28,\"title\":\"記事 28\"},{\"id\":29,\"title\":\"記事 29\"},{\"id\":30,\"title\":\"記事 30\"},{\"id\":31,\"title\":\"記事 31\"},{\"id\":32,\"title\":\"記事 32\"},{\"id\":33,\"title\":\"記事 33\"},{\"id\":34,\"title\":\"記事 34\"},{\"id\":35,\"title\":\"記事 35\"},{\"id\":36,\"title\":\"記事 36\"},{\"id\":37,\"title\":\"記事 37\"},{\"id\":38,\"title\":\"記事 38\"},{\"id\":39,\"title\":\"記事 39\"},", "truncated": true },
+              { "at": "2026-10-12T08:41:13.900Z", "ms": 13900, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "report", "data": { "query": "個人情報", "token": "none" } }
+            ],
+            "counts": { "debug": 0, "info": 1209, "warn": 1, "error": 0 },
+            "dropped": 1204
+          }
+        },
+        {
+          "id": "1204",
+          "url": "https://sandbox.test/private/",
+          "depth": 1,
+          "state": "skipped",
+          "reason": "robots"
+        }
       ]
     }
   ],

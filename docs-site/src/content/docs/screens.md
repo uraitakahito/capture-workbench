@@ -33,6 +33,10 @@ dashboard does not fetch further pages. For archives, the ledger returns only th
 that your identity may view, so there can be fewer rows than a page holds. The counts in the
 footer are the rows on screen, not everything the ledger has.
 
+The ページ (pages) table of an opened crawl, the list of the pages the ledger recorded for it, also
+starts with the one batch the ledger returns. Further pages are fetched only when you press 続きを読む (read on), and
+what you have read stays listed when the table is fetched again.
+
 ## Crawls
 
 Each row is one crawl. It shows the state, the first 8 characters of the id, who started it and
@@ -86,9 +90,40 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   that looked at no links says so in one line instead of listing rules that all show 0. Last is a
   link, Windmill で調べる (inspect in Windmill), to the script `f/waggle/inspect_crawl` in Windmill
   with this crawl's id already filled in (Windmill keeps a run's arguments in the URL's hash).
+
+![The pages table of an opened crawl: four pages with their URL, outcome and warn and error counts, and the log of the page that timed out, opened, with lines from a script, an exception in the captured page and BrowserHive's timeout](../../assets/screens/crawl-pages.webp)
+
+① the outcome (the ledger's state and reason)\
+② the warn and error counts\
+③ ログ (log): opens the page's log, and closes it on a second press\
+④ the level filter
+
+- **An opened row also lists the crawl's pages** (the ledger's `/api/crawls/:id/pages`, fetched
+  together with the detail), after what the rules decided. They come in the order the ledger
+  recorded them, each with its URL, its outcome, the number of warn and error lines in its log, and
+  a ログ (log) button. The outcome is the ledger's state (`captured`, `failed` and so on), not
+  reworded, followed by the reason a page was skipped or failed, if any. The warn and error counts
+  are what the ledger counted in that capture's `.result.json`; a page whose counts the ledger has
+  not read shows "—", which is not the same as 0. The table holds one batch from the ledger, with
+  続きを読む (read on) when there is more. A ledger without the pages route gets a one-line note.
+- **ログ (log) shows the log lines of that page.** The dashboard fetches the ledger's
+  `/api/crawls/:id/pages/:page/log` once, when you press it (closing and opening again fetches
+  again). The lines come in the order they arrived: the milliseconds since the capture started, the
+  source (`script` and the script's id for a script's lines, `page` for the captured page's console
+  and exceptions, `browserhive` for BrowserHive's own lines), the level, the message and the data.
+  BrowserHive attaches whose line it is, so a script never writes its id. Messages are not reworded,
+  and the data follows the message as JSON. The filter starts at すべて (all), and offers warn 以上
+  (warn and above) and error だけ (error only); its numbers are how many lines each one shows. A line
+  BrowserHive cut at its per-line limit is marked 途中で切った (cut short), and when lines were
+  dropped over the limit for the capture, the box says how many (N 行を捨てた). For a page whose log
+  cannot be read, the box gives the ledger's reason, as a short sentence and the reason itself (not
+  captured yet or not captured, no `.result.json` recorded, missing from the store or not matching
+  the contract, or captured by a BrowserHive from before logs were kept).
 - **An opened row stays open.** The table is rebuilt on every fetch, so the dashboard remembers the
   open rows by id and opens them again from the last answer. It fetches a row again only while the
-  crawl is running or when its state has changed.
+  crawl is running or when its state has changed. Opened logs are remembered by page id too, and
+  their boxes are moved rather than rebuilt, so they keep their scroll position and filter. They are
+  forgotten when you close the row or when the crawl leaves the list.
 
 ### The state is worded together with stopReason
 
@@ -180,9 +215,10 @@ follow).
   refused by the ledger with a 400, and under the left column you read something like
   `body/scripts/0/inline/name must match pattern "^[a-z][a-z0-9-]*$"`. The name is sent only when
   the box holds a script; with an empty box it is not used. The id appears in a crawl's list of what
-  ran and in the archive's `behaviors/custom.jsonl`, and it is the key your script reports under
-  (`__bh.report("inline-close-banner", …)`). 欄に戻す (back to the form) fetches your script back
-  by this name.
+  ran, as the source of its lines in a page's log, and in the archive's `behaviors/custom.jsonl`.
+  BrowserHive attaches it to the lines your script logs (`__bh.log.info(…)` and so on) and reports
+  (`__bh.report(…)`), so the script itself never writes it. 欄に戻す (back to the form) fetches your
+  script back by this name.
 - **A script of your own is type-checked as strict TypeScript** at the first level's compile step,
   and a single error fails the crawl; open its row to read the number of diagnostics and the first
   five. Wrap it in an IIFE, give the elements you look up a type, and use `?.`. Do not write
@@ -249,9 +285,10 @@ follow).
   The seed URLs and the ticked scripts are left alone. If the right column was showing a registered
   script, it switches back to the その場の JS tab.
 - **下敷きにする (use as a template) in the [script collection view](#script-collection) brings a registered script
-  here** as a script of your own, named `my-<id>` unless the name box already has one. Only the two
-  forms that name the script's own id, `__bh.opts["<id>"]` and `__bh.report("<id>"`, are changed to
-  `inline-<name>`; the message under the left column says on which lines. The original is unticked,
+  here** as a script of your own, named `my-<id>` unless the name box already has one. Only the form
+  that names the script's own id, `__bh.opts["<id>"]` (where it reads its options), is changed to
+  `inline-<name>`; reports and log lines take no id, so they are left alone. The message under the
+  left column says on which lines. The original is unticked,
   so it does not run twice. If the box already holds a script, the script collection view asks before
   replacing it. 下敷きにする in the right column's reading window does the same, and asks inside
   that window; afterwards the その場の JS tab is in front, and the reading window stays open for

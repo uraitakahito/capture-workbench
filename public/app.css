@@ -272,6 +272,134 @@ tr.detail .drops td {
   border: 0;
 }
 
+/*
+ * ページの表（URL・結末・warn と error・ログ）も中身の幅に（.vals・.drops と同じく、table の既定の 100%・720px を
+ * 継がない）。URL と結末は長いので、幅に上限を付けて折り返す（td の max-width は効かないので、中の span に付ける）
+ */
+tr.detail .pagelist {
+  width: auto;
+  min-width: 0;
+  border-collapse: collapse;
+  margin: 0 0 6px;
+}
+
+tr.detail .pagelist th,
+tr.detail .pagelist td {
+  padding: 2px 12px 2px 0;
+  border: 0;
+}
+
+tr.detail .pagelist th:last-child,
+tr.detail .pagelist td:last-child {
+  padding-right: 0;
+}
+
+tr.detail .pagelist .url,
+tr.detail .pagelist .outcome {
+  display: block;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+tr.detail .pagelist .url {
+  max-width: 56ch;
+}
+
+tr.detail .pagelist .outcome {
+  max-width: 27ch;
+}
+
+/*
+ * 1 ページのログの箱。行は流せる窓に入れ、表を描き直しても箱ごと移す（流した位置は app.js が戻す）。箱の中身の幅は
+ * ページの表の幅に効かせない（inline-size の containment）—— 長い文や data で表が広がると、URL と結末の欄が離れる。
+ * 幅はページの表に合わせ、狭い表でも 600px は取る
+ */
+tr.detail .logrow > td {
+  padding: 0 0 8px;
+}
+
+tr.detail .logbox {
+  contain: inline-size;
+  min-width: 600px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--ground);
+  padding: 0 10px 6px;
+}
+
+tr.detail .logbox .chips {
+  padding: 6px 0;
+}
+
+tr.detail .logscroll {
+  max-height: 320px;
+  overflow: auto;
+}
+
+tr.detail .loglines {
+  width: auto;
+  min-width: 0;
+  border-collapse: collapse;
+}
+
+tr.detail .loglines td {
+  padding: 1px 12px 1px 0;
+  border: 0;
+  background: transparent;
+  white-space: nowrap;
+}
+
+/* 文は折り返す。改行は行のまま。data は文の後ろに続け、等幅の薄い字で分ける */
+tr.detail .loglines td.msg {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+tr.detail .loglines .data {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+/* level の印。色は画面の状態の色（error は bad・warn は run・info は accent） */
+.lv {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.lv.bad {
+  color: var(--bad);
+}
+
+.lv.warn {
+  color: var(--run);
+}
+
+.lv.info {
+  color: var(--accent);
+}
+
+.lv.muted {
+  color: var(--muted);
+}
+
+/* 途中で切った行の印（BrowserHive が 1 行の上限で msg と data を切った） */
+tr.detail .loglines .cut {
+  margin-right: 8px;
+  padding: 0 6px;
+  border: 1px dashed var(--run);
+  border-radius: 9px;
+  color: var(--run);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 tr.head {
   cursor: pointer;
 }

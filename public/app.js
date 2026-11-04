@@ -5,9 +5,11 @@
  * 出すか」と「どう描くか」で、何が起きたかは全部向こうが知っている。
  *
  * **撮った中身は他人が書いたもの。** 文字は `textContent`、画像は raster だけを
- * `<img>` で。生の HTML を差し込む API はこのファイルに無い（`check` が見張る）。
+ * `<img>` で。生の HTML を差し込む API は使わない。`check` が見張るのは、要素の中身を HTML で書き換える
+ * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
+ * `outerHTML` のようなほかの API は見ない。
  */
-import { judgedUnder, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
+import { count, judgedUnder, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
   addRow,
@@ -34,6 +36,24 @@ import {
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
 import { replayHref } from "/replay.js";
+import {
+  dataOf,
+  droppedOf,
+  FILTERS,
+  levelKind,
+  linesAt,
+  logPath,
+  moreOf,
+  msOf,
+  outcomeOf,
+  readPages,
+  reasonText,
+  rowsOf,
+  sourceOf,
+  tallyOf,
+  toggleLog,
+  viewOf,
+} from "/pages.js";
 import {
   defaultVersionOf,
   labelOf,
@@ -139,6 +159,8 @@ const button = (text, onclick) => {
 
 const enc = encodeURIComponent;
 const failedText = (err) => (err instanceof Error ? err.message : String(err));
+/** 引けなかった物を、Error として持たせる（詳しい所は描き、そこだけ「読めません」と言う）。 */
+const asError = (err) => (err instanceof Error ? err : new Error(String(err)));
 
 // ── クロール ───────────────────────────────────────────────────────
 let crawls = [];
@@ -160,6 +182,12 @@ const runHref = (crawl) =>
  * `/api/crawls/:id` の答え（まだ引いていなければ undefined、引けなければ Error）。
  */
 const opened = new Map();
+
+/**
+ * 開いた行の「ページ」の表の、引き直しをまたいで覚える物（クロールの id → 続きの件数と、開いたログの箱）。
+ * 形は `public/pages.js` の `viewOf`。忘れるのは `opened` と同じ所（行を閉じた時・一覧から消えた時）。
+ */
+const views = new Map();
 
 const failuresText = (one) => {
   const failures = one.failures ?? [];
@@ -321,6 +349,165 @@ const decisionsOf = (one) => {
   return box;
 };
 
+/** 数の欄（warn か error）。0 より大きければ色を付け、数を読んでいなければ「—」を薄く。 */
+const tallyCell = (counts, level) => {
+  const { text, kind } = tallyOf(counts, level);
+  return cell(text, kind === undefined ? "num mono" : kind === "muted" ? "num mono muted" : `num mono state ${kind}`);
+};
+
+/**
+ * 1 ページのログの箱の中身。答えが来たときと、絞り込みを替えたときに描く（箱そのものは作り直さない）。行は
+ * 台帳の並びのまま、文（msg）は言い換えず、data は JSON のまま文の後ろに続ける（欄を分けると、狭い箱で data が
+ * 数字ずつに折れた）。どちらも textContent で入れる。途中で切った行の印は文の前に（長い行は箱の下に隠れる）。
+ */
+const drawLog = (state) => {
+  const { answer, box } = state;
+  if (answer === undefined) {
+    box.replaceChildren(tag("p", "読み込み中…", "muted"));
+    return;
+  }
+  if (answer instanceof Error) {
+    box.replaceChildren(tag("p", `ログを読めません: ${answer.message}`, "state bad"));
+    return;
+  }
+  if (answer.log === null || answer.log === undefined) {
+    const said = tag("p", `${reasonText(answer.reason)} `, "muted");
+    said.append(tag("span", String(answer.reason), "mono"));
+    box.replaceChildren(said);
+    return;
+  }
+  const { lines, dropped } = answer.log;
+  const bar = document.createElement("div");
+  bar.className = "chips";
+  for (const [id, label] of FILTERS) {
+    const chip = button(`${label} ${count(linesAt(lines, id).length)}`, () => {
+      state.filter = id;
+      state.scrollTop = 0;
+      drawLog(state);
+    });
+    chip.className = state.filter === id ? "chip on" : "chip";
+    bar.append(chip);
+  }
+  const lost = droppedOf(dropped);
+  if (lost !== undefined) bar.append(tag("span", lost, "state warn"));
+  const shown = linesAt(lines, state.filter);
+  if (shown.length === 0) {
+    box.replaceChildren(bar, tag("p", lines.length === 0 ? "行はありません" : "この絞り込みに当たる行はありません", "muted"));
+    return;
+  }
+  const table = document.createElement("table");
+  table.className = "loglines";
+  for (const line of shown) {
+    const row = document.createElement("tr");
+    const level = document.createElement("td");
+    level.append(tag("span", String(line.level), `lv ${levelKind(line.level)}`));
+    const msg = document.createElement("td");
+    msg.className = "msg";
+    if (line.truncated === true) msg.append(tag("span", "途中で切った", "cut"));
+    msg.append(String(line.msg));
+    const data = dataOf(line);
+    if (data !== "") msg.append(" ", tag("span", data, "data"));
+    row.append(cell(msOf(line), "num mono"), cell(sourceOf(line), "mono"), level, msg);
+    table.append(row);
+  }
+  // 流した位置は覚えておき、箱を移した後に戻す（DOM から外すと 0 に戻る）
+  const scroller = document.createElement("div");
+  scroller.className = "logscroll";
+  scroller.addEventListener("scroll", () => {
+    state.scrollTop = scroller.scrollTop;
+  });
+  scroller.append(table);
+  box.replaceChildren(bar, scroller);
+};
+
+/** 箱の状態に、DOM の箱を 1 度だけ作る。後の描き直しでは、この箱を移す。 */
+const logBoxOf = (state) => {
+  if (state.box === undefined) {
+    state.box = document.createElement("div");
+    state.box.className = "logbox";
+    drawLog(state);
+  }
+  return state.box;
+};
+
+/** 1 ページのログを引き、箱に描く。**押したときに 1 度だけ引く**（閉じて開き直せば、また引く）。 */
+const loadLog = async (crawlId, pageId, state) => {
+  try {
+    state.answer = await api(logPath(crawlId, pageId));
+  } catch (err) {
+    state.answer = asError(err);
+  }
+  if (state.box !== undefined) drawLog(state);
+};
+
+/** 移した箱の流した位置を戻す。描いた行を表に置いた後に呼ぶ。 */
+const restoreScroll = () => {
+  for (const view of views.values()) {
+    for (const state of view.logs.values()) {
+      const scroller = state.box?.querySelector(".logscroll");
+      if (scroller?.isConnected === true && scroller.scrollTop !== state.scrollTop) scroller.scrollTop = state.scrollTop;
+    }
+  }
+};
+
+/**
+ * ページ（台帳の `GET /api/crawls/:id/pages`。詳しい所と一緒に引く）。台帳に入った順に、URL・結末・warn と
+ * error の数・ログの button。並べるのは台帳の 1 回分で、続きは「続きを読む」を押したときだけ引く。ログは押した
+ * ときに引き、その行の下の箱に出す。**開いた箱は id で覚え、作り直さずに移す** —— 表は引くたびに作り直すので、
+ * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（台帳が古ければ口が無い）。
+ */
+const pagesOf = (one) => {
+  const box = document.createElement("div");
+  box.className = "pages";
+  const list = one.pages;
+  if (list === undefined) return box;
+  if (list instanceof Error) {
+    box.append(tag("p", `ページを読めません: ${list.message}`, "muted"));
+    return box;
+  }
+  if (list.pages.length === 0) {
+    box.append(tag("p", "ページ: なし", "muted"));
+    return box;
+  }
+  box.append(tag("p", "ページ（台帳に入った順。warn と error はログの行の数で、— は数を読んでいない）"));
+  const table = document.createElement("table");
+  table.className = "pagelist";
+  const head = document.createElement("tr");
+  head.append(tag("th", "URL"), tag("th", "結末"), tag("th", "warn", "num"), tag("th", "error", "num"), tag("th", "ログ"));
+  table.append(head);
+  for (const { page, log } of rowsOf(views, one.crawlId, list)) {
+    const row = document.createElement("tr");
+    const url = document.createElement("td");
+    url.append(tag("span", String(page.url), "mono url"));
+    const outcome = document.createElement("td");
+    outcome.append(tag("span", outcomeOf(page), "outcome"));
+    const toggle = document.createElement("td");
+    toggle.append(button(log === undefined ? "ログ ▾" : "閉じる ▴", () => toggleOne(one.crawlId, page.id)));
+    row.append(url, outcome, tallyCell(page.logCounts, "warn"), tallyCell(page.logCounts, "error"), toggle);
+    table.append(row);
+    if (log === undefined) continue;
+    const under = document.createElement("tr");
+    under.className = "logrow";
+    const td = document.createElement("td");
+    td.colSpan = 5;
+    td.append(logBoxOf(log));
+    under.append(td);
+    table.append(under);
+  }
+  box.append(table);
+  const more = moreOf(list);
+  if (more !== undefined) {
+    const next = button(more.label, () => {
+      next.disabled = true;
+      next.textContent = "読み込み中…";
+      viewOf(views, one.crawlId).want = more.want;
+      void loadDetail(one.crawlId);
+    });
+    box.append(next);
+  }
+  return box;
+};
+
 /**
  * 1 本の詳しい所。**失敗の文が先** —— compile の段で落ちたクロールは 1 枚も撮っていないので
  * failures が空で、それだけを出すと「取れなかったページはありません」と、成功のように読める。
@@ -333,6 +520,7 @@ const detailOf = (one) => [
   ranOf(one),
   valuesOf(one),
   decisionsOf(one),
+  pagesOf(one),
   tag("p", failuresText(one), "pre"),
 ];
 
@@ -351,28 +539,41 @@ const detailRow = (crawl) => {
   return row;
 };
 
+/** 開いた行を、覚えた答えで描き直す（その行だけ）。移したログの箱は、流した位置も戻す。 */
+const redrawDetail = (crawlId) => {
+  const crawl = crawls.find((c) => c.crawlId === crawlId);
+  const row = document.querySelector(`tr.detail[data-crawl="${CSS.escape(crawlId)}"]`);
+  if (crawl !== undefined && row !== null) row.replaceWith(detailRow(crawl));
+  restoreScroll();
+};
+
+/** ページのログの箱を開け閉めし、開いたなら引く。 */
+const toggleOne = (crawlId, pageId) => {
+  const state = toggleLog(views, crawlId, pageId);
+  if (state !== undefined) void loadLog(crawlId, pageId, state);
+  redrawDetail(crawlId);
+};
+
 /**
- * 1 本を引いて覚え、その行だけを描き直す。**開いたときと、変わりうるときだけ引く。** 規則の判断も
- * 同時に引き、答えに `decided` として持たせる（引けなければ Error。詳しい所は描く）。
+ * 1 本を引いて覚え、その行だけを描き直す。**開いたときと、変わりうるときだけ引く。** 規則の判断とページの
+ * 一覧も同時に引き、答えに `decided`・`pages` として持たせる（引けなければ Error。詳しい所は描く）。
+ * ページは「続きを読む」で読んだ所まで覆い直す。
  */
 const loadDetail = async (crawlId) => {
   let one;
   try {
-    const [detail, decided] = await Promise.all([
+    const [detail, decided, pages] = await Promise.all([
       api(`/api/crawls/${crawlId}`),
-      api(`/api/crawls/${crawlId}/decisions`).catch((err) =>
-        err instanceof Error ? err : new Error(String(err)),
-      ),
+      api(`/api/crawls/${crawlId}/decisions`).catch(asError),
+      readPages(api, crawlId, views.get(crawlId)?.want ?? 0).catch(asError),
     ]);
-    one = { ...detail, decided };
+    one = { ...detail, decided, pages };
   } catch (err) {
-    one = err instanceof Error ? err : new Error(String(err));
+    one = asError(err);
   }
   if (!opened.has(crawlId)) return; // 待っている間に閉じた
   opened.set(crawlId, one);
-  const crawl = crawls.find((c) => c.crawlId === crawlId);
-  const row = document.querySelector(`tr.detail[data-crawl="${crawlId}"]`);
-  if (crawl !== undefined && row !== null) row.replaceWith(detailRow(crawl));
+  redrawDetail(crawlId);
 };
 
 /**
@@ -384,6 +585,7 @@ const refreshOpened = () => {
     const crawl = crawls.find((c) => c.crawlId === crawlId);
     if (crawl === undefined) {
       opened.delete(crawlId);
+      views.delete(crawlId);
       continue;
     }
     const stale =
@@ -418,6 +620,7 @@ const drawCrawls = () => {
     row.onclick = (event) => {
       if (event.target instanceof HTMLAnchorElement) return;
       if (opened.delete(crawl.crawlId)) {
+        views.delete(crawl.crawlId);
         if (row.nextElementSibling?.classList.contains("detail")) row.nextElementSibling.remove();
         return;
       }
@@ -429,6 +632,7 @@ const drawCrawls = () => {
     // 開いていた行は、最後の答えで開き直す（表は引くたびに作り直す）
     if (opened.has(crawl.crawlId)) body.append(detailRow(crawl));
   }
+  restoreScroll();
 };
 
 // ── 新しいクロール ─────────────────────────────────────────────────
@@ -661,9 +865,6 @@ const readFileIntoForm = async () => {
   drawSource();
   syncStart();
 };
-
-/** 数を 3 桁ずつ区切る（大きさの行と、走らせたものの行）。 */
-const count = (n) => n.toLocaleString("en-US");
 
 /** 行番号の溝。**行の数が変わったときだけ**組み直す（2 万行でも、打つたびには組まない）。 */
 let drawnLines = -1;

@@ -344,35 +344,38 @@ test("貼った JS が印を持っていれば、付いた状態で始まる", (
   assert.equal(hasNocheck(""), false);
 });
 
-test("下敷き: __bh.opts[\"<id>\"] と __bh.report(\"<id>\" の 2 つの形を替え、替えた行を返す", () => {
+test("下敷き: __bh.opts[\"<id>\"] の形を替え、替えた行を返す", () => {
   const source = [
-    ' * 設定 (`options_json`) は `__bh.opts["autoscroll"]` から引く:',
+    ' * 設定 (`--options`) は `__bh.opts["autoscroll"]` から引く:',
     "(async () => {",
     '  const opts = globalThis.__bh.opts["autoscroll"] ?? {};',
-    '  globalThis.__bh.report("autoscroll", { steps: 1 });',
+    "  globalThis.__bh.report({ steps: 1 });",
     "})();",
   ].join("\n");
   const { source: out, changed } = asTemplate(source, "autoscroll", "my-autoscroll");
-  assert.deepEqual(changed, [1, 3, 4]);
+  assert.deepEqual(changed, [1, 3]);
   assert.equal(
     out,
     [
-      ' * 設定 (`options_json`) は `__bh.opts["inline-my-autoscroll"]` から引く:',
+      ' * 設定 (`--options`) は `__bh.opts["inline-my-autoscroll"]` から引く:',
       "(async () => {",
       '  const opts = globalThis.__bh.opts["inline-my-autoscroll"] ?? {};',
-      '  globalThis.__bh.report("inline-my-autoscroll", { steps: 1 });',
+      "  globalThis.__bh.report({ steps: 1 });",
       "})();",
     ].join("\n"),
   );
 });
 
-test("下敷き: ほかの綴りは触らない（ログ・地の文・__bh. の無い opts・別の id）", () => {
+test("下敷き: ほかの綴りは触らない（ログ・地の文・__bh. の無い opts・別の id・report の引数）", () => {
   const source = [
     'console.log("autoscroll");',
     " * built-in の `autoscroll` を送る形に",
     'const x = cfg.opts["autoscroll"];',
     'const y = globalThis.__bh.opts["autofetch"];',
-    'globalThis.__bh.report("autoscroller", {});',
+    'const z = globalThis.__bh.opts["autoscroller"];',
+    'globalThis.__bh.log.info("autoscroll", { steps: 1 });',
+    // report は id を取らない（誰の行かは BrowserHive が付ける）。古い 2 引数の呼び方も替えない —— 型の検査が言う
+    'globalThis.__bh.report("autoscroll", {});',
   ].join("\n");
   const { source: out, changed } = asTemplate(source, "autoscroll", "my-autoscroll");
   assert.deepEqual(changed, []);
