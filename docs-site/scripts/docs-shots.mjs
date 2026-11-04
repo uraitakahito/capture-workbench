@@ -14,7 +14,7 @@
  *   - 部品の箱だけを切り抜き、高さに上限を付ける。DPR 1
  *   - 画素が前の絵と同じなら書かない（sharp の版が替わってバイト列だけが変わっても、何も足さない）
  *
- * 予算（1 枚 32 KB・全部で 200 KB）と幅の上限は `scripts/check-doc-refs.mjs` の規則 7 が見る。
+ * 予算（1 枚 32 KB・全部で 224 KB）と幅の上限は `scripts/check-doc-refs.mjs` の規則 7 が見る。
  *
  * ## 縮めずに読める絵に
  *
@@ -308,7 +308,6 @@ const SHOTS = [
     hash: `#search/${encodeURIComponent("ランプ")}`,
     box: "#face-search",
     maxWidth: COLUMN,
-    maxHeight: 300,
     ready: () =>
       document.querySelectorAll("#search-hits tr").length === 2 &&
       document.querySelector("#search-hits mark") !== null,

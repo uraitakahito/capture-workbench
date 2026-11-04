@@ -15,7 +15,7 @@
  *   6. README の Documentation の 2 本の URL が、docs-site/astro.config.ts の `site` ＋ `BASE` から
  *      組んだものと一致する (base を変えた日に、README だけが 404 を指し続けないように)
  *   7. 「画面」の絵 (`docs-site/src/assets/screens/`) が shots.json の一覧と揃い、ja・en の screens.md が
- *      全部を載せている。どれも DPR 1 の lossless の WebP で、予算 (1 枚 32 KB・全部で 200 KB) の中。
+ *      全部を載せている。どれも DPR 1 の lossless の WebP で、予算 (1 枚 32 KB・全部で 224 KB) の中。
  *      wide (本文に縮めて載せる表) でない絵は、本文の幅 (`COLUMN`) 以内。絵の元 (`public/`・`sandbox/`・
  *      撮る道具) が、撮ったときから変わっていない
  *
@@ -169,7 +169,9 @@ if (site === undefined || base === undefined) {
 // 写すと、絵が古いまま緑になる
 const SHOTS_REL = "docs-site/src/assets/screens";
 const SHOTS = resolve(ROOT, SHOTS_REL);
-const BUDGET = { one: 32 * 1024, all: 200 * 1024 };
+// 全部の枠は 2026-11-05 に 200 → 224 KB（CAPTURE-53 で検索の画面の絵 22.5 KB を足したとき。既存の絵はどれも docs の
+// 番号の印の所まで切ってあり、詰めれば本文が指す所が消える。足した 1 枚ぶんだけ上げた）
+const BUDGET = { one: 32 * 1024, all: 224 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);

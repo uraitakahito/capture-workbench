@@ -177,7 +177,7 @@ npm run docs:shots -- start crawls   # only the named ones
   the pictures would stay stale.
 - **Taking named pictures leaves the stamp alone.** Only a run that takes all of them brings it up
   to date.
-- **The pictures are lossless WebP, at most 32 KB each and 200 KB in all,** because every re-take
+- **The pictures are lossless WebP, at most 32 KB each and 224 KB in all,** because every re-take
   piles up in git. Going over makes `site:check` fail; then make the cropped box smaller, or lower
   its height limit (`maxHeight`), in `SHOTS` in `docs-shots.mjs`.
 - **A picture meant to be read fits the docs' column.** The docs show a picture at its pixel size,
