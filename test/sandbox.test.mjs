@@ -38,6 +38,7 @@ import {
   pickable,
   readingLastGood,
   scriptRows,
+  searchOf,
   signedUrlOf,
   submitCrawl,
   submittedRow,
@@ -714,6 +715,64 @@ test("見えない行は一覧に出るが、署名は出ない", () => {
   assert.ok(ghost);
   assert.equal(signedUrlOf(ghost.id, names), undefined);
   assert.equal(signedUrlOf("not-an-id", names), undefined);
+});
+
+/** capture-ledger の src/api/search.ts が当たり 1 件に返す欄（CAPTURE-53 の後。highlight は本文に当たったときだけ）。 */
+const LEDGER_HIT_KEYS = [
+  "archiveId",
+  "capturedAt",
+  "highlight",
+  "labels",
+  "objectKey",
+  "sourceUrl",
+  "stage",
+  "text",
+  "textTruncated",
+  "textWithheld",
+  "title",
+  "url",
+];
+const SEARCH_NAMES = ["datapackage-bad-hash.wacz", "good.wacz"];
+const ask = (params, s = scenario, names = SEARCH_NAMES) => searchOf(names, s, new URLSearchParams(params));
+
+test("検索の口は、写しの行が在るアーカイブでは写しの行だけ、無いアーカイブは文書の行を返し、見えないアーカイブは出さない", () => {
+  const answer = ask({ q: "ランプ" });
+  assert.equal(answer.status, 200);
+  assert.deepEqual(
+    answer.body.hits.map((hit) => [hit.objectKey, hit.stage]),
+    [
+      ["sandbox/datapackage-bad-hash.wacz", null],
+      ["sandbox/good.wacz", "after-behaviors"],
+    ],
+  );
+  // total は返した当たりの数（台帳も見せてよい物だけを数える）
+  assert.equal(answer.body.total, 2);
+  // good.wacz の文書の行も同じ語を含むが、写しの行が在るので引かない。ghost.wacz は見えない
+  assert.equal(answer.body.hits.some((hit) => hit.objectKey === "sandbox/ghost.wacz"), false);
+});
+
+test("検索の当たり 1 件は、台帳と同じ欄を持ち、写しの URL は urn、文書の URL は取り込んだ URL", () => {
+  const { hits } = ask({ q: "ランプ" }).body;
+  for (const hit of hits) assert.deepEqual(Object.keys(hit).sort(), LEDGER_HIT_KEYS, hit.objectKey);
+  const [doc, snapshot] = hits;
+  assert.equal(doc.url, doc.sourceUrl);
+  assert.match(snapshot.url, /^urn:browserhive:snapshot:after-behaviors:/);
+  assert.match(snapshot.highlight[0], /<em>ランプ<\/em>/);
+});
+
+test("検索は題か本文に、大小を問わず語を含む行に当たり、題だけの当たりには highlight が無い", () => {
+  const s = { ...scenario, hidden: [], searchPages: { "x.wacz": [{ title: "Desk Lamp", text: "a light" }] } };
+  const { hits } = ask({ q: "LAMP" }, s, ["x.wacz"]).body;
+  assert.equal(hits.length, 1);
+  assert.equal("highlight" in hits[0], false);
+  assert.equal(ask({ q: "nothing-here" }, s, ["x.wacz"]).body.total, 0);
+});
+
+test("検索の口は、q の無い・空の・ほかの欄のある問いを 400 で断る（台帳の schema と同じ）", () => {
+  assert.equal(ask({}).status, 400);
+  assert.equal(ask({ q: "" }).status, 400);
+  assert.equal(ask({ q: "ランプ", size: "10" }).status, 400);
+  assert.match(ask({ q: "" }).body.message, /must NOT have fewer than 1 characters/);
 });
 
 test("署名の代わりに、置き場の file:// の URL を返す", () => {

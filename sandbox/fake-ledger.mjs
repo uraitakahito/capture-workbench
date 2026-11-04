@@ -27,6 +27,9 @@
  * 型で落ちた行の、型の誤りの取り直し (`GET /api/crawls/:id/diagnostics`) と直し方 (`POST …/inline/:name/fix`。
  * CAPTURE-49) にも、台本の行の `diagnosed` と `fixes` から答える。**代役は Claude を呼ばない。**
  *
+ * 検索の口 (`GET /api/search`。CAPTURE-53) にも、台本の `searchPages` から答える。**代役は OpenSearch を持たない** ——
+ * 語を含む行を拾うだけで、点数も分かち書きも無い。
+ *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -244,6 +247,69 @@ export const archiveRows = (names, s) =>
     objectKey: `sandbox/${name}`,
     ...(s.archives?.[name] ?? {}),
   }));
+
+/**
+ * 当たった所の断片。OpenSearch の highlight と同じく、本文の当たった所を `<em>` で包み、前後を少し残す
+ * （1 断片・前後 30 字）。題だけに当たったなら無し（台帳の highlight は本文だけ）。
+ */
+const fragmentOf = (text, q) => {
+  const at = text.toLowerCase().indexOf(q.toLowerCase());
+  if (at < 0) return undefined;
+  const from = Math.max(0, at - 30);
+  const to = Math.min(text.length, at + q.length + 30);
+  return `${text.slice(from, at)}<em>${text.slice(at, at + q.length)}</em>${text.slice(at + q.length, to)}`;
+};
+
+/**
+ * 検索の口（GET /api/search）の答え。欄は capture-ledger の src/api/search.ts（CAPTURE-53 の後）と同じ:
+ * `{ hits, total }` で、total は返した当たりの数。台本の `searchPages` を、台帳と同じ決まりで引く ——
+ * 写しの行が在るアーカイブでは写しの行だけ（文書の行は引かない。CAPTURE-48）、見えない行（`hidden`）は
+ * 答えに出さない（台帳は OpenFGA の can_view で落とす）。当たりは題か本文に、大小を問わず語を含む行。
+ * 台帳は 400 で `q` の無い・空の・ほかの欄のある問いを断る（Fastify の schema の文）。
+ */
+export const searchOf = (names, s, params) => {
+  const keys = [...params.keys()];
+  const q = params.get("q");
+  if (keys.some((k) => k !== "q")) {
+    return { status: 400, body: { error: "Bad Request", message: "querystring must NOT have additional properties" } };
+  }
+  if (q === null || q === "") {
+    return { status: 400, body: { error: "Bad Request", message: "querystring/q must NOT have fewer than 1 characters" } };
+  }
+  const hidden = new Set(s.hidden ?? []);
+  const rows = archiveRows(names, s);
+  const nameOf = (row) => [...names, ...(s.hidden ?? [])].find((n) => idOf(n) === row.id);
+  const needle = q.toLowerCase();
+  const hits = [];
+  for (const archive of rows) {
+    const name = nameOf(archive);
+    if (name === undefined || hidden.has(name)) continue;
+    const pages = s.searchPages?.[name] ?? [];
+    const staged = pages.filter((p) => typeof p.stage === "string" && p.stage !== "");
+    for (const page of staged.length > 0 ? staged : pages) {
+      const title = page.title ?? "";
+      const text = page.text ?? "";
+      if (!title.toLowerCase().includes(needle) && !text.toLowerCase().includes(needle)) continue;
+      const stage = typeof page.stage === "string" && page.stage !== "" ? page.stage : null;
+      const fragment = fragmentOf(text, q);
+      hits.push({
+        archiveId: archive.id,
+        stage,
+        url: page.url ?? (stage === null ? archive.sourceUrl : `urn:browserhive:snapshot:${stage}:${archive.sourceUrl}`),
+        title,
+        text,
+        textTruncated: page.textTruncated === true,
+        textWithheld: page.textWithheld ?? null,
+        objectKey: archive.objectKey,
+        sourceUrl: archive.sourceUrl,
+        labels: archive.labels,
+        capturedAt: archive.capturedAt,
+        ...(fragment !== undefined && { highlight: [fragment] }),
+      });
+    }
+  }
+  return { status: 200, body: { hits, total: hits.length } };
+};
 
 const httpUrl = (raw) => {
   try {
@@ -1058,6 +1124,11 @@ const handle = (req, res, raw) => {
   }
   if (req.method === "GET" && pathname === "/api/archives") {
     send(res, 200, { archives: archiveRows(samples(), s) });
+    return;
+  }
+  if (req.method === "GET" && pathname === "/api/search") {
+    const answer = searchOf(samples(), s, new URL(req.url ?? "/", "http://sandbox").searchParams);
+    send(res, answer.status, answer.body);
     return;
   }
   if (req.method === "GET" && pathname === "/api/scripts") {

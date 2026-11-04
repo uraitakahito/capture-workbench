@@ -7,6 +7,9 @@
     "        crawlId は頭の 8 字で違える (画面の id の欄は、頭の 8 字しか出さない)。",
     "archives: アーカイブの行は WACZ の置き場から作る。ここに書いた名前の行は、欄を上書きする。",
     "hidden: 一覧には出るが、署名は出ない行 (台帳の「見てよくない archive」と同じ 404 になる)。",
+    "searchPages: 検索の口 (GET /api/search) が引く、アーカイブごとのページ一覧の行 (WACZ の pages/pages.jsonl の形)。",
+    "        stage の無い行が文書の行、stage の在る行が写しの行。台帳と同じく、写しの行が在るアーカイブでは文書の行を引かず、",
+    "        hidden のアーカイブは答えに出さない (見てよくない)。url を省いた行は、文書は sourceUrl、写しは urn にする。",
     "emptyCatalog: true にすると、台帳にスクリプトが無いときの赤い文が出る（読む所には受け皿の型だけが残る）。",
     "submit: dashboard の欄から始めた行は runsSeconds 秒走ってから完走する。走っている間にもう 1 度始めると 409。",
     "        受けた行は代役が起きている間だけ在り、台本の走行中の行は「走行中 1 本」に数えない。",
@@ -333,6 +336,25 @@
     "wacz-missing-indexes.wacz": { "waczComplete": null }
   },
   "hidden": ["ghost.wacz"],
+  "searchPages": {
+    "good.wacz": [
+      {
+        "title": "検索の結果: ランプ | サンドボックスの店",
+        "text": "検索の結果: ランプ 3 件\nデスクランプ\nフロアランプ\nペンダントランプ"
+      },
+      { "stage": "after-load", "title": "サンドボックスの店", "text": "店の中を探す\n探す語\n探す" },
+      {
+        "stage": "after-behaviors",
+        "url": "urn:browserhive:snapshot:after-behaviors:https://sandbox.test/good.wacz/result",
+        "title": "検索の結果: ランプ | サンドボックスの店",
+        "text": "検索の結果: ランプ 3 件\nデスクランプ\nフロアランプ\nペンダントランプ"
+      }
+    ],
+    "datapackage-bad-hash.wacz": [
+      { "title": "ランプの手入れ", "text": "ランプの笠は、乾いた布で拭きます。電球を替える前に、プラグを抜きます。" }
+    ],
+    "ghost.wacz": [{ "title": "見えないランプ", "text": "見えないアーカイブの中のランプ" }]
+  },
   "windmillSecrets": ["api_token"],
   "windmillVariables": ["plain_token"],
   "catalog": [

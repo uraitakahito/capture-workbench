@@ -1,25 +1,26 @@
 ---
 title: Screens
-description: What the five views show — crawls, start, archives, script collection and WACZ — how a crawl's state is worded, and how often the dashboard polls
+description: What each view shows — crawls, start, archives, search, script collection and WACZ — how a crawl's state is worded, and how often the dashboard polls
 ---
 
-The dashboard has five views. You switch with the tabs at the top, and the `#` in the URL decides
-which view is shown (`#crawls`, `#start`, `#archives`, `#scripts`; in the script collection view it also names
-what you are reading). The WACZ tab only appears once you
+The dashboard is a set of views you switch with the tabs at the top, and the `#` in the URL decides
+which view is shown (`#crawls`, `#start`, `#archives`, `#search`, `#scripts`; in the search view it also
+names the words searched, and in the script collection view what you are reading). The WACZ tab only appears once you
 enter it with 開く (open) on an archive row. The dashboard itself is in Japanese; the tab names are
-クロール, 新しいクロール, アーカイブ, スクリプト集 and WACZ.
+クロール, 新しいクロール, アーカイブ, 検索, スクリプト集 and WACZ.
 
 The pictures on this page are taken against the stand-in ledger (the
 [sandbox](/development/#opening-the-dashboard-in-the-sandbox)). Its scripts are copies from capture-scripts,
 the same ones a real ledger lists; only autoscroll v2 is the stand-in's own version, there to show version chips.
 
-![The tabs at the top: クロール, 新しいクロール, アーカイブ and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
+![The tabs at the top: クロール, 新しいクロール, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
 
 | View | What it lists |
 | --- | --- |
 | Crawls | one row per crawl: state, pages captured, pages discovered, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, link to the run |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
 | Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replay](https://github.com/uraitakahito/replay) (which plays a WACZ back in the browser) |
+| Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replay |
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
 | WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
 
@@ -344,6 +345,28 @@ The WACZ files you can see, newest capture first.
   scripts) are on replay's Pages tab. replay does not pick a start page on its own: it lists the
   pages newest first, and it does not read the WACZ's `mainPageURL`.
 
+## Search
+
+The view that searches the titles and text of captured pages with the ledger's full-text search
+(`#search/<words>`).
+
+![The search view: a search for ランプ (lamp) lists two hits, the first a document row and the second the after-behaviors snapshot, with the matching words marked](../../assets/screens/search.webp)
+
+- **A hit is one stage of one archive.** The ledger indexes each line of a WACZ's page list: for a
+  WACZ with snapshot lines only the snapshots (`after-load`, `after-behaviors`), and for a capture
+  without snapshots (a document a policy withheld, say) the document's line. When both the
+  before-search and the after-search stage of one archive match, two rows are listed.
+- **Only archives you may see are listed.** The ledger filters with the same authorization as the
+  archive list. The count is the number of rows listed; the ledger returns at most 50 at a time.
+- **replay ↗ opens a document hit at the captured URL, and a snapshot hit at the snapshot itself.**
+  The document opens with the page's scripts running; a snapshot is the DOM copy without scripts,
+  the page as it was at that stage.
+- **開く (open) enters the WACZ view** (only for archives listed in the archives view).
+- **It fetches only when you press 探す (search) or open a search URL.** It does not poll like the
+  other views.
+- **It needs the ledger's full-text search (OpenSearch).** When that does not answer, the reason is
+  shown in one red line (the ledger's `CAPTURE_LEDGER_OPENSEARCH_URL`).
+
 ## Script collection
 
 The scripts that run inside the pages being captured, to read before writing one of your own, or
@@ -419,7 +442,7 @@ ledger that starts crawls and records what came back).
 
 While at least one crawl is running, the lists are fetched every 2 seconds; otherwise every 30
 seconds. Without keeping a copy, the dashboard still looks live while something runs, and stays
-quiet when nothing does.
+quiet when nothing does. The search view does not poll; it fetches only when you search.
 
 When a fetch fails, the dashboard keeps the last tables it could draw and shows the reason at the
 top (see "Fix it from the message" in the [Quickstart](/quickstart/)).

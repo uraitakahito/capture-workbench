@@ -38,6 +38,16 @@ import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, noteText } from "/fix.js";
 import { replayHref } from "/replay.js";
 import {
+  answerOf,
+  highlightParts,
+  hitReplayHref,
+  parseSearchHash,
+  searchFailure,
+  searchHash,
+  searchPath,
+  stageLabel,
+} from "/search.js";
+import {
   dataOf,
   droppedOf,
   waczLogTarget,
@@ -1439,6 +1449,115 @@ const drawArchives = () => {
   }
 };
 
+// ── 検索 ───────────────────────────────────────────────────────────
+/**
+ * 検索の画面の状態。**引くのは押したときと URL で開いたときだけ** —— 引き直しの周回（refresh）には入れない。
+ * 検索の答えない台帳（OpenSearch が落ちている・古い台帳）で、周回ごと落とさないため。
+ */
+const searching = {
+  /** 最後に開いた URL。タブ「検索」はここへ戻る（WACZ の画面の wacz.hash と同じ） */
+  hash: undefined,
+  /** 最後に引いた語。同じ語の URL へ戻っただけなら引き直さない */
+  words: undefined,
+  /** 引いた回の番号。遅れて届いた前の答えで、後の答えを上書きしない */
+  seq: 0,
+};
+
+const drawHits = (hits) => {
+  const body = $("search-hits");
+  body.replaceChildren();
+  // WACZ の画面で開けるのは、一覧（引き直しの答え）に在るアーカイブだけ
+  const known = new Set(archives.map((a) => a.id));
+  for (const hit of hits) {
+    const row = document.createElement("tr");
+    row.append(cell(stageLabel(hit.stage), "mono"));
+    const what = document.createElement("td");
+    what.className = "hit";
+    what.append(tag("div", hit.title === "" ? "（題なし）" : hit.title));
+    what.append(tag("div", hit.url, "hit-url mono"));
+    for (const fragment of hit.highlight ?? []) {
+      const line = document.createElement("div");
+      line.className = "hit-snippet";
+      for (const part of highlightParts(fragment)) {
+        line.append(part.mark ? tag("mark", part.text) : document.createTextNode(part.text));
+      }
+      what.append(line);
+    }
+    if (typeof hit.textWithheld === "string") {
+      what.append(tag("div", `文字は伏せています（${hit.textWithheld}）`, "hit-note"));
+    }
+    if (hit.textTruncated === true) what.append(tag("div", "文字は上限で切っています（全文ではありません）", "hit-note"));
+    what.append(
+      tag("div", `撮れたもの: ${hit.sourceUrl}（${new Date(hit.capturedAt).toLocaleString("ja-JP")}）`, "hit-note"),
+    );
+    row.append(what);
+    // 行き先: WACZ の画面（一覧に在るアーカイブだけ）と replay
+    const go = document.createElement("td");
+    go.className = "hit-go";
+    if (known.has(hit.archiveId)) {
+      const open = document.createElement("a");
+      open.href = waczHash(hit.archiveId);
+      open.textContent = "開く";
+      go.append(open);
+    }
+    go.append(link(hitReplayHref(settings.replayOrigin, hit), "replay ↗"));
+    row.append(go);
+    body.append(row);
+  }
+};
+
+const runSearch = async (words) => {
+  searching.words = words;
+  $("search-words").value = words;
+  const answer = $("search-answer");
+  const table = $("search-table");
+  if (words === "") {
+    answer.hidden = true;
+    table.hidden = true;
+    $("search-hits").replaceChildren();
+    return;
+  }
+  const seq = (searching.seq += 1);
+  answer.hidden = false;
+  answer.className = "search-answer";
+  answer.textContent = `「${words}」を探しています…`;
+  const failed = (text) => {
+    answer.className = "search-answer bad";
+    answer.textContent = text;
+    table.hidden = true;
+  };
+  let res;
+  let body;
+  try {
+    res = await fetch(searchPath(words));
+    body = await res.json().catch(() => ({}));
+  } catch (err) {
+    if (seq === searching.seq) failed(searchFailure(0, { message: failedText(err) }));
+    return;
+  }
+  if (seq !== searching.seq) return; // 後から打った語の答えを、先に描いている
+  if (!res.ok) {
+    failed(searchFailure(res.status, body));
+    return;
+  }
+  const { hits, total } = answerOf(body);
+  drawHits(hits);
+  table.hidden = hits.length === 0;
+  answer.textContent =
+    hits.length === 0
+      ? `「${words}」は見つかりません（見せてよいアーカイブの中に）。`
+      : `「${words}」: ${String(total)} 件。1 件はアーカイブの 1 時点です（写しのある取り込みは写しの時点ごと）。`;
+};
+
+$("search").onsubmit = (event) => {
+  event.preventDefault();
+  const words = $("search-words").value.trim();
+  const hash = searchHash(words);
+  // 同じ語でも、押したら引き直す（索引は後から増える）。違う語なら URL を替え、route が引く
+  if (location.hash === hash) void runSearch(words);
+  else location.hash = hash;
+};
+
 // ── スクリプト集（読む所）──────────────────────────────────────────
 /**
  * 読む所の状態。**取るのは開いたときだけ** —— 一覧（有効な各 id の最新版）は引き直しの答えを使い、版の札と
@@ -2384,7 +2503,7 @@ const openRecord = async (path, offset, length) => {
 };
 
 // ── 画面の切り替え ───────────────────────────────────────────────────
-const FACES = ["crawls", "start", "archives", "scripts", "wacz"];
+const FACES = ["crawls", "start", "archives", "search", "scripts", "wacz"];
 
 const show = (face) => {
   for (const b of document.querySelectorAll("#tabs button")) {
@@ -2396,12 +2515,19 @@ const show = (face) => {
 
 /**
  * URL が画面を決める。`#wacz/…` は WACZ の画面、`#scripts` と `#scripts/…` はスクリプト集の画面（読む所）、
- * それ以外はほかの画面のどれか。
+ * `#search` と `#search/<語>` は検索の画面、それ以外はほかの画面のどれか。
  */
 const route = () => {
   const target = parseWaczHash(location.hash);
   if (target !== undefined) {
     void openWacz(target);
+    return;
+  }
+  const words = parseSearchHash(location.hash);
+  if (words !== undefined) {
+    show("search");
+    searching.hash = location.hash;
+    if (words !== searching.words) void runSearch(words);
     return;
   }
   const asked = parseReading(location.hash);
@@ -2411,15 +2537,21 @@ const route = () => {
     return;
   }
   const face = location.hash.slice(1);
-  show(FACES.includes(face) && face !== "wacz" && face !== "scripts" ? face : "crawls");
+  show(FACES.includes(face) && face !== "wacz" && face !== "scripts" && face !== "search" ? face : "crawls");
 };
 
-// WACZ の画面とスクリプト集の画面は、最後に読んだ所へ戻る
+// WACZ の画面・スクリプト集の画面・検索の画面は、最後に読んだ所へ戻る
 for (const b of document.querySelectorAll("#tabs button")) {
   b.onclick = () => {
     const face = b.dataset.face;
     location.hash =
-      face === "wacz" ? (wacz.hash ?? "archives") : face === "scripts" ? (reading.hash ?? "scripts") : face;
+      face === "wacz"
+        ? (wacz.hash ?? "archives")
+        : face === "scripts"
+          ? (reading.hash ?? "scripts")
+          : face === "search"
+            ? (searching.hash ?? "search")
+            : face;
   };
 }
 window.addEventListener("hashchange", route);

@@ -302,6 +302,18 @@ const SHOTS = [
       document.getElementById("archives").textContent.includes("失敗 1"),
   },
   {
+    name: "search",
+    // 台本の searchPages を「ランプ」で引く。good.wacz は写しの行（after-behaviors）、datapackage-bad-hash.wacz は
+    // 写しの無い取り込みの文書の行が当たり、見えない ghost.wacz は出ない
+    hash: `#search/${encodeURIComponent("ランプ")}`,
+    box: "#face-search",
+    maxWidth: COLUMN,
+    maxHeight: 300,
+    ready: () =>
+      document.querySelectorAll("#search-hits tr").length === 2 &&
+      document.querySelector("#search-hits mark") !== null,
+  },
+  {
     name: "scripts",
     hash: "#scripts/autoscroll",
     box: "#reading-list",
