@@ -18,6 +18,8 @@ import {
   outcomeOf,
   pagesPath,
   readPages,
+  WACZ_LOG_PATH,
+  waczLogTarget,
   reasonText,
   rowsOf,
   sourceOf,
@@ -224,4 +226,13 @@ test("ログを閉じれば、その 1 つだけを忘れる。行を閉じた�
   );
   assert.equal(viewOf(views, CRAWL).want, 0, "開き直せば台帳の 1 回分から");
   assert.equal(rowsOf(views, "5b0c0007-6a1e-4000-8000-000000000007", list)[0].log, elsewhere, "ほかのクロールは残る");
+});
+
+test("WACZ の画面へは、ページに WACZ（archiveId）が在るときだけ。行き先は logs/capture.jsonl", () => {
+  assert.equal(WACZ_LOG_PATH, "logs/capture.jsonl");
+  assert.deepEqual(waczLogTarget({ archiveId: "a1b2" }), { archiveId: "a1b2", path: "logs/capture.jsonl" });
+  assert.equal(waczLogTarget({ archiveId: null }), undefined);
+  assert.equal(waczLogTarget({ archiveId: "" }), undefined);
+  assert.equal(waczLogTarget({}), undefined);
+  assert.equal(waczLogTarget(undefined), undefined);
 });

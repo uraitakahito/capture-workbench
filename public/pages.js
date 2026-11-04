@@ -108,6 +108,18 @@ export const dataOf = (line) => (line.data === undefined ? "" : JSON.stringify(l
 export const droppedOf = (dropped) =>
   typeof dropped === "number" && dropped > 0 ? `${count(dropped)} 行は残していない（上限か方針で）` : undefined;
 
+/** WACZ に封じたログの entry（BrowserHive が WACZ Profile 1.19.0 から書く）。 */
+export const WACZ_LOG_PATH = "logs/capture.jsonl";
+
+/**
+ * WACZ の画面で封じたログを開く先。ページに WACZ（`archiveId`）が無ければ undefined。
+ * 1.19.0 より前の WACZ には entry が無い —— 開いた先でそれが見える（ここでは WACZ の中身を引かない）。
+ */
+export const waczLogTarget = (page) =>
+  typeof page?.archiveId === "string" && page.archiveId !== ""
+    ? { archiveId: page.archiveId, path: WACZ_LOG_PATH }
+    : undefined;
+
 /** ログを読めない理由（台帳の `reason`）を短い文に。 */
 const REASONS = new Map([
   ["not-captured", "取り込みの答えがありません（まだ撮っていない・撮らなかった・期限で切った・断られた）"],

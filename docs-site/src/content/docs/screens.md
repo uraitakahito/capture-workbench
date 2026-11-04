@@ -121,6 +121,10 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   cannot be read, the box gives the ledger's reason, as a short sentence and the reason itself (not
   captured yet or not captured, no `.result.json` recorded, missing from the store or not matching
   the contract, or captured by a BrowserHive from before logs were kept).
+  When the page has a WACZ, WACZ の画面で開く (open in the WACZ view) above the box opens the same
+  lines sealed in the WACZ (`logs/capture.jsonl`) in the WACZ view. A WACZ line is the answer's line
+  with `profile` added, and the signature covers it. A WACZ BrowserHive took before WACZ Profile
+  1.19.0 has no such entry.
 - **An opened row stays open.** The table is rebuilt on every fetch, so the dashboard remembers the
   open rows by id and opens them again from the last answer. It fetches a row again only while the
   crawl is running or when its state has changed. Opened logs are remembered by page id too, and
