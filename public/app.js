@@ -33,6 +33,7 @@ import {
   withNocheck,
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
+import { replayHref } from "/replay.js";
 import {
   defaultVersionOf,
   labelOf,
@@ -1078,10 +1079,7 @@ const drawArchives = () => {
     row.append(check);
     row.append(hashCell(waczHash(archive.id), "開く"));
     row.append(
-      linkCell(
-        `${settings.replayOrigin}/?source=/wacz/${encodeURIComponent(archive.objectKey)}`,
-        "replay ↗",
-      ),
+      linkCell(replayHref(settings.replayOrigin, archive), "replay ↗"),
     );
     body.append(row);
   }
