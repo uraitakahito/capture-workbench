@@ -24,6 +24,9 @@
  * ページの口 (CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
  * 答える。ログは台本のページの `log` (BrowserHive の答えの log の形) で、無ければ読めない理由を返す。
  *
+ * 型で落ちた行の、型の誤りの取り直し (`GET /api/crawls/:id/diagnostics`) と直し方 (`POST …/inline/:name/fix`。
+ * CAPTURE-49) にも、台本の行の `diagnosed` と `fixes` から答える。**代役は Claude を呼ばない。**
+ *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -107,6 +110,26 @@ export const inlineSource = (scripts, name) => {
   if (script === undefined) return { status: 404, body: { error: "not found" } };
   const { phase, source } = script.inline;
   return { status: 200, body: { name, phase, source, sha256: script.sha256 } };
+};
+
+/**
+ * /api/crawls/:id/diagnostics (CAPTURE-49)。台本の行の `diagnosed` (台帳の答えの本文そのまま) を返す。無い行は、
+ * いまの組み合わせが型を通る答え (`diagnostics` が空。台帳は hostTypes も添える)。行が無ければ 404。
+ */
+export const diagnosticsOf = (c) =>
+  c === undefined
+    ? { status: 404, body: { error: "not found" } }
+    : { status: 200, body: c.diagnosed ?? { typescript: "6.0.3", hostTypes: "v0.7.0", diagnostics: [] } };
+
+/**
+ * POST /api/crawls/:id/inline/:name/fix (CAPTURE-49)。台本の行の `fixes` の、その名前の答え (`{ status, body }`。
+ * 台帳の答えの本文そのまま) を返す。**Claude は呼ばない** —— 台本に無い行・名前は 404。
+ */
+export const fixOf = (c, name) => {
+  const answer = c?.fixes?.[name];
+  return answer === undefined
+    ? { status: 404, body: { error: "not found" } }
+    : { status: answer.status, body: answer.body };
 };
 
 /** クロールごとの値 (台帳 v0.67.0 の行の `variables`・`secrets`)。台本の行に無ければ、何も渡さなかったクロール。 */
@@ -972,6 +995,20 @@ const handle = (req, res, raw) => {
     const mine = submitted.find((row) => row.crawlId === back[1]);
     const scripts = mine?.scripts ?? s.crawls.find((x) => x.crawlId === back[1])?.scripts;
     const answer = inlineSource(scripts, decodeURIComponent(back[2]));
+    send(res, answer.status, answer.body);
+    return;
+  }
+  // 型の誤りの取り直しと直し方 (CAPTURE-49)。受けた行は型で落ちていないので、取り直しは型を通る答え、直し方は 404
+  const diagnosed = /^\/api\/crawls\/([^/]+)\/diagnostics$/.exec(pathname);
+  if (req.method === "GET" && diagnosed !== null) {
+    const mine = submitted.find((row) => row.crawlId === diagnosed[1]);
+    const answer = diagnosticsOf(mine === undefined ? s.crawls.find((x) => x.crawlId === diagnosed[1]) : { crawlId: mine.crawlId });
+    send(res, answer.status, answer.body);
+    return;
+  }
+  const fix = /^\/api\/crawls\/([^/]+)\/inline\/([^/]+)\/fix$/.exec(pathname);
+  if (req.method === "POST" && fix !== null) {
+    const answer = fixOf(s.crawls.find((x) => x.crawlId === fix[1]), decodeURIComponent(fix[2]));
     send(res, answer.status, answer.body);
     return;
   }

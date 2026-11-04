@@ -67,6 +67,20 @@ export const hostAllowed = (host, port) =>
   host === `127.0.0.1:${String(port)}` || host === `localhost:${String(port)}`;
 
 /**
+ * 書く口。**台帳へそのまま渡す POST は、この形だけ**:
+ *
+ * - `/api/crawls` —— クロールを始める
+ * - `/api/crawls/<id>/inline/<name>/fix` —— 型で落ちたクロールの、その場の JS の直し方を Claude に訊く
+ *   （CAPTURE-49。台帳は型の検査に通った案だけを返し、費用を数える）
+ *
+ * **端を固めて照らす** —— 末尾の足し・query・`%`（`%2F` も `%2e%2e` も）・`.` を通さない。id と名前の字まで絞るのは、
+ * fetch が URL の `..` を畳み、台帳のほかの口に届かせないため。判断は台帳がする —— ここは中継する形を絞るだけ。
+ */
+const WRITE_ROUTES = [/^\/api\/crawls$/, /^\/api\/crawls\/[0-9a-f-]+\/inline\/[a-z0-9-]+\/fix$/];
+
+export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url));
+
+/**
  * 書く口の門。dashboard のページからの JSON だけを通す。断るなら `{ status, error }` を返す。
  *
  * Origin を見るのは CSRF（別のサイトのページに、利用者のブラウザから POST させる手）のため。

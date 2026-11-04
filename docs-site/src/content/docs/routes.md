@@ -1,6 +1,6 @@
 ---
 title: Routes
-description: What the dashboard's server answers — /healthz, the pass-through to the ledger, the route that starts a crawl, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
+description: What the dashboard's server answers — /healthz, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script), and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
 ---
 
 The dashboard's server only relays. The dashboard's logic lives in the browser (`public/`); all the
@@ -11,7 +11,8 @@ not.
 | Route | Answered by |
 | --- | --- |
 | `GET /healthz` | the server itself (liveness, and the settings the dashboard needs) |
-| `POST /api/crawls` | the ledger (the one and only route that writes) |
+| `POST /api/crawls` | the ledger (writes: starts a crawl) |
+| `POST /api/crawls/:id/inline/:name/fix` | the ledger (writes: asks how to fix an inline script's type errors) |
 | `/api/*` (the rest) | passed through to the ledger (GET only) |
 | `/wacz/:id/…` | signed by the ledger, then answered by the daemon |
 | anything else | the files in `public/` |
@@ -51,8 +52,8 @@ The ledger does not return CORS (Cross-Origin Resource Sharing, which lets pages
 origin call it) headers (`OPTIONS /api/archives` is a 404). Since the browser
 cannot call it directly, the server relays it to make it same-origin.
 
-- The path and query go through unchanged, as a GET. Any other method is a 405 (the only route
-  that writes is `POST /api/crawls` below).
+- The path and query go through unchanged, as a GET. Any other method is a 405 (the routes that
+  write are the `POST` routes below).
 - The access token is attached as `Authorization: Bearer`. If the server does not have one yet, it
   first gets one from the development issuer.
 - **On a 401 it gets a new token and retries once.** It does not track the token's lifetime:
@@ -64,13 +65,14 @@ Which ledger routes are read is decided by the dashboard (`public/app.js`); the 
 choose. It keeps no list of allowed routes. So the ledger's `GET /api/crawl-rules/check` (the new
 crawl view checking its rules as you write them), `GET /api/crawls/:id/decisions` (what an
 opened crawl's rules decided), `GET /api/crawls/:id/pages` (an opened crawl's pages table) and
-`GET /api/crawls/:id/pages/:page/log` (one page's log) need nothing here: they are reads, and pass
-through like the lists. The ledger says where the pages table continues in the body (`next`),
+`GET /api/crawls/:id/pages/:page/log` (one page's log) and `GET /api/crawls/:id/diagnostics` (the type
+errors of a crawl that failed the type check) need nothing here: they are reads, and pass through like
+the lists. The ledger says where the pages table continues in the body (`next`),
 since the relay returns only the status, `content-type` and body, and drops the other headers.
 
 ## POST /api/crawls — the route that starts a crawl
 
-This is the one route of the dashboard's server that writes. The form on the crawls view
+This is one of the routes of the dashboard's server that write. The form on the crawls view
 ([Screens](/screens/)) uses it. The server does not check the contents: it hands the body that
 passed the checks below to the ledger's `POST /api/crawls` as it is, and returns the answer as
 it is. The ledger is the one that checks and decides the seed URLs, the policy (depth, page
@@ -95,6 +97,28 @@ secret's value (it lives in a Windmill variable, and is neither in the form nor 
 | 503 `{"error": "windmill unreachable"}` | the ledger could not ask Windmill whether a declared secret exists (the flow would not run either, so it does not start the crawl) |
 
 The checks are `writeRefusal` in `src/lib.mjs`, which the tests call directly.
+
+## POST /api/crawls/:id/inline/:name/fix — asking how to fix an inline script
+
+This is also a route that writes. 直し方を訊く (ask for a fix), on an opened crawl that failed the type
+check, uses it for an inline script with type errors ([Screens](/screens/)). The body is `{}`. The ledger asks
+Claude, and returns **only a fix that passes the same type check** the crawl failed, with the reasons,
+the replaced lines, the rounds and the cost; the dashboard only draws the answer.
+
+- The same checks as `POST /api/crawls` (`Origin`, JSON, 1 MiB), and the same token.
+- **Only this exact shape is relayed:** the id is hex digits and hyphens, the name lowercase letters,
+  digits and hyphens, and nothing follows `/fix`. No `%` and no `.` get through, because `fetch` folds
+  `..` (and `%2e%2e`) out of a URL, which would land the POST on another of the ledger's routes. The
+  shapes are `isWriteRoute` in `src/lib.mjs`.
+
+| The ledger's answer | When |
+| --- | --- |
+| 200 `{ rounds, source, edits, notes, compiled, usage }` | a fix passed the check (`edits`: each replaced range with `before` and `after`; `usage.usd`: the cost) |
+| 409 `scripts compile` | the scripts type-check now; there is nothing to fix |
+| 422 | the errors are not in this script, two rounds did not pass (with the rounds and the cost), or Claude declined |
+| 429 `claude budget exhausted` | the organization reached this month's limit (with `spentUsd` and `budgetUsd`); Claude is not called |
+| 502 / 503 | Claude or ts-compile-service did not answer |
+| 404 | the identity may not start crawls, the crawl or the inline script does not exist, or the ledger has no API key and does not serve the route |
 
 ## /wacz/:id/… — routes into a WACZ
 

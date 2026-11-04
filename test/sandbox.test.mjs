@@ -8,12 +8,14 @@
  * `enabled`・名指しは有効かどうかを見ない）は v0.64.0 から。クロールごとの値（版の `params`・頼みの `variables`・
  * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。ページの口（`GET /api/crawls/:id/pages` と
  * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で台帳が足す形から（台帳の版は、口が出たら書く）。
+ * 型の誤りの取り直し（`GET /api/crawls/:id/diagnostics`）と直し方（`POST …/inline/:name/fix`）は CAPTURE-49 の形から。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
+import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
 import {
   archiveRows,
@@ -23,6 +25,8 @@ import {
   crawlRulesCheck,
   decisionsOf,
   defaultSet,
+  diagnosticsOf,
+  fixOf,
   hostTypesOf,
   idOf,
   inlineSource,
@@ -950,4 +954,36 @@ test("台本の 5b0c0009 は、時間切れのページ（warn と error の行�
   // 行が名指すスクリプトは、このクロールが走らせた物
   const ran = new Set(crawlDetail(c).scripts.map((s) => s.id));
   for (const log of logs) for (const line of log.lines) if (line.script !== undefined) assert.ok(ran.has(line.script), line.script);
+});
+
+test("代役は、型で落ちた 5b0c0008 に取り直した型の誤りを返し、その場の JS に直し方を訊ける", () => {
+  const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0008"));
+  // 画面が取り直しに行くのは、失敗の文が型の検査で落ちたと言う行だけ
+  assert.equal(failedOnTypes(crawlDetail(c).error), true);
+  const answer = diagnosticsOf(c);
+  assert.equal(answer.status, 200);
+  const said = diagnosisOf(answer.status, answer.body);
+  assert.equal(said.kind, "errors");
+  assert.deepEqual(said.rows.map((r) => `${r.where}:${r.at} ${r.code}`), ["inline-close-banner:2:18 TS7006"]);
+  assert.equal(hasErrorsIn(said, "inline-close-banner"), true);
+  // 直し方は検査に通った案。差分を元の source に当てると、直した版になる
+  const fix = fixOf(c, "close-banner");
+  assert.equal(fix.status, 200);
+  assert.equal(fixAnswer(fix.status, fix.body).kind, "ok");
+  const lines = c.scripts.find((x) => x.id === "inline-close-banner").inline.source.replace(/\n$/, "").split("\n");
+  for (const edit of [...fix.body.edits].reverse()) {
+    assert.deepEqual(lines.slice(edit.from - 1, edit.to), edit.before);
+    lines.splice(edit.from - 1, edit.to - edit.from + 1, ...edit.after);
+  }
+  assert.equal(`${lines.join("\n")}\n`, fix.body.source);
+});
+
+test("代役は Claude を呼ばない —— 台本に無い行・名前の直し方は 404、型で落ちていない行の取り直しは型を通る答え", () => {
+  const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0008"));
+  assert.equal(fixOf(c, "other").status, 404);
+  assert.equal(fixOf(undefined, "close-banner").status, 404);
+  const passing = scenario.crawls.find((x) => x.state === "succeeded");
+  assert.equal(fixOf(passing, "search").status, 404);
+  assert.deepEqual(diagnosisOf(200, diagnosticsOf(passing).body).kind, "clean");
+  assert.equal(diagnosticsOf(undefined).status, 404);
 });

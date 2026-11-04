@@ -82,6 +82,18 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   なし (values passed: none), and a row from an older ledger without values shows nothing here. Last
   are the pages that failed, as many as the ledger returns; if none did, it says so and lists the seed
   URLs.
+- **A crawl that failed the type check shows all of its type errors, and can ask for a fix.** When the
+  ledger's `error` says the compile step failed with a 422, the dashboard also fetches
+  `/api/crawls/:id/diagnostics`: the ledger sends the crawl's scripts to ts-compile-service again, and
+  the table lists every error with its script, line and column, code and message (the `error` is cut
+  at the ledger's limit and names only the first few). The table does not call Claude. An inline
+  script with errors gets 直し方を訊く (ask for a fix) next to 欄に戻す: only pressing it calls Claude,
+  through the ledger, which returns a fix only if it passes the same check. The answer shows the
+  reasons, the replaced lines (removed and added, with line numbers), the rounds and the cost, and
+  直した版を欄に戻す (put the fixed version in the form), which works like 欄に戻す with the fixed
+  source (the name and phase stay as they were). Only the types were checked: read the diff, and
+  capture once to see that the script still does what it did. Any other answer (nothing to fix, no fix
+  passed, this month's limit reached, a ledger without the route) is one line, in the ledger's words.
 - **An opened row also shows what the crawl's rules decided** (the ledger's
   `/api/crawls/:id/decisions`, fetched together with the detail). First, per rule, the distinct URLs it
   matched, added up over the levels; a rule that never matched is marked 当たっていません (not hit),
