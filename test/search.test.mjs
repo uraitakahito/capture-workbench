@@ -86,14 +86,14 @@ test("文書の行の replay ↗ は、取り込んだ URL を撮った時刻で
 
 test("写しの行の replay ↗ は、写しの URI（urn）を直に開く", () => {
   const href = hitReplayHref(ORIGIN, SNAPSHOT);
-  assert.ok(href.startsWith(`${ORIGIN}/?source=/wacz/task-a_corr-b.wacz#`));
+  assert.ok(href.startsWith(`${ORIGIN}/?source=%2Fwacz%2Ftask-a_corr-b.wacz#`), href);
   const hash = hashOf(href);
   assert.equal(hash.get("url"), "urn:browserhive:snapshot:after-behaviors:https://shop.test/result");
   assert.equal(hash.get("ts"), "20261104135820");
 });
 
 test("時刻が読めない当たりは、replay のページ一覧を開く形のまま", () => {
-  assert.equal(hitReplayHref(ORIGIN, { ...SNAPSHOT, capturedAt: "" }), `${ORIGIN}/?source=/wacz/task-a_corr-b.wacz`);
+  assert.equal(hitReplayHref(ORIGIN, { ...SNAPSHOT, capturedAt: "" }), `${ORIGIN}/?source=%2Fwacz%2Ftask-a_corr-b.wacz`);
 });
 
 test("引けなかったときの文: 503 は OpenSearch を、404 は検索の口の無い台帳を名指し、台帳の message を先に出す", () => {

@@ -2,11 +2,14 @@
  * 「replay ↗」の行き先（`public/replay.js`）。アーカイブの行は取り込んだ URL を撮った時刻で直に開く
  * （CAPTURE-48。replay は mainPageURL を読まず、一覧を新しい順に並べるので、行き先で名指す）。クロールの行と
  * ページの行はクロールの合本を開く（CAPTURE-54。`replayBundleHref`。WACZ 1 本の `replayHref` とは別に試す）。
+ * `source` の綴りは 3 つの組み立て役（検索の当たりの `hitReplayHref` も）で同じ —— replay の server（v0.3.0 から）の
+ * 読み方で鍵に戻るかを、3 つ全部で試す。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { replayBundleFailure, replayBundleHref, replayHref, replayTs } from "../public/replay.js";
+import { hitReplayHref } from "../public/search.js";
 
 const ORIGIN = "http://127.0.0.1:8899";
 const ARCHIVE = {
@@ -19,7 +22,7 @@ const hashOf = (href) => new URLSearchParams(new URL(href).hash.slice(1));
 
 test("取り込んだ URL を、撮った時刻で直に開く行き先になる", () => {
   const href = replayHref(ORIGIN, ARCHIVE);
-  assert.ok(href.startsWith(`${ORIGIN}/?source=/wacz/task-a_corr-b.wacz#`));
+  assert.ok(href.startsWith(`${ORIGIN}/?source=%2Fwacz%2Ftask-a_corr-b.wacz#`), href);
   const hash = hashOf(href);
   assert.equal(hash.get("view"), "replay");
   assert.equal(hash.get("url"), "https://www.apple.com/jp/");
@@ -39,7 +42,7 @@ test("時刻は UTC の 14 桁にそろえる（時差のある書き方でも�
 });
 
 test("時刻か URL が無ければ、いままでどおりページ一覧を開く", () => {
-  const list = `${ORIGIN}/?source=/wacz/task-a_corr-b.wacz`;
+  const list = `${ORIGIN}/?source=%2Fwacz%2Ftask-a_corr-b.wacz`;
   assert.equal(replayHref(ORIGIN, { ...ARCHIVE, sourceUrl: undefined }), list);
   assert.equal(replayHref(ORIGIN, { ...ARCHIVE, sourceUrl: "" }), list);
   assert.equal(replayHref(ORIGIN, { ...ARCHIVE, capturedAt: null }), list);
@@ -47,9 +50,10 @@ test("時刻か URL が無ければ、いままでどおりページ一覧を開
   assert.equal(replayTs(null), undefined);
 });
 
-test("WACZ の鍵は、いままでどおり source の中で符号化する", () => {
+test("WACZ の鍵も合本と同じ綴り: 区切りごとに符号にした path を、source の値としてもう 1 度符号にする", () => {
   const href = replayHref(ORIGIN, { ...ARCHIVE, objectKey: "a b/c.wacz" });
-  assert.ok(href.startsWith(`${ORIGIN}/?source=/wacz/a%20b%2Fc.wacz#`));
+  assert.ok(href.startsWith(`${ORIGIN}/?source=%2Fwacz%2Fa%2520b%2Fc.wacz#`), href);
+  assert.equal(new URL(href).searchParams.get("source"), "/wacz/a%20b/c.wacz");
 });
 
 // ── クロールの合本（CAPTURE-54）。台帳の `replayBundle` とページの行の `capturedAt`・`bundledRev` から組む ──────────
@@ -82,14 +86,38 @@ test("合本の鍵の / は区切りのまま、path ごと source の値とし�
   assert.equal(sourceOf(href), `/wacz/org/acme/crawls/${CRAWL}/r2/replay.json`);
 });
 
-test("% を含む鍵は、source の値を外して区切りごとに 1 度だけ復号すると、元の鍵に戻る", () => {
-  const key = "org/a%2Fb c/crawls/x%25y/r1/replay.json";
-  const source = sourceOf(replayBundleHref(ORIGIN, { ...BUNDLE, key, rev: 1 }));
+/**
+ * replay の読み方で、行き先から保管庫の鍵の区切りを取り出す。replay（wabac）が `source` の値を 1 度解き、replay の
+ * server が `/wacz/` の後ろを区切りごとに 1 度だけ解く（replay の docs/replay-bundle.md の「`/wacz/` の鍵の綴り」）。
+ */
+const keySegmentsOf = (href) => {
+  const source = sourceOf(href);
   assert.ok(source.startsWith("/wacz/"), source);
-  // replay の server の読み方（区切りごとに 1 度だけ復号する）。鍵の中の %2F は区切りにならない
-  const segments = source.slice("/wacz/".length).split("/");
-  assert.equal(segments.length, key.split("/").length, source);
-  assert.equal(segments.map(decodeURIComponent).join("/"), key);
+  return source.slice("/wacz/".length).split("/").map(decodeURIComponent);
+};
+
+test("% を含む鍵は、source を 1 度解いて path を区切りごとに 1 度解くと元の鍵に戻る（3 つの組み立て役とも）", () => {
+  // BrowserHive はラベルを百分率の符号で鍵に入れる（replay の docs の例に、空白・日本語・/ の入ったラベルを足した）。
+  // 鍵の中の %2F は区切りではない —— 区切りの数まで元の鍵と同じかを見る
+  const wacz = "org/acme/2026-11/a_c1_hello%20world%2F%E3%83%A9%E3%83%B3%E3%83%97.wacz";
+  const bundle = "org/a%2Fb c/crawls/x%25y/r1/replay.json";
+  const hit = {
+    stage: "after-behaviors",
+    url: "urn:browserhive:snapshot:after-behaviors:https://shop.test/result",
+    objectKey: wacz,
+    sourceUrl: "https://shop.test/search?q=lamp",
+    capturedAt: "2026-11-04T13:58:20.974Z",
+  };
+  const cases = [
+    ["アーカイブの行（replayHref）", replayHref(ORIGIN, { ...ARCHIVE, objectKey: wacz }), wacz],
+    ["アーカイブの行・一覧（replayHref）", replayHref(ORIGIN, { ...ARCHIVE, objectKey: wacz, capturedAt: null }), wacz],
+    ["検索の写しの行（hitReplayHref）", hitReplayHref(ORIGIN, hit), wacz],
+    ["検索の写しの行・一覧（hitReplayHref）", hitReplayHref(ORIGIN, { ...hit, capturedAt: "" }), wacz],
+    ["検索の文書の行（hitReplayHref）", hitReplayHref(ORIGIN, { ...hit, stage: null }), wacz],
+    ["クロールの行（replayBundleHref）", replayBundleHref(ORIGIN, { ...BUNDLE, key: bundle, rev: 1 }), bundle],
+    ["ページの行（replayBundleHref）", replayBundleHref(ORIGIN, { ...BUNDLE, key: bundle, rev: 1 }, PAGE), bundle],
+  ];
+  for (const [name, href, key] of cases) assert.deepEqual(keySegmentsOf(href), key.split("/"), name);
 });
 
 test("source は replay と同じ origin の path で、.json で終わる（replay は拡張子で合本と読む）", () => {

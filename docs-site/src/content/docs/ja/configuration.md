@@ -47,9 +47,13 @@ dashboard は `DASHBOARD_SUBJECT` と `DASHBOARD_ORGANIZATIONS` の名前で、�
 replay と Windmill の行き先は、配備の事実です。
 台帳が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[中継の口](/routes/)）。
 
-クロールの合本を開くには、`/wacz/…` に加えて、合本のページの問い（`/q/…`）にも答える replay が要ります。
+どの「replay ↗」も、保管庫の URL ではなく、replay と同じ origin の path を渡します。
+`?source=` の値は `/wacz/` と鍵で、鍵は `/` で区切って区切りごとに百分率の符号にし、その path をもう 1 度 query の値として符号にします。
+replay の server（v0.3.0 から）は区切りごとに 1 度だけ解くので、`%` を含む鍵（BrowserHive はラベルを百分率の符号で鍵に入れます）も、そのまま保管庫に届きます。
+決まりは `public/replay.js` の `replaySourceHref` で、WACZ 1 本もクロールの合本も同じです。
+
+クロールの合本を開くには、合本のページの問い（`/q/…`）にも答える replay が要ります。
 replay は合本の WACZ とページの一覧を、自分と同じ origin の path から引きます。
-だから dashboard は、合本を保管庫の URL ではなく、その path（`?source=` の値の `/wacz/<鍵>`）で渡します。
 
 ## 読む順
 

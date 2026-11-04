@@ -49,10 +49,15 @@ Where replay and Windmill live is a fact of the deployment. The ledger only retu
 `objectKey`, the key of a crawl's bundle and a run id, so the server decides in one place where to
 open them and hands that to the browser through `/healthz` (see [Routes](/routes/)).
 
-A crawl's bundle needs a replay that also answers the bundle's page lookups (`/q/…`), next to
-`/wacz/…`. replay reads the bundle's WACZ files and its page index from paths on its own origin,
-so the dashboard hands it the bundle as such a path (`/wacz/<key>` as the value of `?source=`),
-never as a URL of the store.
+Every "replay ↗" hands replay a path on replay's own origin, never a URL of the store: `/wacz/`
+and the key, with each `/`-separated part of the key percent-encoded, as the value of `?source=`
+(encoded once more as a query value). replay's server (v0.3.0 and later) decodes each part once,
+so a key that itself contains `%` (BrowserHive writes labels into keys percent-encoded) reaches the
+store as it is. The rule is `replaySourceHref` in `public/replay.js`, the same for one WACZ and for
+a crawl's bundle.
+
+A crawl's bundle also needs a replay that answers the bundle's page lookups (`/q/…`): replay reads
+the bundle's WACZ files and its page index from paths on its own origin.
 
 ## Order of reading
 
