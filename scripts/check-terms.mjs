@@ -55,7 +55,7 @@
  *     4 つ目の全体の「画面」と、5 つ目の代役のファイルの中の「台本」と、7 つ目の古い画面の名前は形の並びで見る
  *     （並びに無い言い回しは止まらない）
  *
- * 形は capture-ledger の scripts/check-terms.mjs に揃えてある。
+ * 形は capture-ledger の src/tools/check-terms.ts に揃えてある。
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
