@@ -41,7 +41,8 @@
  *
  * ## 何を見るか
  *
- * git が追跡する text のファイルの全行。docs に限らない —— 語は、書かれる場所を選ばずに広がる。
+ * git が repo の中身と見なす text のファイル（追跡している物と、まだ add していない物）の全行。docs に限らない
+ * —— 語は、書かれる場所を選ばずに広がる。
  *
  * ## 見ないもの
  *
@@ -57,10 +58,11 @@
  *
  * 形は capture-ledger の src/tools/check-terms.ts に揃えてある。
  */
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { repoFiles } from "./repo-files.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SELF = "scripts/check-terms.mjs";
@@ -151,11 +153,10 @@ const RULES = [
   },
 ];
 
-const files = execFileSync("git", ["-C", ROOT, "ls-files", "-z"], { encoding: "utf8" })
-  .split("\0")
-  .filter(
-    (f) => f !== "" && f !== SELF && !f.endsWith("package-lock.json") && !f.startsWith(COPIED),
-  );
+// 追跡している物と、まだ add していない新しい物（`repo-files.mjs`）。
+const files = repoFiles(ROOT).filter(
+  (f) => f !== SELF && !f.endsWith("package-lock.json") && !f.startsWith(COPIED),
+);
 
 const hits = RULES.map(() => []);
 for (const file of files) {
