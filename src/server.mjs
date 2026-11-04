@@ -2,7 +2,7 @@
 /**
  * dashboard の画面（`public/`）を配り、台帳の API を中継する。
  *
- *   pnpm run dev        # http://127.0.0.1:7080/
+ *   npm run dev         # http://127.0.0.1:7080/
  *
  * ## この repo は秘密を持たない
  *

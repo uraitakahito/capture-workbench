@@ -6,7 +6,8 @@
  * スクリプトを読む口（版の一覧・1 版・受け皿の型）は v0.60.0 から、札（`sites`）と起点で選ぶ既定は v0.61.0 から。
  * 規則の並び（`rules`・400 の 3 つ・確かめの口・判断の口）は v0.62.0 から。既定に入らないスクリプト（一覧の
  * `enabled`・名指しは有効かどうかを見ない）は v0.64.0 から。クロールごとの値（版の `params`・頼みの `variables`・
- * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。
+ * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。ページの口（`GET /api/crawls/:id/pages` と
+ * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で台帳が足す形から（台帳の版は、口が出たら書く）。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -26,6 +27,9 @@ import {
   idOf,
   inlineSource,
   latestEnabled,
+  pageList,
+  pageLog,
+  pageRow,
   pickable,
   readingLastGood,
   scriptRows,
@@ -219,7 +223,8 @@ test("クロール 1 本は、dashboard が読む seeds・error・scripts・fail
 
 test("同梱の台本に、その場の JS で完走した行と、compile の段で落ちた行が在る", () => {
   const withInline = scenario.crawls.filter((c) => c.scripts?.some((s) => s.inline !== undefined));
-  assert.deepEqual(withInline.map((c) => c.state).sort(), ["failed", "succeeded"]);
+  assert.deepEqual([...new Set(withInline.map((c) => c.state))].sort(), ["failed", "succeeded"]);
+  assert.equal(withInline.filter((c) => c.state === "failed").length, 1, "compile の段で落ちた行は 1 本");
   const broken = crawlDetail(withInline.find((c) => c.state === "failed"));
   assert.match(broken.error, /compile 422 .*inline-close-banner\.ts/);
   // 台帳と同じく、その場の物にだけ inline が付き、台帳のスクリプトは身元だけ
@@ -455,20 +460,23 @@ test("版の一覧は新しい順で、どの版にも source が無い。知ら
   assert.deepEqual(versionsOf(versions, "nope"), { status: 404, body: { error: "not found" } });
 });
 
-test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.6.1）", () => {
+test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.7.0）", () => {
   const fetch1 = versionOf(versions, "autofetch", "1");
   assert.equal(fetch1.status, 200);
-  assert.equal(fetch1.body.sha256.slice(0, 12), "6aa6f4459d92");
-  assert.equal(fetch1.body.bytes, 4358);
+  assert.equal(fetch1.body.sha256.slice(0, 12), "3f1de4b0630b");
+  assert.equal(fetch1.body.bytes, 4345);
   const scroll1 = versionOf(versions, "autoscroll", "1").body;
-  assert.equal(scroll1.sha256.slice(0, 12), "c9956819ffea");
-  assert.equal(scroll1.bytes, 2695);
+  assert.equal(scroll1.sha256.slice(0, 12), "4117c0345645");
+  assert.equal(scroll1.bytes, 2706);
   assert.match(scroll1.source.split("\n")[32], /remainingMs < stepDelayMs \+ settleMs/);
-  // egov-law-search は v0.6.0 で変数 query を読む形になった（写しが古いままなら、ここで分かる）
+  // v0.7.0 から report は id を取らない（写しが古いままなら、ここで分かる）
+  assert.match(scroll1.source.split("\n")[47], /globalThis\.__bh\.report\(\{$/);
+  // egov-law-search は v0.6.0 で変数 query を読む形になり、v0.7.0 で途中の様子を log に書く形になった
   const egov1 = versionOf(versions, "egov-law-search", "1").body;
-  assert.equal(egov1.sha256.slice(0, 12), "f34b81b99cac");
-  assert.equal(egov1.bytes, 3329);
+  assert.equal(egov1.sha256.slice(0, 12), "87ae2cec6079");
+  assert.equal(egov1.bytes, 3438);
   assert.match(egov1.source.split("\n")[18], /__bh\.vars\.query \?\? opts\.query/);
+  assert.match(egov1.source.split("\n")[40], /__bh\.log\.warn\("検索窓が無い"/);
   assert.deepEqual(versionOf(versions, "autoscroll", "2").body.options, { maxSteps: 60 });
   assert.deepEqual(versionOf(versions, "autoscroll", "9"), { status: 404, body: { error: "not found" } });
   assert.equal(versionOf(versions, "autoscroll", "abc").body.message, "params/version must be integer");
@@ -479,11 +487,12 @@ test("受け皿の型は台本の file の中身。台本に無ければ 404（�
   const types = hostTypesOf(scenario);
   assert.equal(types.status, 200);
   assert.equal(types.body.version, 1);
-  assert.match(types.body.source, /custom\.jsonl には残らない/);
   assert.equal(types.body.bytes, Buffer.byteLength(types.body.source, "utf8"));
-  // 写しは capture-scripts v0.6.1（受け皿に vars と secrets が在る。注記の訳を直した版で、型は v0.6.0 と同じ）
-  assert.equal(types.body.sha256.slice(0, 12), "ba9c363034b8");
-  assert.equal(types.body.bytes, 2259);
+  // 写しは capture-scripts v0.7.0（受け皿に log が在り、report は data だけを取る。vars と secrets は v0.6.0 から）
+  assert.equal(types.body.sha256.slice(0, 12), "de649718ebb8");
+  assert.equal(types.body.bytes, 3125);
+  assert.match(types.body.source, /warn\(message: string, data\?: object\): void;/);
+  assert.match(types.body.source, /report\(data: object\): void;/);
   assert.match(types.body.source, /vars: Readonly<Record<string, string \| undefined>>/);
   const { hostTypes: _hostTypes, ...without } = scenario;
   assert.deepEqual(hostTypesOf(without), { status: 404, body: { error: "not found" } });
@@ -503,10 +512,10 @@ test("台本のクロールが走らせた台帳のスクリプトは、台帳�
   assert.ok(seen.includes(MISMATCH));
 });
 
-test("下敷きを実物の写しに掛けると、替わるのは autoscroll の 9・18・48 行と autofetch の 14・17・92 行", () => {
+test("下敷きを実物の写しに掛けると、替わるのは autoscroll の 9・18 行と autofetch の 14・17 行（report は id を取らない）", () => {
   const sourceOf = (id) => versionOf(versions, id, "1").body.source;
-  assert.deepEqual(asTemplate(sourceOf("autoscroll"), "autoscroll", "my-autoscroll").changed, [9, 18, 48]);
-  assert.deepEqual(asTemplate(sourceOf("autofetch"), "autofetch", "my-autofetch").changed, [14, 17, 92]);
+  assert.deepEqual(asTemplate(sourceOf("autoscroll"), "autoscroll", "my-autoscroll").changed, [9, 18]);
+  assert.deepEqual(asTemplate(sourceOf("autofetch"), "autofetch", "my-autofetch").changed, [14, 17]);
 });
 
 test("知らないスクリプトの id・重ね・形の誤り・scriptIds は、台帳と同じ文で 400", () => {
@@ -811,4 +820,134 @@ test("判断の口は、台本の行の規則・判断・robots を返す（受�
   const seeds = c.seeds.map((seed) => new URL(seed).href);
   assert.equal(submitCrawl([], { seeds, rules: c.rules, scripts: [] }, NOW, RUNS, versions).status, 202);
   assert.deepEqual(decisionsOf({ crawlId: "x" }), { crawlId: "x", rules: [{ follow: "same-origin" }], decisions: [], robots: [] });
+});
+
+// ── ページの口（CAPTURE-18 で台帳が足す GET /api/crawls/:id/pages と …/pages/:page/log の形）────────
+
+/** ページの 1 行の欄（一覧の pages[i] と、ログの答えの page）。 */
+const LEDGER_PAGE_KEYS = ["id", "url", "depth", "state", "reason", "taskId", "archiveId", "logCounts"].sort();
+/** ページの行の logCounts の欄（BrowserHive の答えの log.counts と dropped）。 */
+const LOG_COUNTS_KEYS = ["debug", "info", "warn", "error", "dropped"].sort();
+/** ログの 1 行で、必ず在る欄と、在ってよい欄（BrowserHive の答えの log.lines[i] をそのまま）。 */
+const LINE_REQUIRED = ["at", "ms", "source", "level", "msg"];
+const LINE_KEYS = new Set([...LINE_REQUIRED, "dpr", "script", "data", "truncated"]);
+const crawlOf = (head) => scenario.crawls.find((c) => c.crawlId.startsWith(head));
+const query = (text = "") => new URLSearchParams(text);
+
+test("ページの一覧は { pages, next } で、1 行の欄と logCounts の欄は台帳と同じ。id は数字だけの文字列", () => {
+  for (const c of scenario.crawls.filter((x) => x.pages !== undefined)) {
+    const answer = pageList(c, query());
+    assert.equal(answer.status, 200);
+    assert.deepEqual(Object.keys(answer.body), ["pages", "next"]);
+    for (const row of answer.body.pages) {
+      assert.deepEqual(Object.keys(row).sort(), LEDGER_PAGE_KEYS, `${c.crawlId} ${row.id}`);
+      assert.match(row.id, /^[0-9]+$/);
+      if (row.logCounts !== null) assert.deepEqual(Object.keys(row.logCounts).sort(), LOG_COUNTS_KEYS);
+    }
+  }
+  // pages の無い行は空（代役の省略）
+  assert.deepEqual(pageList(crawlOf("5b0c0001"), query()).body, { pages: [], next: null });
+});
+
+test("一覧は id の昇順で、after の後から limit 件（既定 100）。続きが在れば next は返した最後の id", () => {
+  const c = crawlOf("5b0c0009");
+  const ids = (text) => pageList(c, query(text)).body.pages.map((p) => p.id);
+  assert.deepEqual(ids(""), ["1201", "1202", "1203", "1204"]);
+  assert.equal(pageList(c, query()).body.next, null);
+  assert.deepEqual(pageList(c, query("limit=2")).body, {
+    pages: c.pages.slice(0, 2).map(pageRow),
+    next: "1202",
+  });
+  assert.deepEqual(ids("after=1202&limit=2"), ["1203", "1204"]);
+  assert.equal(pageList(c, query("after=1202&limit=2")).body.next, null);
+  // id は数として比べる（bigserial を文字列で持つ）
+  const wide = { crawlId: "x", pages: [{ id: "10", url: "https://a.test/", state: "pending" }, { id: "9", url: "https://b.test/", state: "pending" }] };
+  assert.deepEqual(pageList(wide, query("after=8")).body.pages.map((p) => p.id), ["9", "10"]);
+});
+
+test("limit は 1〜500 の整数、after は数字だけ。違えば行を探す前に 400、行が無ければ 404", () => {
+  const c = crawlOf("5b0c0009");
+  for (const text of ["limit=0", "limit=501", "limit=1.5", "limit=x", "after=12a", "after=-1"]) {
+    const answer = pageList(c, query(text));
+    assert.equal(answer.status, 400, text);
+    assert.match(answer.body.message, new RegExp(`querystring/${text.split("=")[0]}`), text);
+    assert.equal(pageList(undefined, query(text)).status, 400, `${text}（行が無くても先に 400）`);
+  }
+  assert.equal(pageList(c, query("limit=500")).status, 200);
+  assert.equal(pageList(c, query("limit=1")).status, 200);
+  assert.deepEqual(pageList(undefined, query()), { status: 404, body: { error: "not found" } });
+});
+
+test("1 ページのログは { page, log, reason }。行は届いた順のまま、必ず在る欄と在ってよい欄だけ", () => {
+  const c = crawlOf("5b0c0009");
+  const answer = pageLog(c, "1202");
+  assert.equal(answer.status, 200);
+  assert.deepEqual(Object.keys(answer.body), ["page", "log", "reason"]);
+  assert.deepEqual(answer.body.page, pageRow(c.pages[1]));
+  assert.equal(answer.body.reason, null);
+  assert.deepEqual(Object.keys(answer.body.log), ["lines", "counts", "dropped"]);
+  assert.deepEqual(Object.keys(answer.body.log.counts).sort(), ["debug", "error", "info", "warn"]);
+  for (const p of c.pages.filter((x) => x.log !== undefined)) {
+    const lines = pageLog(c, p.id).body.log.lines;
+    for (const line of lines) {
+      for (const key of LINE_REQUIRED) assert.ok(key in line, `${p.id} ${key}`);
+      for (const key of Object.keys(line)) assert.ok(LINE_KEYS.has(key), `${p.id} ${key}`);
+      assert.equal(line.source === "script", typeof line.script === "string", `${p.id} script は script の行にだけ`);
+    }
+    const ms = lines.map((line) => line.ms);
+    assert.deepEqual(ms, [...ms].sort((a, b) => a - b), `${p.id} ms が減らない`);
+  }
+});
+
+test("読めないページは log: null と理由 —— taskId の無いページは not-captured、ログの無い取り込みは no-log", () => {
+  assert.deepEqual(pageLog(crawlOf("5b0c0009"), "1204").body, {
+    page: pageRow(crawlOf("5b0c0009").pages[3]),
+    log: null,
+    reason: "not-captured",
+  });
+  assert.equal(pageLog(crawlOf("5b0c0006"), "601").body.reason, "no-log");
+  assert.equal(pageLog(crawlOf("5b0c0006"), "602").body.reason, "not-captured");
+  // 台本で理由を名指せる（保管庫に無い・契約に合わない）
+  const named = { crawlId: "x", pages: [{ id: "1", url: "https://a.test/", state: "captured", taskId: "t", logReason: "manifest-missing" }] };
+  assert.equal(pageLog(named, "1").body.reason, "manifest-missing");
+  // 数を読んでいないページの logCounts は null
+  assert.equal(pageRow(crawlOf("5b0c0006").pages[0]).logCounts, null);
+});
+
+test("ページの id が数字だけでなければ 400、ほかの行のページと、行が無ければ 404", () => {
+  const c = crawlOf("5b0c0009");
+  assert.equal(pageLog(c, "12a").status, 400);
+  assert.equal(pageLog(undefined, "12a").status, 400);
+  assert.deepEqual(pageLog(c, "601"), { status: 404, body: { error: "not found" } });
+  assert.deepEqual(pageLog(undefined, "1202"), { status: 404, body: { error: "not found" } });
+});
+
+test("failures の要素は { url, depth, reason, page } で、page は同じ行の pages の、同じ URL の failed の行を指す", () => {
+  let seen = 0;
+  for (const c of scenario.crawls) {
+    for (const f of crawlDetail(c).failures) {
+      seen += 1;
+      assert.deepEqual(Object.keys(f), ["url", "depth", "reason", "page"]);
+      const p = (c.pages ?? []).find((x) => x.id === f.page);
+      assert.ok(p !== undefined, `${c.crawlId} ${f.page}`);
+      assert.deepEqual([p.url, p.state, p.reason], [f.url, "failed", f.reason], `${c.crawlId} ${f.page}`);
+    }
+  }
+  assert.ok(seen > 0);
+});
+
+test("台本の 5b0c0009 は、時間切れのページ（warn と error の行）と、捨てた行・途中で切った行を持つ", () => {
+  const c = crawlOf("5b0c0009");
+  const rows = pageList(c, query()).body.pages;
+  const timedOut = rows.find((p) => p.state === "failed" && p.reason.startsWith("timeout"));
+  assert.ok(timedOut !== undefined, "時間切れのページ");
+  assert.ok(timedOut.logCounts.error > 0, "時間切れのページにも error の行");
+  assert.ok(rows.some((p) => p.logCounts?.warn > 0), "warn の行");
+  assert.ok(rows.some((p) => p.logCounts === null), "数を読んでいないページ");
+  const logs = rows.map((p) => pageLog(c, p.id).body.log).filter((log) => log !== null);
+  assert.ok(logs.some((log) => log.dropped > 0), "捨てた行");
+  assert.ok(logs.some((log) => log.lines.some((line) => line.truncated === true)), "途中で切った行");
+  // 行が名指すスクリプトは、このクロールが走らせた物
+  const ran = new Set(crawlDetail(c).scripts.map((s) => s.id));
+  for (const log of logs) for (const line of log.lines) if (line.script !== undefined) assert.ok(ran.has(line.script), line.script);
 });

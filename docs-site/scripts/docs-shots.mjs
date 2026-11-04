@@ -161,6 +161,35 @@ const SHOTS = [
     ],
   },
   {
+    name: "crawl-pages",
+    hash: "#crawls",
+    box: "#crawls tr.detail .pages",
+    // 開いた行の「ページ」の表（台本の 5b0c0009）。時間切れのページのログを開いて写す。表は中身の幅で、COLUMN に収まる
+    maxWidth: COLUMN,
+    prepare: async (page) => {
+      await page.evaluate(() => {
+        [...document.querySelectorAll("#crawls tr.head")].find((tr) => tr.textContent.includes("5b0c0009")).click();
+      });
+      await page.waitForFunction(() => document.querySelector("#crawls tr.detail .pagelist") !== null);
+      await page.evaluate(() => {
+        [...document.querySelector("#crawls tr.detail .pagelist").rows]
+          .find((tr) => tr.cells[0]?.textContent.endsWith("/slow"))
+          .querySelector("button")
+          .click();
+      });
+      await page.waitForFunction(() => document.querySelector("#crawls tr.detail .logbox .loglines") !== null);
+    },
+    ready: () =>
+      document.querySelector("#crawls tr.detail .logbox .chip.on")?.textContent === "すべて 4" &&
+      document.querySelectorAll("#crawls tr.detail .logbox .loglines tr").length === 4,
+    marks: [
+      { n: 1, at: "#crawls tr.detail .pagelist th:nth-child(2)" },
+      { n: 2, at: "#crawls tr.detail .pagelist tr:nth-child(2) td:nth-child(3)" },
+      { n: 3, at: "#crawls tr.detail .pagelist th:nth-child(5)" },
+      { n: 4, at: "#crawls tr.detail .logbox .chips button:last-of-type", edge: "box" },
+    ],
+  },
+  {
     name: "start",
     hash: "#start",
     box: ".start-side",

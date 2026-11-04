@@ -21,6 +21,9 @@
  * と `windmillVariables` (在るが secret でない変数の名前) を Windmill の代わりにして確かめ、受けた行に名前と path を持つ
  * (値はどこにも無い —— 台帳と同じ)。
  *
+ * ページの口 (CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
+ * 答える。ログは台本のページの `log` (BrowserHive の答えの log の形) で、無ければ読めない理由を返す。
+ *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -113,7 +116,8 @@ const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [
  * /api/crawls/:id。台帳はほかの欄 (上限など) も返すが、dashboard が読むのは seeds・rules・
  * error・scripts・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に持たない
  * (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ台帳の既定。
- * `secrets` は台帳 v0.67.0 と同じく `{ name, path, editedAt, rotated }` の列で、値は無い。
+ * `secrets` は台帳 v0.67.0 と同じく `{ name, path, editedAt, rotated }` の列で、値は無い。`failures` の要素は
+ * `{ url, depth, reason, page }` (page はページの行の id。CAPTURE-18 で台帳が足す)。
  */
 export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEFAULT_RULES, values = valuesIn(c)) => ({
   crawlId: c.crawlId,
@@ -123,7 +127,7 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   stopReason: c.stopReason ?? null,
   error: c.error ?? null,
   scripts: scripts.map(detailScript),
-  failures: c.failures ?? [],
+  failures: (c.failures ?? []).map((f) => ({ url: f.url, depth: f.depth, reason: f.reason ?? null, page: f.page })),
   variables: values.variables,
   secrets: values.secrets,
 });
@@ -138,6 +142,68 @@ export const decisionsOf = (c, rules = c.rules ?? DEFAULT_RULES) => ({
   decisions: c.decisions ?? [],
   robots: c.robots ?? [],
 });
+
+/** BrowserHive の 4 つの level。台本の log に counts が無ければ、行をこれで数える。 */
+const LEVELS = ["debug", "info", "warn", "error"];
+
+const countsOf = (log) =>
+  log.counts ?? Object.fromEntries(LEVELS.map((level) => [level, log.lines.filter((line) => line.level === level).length]));
+
+/**
+ * ページの 1 行。欄は CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` の形と同じ (id は数字だけの文字列)。
+ * `logCounts` は台本の `log` から組み (level ごとの数と dropped)、`log` の無いページは null (数を読んでいない)。
+ */
+export const pageRow = (p) => ({
+  id: p.id,
+  url: p.url,
+  depth: p.depth ?? 0,
+  state: p.state,
+  reason: p.reason ?? null,
+  taskId: p.taskId ?? null,
+  archiveId: p.archiveId ?? null,
+  logCounts: p.log === undefined ? null : { ...countsOf(p.log), dropped: p.log.dropped ?? 0 },
+});
+
+const DIGITS = /^[0-9]+$/;
+
+/** 台帳の id の並び (bigserial を文字列で持つので、数として比べる)。 */
+const byId = (a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : BigInt(a.id) > BigInt(b.id) ? 1 : 0);
+
+/**
+ * /api/crawls/:id/pages。台本の行 `c` の `pages` を id の昇順で、`after` の後から `limit` 件 (既定 100・最大 500)。
+ * `next` は続きが在れば返した最後の id、無ければ null。limit が整数でない・範囲の外、after が数字だけでなければ、
+ * 行を探す前に 400 (Fastify の schema の形。台帳の実物の文は、口が出たら写す)。行が無ければ 404。
+ */
+export const pageList = (c, query) => {
+  const after = query.get("after");
+  const limit = query.get("limit");
+  if (after !== null && !DIGITS.test(after)) return schemaError('querystring/after must match pattern "^[0-9]+$"');
+  if (limit !== null && !/^-?[0-9]+$/.test(limit)) return schemaError("querystring/limit must be integer");
+  if (limit !== null && Number(limit) < 1) return schemaError("querystring/limit must be >= 1");
+  if (limit !== null && Number(limit) > 500) return schemaError("querystring/limit must be <= 500");
+  if (c === undefined) return { status: 404, body: { error: "not found" } };
+  const size = limit === null ? 100 : Number(limit);
+  const rest = [...(c.pages ?? [])].sort(byId).filter((p) => after === null || BigInt(p.id) > BigInt(after));
+  const pages = rest.slice(0, size).map(pageRow);
+  return { status: 200, body: { pages, next: rest.length > size ? pages[pages.length - 1].id : null } };
+};
+
+/**
+ * /api/crawls/:id/pages/:page/log。ページの id が数字だけでなければ 400、行かページが無ければ 404 (ほかの行の
+ * ページも)。読めれば `{ page, log, reason: null }`、読めなければ `{ page, log: null, reason }` —— 理由は台本の
+ * `logReason`、省けば taskId の無いページは not-captured、在れば no-log (ログを残す前の BrowserHive の取り込み)。
+ */
+export const pageLog = (c, raw) => {
+  if (!DIGITS.test(raw)) return schemaError('params/page must match pattern "^[0-9]+$"');
+  const p = (c?.pages ?? []).find((x) => x.id === raw);
+  if (p === undefined) return { status: 404, body: { error: "not found" } };
+  if (p.log === undefined) {
+    const reason = p.logReason ?? (p.taskId === undefined || p.taskId === null ? "not-captured" : "no-log");
+    return { status: 200, body: { page: pageRow(p), log: null, reason } };
+  }
+  const log = { lines: p.log.lines, counts: countsOf(p.log), dropped: p.log.dropped ?? 0 };
+  return { status: 200, body: { page: pageRow(p), log, reason: null } };
+};
 
 /**
  * /api/archives の行。欄は capture-ledger の src/api/routes.ts (v0.57.4) と同じ。
@@ -915,6 +981,20 @@ const handle = (req, res, raw) => {
     const mine = submitted.find((row) => row.crawlId === decided[1]);
     const c = mine ?? s.crawls.find((x) => x.crawlId === decided[1]);
     send(res, c === undefined ? 404 : 200, c === undefined ? { error: "not found" } : decisionsOf(mine === undefined ? c : { crawlId: mine.crawlId }, c.rules));
+    return;
+  }
+  // ページの一覧と 1 ページのログ (CAPTURE-18)。受けた行は何も撮っていないので、一覧は空
+  const listed = /^\/api\/crawls\/([^/]+)\/pages$/.exec(pathname);
+  const logged = /^\/api\/crawls\/([^/]+)\/pages\/([^/]+)\/log$/.exec(pathname);
+  if (req.method === "GET" && (listed !== null || logged !== null)) {
+    const crawlId = (listed ?? logged)[1];
+    const mine = submitted.find((row) => row.crawlId === crawlId);
+    const c = mine === undefined ? s.crawls.find((x) => x.crawlId === crawlId) : { crawlId };
+    const answer =
+      listed !== null
+        ? pageList(c, new URL(req.url ?? "/", "http://sandbox").searchParams)
+        : pageLog(c, decodeURIComponent(logged[2]));
+    send(res, answer.status, answer.body);
     return;
   }
   if (req.method === "GET" && pathname === "/api/crawl-rules/check") {
