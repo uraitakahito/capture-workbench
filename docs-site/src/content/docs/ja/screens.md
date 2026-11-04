@@ -217,8 +217,10 @@ dashboard は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   結果は行の「仕様どおりか」にも残るので、何本か見た後でも、押し直さずに思い出せます。
   報告に何が出るかは [WACZ を見る](/wacz/)に書きました。
 - **「開く」で WACZ の画面に入る**（`#wacz/<archiveId>`）。
-- **「replay ↗」は replay で開く。**
-  行き先は、サーバが `/healthz` で配る replay の origin と、台帳が返す `objectKey` から組みます。
+- **「replay ↗」は、取り込んだ URL を replay で直に開く。**
+  行き先は、サーバが `/healthz` で配る replay の origin、台帳が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
+  頁の script が動くので、JS で出す絵も出ます。BrowserHive が撮った DOM の写し（スクリプトの前と後）は、replay の Pages タブにあります。
+  replay は自分では最初の頁を選びません。ページ一覧を日付の新しい順に並べ、WACZ の `mainPageURL` は読みません。
 
 ## スクリプト集
 

@@ -278,8 +278,12 @@ The WACZ files you can see, newest capture first.
   can tell how each one did without pressing again. What the report shows is in
   [Inspecting a WACZ](/wacz/).
 - **開く (open) enters the WACZ view** (`#wacz/<archiveId>`).
-- **"replay ↗" opens it in replay.** The link is built from the replay origin the server hands
-  out through `/healthz` and the `objectKey` the ledger returns.
+- **"replay ↗" opens the captured URL in replay.** The link is built from the replay origin the
+  server hands out through `/healthz`, the `objectKey` the ledger returns, and the row's URL and
+  capture time (`#view=replay&url=…&ts=…`). The page's own scripts run there, so pictures that the
+  page shows with JavaScript appear too. The DOM snapshots BrowserHive took (before and after the
+  scripts) are on replay's Pages tab. replay does not pick a start page on its own: it lists the
+  pages newest first, and it does not read the WACZ's `mainPageURL`.
 
 ## Script collection
 
