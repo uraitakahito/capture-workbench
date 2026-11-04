@@ -28,7 +28,7 @@ destinations are fixed loopback addresses. There are no secrets.
 | `DASHBOARD_ISSUER_URL` | `http://127.0.0.1:9099` | The development issuer, the one capture-ledger's `pnpm run oidc:issuer` starts |
 | `DASHBOARD_SUBJECT` | this machine's user name | Who you look as. This name needs permission (see the [Quickstart](/quickstart/)) |
 | `DASHBOARD_ORGANIZATIONS` | `acme` | The organizations to claim, comma-separated |
-| `DASHBOARD_REPLAY_URL` | `http://127.0.0.1:8899` | Where "replay ↗" on an archive row goes |
+| `DASHBOARD_REPLAY_URL` | `http://127.0.0.1:8899` | Where "replay ↗" goes: one WACZ from an archive row or a search hit, and the crawl's bundle from a crawl row or a page row |
 | `DASHBOARD_WINDMILL_URL` | `http://127.0.0.1:8000` | Where "run ↗" on a crawl row goes |
 | `DASHBOARD_WINDMILL_WORKSPACE` | `crawler` | The Windmill workspace "run ↗" opens |
 | `DASHBOARD_VALIDATOR_URL` | `http://127.0.0.1:7180` | The daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (which checks a WACZ rule by rule) that answers validation and the WACZ view |
@@ -46,8 +46,13 @@ the dashboard is not a boundary, and why it never leaves loopback.
 ### The dashboard does not build destinations
 
 Where replay and Windmill live is a fact of the deployment. The ledger only returns an
-`objectKey` and a run id, so the server decides in one place where to open them and hands that
-to the browser through `/healthz` (see [Routes](/routes/)).
+`objectKey`, the key of a crawl's bundle and a run id, so the server decides in one place where to
+open them and hands that to the browser through `/healthz` (see [Routes](/routes/)).
+
+A crawl's bundle needs a replay that also answers the bundle's page lookups (`/q/…`), next to
+`/wacz/…`. replay reads the bundle's WACZ files and its page index from paths on its own origin,
+so the dashboard hands it the bundle as such a path (`/wacz/<key>` as the value of `?source=`),
+never as a URL of the store.
 
 ## Order of reading
 

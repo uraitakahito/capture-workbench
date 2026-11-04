@@ -36,7 +36,7 @@ import {
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, noteText } from "/fix.js";
-import { replayHref } from "/replay.js";
+import { replayBundleFailure, replayBundleHref, replayHref } from "/replay.js";
 import {
   answerOf,
   highlightParts,
@@ -562,6 +562,12 @@ const restoreScroll = () => {
  * error の数・ログの button。並べるのは台帳の 1 回分で、続きは「続きを読む」を押したときだけ引く。ログは押した
  * ときに引き、その行の下の箱に出す。**開いた箱は id で覚え、作り直さずに移す** —— 表は引くたびに作り直すので、
  * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（台帳が古ければ口が無い）。
+ *
+ * 結末の後ろの「replay ↗」は、そのページをクロールの合本の中で開く。合本は詳しい所（`/api/crawls/:id`。ページと
+ * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/replay.js` の `replayBundleHref`。
+ * 2 つを引く間に台帳が次の版を書いても、指す版に無いページを開かせない）。**列は足さない** —— 出るのはふつう
+ * 撮れたページ（結末が `captured` の 1 語）で、結末の列の幅の中に収まる。列を足すと表が広がり、docs の画面の絵
+ * （本文の幅）に収まらなかった（2026-11-05 に測った）。
  */
 const pagesOf = (one) => {
   const box = document.createElement("div");
@@ -587,7 +593,10 @@ const pagesOf = (one) => {
     const url = document.createElement("td");
     url.append(tag("span", String(page.url), "mono url"));
     const outcome = document.createElement("td");
-    outcome.append(tag("span", outcomeOf(page, one.state), "outcome"));
+    const said = tag("span", outcomeOf(page, one.state), "outcome");
+    const replay = replayBundleHref(settings.replayOrigin, one.replayBundle, page);
+    if (replay !== undefined) said.append(" ", link(replay, "replay ↗"));
+    outcome.append(said);
     const toggle = document.createElement("td");
     toggle.append(button(log === undefined ? "ログ ▾" : "閉じる ▴", () => toggleOne(one.crawlId, page.id)));
     row.append(url, outcome, tallyCell(page.logCounts, "warn"), tallyCell(page.logCounts, "error"), toggle);
@@ -665,19 +674,24 @@ const diagnosedOf = async (crawlId, detail) => {
 /**
  * 1 本の詳しい所。**失敗の文が先** —— compile の段で落ちたクロールは 1 枚も撮っていないので
  * failures が空で、それだけを出すと「取れなかったページはありません」と、成功のように読める。
- * 台帳の文は言い換えない。
+ * 次が合本を書けなかった理由。合本はクロールを止めない派生物なので warn の色で、「replay ↗」が無い（前の版を開く）
+ * 訳をここで言う。台帳の文は言い換えない。
  */
-const detailOf = (one) => [
-  ...(one.error === null || one.error === undefined
-    ? []
-    : [tag("p", `失敗の文: ${one.error}`, "state bad pre")]),
-  ...typeErrorsOf(one),
-  ranOf(one),
-  valuesOf(one),
-  decisionsOf(one),
-  pagesOf(one),
-  tag("p", failuresText(one), "pre"),
-];
+const detailOf = (one) => {
+  const bundleFailure = replayBundleFailure(one.replayBundle);
+  return [
+    ...(one.error === null || one.error === undefined
+      ? []
+      : [tag("p", `失敗の文: ${one.error}`, "state bad pre")]),
+    ...(bundleFailure === undefined ? [] : [tag("p", bundleFailure, "state warn pre")]),
+    ...typeErrorsOf(one),
+    ranOf(one),
+    valuesOf(one),
+    decisionsOf(one),
+    pagesOf(one),
+    tag("p", failuresText(one), "pre"),
+  ];
+};
 
 /** 開いた行の下に出す 1 行。最後の答えで、引き直しを待たずに描く。 */
 const detailRow = (crawl) => {
@@ -771,7 +785,12 @@ const drawCrawls = () => {
     row.append(cell(String(crawl.pagesDiscovered), "num mono"));
     row.append(cell(String(crawl.waczCount), "num mono"));
     row.append(cell(took(crawl), "num mono"));
-    row.append(linkCell(runHref(crawl), "run ↗"));
+    // 行き先: run と、台帳が合本を書けていれば、クロールを 1 つのアーカイブとして replay で。**run ↗ が先頭**
+    // （docs の画面の絵の印が、この欄の先頭の link を指す）
+    const go = linkCell(runHref(crawl), "run ↗");
+    const replay = replayBundleHref(settings.replayOrigin, crawl.replayBundle);
+    if (replay !== undefined) go.append(link(replay, "replay ↗"));
+    row.append(go);
     row.onclick = (event) => {
       if (event.target instanceof HTMLAnchorElement) return;
       if (opened.delete(crawl.crawlId)) {

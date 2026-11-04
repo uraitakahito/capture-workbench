@@ -41,7 +41,13 @@
     "        その場の JS の名前ごとの直し方の答え ({ status, body }。POST /api/crawls/:id/inline/:name/fix。CAPTURE-49)。",
     "        代役は Claude を呼ばない —— fixes に無い名前は 404。diagnosed の無い行は、いまの組み合わせが型を通る答え。",
     "        5b0c0008 は TS7006 の 1 件と、検査に通った直し (2〜3 行目。直した版は TypeScript 6.0.3 の strict で通ることを確かめた)。",
-    "        5b0c0008 の pages は起点の 1 行だけで、pending のまま (型で落ちたクロールは 1 枚も撮らず、台帳は報告の来なかった頁を pending で残す)。"
+    "        5b0c0008 の pages は起点の 1 行だけで、pending のまま (型で落ちたクロールは 1 枚も撮らず、台帳は報告の来なかった頁を pending で残す)。",
+    "crawls の replayBundle: クロールの合本 (台帳が段ごとに保管庫へ書く replay.json と pages.json。CAPTURE-54) の欄。rev・pages・builtAt・error",
+    "        を書き、鍵は代役が台帳と同じ形 (org/<orgId>/crawls/<crawlId>/r<rev>/replay.json) に組む。rev を省いた行は、失敗だけの行。",
+    "        書けた版が在ればクロールの行に replay ↗ が出て (失敗が在っても、前の版を開く)、失敗は開いた行の 1 行が言う。",
+    "        ページの capturedAt と bundledRev は、WACZ の撮った時刻と、その WACZ が最初に入った版 (bundledRev ≤ rev のページに replay ↗)。",
+    "        5b0c0009 は r2 (ページ 1201 は r1、1203 は r2。WACZ の無い 1202・1204 には出ない)。5b0c0003 は r2 の次の版を書けなかった行、",
+    "        5b0c0002 は 1 度も書けなかった行 (replay ↗ が出ない)。代役は合本を書かない —— replay ↗ の先には何も無い。"
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,
@@ -69,7 +75,8 @@
       "pagesDiscovered": 0,
       "waczCount": 1,
       "lastJobId": "019a5b0c-0002-7000-8000-000000000002",
-      "lastJobDepth": 0
+      "lastJobDepth": 0,
+      "replayBundle": { "error": "could not write r1 to the store: The specified bucket does not exist" }
     },
     {
       "crawlId": "5b0c0003-6a1e-4000-8000-000000000003",
@@ -82,7 +89,13 @@
       "pagesDiscovered": 40,
       "waczCount": 12,
       "lastJobId": "019a5b0c-0003-7000-8000-000000000003",
-      "lastJobDepth": 2
+      "lastJobDepth": 2,
+      "replayBundle": {
+        "rev": 2,
+        "pages": 12,
+        "builtAt": "2026-10-12T08:12:40.000Z",
+        "error": "could not write r3 to the store: socket hang up"
+      }
     },
     {
       "crawlId": "5b0c0004-6a1e-4000-8000-000000000004",
@@ -246,6 +259,7 @@
       "waczCount": 2,
       "lastJobId": "019a5b0c-0009-7000-8000-000000000009",
       "lastJobDepth": 1,
+      "replayBundle": { "rev": 2, "pages": 6, "builtAt": "2026-10-12T08:41:20.000Z" },
       "variables": { "query": "個人情報" },
       "failures": [
         { "url": "https://sandbox.test/slow", "depth": 1, "reason": "timeout: Timeout: Task processing for https://sandbox.test/slow (45000ms) — behaviors, dpr 1", "page": "1202" }
@@ -274,6 +288,8 @@
           "reason": null,
           "taskId": "019a5b0c-1201-7000-8000-000000001201",
           "archiveId": "a5b0c120-1201-4000-8000-000000001201",
+          "capturedAt": "2026-10-12T08:40:00.000Z",
+          "bundledRev": 1,
           "log": {
             "lines": [
               { "at": "2026-10-12T08:40:01.204Z", "ms": 1204, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "検索語を入れて押した", "data": { "query": "個人情報" } },
@@ -308,6 +324,8 @@
           "reason": null,
           "taskId": "019a5b0c-1203-7000-8000-000000001203",
           "archiveId": "a5b0c120-1203-4000-8000-000000001203",
+          "capturedAt": "2026-10-12T08:41:00.000Z",
+          "bundledRev": 2,
           "log": {
             "lines": [
               { "at": "2026-10-12T08:41:00.980Z", "ms": 980, "dpr": 1, "source": "page", "level": "info", "msg": "tick 1" },

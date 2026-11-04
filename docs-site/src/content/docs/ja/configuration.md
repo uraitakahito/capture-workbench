@@ -27,7 +27,7 @@ capture-ledger は、OpenFGA（認可のサービス）の id のように「走
 | `DASHBOARD_ISSUER_URL` | `http://127.0.0.1:9099` | 開発用 issuer。capture-ledger の `pnpm run oidc:issuer` が立てるもの |
 | `DASHBOARD_SUBJECT` | この機械のユーザー名 | 誰として見るか。この名前に許可が要る（[クイックスタート](/quickstart/)） |
 | `DASHBOARD_ORGANIZATIONS` | `acme` | 名乗る組織（カンマ区切り） |
-| `DASHBOARD_REPLAY_URL` | `http://127.0.0.1:8899` | アーカイブの行の「replay ↗」の行き先 |
+| `DASHBOARD_REPLAY_URL` | `http://127.0.0.1:8899` | 「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
 | `DASHBOARD_WINDMILL_URL` | `http://127.0.0.1:8000` | クロールの行の「run ↗」の行き先 |
 | `DASHBOARD_WINDMILL_WORKSPACE` | `crawler` | 「run ↗」が開く Windmill の workspace |
 | `DASHBOARD_VALIDATOR_URL` | `http://127.0.0.1:7180` | 検証と WACZ の画面に答える [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon |
@@ -45,7 +45,11 @@ dashboard は `DASHBOARD_SUBJECT` と `DASHBOARD_ORGANIZATIONS` の名前で、�
 ### 行き先は、dashboard が組み立てない
 
 replay と Windmill の行き先は、配備の事実です。
-台帳が返すのは `objectKey` と run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[中継の口](/routes/)）。
+台帳が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[中継の口](/routes/)）。
+
+クロールの合本を開くには、`/wacz/…` に加えて、合本のページの問い（`/q/…`）にも答える replay が要ります。
+replay は合本の WACZ とページの一覧を、自分と同じ origin の path から引きます。
+だから dashboard は、合本を保管庫の URL ではなく、その path（`?source=` の値の `/wacz/<鍵>`）で渡します。
 
 ## 読む順
 

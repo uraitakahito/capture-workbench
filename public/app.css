@@ -433,6 +433,11 @@ tr.detail .pagelist .outcome {
   max-width: 27ch;
 }
 
+/* 結末の後ろの replay ↗（合本の中で開けるページだけ）。結末の字と押す所を分ける */
+tr.detail .pagelist .outcome a {
+  margin-left: 6px;
+}
+
 /*
  * 1 ページのログの箱。行は流せる窓に入れ、表を描き直しても箱ごと移す（流した位置は app.js が戻す）。箱の中身の幅は
  * ページの表の幅に効かせない（inline-size の containment）—— 長い文や data で表が広がると、URL と結末の欄が離れる。
@@ -526,6 +531,11 @@ tr.detail .loglines .cut {
 
 tr.head {
   cursor: pointer;
+}
+
+/* クロールの行の行き先の 2 つ目の link（run ↗ の後の replay ↗）。字の間を空けて、押す所を分ける */
+#crawls tr.head td:last-child a + a {
+  margin-left: 10px;
 }
 
 /* 始めた 1 本（409 なら塞いでいる 1 本）。描き直しのたびに id から付け直す。 */
