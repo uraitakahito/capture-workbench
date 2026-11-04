@@ -172,6 +172,64 @@ a {
   padding: 16px 0;
 }
 
+/* 検索の画面。語の欄と、答えの 1 行と、当たりの表。読む画面なので、幅は読みやすい段組に留める（URL と urn は
+   折り返す）—— 表を窓の幅いっぱいに伸ばすと、当たった所の 1 行が長くなって目で追えない。 */
+#face-search {
+  max-width: 44em;
+}
+.search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0 8px;
+}
+.search input {
+  flex: 1 1 24ch;
+  max-width: 48ch;
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.search-answer {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.search-answer.bad {
+  color: var(--bad);
+}
+#search-table {
+  min-width: 0;
+}
+#search-hits td {
+  vertical-align: top;
+}
+#search-hits td.hit-go a {
+  display: block;
+}
+#search-hits td.hit {
+  white-space: normal;
+  min-width: 36ch;
+}
+.hit-url,
+.hit-note {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.hit-snippet {
+  margin-top: 2px;
+  font-size: 12.5px;
+}
+.hit-snippet mark {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: inherit;
+}
+
 .empty.bad {
   color: var(--bad);
 }

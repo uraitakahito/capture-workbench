@@ -13,6 +13,7 @@
         <button type="button" id="tab-crawls" class="on" data-face="crawls">クロール</button>
         <button type="button" id="tab-start" data-face="start">新しいクロール</button>
         <button type="button" id="tab-archives" data-face="archives">アーカイブ</button>
+        <button type="button" id="tab-search" data-face="search">検索</button>
         <button type="button" id="tab-scripts" data-face="scripts">スクリプト集</button>
         <button type="button" id="tab-wacz" data-face="wacz" hidden>WACZ</button>
       </nav>
@@ -210,6 +211,31 @@
           <tbody id="archives"></tbody>
         </table>
         <p id="archives-empty" class="empty" hidden>見えるアーカイブがありません。</p>
+      </section>
+
+      <!--
+        検索の画面。台帳の全文検索（GET /api/search）を、打った語で引く。引くのは「探す」を押したときと、URL
+        （#search/<語>）で開いたときだけ —— ほかの画面の引き直しの周回には入れない（検索の答えない台帳で、周回ごと
+        落とさないため）。当たりはアーカイブの 1 時点（写しの行がある WACZ は写しの時点、写しの無い取り込みは文書）で、
+        見せてよいアーカイブの物だけが返る。撮った中身は他人が書いたもの —— 題・文字・当たった所は textContent で。
+      -->
+      <section id="face-search" hidden>
+        <form id="search" class="search" autocomplete="off">
+          <label for="search-words">探す語</label>
+          <input type="search" id="search-words" spellcheck="false" placeholder="例: MacBook" />
+          <button type="submit" id="search-go">探す</button>
+        </form>
+        <p id="search-answer" class="search-answer" hidden></p>
+        <table id="search-table" hidden>
+          <thead>
+            <tr>
+              <th>時点</th>
+              <th>題と当たった所</th>
+              <th>行き先</th>
+            </tr>
+          </thead>
+          <tbody id="search-hits"></tbody>
+        </table>
       </section>
 
       <!--
