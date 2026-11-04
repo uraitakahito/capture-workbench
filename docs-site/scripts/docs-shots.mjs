@@ -34,6 +34,9 @@
  *     スクロールバーを隠す
  *   - Chrome の版を決める（`CHROME_BUILD`）。字の形は OS のフォントで変わるので、撮るのは macOS
  *   - DPR は整数（1.5 は、時計を止めても字の縁の画素が揺れた）
+ *   - GPU で描かない（`--disable-gpu`）。GPU の描き方は、同じ状態でも撮るたびに番号の丸や字の縁が揺れ、
+ *     見た目の同じ絵を書き直した（2026-11-05 に同じ状態を撮り直して数えた: 旗なしは crawl-pages が回に
+ *     よって 40 画素違い、`--disable-gpu` は 11 回 × 11 枚が画素まで同じ）
  *   - 撮る前に、その状態でしか出ない字があるかを見る（`ready`）。無ければ撮らずに止まる —— 違う状態の
  *     絵を、正しい名前で保存しないため
  *
@@ -521,7 +524,7 @@ const manifest = existsSync(MANIFEST)
 const browser = await puppeteer.launch({
   executablePath,
   headless: true,
-  args: ["--hide-scrollbars", "--lang=ja-JP"],
+  args: ["--hide-scrollbars", "--lang=ja-JP", "--disable-gpu"],
 });
 try {
   for (const shot of SHOTS.filter((s) => named.length === 0 || named.includes(s.name))) {
