@@ -115,7 +115,9 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   and the data follows the message as JSON. The filter starts at すべて (all), and offers warn 以上
   (warn and above) and error だけ (error only); its numbers are how many lines each one shows. A line
   BrowserHive cut at its per-line limit is marked 途中で切った (cut short), and when lines were
-  dropped over the limit for the capture, the box says how many (N 行を捨てた). For a page whose log
+  not kept, the box says how many (N 行は残していない（上限か方針で）, N lines not kept, by the limit or a policy):
+  lines dropped over the limit for the capture, and lines a document withheld by a policy wrote to its
+  console. A browserhive line in the log says which. For a page whose log
   cannot be read, the box gives the ledger's reason, as a short sentence and the reason itself (not
   captured yet or not captured, no `.result.json` recorded, missing from the store or not matching
   the contract, or captured by a BrowserHive from before logs were kept).

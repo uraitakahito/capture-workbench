@@ -159,10 +159,10 @@ test("行の欄: ms は 3 桁ずつ、出どころにスクリプトの id、dat
   assert.equal(dataOf({ data: null }), "null");
 });
 
-test("捨てた行は 0 より大きいときだけ「N 行を捨てた」", () => {
+test("残さなかった行は 0 より大きいときだけ「N 行は残していない（上限か方針で）」", () => {
   assert.equal(droppedOf(0), undefined);
   assert.equal(droppedOf(undefined), undefined);
-  assert.equal(droppedOf(1204), "1,204 行を捨てた");
+  assert.equal(droppedOf(1204), "1,204 行は残していない（上限か方針で）");
 });
 
 test("読めない理由は短い文に。知らない理由は「読めません」とだけ言う", () => {

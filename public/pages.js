@@ -101,9 +101,12 @@ export const sourceOf = (line) =>
 /** data は JSON のまま 1 行に（文に言い換えない）。無ければ空。 */
 export const dataOf = (line) => (line.data === undefined ? "" : JSON.stringify(line.data));
 
-/** 捨てた行の知らせ（BrowserHive が上限で捨てた数）。捨てていなければ undefined。 */
+/**
+ * 残さなかった行の知らせ。数は BrowserHive の `log.dropped` で、上限で捨てた行と、方針で伏せた文書が
+ * console に書いた行（page の行）の合計。どちらの理由かは、ログの中の browserhive の行が言う。0 なら undefined。
+ */
 export const droppedOf = (dropped) =>
-  typeof dropped === "number" && dropped > 0 ? `${count(dropped)} 行を捨てた` : undefined;
+  typeof dropped === "number" && dropped > 0 ? `${count(dropped)} 行は残していない（上限か方針で）` : undefined;
 
 /** ログを読めない理由（台帳の `reason`）を短い文に。 */
 const REASONS = new Map([
