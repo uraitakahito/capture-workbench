@@ -14,7 +14,7 @@ npm の依存を持たず（例外は commit した色付けの 1 ファイル�
 ## Related Projects
 
 - [capture-ledger](https://github.com/uraitakahito/capture-ledger) — 読む台帳の API。`dev:up` が dashboard を起こす
-- [wacz-validator](https://github.com/uraitakahito/wacz-validator) — 「検証」と「中身」に答える daemon
+- [wacz-validator](https://github.com/uraitakahito/wacz-validator) — 「検証」と WACZ の画面に答える daemon
 - [capture-scheduler](https://github.com/uraitakahito/capture-scheduler) — クロールの run（Windmill）への行き先
 - [replay](https://github.com/uraitakahito/replay) — アーカイブを開く行き先
 

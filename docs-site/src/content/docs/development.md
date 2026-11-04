@@ -10,7 +10,7 @@ JavaScript that runs as-is in the browser. Nothing goes through a framework, so 
 no install, no lockfile and no audit (the same call as
 [capture-scripts](https://github.com/uraitakahito/capture-scripts)). If it grows enough to want
 splitting up, that is the time to add them. **The one exception is `public/vendor/shiki.js`,** the
-coloring of the scripts view, bundled into a single file and committed (see
+coloring of the script collection view, bundled into a single file and committed (see
 [The bundled coloring](#the-bundled-coloring)). The dashboard only reads it, so it still needs no
 install.
 
@@ -33,7 +33,7 @@ installing anything is part of the dashboard's nature too.
 
 ## The bundled coloring
 
-The scripts view colors the source with `public/vendor/shiki.js`:
+The script collection view colors the source with `public/vendor/shiki.js`:
 [Shiki](https://shiki.style) with only the TypeScript grammar and two themes (GitHub Light High
 Contrast and GitHub Dark Default), bundled by esbuild (`highlighter/entry.mjs` names what goes in).
 The bundle is minified, so its diff cannot be reviewed by reading it. Review the lockfile and
@@ -95,7 +95,7 @@ in `sandbox/samples/SOURCE.md`.
 | To | Do |
 | --- | --- |
 | change what it shows | edit the scenario. The stand-in reads it on every request, so the change reaches the screen without restarting anything |
-| see a ledger with no scripts | set `"emptyCatalog"` to `true` in the scenario. The scripts view then lists only the receptacle types |
+| see a ledger with no scripts | set `"emptyCatalog"` to `true` in the scenario. The script collection view then lists only the receptacle types |
 | change the scripts | edit the scenario's `catalog`: one entry per version, naming a file under `sandbox/catalog/` (copies of capture-scripts v0.6.1's scripts and receptacle types). The stand-in computes `sha256` and `bytes` from the file, as the ledger does, and its list has one row per id: the newest enabled version, or else the newest version with `enabled: false`. autoscroll v2 is the same file with different `options`. autofetch is `enabled: false`, as a ledger keeps a script whose catalog entry says `"default": false`: it runs only when named. A version with `sites` is a site script and runs by default only when a seed is on one of those hosts; `egov-law-search` (sites `laws.e-gov.go.jp`) is a capture-scripts copy too, the same version as a real ledger's. A version's `params` are its declarations (the `params` of capture-scripts' `catalog.json`), carried by the list and the single-version route; `egov-law-search` declares the variable `query`. `hostTypes` is the receptacle types; remove it to see a ledger that has not imported them. The copies are left out of `check:terms`: they are another repository's words, and editing them would shift their line numbers |
 | list other WACZ files | `SANDBOX_WACZ_DIR=<dir> npm run sandbox` (relative to this repository, for example `../wacz-validator/samples`). The stand-in and the daemon both get the same directory |
 | put an updated wacz-validator into the daemon | `npm run sandbox:build`. `npm run sandbox` only builds the image when there is none |

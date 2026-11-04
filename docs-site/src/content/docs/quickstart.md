@@ -6,7 +6,7 @@ description: Bring the dashboard up (usually capture-ledger's dev:up does it), g
 ## Usually dev:up brings it up
 
 On its own, dashboard shows nothing. It needs something to read (the ledger's API and the
-development issuer) and the daemon that answers validation and contents. The `dev:up` of
+development issuer) and the daemon that answers validation and the WACZ view. The `dev:up` of
 [capture-ledger](https://github.com/uraitakahito/capture-ledger) (the ledger that decides which
 URLs get captured and records what came back) starts all of them, and the dashboard as part of it.
 
@@ -36,7 +36,7 @@ npm run dev           # http://127.0.0.1:7080/
 ```
 
 The ledger's API and the issuer have to be up (the ones `dev:up` started are enough). 検証
-(validate) and the contents view also need the daemon. If you would rather not start the ledger's
+(validate) and the WACZ view also need the daemon. If you would rather not start the ledger's
 stack, open it in [the sandbox](/development/#opening-the-dashboard-in-the-sandbox) instead:
 `npm run sandbox` starts a stand-in for the ledger and the real daemon in containers, and serves
 the dashboard on 7081.
@@ -72,10 +72,10 @@ The dashboard itself is in Japanese, so the messages below are quoted as they ap
 | top of the screen (red) | `… に届かない (…)。capture-ledger で pnpm run oidc:issuer は動いているか?` | The development issuer is not up. Start it with `dev:up` |
 | top of the screen (red) | `… が名乗りを断った (…)。…` | The issuer refused the identity. Look at the issuer's terminal |
 | top of the screen (red) | `… に届かない (…)。capture-ledger で pnpm run api は動いているか?` | The ledger's API is not up. Start it with `dev:up` |
-| validation cell, contents view | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | The daemon is not up. Run the command it names |
+| validation cell, WACZ view | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | The daemon is not up. Run the command it names |
 | identity line | `dashboard 自身に届きません` | The dashboard's own server has stopped. Start it again |
 | footer | `取りに行けませんでした（上の表は最後に描けたもの）` | The reason is the red message at the top. The tables are the last ones that could be drawn |
-| scripts view (red) | `台帳にスクリプトがありません。…` | The ledger has no scripts to run. Import them with the command in the message |
+| script collection view (red) | `台帳にスクリプトがありません。…` | The ledger has no scripts to run. Import them with the command in the message |
 | new crawl view, under 始める | `404 —— not found` | The identity may not start crawls. Run the `fga:grant` above |
 | new crawl view, under 始める | `404 —— Route POST:/api/crawls not found` | The ledger does not know where to send crawls (Windmill). The `dev:up` stack has it |
 | crawls view (it moves there) | the running row is marked | A 409: only one crawl runs at a time, overall. Wait for the marked row to finish |

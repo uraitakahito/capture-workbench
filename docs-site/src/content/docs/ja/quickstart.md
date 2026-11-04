@@ -6,7 +6,7 @@ description: dashboard を起こす（ふだんは capture-ledger の dev:up が
 ## ふだんは dev:up が起こす
 
 dashboard は、単体では何も見せません。
-読む相手（台帳の API と開発用 issuer）と、検証と中身に答える daemon が要ります。
+読む相手（台帳の API と開発用 issuer）と、検証と WACZ の画面に答える daemon が要ります。
 それをまとめて起こすのが [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録する台帳）の `dev:up` で、dashboard もその一部として起こされます。
 
 ```sh
@@ -35,7 +35,7 @@ npm run dev           # http://127.0.0.1:7080/
 ```
 
 台帳の API と issuer は立っている必要があります（`dev:up` が起こしたもので足ります）。
-「検証」と「中身」には daemon も要ります。
+「検証」と WACZ の画面には daemon も要ります。
 台帳のスタックを起こしたくなければ、[サンドボックス](/development/#サンドボックスで開く)で開けます。
 `npm run sandbox` が、台帳の代役と本物の daemon をコンテナで起こし、dashboard を 7081 で開きます。
 
@@ -67,10 +67,10 @@ dashboard はその 404 を受けて、一覧を描かずに止まります。
 | 画面の上（赤） | `… に届かない (…)。capture-ledger で pnpm run oidc:issuer は動いているか?` | 開発用 issuer が立っていない。`dev:up` で起こす |
 | 画面の上（赤） | `… が名乗りを断った (…)。…` | issuer が名乗りを断った。issuer の端末を見る |
 | 画面の上（赤） | `… に届かない (…)。capture-ledger で pnpm run api は動いているか?` | 台帳の API が立っていない。`dev:up` で起こす |
-| 検証の欄・中身の画面 | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | daemon が立っていない。言われたとおりに打つ |
+| 検証の欄・WACZ の画面 | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | daemon が立っていない。言われたとおりに打つ |
 | 名乗りの欄 | `dashboard 自身に届きません` | dashboard のサーバが止まっている。起こし直す |
 | 足元 | `取りに行けませんでした（上の表は最後に描けたもの）` | 理由は画面の上の赤い文。表は最後に描けたものを残している |
-| スクリプトの画面（赤） | `台帳にスクリプトがありません。…` | 走らせるスクリプトが台帳に無い。赤い文の中のコマンドで取り込む |
+| スクリプト集の画面（赤） | `台帳にスクリプトがありません。…` | 走らせるスクリプトが台帳に無い。赤い文の中のコマンドで取り込む |
 | 新しいクロールの画面の「始める」の下 | `404 —— not found` | 名乗りにクロールを始める許可が無い。上の `fga:grant` |
 | 新しいクロールの画面の「始める」の下 | `404 —— Route POST:/api/crawls not found` | 台帳がクロールの投げ先（Windmill）を知らない。`dev:up` のスタックなら在る |
 | クロールの画面（移る） | 走行中の行に印 | 409。走っているのは全体で 1 本まで。印の付いた行が終わるのを待つ |

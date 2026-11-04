@@ -82,7 +82,7 @@ it was started with. If it is out of date, the version in the report shows it.
 ledger that starts crawls and records what came back) also compares the running build with the
 checkout. To restart it, run `pnpm run dev:up --from validator` in capture-ledger.
 
-## The contents view
+## The WACZ view
 
 開く on an archive row enters the view for that archive. The URL is `#wacz/<archiveId>`, and
 the selected entry and line are part of it too, so you can point at

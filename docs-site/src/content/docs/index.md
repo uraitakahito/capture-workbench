@@ -69,7 +69,7 @@ Pages is this documentation only.
 - **[Quickstart](/quickstart/)** — bring the dashboard up, grant your identity access, fix things
   from the message you see.
 - **[Screens](/screens/)** — what the five views show, how states are worded, how often it polls.
-- **[Inspecting a WACZ](/wacz/)** — the two steps of validation, the report, the contents view.
+- **[Inspecting a WACZ](/wacz/)** — the two steps of validation, the report, the WACZ view.
 - **[Configuration](/configuration/)** — the environment variables and the order they are read in.
 - **[Routes](/routes/)** — what the server answers, which headers pass, what failures look like.
 - **[Development](/development/)** — where the dependencies stop, what the tests do not see,

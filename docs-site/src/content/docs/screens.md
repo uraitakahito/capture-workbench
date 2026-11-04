@@ -1,27 +1,27 @@
 ---
 title: Screens
-description: What the five views show — crawls, start, archives, scripts and contents — how a crawl's state is worded, and how often the dashboard polls
+description: What the five views show — crawls, start, archives, script collection and WACZ — how a crawl's state is worded, and how often the dashboard polls
 ---
 
 The dashboard has five views. You switch with the tabs at the top, and the `#` in the URL decides
-which view is shown (`#crawls`, `#start`, `#archives`, `#scripts`; in the scripts view it also names
-what you are reading). The contents tab only appears once you
+which view is shown (`#crawls`, `#start`, `#archives`, `#scripts`; in the script collection view it also names
+what you are reading). The WACZ tab only appears once you
 enter it with 開く (open) on an archive row. The dashboard itself is in Japanese; the tab names are
-クロール, 新しいクロール, アーカイブ, スクリプト and 中身.
+クロール, 新しいクロール, アーカイブ, スクリプト集 and WACZ.
 
 The pictures on this page are taken against the stand-in ledger (the
 [sandbox](/development/#opening-the-dashboard-in-the-sandbox)). Its scripts are copies from capture-scripts,
 the same ones a real ledger lists; only autoscroll v2 is the stand-in's own version, there to show version chips.
 
-![The tabs at the top: クロール, 新しいクロール, アーカイブ and スクリプト, with 新しいクロール selected](../../assets/screens/tabs.webp)
+![The tabs at the top: クロール, 新しいクロール, アーカイブ and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
 
 | View | What it lists |
 | --- | --- |
 | Crawls | one row per crawl: state, pages captured, pages discovered, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, link to the run |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
-| Archives | the WACZ files you can see; from a row, validate, open the contents, or open in [replay](https://github.com/uraitakahito/replay) (which plays a WACZ back in the browser) |
-| Scripts | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
-| Contents | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
+| Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replay](https://github.com/uraitakahito/replay) (which plays a WACZ back in the browser) |
+| Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
+| WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
 
 The top of the screen says who you are looking as, and that it is a development identity. The
 footer shows how many rows are listed and how often the lists are fetched again.
@@ -67,7 +67,7 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   `error` comes first, in its own words: a crawl that failed at the compile step captured nothing, so
   its list of failed pages is empty and would otherwise read like a success. Next is what ran, in the
   order it ran: registered scripts with their version and a 読む (read) link to the
-  [scripts view](#scripts) at the version the crawl ran, and scripts written in the form marked その場
+  [script collection view](#script-collection) at the version the crawl ran, and scripts written in the form marked その場
   (written on the spot) with their size in bytes, each with a 欄に戻す (back to the form) button that
   takes you to the [new crawl view](#start-a-crawl). A site script carries its sites, as a chip such as
   `laws.e-gov.go.jp 用`. Then come the values: the variables the crawl was started with (the ledger's
@@ -202,8 +202,8 @@ follow).
   position and the cursor stay, and the その場の JS (your script) tab brings it back. You can tick
   and untick while reading, and read a site script whose checkbox is disabled. One script is open
   at a time; another 読む replaces it, and × closes it. The window has 写す (copy), 下敷きにする
-  (use as a template) and a link that opens the script in the [scripts view](#scripts), which alone
-  has the version chips and line URLs. With ⌘ or Ctrl held, the browser opens the scripts view in
+  (use as a template) and a link that opens the script in the [script collection view](#script-collection), which alone
+  has the version chips and line URLs. With ⌘ or Ctrl held, the browser opens the script collection view in
   another tab instead.
 
 ![The right column of the new crawl view, reading the script autoscroll v2 in colour](../../assets/screens/start-read.webp)
@@ -248,11 +248,11 @@ follow).
   comes from the ledger's `/api/crawls/:id/inline/:name` (a crawl's detail only carries its size).
   The seed URLs and the ticked scripts are left alone. If the right column was showing a registered
   script, it switches back to the その場の JS tab.
-- **下敷きにする (use as a template) in the [scripts view](#scripts) brings a registered script
+- **下敷きにする (use as a template) in the [script collection view](#script-collection) brings a registered script
   here** as a script of your own, named `my-<id>` unless the name box already has one. Only the two
   forms that name the script's own id, `__bh.opts["<id>"]` and `__bh.report("<id>"`, are changed to
   `inline-<name>`; the message under the left column says on which lines. The original is unticked,
-  so it does not run twice. If the box already holds a script, the scripts view asks before
+  so it does not run twice. If the box already holds a script, the script collection view asks before
   replacing it. 下敷きにする in the right column's reading window does the same, and asks inside
   that window; afterwards the その場の JS tab is in front, and the reading window stays open for
   comparing. A site script's sites do not come along: a script of your own runs from any seed,
@@ -277,11 +277,11 @@ The WACZ files you can see, newest capture first.
   also stays in the row's 仕様どおりか (conforms?) cell, so after looking at several archives you
   can tell how each one did without pressing again. What the report shows is in
   [Inspecting a WACZ](/wacz/).
-- **開く (open) enters the contents view** (`#wacz/<archiveId>`).
+- **開く (open) enters the WACZ view** (`#wacz/<archiveId>`).
 - **"replay ↗" opens it in replay.** The link is built from the replay origin the server hands
   out through `/healthz` and the `objectKey` the ledger returns.
 
-## Scripts
+## Script collection
 
 The scripts that run inside the pages being captured, to read before writing one of your own, or
 to see exactly what a crawl ran. On the left is a list in four groups: the scripts that run by
@@ -294,11 +294,11 @@ use. All but `host.d.ts` also appear as checkboxes under スクリプト (script
 [new crawl view](#start-a-crawl) (those that do not run by default unticked), where 読む (read)
 next to one opens it in the right column.
 
-![The list on the left of the scripts view: autoscroll (open) runs by default, the site script egov-law-search with its chip laws.e-gov.go.jp, autofetch under 既定では走らない, and host.d.ts under 書くための型](../../assets/screens/scripts.webp)
+![The list on the left of the script collection view: autoscroll (open) runs by default, the site script egov-law-search with its chip laws.e-gov.go.jp, autofetch under 既定では走らない, and host.d.ts under 書くための型](../../assets/screens/scripts.webp)
 
 On the right is the TypeScript as it was written, with line numbers.
 
-![The right of the scripts view: autoscroll v2 with its version chips, the line with its size and sha256, 写す and 下敷きにする, and the coloured source](../../assets/screens/script-read.webp)
+![The right of the script collection view: autoscroll v2 with its version chips, the line with its size and sha256, 写す and 下敷きにする, and the coloured source](../../assets/screens/script-read.webp)
 
 | URL | Opens |
 | --- | --- |

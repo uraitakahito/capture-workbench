@@ -30,7 +30,7 @@ capture-ledger は、OpenFGA（認可のサービス）の id のように「走
 | `DASHBOARD_REPLAY_URL` | `http://127.0.0.1:8899` | アーカイブの行の「replay ↗」の行き先 |
 | `DASHBOARD_WINDMILL_URL` | `http://127.0.0.1:8000` | クロールの行の「run ↗」の行き先 |
 | `DASHBOARD_WINDMILL_WORKSPACE` | `crawler` | 「run ↗」が開く Windmill の workspace |
-| `DASHBOARD_VALIDATOR_URL` | `http://127.0.0.1:7180` | 検証と中身に答える [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon |
+| `DASHBOARD_VALIDATOR_URL` | `http://127.0.0.1:7180` | 検証と WACZ の画面に答える [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon |
 
 この表は、`src/server.mjs` と `.env.example` と突き合わされます（`npm run site:check`）。
 変数を足すときは、3 か所とも直します。
