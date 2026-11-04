@@ -432,7 +432,7 @@ const drawCrawls = () => {
 
 // ── 新しいクロール ─────────────────────────────────────────────────
 /**
- * 描いたスクリプトのチェック（スクリプトの画面と同じ並び。札の無い物もサイト用の物も）。チェックはこの並びで描き、
+ * 描いたスクリプトのチェック（スクリプト集の画面と同じ並び。札の無い物もサイト用の物も）。チェックはこの並びで描き、
  * 送るときもこの並び。`why` はサイト用のスクリプトにだけ在る、押せない理由の欄。
  */
 let picks = [];
@@ -481,7 +481,7 @@ const drawPicks = (scripts) => {
     const label = document.createElement("label");
     label.className = "pick";
     const name = tag("span", `${script.id} v${String(script.version)}`, "mono");
-    // 中身を読む。ふつうに押せば右の列でこの版を開き、修飾キーならスクリプトの画面を別のタブで（data-read の
+    // 中身を読む。ふつうに押せば右の列でこの版を開き、修飾キーならスクリプト集の画面を別のタブで（data-read の
     // click）。label の中の <a> は、押してもチェックを替えない —— 押せないチェックの横でも読める
     const read = tag("a", "読む", "read");
     read.href = readingHash({ id: script.id, version: script.version });
@@ -500,7 +500,7 @@ const drawPicks = (scripts) => {
     box.append(label);
     picks.push({ script, input, why });
   }
-  if (scripts.length === 0) box.append(tag("span", "台帳にスクリプトがありません（スクリプトの画面を見てください）", "muted"));
+  if (scripts.length === 0) box.append(tag("span", "台帳にスクリプトがありません（スクリプト集の画面を見てください）", "muted"));
   syncPicks();
   // 読む窓の版が既定から外れたかもしれない。standing（既定で走る版か）を今の台帳のスクリプトで言い直す
   if (startRead.doc !== undefined && startRead.target.id !== undefined) drawStartReadHead();
@@ -1087,14 +1087,14 @@ const drawArchives = () => {
   }
 };
 
-// ── スクリプト（読む所）────────────────────────────────────────────
+// ── スクリプト集（読む所）──────────────────────────────────────────
 /**
  * 読む所の状態。**取るのは開いたときだけ** —— 一覧（有効な各 id の最新版）は引き直しの答えを使い、版の札と
  * 1 版の中身は開いた id の分だけ取る。受け皿の型は画面を最初に開いたとき 1 回で、refresh には入れない
  * （入れると、型を取り込んでいない台帳で引き直し全体が落ちる）。
  */
 const reading = {
-  /** 最後に開いた URL。タブ「スクリプト」はここへ戻る（中身の画面の wacz.hash と同じ） */
+  /** 最後に開いた URL。タブ「スクリプト集」はここへ戻る（WACZ の画面の wacz.hash と同じ） */
   hash: undefined,
   /** 開いている物: URL が名指した物（target）と、その中身（doc。版か型） */
   open: undefined,
@@ -1114,7 +1114,7 @@ const TYPES_KEY = "types";
 const keyOf = (target) => target.id ?? TYPES_KEY;
 
 /**
- * 本文を出す所の組。スクリプトの画面（読む所）と、新しいクロールの右の列（読む窓）が同じ部品で描き、
+ * 本文を出す所の組。スクリプト集の画面（読む所）と、新しいクロールの右の列（読む窓）が同じ部品で描き、
  * 違うのは要素の組だけ —— 見出し・本文の上の 1 行・色の 1 行・書きかけの確認・本文。
  */
 const placeOf = (prefix) => ({
@@ -1212,7 +1212,7 @@ const markLine = (at, n, { scroll }) => {
   if (scroll) li.scrollIntoView({ block: "center" });
 };
 
-/** 本文。1 行 1 つの <li>（中身の画面の行の並びと同じ組み方）。行の印は class 1 つ。 */
+/** 本文。1 行 1 つの <li>（WACZ の画面の行の並びと同じ組み方）。行の印は class 1 つ。 */
 const drawLines = (at, source, line) => {
   const list = at.lines;
   if (source === undefined) {
@@ -1230,7 +1230,7 @@ const drawLines = (at, source, line) => {
   if (line !== undefined) markLine(at, line, { scroll: true });
 };
 
-// 押した行を URL に。**hashchange を発火させずに**（中身の画面の remember と同じ。発火すると読み直す）
+// 押した行を URL に。**hashchange を発火させずに**（WACZ の画面の remember と同じ。発火すると読み直す）
 IN_CATALOG.lines.addEventListener("click", (event) => {
   const li = event.target.closest("li");
   if (li === null || reading.open?.doc === undefined) return;
@@ -1494,7 +1494,7 @@ const openReading = async (asked) => {
     drawReadingList();
     if (target === undefined) {
       reading.open = undefined;
-      drawReadingHead(IN_CATALOG, { name: "スクリプト", facts: [] });
+      drawReadingHead(IN_CATALOG, { name: "スクリプト集", facts: [] });
       readingNote(IN_CATALOG, undefined);
       drawLines(IN_CATALOG, undefined);
       return;
@@ -1602,7 +1602,7 @@ const showStartTab = (tab) => {
 /** 読む窓の見出し。名前はタブに在るので描かない（サイト用の札は standing の文が言う）。 */
 const drawStartReadHead = () => {
   const { target, doc } = startRead;
-  const full = tag("a", "スクリプトの画面で開く");
+  const full = tag("a", "スクリプト集の画面で開く");
   full.href = readingHash(target);
   if (target.id === undefined) {
     drawReadingHead(IN_START, { facts: metaOf(doc), actions: [copyButton(doc.source), full] });
@@ -1617,7 +1617,7 @@ const drawStartReadHead = () => {
 };
 
 /**
- * 右の列で読む。**移らない。** 中身と色はスクリプトの画面と同じ覚え（docOf は id@版、colorsOf は sha256）を
+ * 右の列で読む。**移らない。** 中身と色はスクリプト集の画面と同じ覚え（docOf は id@版、colorsOf は sha256）を
  * 使うので、同じ版を 2 度は取らない。
  */
 const readInStart = async (target) => {
@@ -1665,7 +1665,7 @@ $("start-tab-read").onclick = () => showStartTab("read");
 $("start-tab-close").onclick = () => closeStartRead();
 
 // 「読む」（チェックの横と、注意書きの型）は、ふつうに押せば右の列で開く。修飾キーと中ボタンは
-// ブラウザに任せる（href はスクリプトの画面なので、別のタブで開ける）
+// ブラウザに任せる（href はスクリプト集の画面なので、別のタブで開ける）
 $("start").addEventListener("click", (event) => {
   const a = event.target.closest("a[data-read]");
   if (a === null || !plainClick(event)) return;
@@ -1673,13 +1673,13 @@ $("start").addEventListener("click", (event) => {
   void readInStart(parseReading(a.getAttribute("href")));
 });
 
-// 読む窓の行を押すと印を付ける。URL は #start のまま（行を人に渡すのはスクリプトの画面で）
+// 読む窓の行を押すと印を付ける。URL は #start のまま（行を人に渡すのはスクリプト集の画面で）
 IN_START.lines.addEventListener("click", (event) => {
   const li = event.target.closest("li");
   if (li !== null) markLine(IN_START, Number(li.dataset.n), { scroll: false });
 });
 
-// ── 中身（WACZ の 1 本）────────────────────────────────────────────
+// ── WACZ（1 本の中）────────────────────────────────────────────────
 /**
  * wacz-validator の tui（`render/tree.ts`）と同じ入力から同じ木を組む（検証の報告の `entries`）。中身は `/wacz/` の口に
  * **窓で**頼む —— 行の窓（200 行ずつ）、1 行を丸ごと（fields は daemon が割る）、
@@ -2043,7 +2043,7 @@ const show = (face) => {
 };
 
 /**
- * URL が画面を決める。`#wacz/…` は中身の画面、`#scripts` と `#scripts/…` はスクリプトの画面（読む所）、
+ * URL が画面を決める。`#wacz/…` は WACZ の画面、`#scripts` と `#scripts/…` はスクリプト集の画面（読む所）、
  * それ以外はほかの画面のどれか。
  */
 const route = () => {
@@ -2062,7 +2062,7 @@ const route = () => {
   show(FACES.includes(face) && face !== "wacz" && face !== "scripts" ? face : "crawls");
 };
 
-// 中身の画面とスクリプトの画面は、最後に読んだ所へ戻る
+// WACZ の画面とスクリプト集の画面は、最後に読んだ所へ戻る
 for (const b of document.querySelectorAll("#tabs button")) {
   b.onclick = () => {
     const face = b.dataset.face;

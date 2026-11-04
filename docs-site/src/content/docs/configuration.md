@@ -31,7 +31,7 @@ destinations are fixed loopback addresses. There are no secrets.
 | `DASHBOARD_REPLAY_URL` | `http://127.0.0.1:8899` | Where "replay ↗" on an archive row goes |
 | `DASHBOARD_WINDMILL_URL` | `http://127.0.0.1:8000` | Where "run ↗" on a crawl row goes |
 | `DASHBOARD_WINDMILL_WORKSPACE` | `crawler` | The Windmill workspace "run ↗" opens |
-| `DASHBOARD_VALIDATOR_URL` | `http://127.0.0.1:7180` | The daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (which checks a WACZ rule by rule) that answers validation and contents |
+| `DASHBOARD_VALIDATOR_URL` | `http://127.0.0.1:7180` | The daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (which checks a WACZ rule by rule) that answers validation and the WACZ view |
 
 This table is checked against `src/server.mjs` and `.env.example` (`npm run site:check`). When
 you add a variable, change all three.

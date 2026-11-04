@@ -30,7 +30,7 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
 
 ## 同梱した色付け
 
-スクリプトの画面は、`public/vendor/shiki.js` で source に色を付けます。
+スクリプト集の画面は、`public/vendor/shiki.js` で source に色を付けます。
 [Shiki](https://shiki.style) を、TypeScript の文法と 2 つの配色（GitHub Light High Contrast と GitHub Dark Default）だけにして、esbuild で束ねた物です（何を入れるかは `highlighter/entry.mjs`）。
 束は詰めてあるので、差分を読んでレビューできません。
 読むのは lockfile と `highlighter/build.mjs` にして、束がそこから作った物どおりかは `vendor.yml` に見させます。
@@ -86,7 +86,7 @@ dashboard が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | したいこと | すること |
 | --- | --- |
 | 見せるものを変える | 台本を書き換える。代役は要求のたびに読むので、起こし直さずに画面に出る |
-| 台帳にスクリプトが無いときを見る | 台本の `"emptyCatalog"` を `true` にする。スクリプトの画面には受け皿の型だけが残る |
+| 台帳にスクリプトが無いときを見る | 台本の `"emptyCatalog"` を `true` にする。スクリプト集の画面には受け皿の型だけが残る |
 | スクリプトを変える | 台本の `catalog` を書き換える。1 版に 1 つで、`sandbox/catalog/` のファイル（capture-scripts v0.6.1 のスクリプトと受け皿の型の写し）を名指す。`sha256` と `bytes` は代役が台帳と同じくファイルから数え、一覧は各 id に 1 行（有効な版の中の最新、無ければ最新版を `enabled: false` で）。autoscroll v2 は同じファイルで `options` だけが違う版。autofetch は `enabled: false` —— カタログに `"default": false` と書いたスクリプトを台帳が持つ姿で、名指したときだけ走る。`sites`（札）のある版はサイト用のスクリプトで、既定で走るのは起点のどれかが札のホストにあるときだけ。`egov-law-search`（札 `laws.e-gov.go.jp`）も capture-scripts の写しで、本物の台帳と同じ版。版の `params` は宣言（capture-scripts の `catalog.json` の `params`）で、一覧と 1 版の口に出る —— `egov-law-search` は変数 `query` を宣言する。`hostTypes` は受け皿の型で、消すと型を取り込んでいない台帳になる。写しは `check:terms` から外してある（別の repo の言葉で、直すと行番号が実物とずれる） |
 | 別の WACZ を並べる | `SANDBOX_WACZ_DIR=<dir> npm run sandbox`（相対なら、この repo から。例: `../wacz-validator/samples`）。代役と daemon の両方に同じ置き場が入る |
 | wacz-validator の更新を daemon に入れる | `npm run sandbox:build`。`npm run sandbox` は、image が無いときにしか建てない |
