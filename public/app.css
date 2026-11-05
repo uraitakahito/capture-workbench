@@ -590,6 +590,11 @@ body[data-face="start"] main {
   color: var(--muted);
 }
 
+/* 列が窓より高いときは列ごと流す。textarea は flex の下限が 0 で、縮めると 1 行も見えなくなる */
+.start-side > textarea {
+  flex-shrink: 0;
+}
+
 /*
  * 右の列: タブと、その下の中身 1 つ（その場の TS か読む窓）。中身が残りの高さを全部使う。列は右の列の幅に
  * 留める —— 既定の auto の列は読む窓の長い行の幅まで伸び、本文が横に流れず窓の右端で切れた
@@ -734,7 +739,8 @@ body[data-face="start"] main {
   padding: 2px 7px;
 }
 
-.rules td.tools button:disabled {
+.rules td.tools button:disabled,
+.pick-moves button:disabled {
   opacity: 0.35;
   cursor: default;
 }
@@ -910,21 +916,68 @@ body[data-face="start"] main {
   font-size: 12.5px;
 }
 
-/* 名前は途中で折らない（左の列は狭い） */
+/* 狭ければ札や「読む」が名前の下へ回る（.phead）。途中で折れるのは、列より長い名前だけ */
 .start-row .pick .mono {
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+/* 走る順の 1 行: 番号・チェックと名前・↑↓。名前や札が折り返しても、番号と矢印は最初の行に揃う */
+.pick-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 5px;
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+/* display を書いた箱には hidden 属性が効かないので、隠すときを書き足す（.start-js と同じ） */
+.pick-row[hidden] {
+  display: none;
+}
+
+/* 押してチェックが替わるのは字の上だけ。列いっぱいに伸ばすと、↑ を押し損ねた空白でチェックが外れる */
+.pick-row > .pick {
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /*
- * サイト用のスクリプトは 1 行を取る。チェックの右の列に、名前と札、その下に押せない理由を揃える
- * （長いホスト名で札が折り返しても、名前の下に来る）
+ * 走らない行は番号が空になる（幅は残すので、チェックの位置は動かない）。丸で囲まない —— docs の絵の番号の印と同じ形に
+ * なり、絵の中で「②」が 2 つに読める
+ */
+.pick-no {
+  width: 1em;
+  color: var(--accent);
+  font-weight: 600;
+  text-align: right;
+}
+
+.pick-moves {
+  display: inline-flex;
+  gap: 2px;
+}
+
+/* 矢印を隠しても幅は取ったまま。チェックの付け外しで、名前や札が折り返し直さないように */
+.pick-moves[hidden] {
+  display: inline-flex;
+  visibility: hidden;
+}
+
+.pick-moves button {
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+/*
+ * チェックの右の列に、名前と札、その下に押せない理由を揃える（長いホスト名で札が折り返しても、名前の下に来る）
  */
 .start-row .pick:has(.phead) {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: baseline;
   column-gap: 4px;
-  flex-basis: 100%;
 }
 
 .start-row .pick .phead {

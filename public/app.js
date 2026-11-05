@@ -20,13 +20,18 @@ import {
   declaredOf,
   defaultIds,
   hasNocheck,
+  INLINE_ROW,
+  liveOrder,
   marksOf,
+  movedOrder,
   moveRow,
   onSeed,
+  orderOf,
   plainClick,
   PRESETS,
   removeRow,
   seedHosts,
+  shownOrder,
   sizeOf,
   startAnswer,
   startBody,
@@ -811,10 +816,44 @@ const drawCrawls = () => {
 
 // ── 新しいクロール ─────────────────────────────────────────────────
 /**
- * 描いたスクリプトのチェック（スクリプト集の画面と同じ並び。札の無い物もサイト用の物も）。チェックはこの並びで描き、
- * 送るときもこの並び。`why` はサイト用のスクリプトにだけ在る、押せない理由の欄。
+ * 描いたスクリプトの行（スクリプト集の画面と同じ、台帳の並び。札の無い物もサイト用の物も）。宣言した値の欄はこの並びで
+ * 出す —— ↑↓ で行を動かしても、打っている変数の欄は動かない。画面の行と送る物の順は `moved` から決まる（`orderOf`）。
+ * `why` はサイト用のスクリプトにだけ在る、押せない理由の欄。
  */
 let picks = [];
+
+/**
+ * 人が ↑↓ で動かした走る順（`start.js` の `orderOf`）。動かすまでは undefined で、台帳の並びに付いていく。
+ * チェック（`chosen`）と同じく、**引き直しても、始めた後も覚えておく**。
+ */
+let moved;
+
+/**
+ * 走る順の 1 行（番号・中身・↑↓）の部品。↑↓ の後のフォーカスは辿り方の表と同じ —— 同じボタン、端に着いて押せなく
+ * なったら反対向きのボタン。行を DOM の中で動かすとフォーカスが外れるので、毎回付け直す。
+ */
+const runRow = (id, title, body) => {
+  const no = tag("span", "", "pick-no");
+  const moves = tag("span", "", "pick-moves");
+  const arrow = (text, delta, what) => {
+    const b = button(text, () => {
+      moved = movedOrder(runOf(), id, delta);
+      syncStart();
+      (b.disabled ? moves.querySelector("button:enabled") : b)?.focus();
+    });
+    b.setAttribute("aria-label", `${title} を${what}`);
+    moves.append(b);
+    return b;
+  };
+  const up = arrow("↑", -1, "上へ移す");
+  const down = arrow("↓", 1, "下へ移す");
+  const el = tag("div", "", "pick-row");
+  el.append(no, body, moves);
+  return { id, el, no, moves, up, down };
+};
+
+/** その場の TS の行。読み込みの後に走る物を書いたときだけ出す（`drawRunOrder`）。チェックは無い —— 書いてあれば走る。 */
+const inlineRow = runRow(INLINE_ROW, "その場の TS", tag("span", "その場の TS", "pick"));
 
 /**
  * 人が付け外ししたチェック（id → 付けたか）。**引き直しても覚えておく。** 覚えていない id は、台帳の既定
@@ -852,10 +891,11 @@ const drawPicks = (scripts) => {
   for (const script of scripts) {
     const input = document.createElement("input");
     input.type = "checkbox";
-    // 値の欄は change で描き直す。input は change より先に出るので、そこで checked を読むと 1 つ遅れる
+    // 値の欄と番号は change で合わせる。input は change より先に出るので、そこで checked を読むと 1 つ遅れる
     input.onchange = () => {
       chosen.set(script.id, input.checked);
       drawValues();
+      syncStart();
     };
     const label = document.createElement("label");
     label.className = "pick";
@@ -868,19 +908,15 @@ const drawPicks = (scripts) => {
     const why = script.sites.length === 0 ? undefined : tag("span", "", "why");
     // 既定に入らないスクリプト。チェックは外れた状態で出るが、付ければ走る（台帳は名指しを通す）
     const off = script.enabled ? [] : [tag("span", "既定では走らない", "off")];
-    if (why === undefined) {
-      label.append(input, name, ...off, read);
-    } else {
-      // 名前と札をまとめる。長いホスト名で札が折り返しても、名前の下に揃う（理由の行と同じ）
-      const head = tag("span", "", "phead");
-      head.append(name, siteChip(script.sites), ...off, read);
-      label.append(input, head, why);
-    }
-    box.append(label);
-    picks.push({ script, input, why });
+    // 名前と札をまとめる。狭い列で札や「読む」が折り返しても、名前の下に揃う（理由の行と同じ）
+    const head = tag("span", "", "phead");
+    head.append(name, ...(script.sites.length === 0 ? [] : [siteChip(script.sites)]), ...off, read);
+    label.append(input, head, ...(why === undefined ? [] : [why]));
+    picks.push({ script, input, why, ...runRow(script.id, script.id, label) });
   }
   if (scripts.length === 0) box.append(tag("span", "台帳にスクリプトがありません（スクリプト集の画面を見てください）", "muted"));
   syncPicks();
+  syncStart(); // 行を置くのは drawRunOrder。本文の大きさも台帳のスクリプトで変わる
   // 読む窓の版が既定から外れたかもしれない。standing（既定で走る版か）を今の台帳のスクリプトで言い直す
   if (startRead.doc !== undefined && startRead.target.id !== undefined) drawStartReadHead();
 };
@@ -907,6 +943,31 @@ const syncPicks = () => {
 };
 
 /**
+ * 番号と矢印と行の並びを、いまの選びに合わせる。行を置くのはここだけ。**並びが同じなら行を動かさない** —— 起点や TS を
+ * 打つたびに呼ばれるので、動かすと押そうとしている物が手の下で外れる。台帳が空のときの文を消さないよう、
+ * `replaceChildren` はしない。
+ */
+const drawRunOrder = () => {
+  const run = runOf();
+  const { hosts, scripts } = pickedNow();
+  const live = liveOrder(run);
+  const rows = shownOrder(run.order, scripts, hosts).map((id) =>
+    id === INLINE_ROW ? inlineRow : picks.find((pick) => pick.id === id),
+  );
+  for (const { id, no, moves, up, down } of rows) {
+    const at = live.indexOf(id);
+    no.textContent = at === -1 ? "" : String(at + 1);
+    moves.hidden = at === -1;
+    up.disabled = at === 0;
+    down.disabled = at === live.length - 1;
+  }
+  inlineRow.el.hidden = !live.includes(INLINE_ROW);
+  const box = $("start-picks");
+  const drawn = [...box.children].filter((child) => child.classList.contains("pick-row"));
+  if (rows.some(({ el }, i) => drawn[i] !== el)) box.append(...rows.map(({ el }) => el));
+};
+
+/**
  * いま選んでいる物。起点のホストと、台帳の並びのスクリプトと、そのうち起点に合ってチェックの付いた物の id。
  * `runOf`・`drawValues`・`variablesNow` が同じ物を見る（3 つがばらばらに選ぶと、欄に出た変数と送る変数がずれる）。
  */
@@ -922,12 +983,12 @@ const pickedNow = () => {
 
 /**
  * 欄の「走らせるもの」。組み立ては `start.js` の `scriptsOf`（試験から呼べる）。選んだ物は、起点に合い、
- * チェックの付いた物。既定の顔ぶれ（台帳が `scripts` を省いた頼みに選ぶ物）と同じなら、送らずに済む。
+ * チェックの付いた物。既定の顔ぶれ（台帳が `scripts` を省いた頼みに選ぶ物）と同じ物が同じ順なら、送らずに済む。
  */
 const runOf = () => {
   const { hosts, scripts, picked } = pickedNow();
   return {
-    catalog: scripts.map((script) => script.id),
+    order: orderOf(moved, scripts.map((script) => script.id)),
     picked,
     defaults: defaultIds(scripts, hosts),
     inline: {
@@ -1060,8 +1121,10 @@ const drawGutter = () => {
 /**
  * 空の欄では押せない。**上限を超えた本文も**、送る前に止める（上限は /healthz の writeLimit。
  * 知らなければ止めない —— 門が 413 で言う）。欄の下に、行数・本文の大きさ・上限に対する割合を出す。
+ * 走る順の番号と行もここで合わせる（起点・TS の箱・2 択・チェック・↑↓・台帳の描き直しのどれもここを通る）。
  */
 const syncStart = () => {
+  drawRunOrder();
   const follow = followOf();
   const body = startBody($("start-seeds").value, follow, runOf(), variablesNow());
   const limit = settings.writeLimit ?? Infinity;
@@ -2028,7 +2091,7 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
   $("start-inline-name").value = name;
   $(doc.phase === "preload" ? "start-inline-preload" : "start-inline-behavior").checked = true;
   box.value = source;
-  // 元を外す。両方走ると 2 回走り、coverage は id を見ずに、先に走る写しの報告を採る
+  // 元を外す。両方走ると 2 回走り、coverage は id を見ずに、先に走る方の報告を採る
   chosen.set(doc.id, false);
   catalogKey = undefined; // drawPicks は台帳のスクリプトが変わったときだけ描くので、ここで描き直させる
   drawPicks(reading.latest);

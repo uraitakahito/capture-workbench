@@ -10,7 +10,7 @@
 
 /** 走らせるものの欄が、何も選んでいない形（台帳にスクリプトが無く、その場の TS も無い）。 */
 const NOTHING_CHOSEN = {
-  catalog: [],
+  order: [],
   picked: [],
   defaults: [],
   inline: { name: "", phase: "behavior", source: "" },
@@ -51,24 +51,69 @@ export const plainClick = (event) =>
 export const defaultIds = (scripts, hosts) =>
   scripts.filter((script) => script.enabled && onSeed(script, hosts)).map((script) => script.id);
 
+/** 走る順の中で、その場の TS の位置を指す印。スクリプトの id にはならない綴り（id は英小文字で始まる）。 */
+export const INLINE_ROW = "@inline";
+
 /**
- * 走らせるもの（台帳の `scripts`）。**既定のまま —— 選んだ物が既定の顔ぶれ（`defaultIds`）と同じで、
- * その場の TS が空 —— なら送らない**（`undefined`）。台帳も起点から同じ物を選ぶので、省いても走る物は
+ * 走る順（`INLINE_ROW` とスクリプトの id の並び）。人が ↑↓ で動かす前（`moved` が undefined）は、その場の TS が
+ * 先頭で、スクリプトは台帳の並び —— 台帳の順が変われば付いていく。動かした後は人の決めた順を保ち、台帳に新しく
+ * 現れた id は後ろへ足す。チェックの外れた行も順の中に居る（付け直せば元の位置に戻る）。
+ */
+export const orderOf = (moved, ids) =>
+  moved === undefined
+    ? [INLINE_ROW, ...ids]
+    : [...moved.filter((id) => id === INLINE_ROW || ids.includes(id)), ...ids.filter((id) => !moved.includes(id))];
+
+/** その場の TS を書いたか。空白だけなら書いていない。 */
+const written = (inline) => inline.source.trim() !== "";
+
+/**
+ * 走る物を、走る順に（画面で番号の付く行）。起点に合ってチェックの付いたスクリプトと、読み込みの後に走るその場の TS。
+ * 遷移の前に走るその場の TS は入らない —— ページの読み込みより前に入るので、順を選ぶ意味が無い（送るときは先頭）。
+ *
+ * 台帳のスクリプトの `phase` は見ない。いまカタログに遷移の前に走る物は無い。足す日には、番号が走る順でなくなる。
+ */
+export const liveOrder = ({ order, picked, inline }) =>
+  order.filter((id) => (id === INLINE_ROW ? written(inline) && inline.phase === "behavior" : picked.includes(id)));
+
+/**
+ * 走る物 `id` を `delta`（-1 か 1）だけ動かした順。相手は隣の走る物で、間の走らない行（チェックの外れた行など）は
+ * その位置に残る。端を越えるなら同じ順。
+ */
+export const movedOrder = (run, id, delta) => {
+  const live = liveOrder(run);
+  const other = live[live.indexOf(id) + delta];
+  if (other === undefined) return run.order;
+  return run.order.map((row) => (row === id ? other : row === other ? id : row));
+};
+
+/**
+ * 画面の行の並び。走る順のまま（チェックでは行が動かない —— 次の行が手の下に来ないように）で、起点に合わない
+ * サイト用のスクリプトだけ下へまとめる（押せない行が押せる行の間に挟まらないように）。
+ */
+export const shownOrder = (order, scripts, hosts) => {
+  const off = scripts.filter((script) => !onSeed(script, hosts)).map((script) => script.id);
+  return [...order.filter((id) => !off.includes(id)), ...order.filter((id) => off.includes(id))];
+};
+
+/**
+ * 走らせるもの（台帳の `scripts`）。**既定のまま —— 走るスクリプトが既定の顔ぶれ（`defaultIds`）と同じ物を同じ順で、
+ * その場の TS が空 —— なら送らない**（`undefined`）。台帳も起点から同じ物を同じ順で選ぶので、省いても走る物は
  * 変わらない。省くのは、台帳にスクリプトが無いときと、起点に合う物が無いときの 400 を台帳に言わせるため。
  *
- * 送るときは、その場の TS を先に、選んだスクリプトを台帳の並び（`catalog` の順）で。全部外せば `[]` ——
+ * 送るときは `liveOrder` のとおり —— 画面の番号の順で、遷移の前に走るその場の TS だけ先頭に。全部外せば `[]` ——
  * 「何も走らせない」。source は削らない —— 台帳が打つ sha256 は、書いたバイト列の物。名前は前後の
  * 空白だけ落とす。綴りは検査しない（台帳が 400 で言う）。
  */
-export const scriptsOf = ({ catalog, picked, defaults, inline }) => {
-  const written = inline.source.trim() !== "";
-  const asDefault = picked.length === defaults.length && defaults.every((id) => picked.includes(id));
-  if (!written && asDefault) return undefined;
+export const scriptsOf = (run) => {
+  const { defaults, inline } = run;
+  const live = liveOrder(run);
+  const asDefault = live.length === defaults.length && defaults.every((id, i) => live[i] === id);
+  if (!written(inline) && asDefault) return undefined;
+  const item = { inline: { name: inline.name.trim(), phase: inline.phase, source: inline.source } };
   return [
-    ...(written
-      ? [{ inline: { name: inline.name.trim(), phase: inline.phase, source: inline.source } }]
-      : []),
-    ...catalog.filter((id) => picked.includes(id)).map((id) => ({ catalog: id })),
+    ...(written(inline) && inline.phase === "preload" ? [item] : []),
+    ...live.map((id) => (id === INLINE_ROW ? item : { catalog: id })),
   ];
 };
 
