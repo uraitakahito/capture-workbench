@@ -17,7 +17,7 @@
     "        頼まれた要素 inline (name・phase・source) を付ける (台帳は、その場の物にだけ返す)。",
     "        台帳のスクリプトの sha256 は、台帳のその版と同じ値にする。**5b0c0008 の autoscroll だけはわざと違う** ——",
     "        読む所が「このクロールが走らせた v1 とは中身が違う」と言うのを見る場 (版の番号は使い回される)。",
-    "catalog: スクリプトの版の並び。id の現れる順が既定の実行順 (capture-scripts の catalog.json の順)。source は file (sandbox/catalog の写し・capture-scripts v0.7.0) から読み、",
+    "catalog: スクリプトの版の並び。id の現れる順が既定の実行順 (capture-scripts の catalog.json の順)。source は file (sandbox/catalog の写し・capture-scripts v0.9.0) から読み、",
     "         sha256 と bytes は代役が source から数える。options と enabled は省けば {} と true。",
     "         /api/scripts は各 id に 1 行 (有効な版の中の最新、無ければ最新版を enabled: false で)。",
     "         autoscroll v2 は中身が同じで設定だけ違う版。autofetch は enabled: false —— capture-scripts の",
@@ -191,7 +191,7 @@
             ]
           }
         },
-        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "3f1de4b0630b5915344c3ebda0b1f4d6c48a1f7e69f56912b82dfbaf89117987" },
+        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "f24100fd1c9b3b71b3a447b0aad5e696daf1309c7580107382713ddef1510ef4" },
         { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "4117c03456450619b28c720b33969fd6d4aa3905710e27f162fe78834ad5281f" }
       ]
     },
@@ -244,7 +244,7 @@
           "sha256": "50ec1c71cd89b42c2bd98d313372fd49f01dabda740dd67d07b08c0c9c84fdf6",
           "inline": { "name": "close-banner", "phase": "behavior", "source": "(() => {\n  const close = (el) => el.click();\n  close(document.querySelector(\"#onetrust-accept-btn-handler\"));\n})();\n" }
         },
-        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "3f1de4b0630b5915344c3ebda0b1f4d6c48a1f7e69f56912b82dfbaf89117987" },
+        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "f24100fd1c9b3b71b3a447b0aad5e696daf1309c7580107382713ddef1510ef4" },
         { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "0e1f829de9ba863b754d83186765e225c7ebc4972dde4808e85656cd5032e3b4" }
       ]
     },
