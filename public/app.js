@@ -313,11 +313,11 @@ const ranOf = (one) => {
     item.append(tag("span", script.id, "mono"));
     if (script.sites.length > 0) item.append(siteChip(script.sites));
     item.append(tag("span", where, "muted"));
-    // その場の JS は、直して撮り直せるように欄へ戻せる（台帳のスクリプトは台帳に在る）。source は詳しい所に
+    // その場の TS は、直して撮り直せるように欄へ戻せる（台帳のスクリプトは台帳に在る）。source は詳しい所に
     // 無いので、押したときに名前の口から取る
     if (script.inline !== undefined) {
       item.append(button("欄に戻す", () => void putBack(one.crawlId, script.inline.name)));
-      // 型の誤りの在るその場の JS には、直し方を訊く道も（押したときだけ Claude を呼ぶ）
+      // 型の誤りの在るその場の TS には、直し方を訊く道も（押したときだけ Claude を呼ぶ）
       if (hasErrorsIn(one.diagnosed, script.id)) item.append(...fixOf(one.crawlId, script));
     } else {
       // 走った版を読む。番号は使い回されうるので sha256 の頭も渡し、読む所が食い違いを言う
@@ -999,7 +999,7 @@ const drawValues = () => {
 };
 
 /**
- * その場の JS を欄に戻し、新しいクロールの画面へ移る。直して撮り直すため。**起点とスクリプトの選びは触らない。**
+ * その場の TS を欄に戻し、新しいクロールの画面へ移る。直して撮り直すため。**起点とスクリプトの選びは触らない。**
  * source は詳しい所に無い（capture-ledger v0.59.0）ので、名前の口から取る。
  */
 const putBack = async (crawlId, name) => {
@@ -1014,14 +1014,14 @@ const putBack = async (crawlId, name) => {
 };
 
 /**
- * その場の JS を新しいクロールの画面の欄に入れ、その画面へ移る。「欄に戻す」と「直した版を欄に戻す」が使う
+ * その場の TS を新しいクロールの画面の欄に入れ、その画面へ移る。「欄に戻す」と「直した版を欄に戻す」が使う
  * （直した版は、名前と phase を元のまま、source だけを直した物にする）。**起点とスクリプトの選びは触らない。**
  */
 const intoForm = (name, phase, source) => {
   $("start-inline-name").value = name;
   $(phase === "preload" ? "start-inline-preload" : "start-inline-behavior").checked = true;
   $("start-inline-source").value = source;
-  $("start-answer").hidden = true; // 前の答えは、戻した JS の物ではない
+  $("start-answer").hidden = true; // 前の答えは、戻した TS の物ではない
   location.hash = "start";
   // 画面とタブを今出す —— 隠れた箱には focus が効かない（hashchange が画面を出すのは、この後）
   show("start");
@@ -1305,7 +1305,7 @@ const startCrawl = async (event) => {
   line.hidden = false;
   line.className = `start-answer state ${said.kind}`;
   line.textContent = said.text;
-  // 起点は消す。その場の JS は残す —— 直して撮り直すことが多い。サイト用のチェックは起点に合わせる
+  // 起点は消す。その場の TS は残す —— 直して撮り直すことが多い。サイト用のチェックは起点に合わせる
   if (status === 202) {
     $("start-seeds").value = "";
     syncPicks();
@@ -2001,7 +2001,7 @@ const askReplace = (at, doc, lines) => {
   const box = at.ask;
   box.hidden = false;
   box.replaceChildren(
-    tag("span", `新しいクロールの欄に書きかけの JS（${count(lines)} 行）があります。`),
+    tag("span", `新しいクロールの欄に書きかけの TS（${count(lines)} 行）があります。`),
     button("置き換える", () => {
       box.hidden = true;
       putTemplate(doc, { replace: true, at });
@@ -2013,7 +2013,7 @@ const askReplace = (at, doc, lines) => {
 };
 
 /**
- * スクリプトの 1 版を、その場の JS の欄に写して新しいクロールの画面へ移る。**書きかけを黙って消さない** —— 欄が空で
+ * スクリプトの 1 版を、その場の TS の欄に写して新しいクロールの画面へ移る。**書きかけを黙って消さない** —— 欄が空で
  * なければ、置き換えるかを本文の上で訊く（replace は「置き換える」を押したときだけ true。訊くのは at の所）。
  * 入れ方は「欄に戻す」（intoForm）と同じ。
  */
@@ -2041,10 +2041,10 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
       ? "id を替える所はありませんでした。"
       : `${changed.join("・")} 行目の id を inline-${name} に替えました。`) +
     `台帳の ${doc.id} は外しました（両方走ると 2 回走ります）。` +
-    // その場の JS は札を持たない。スクリプトの冒頭の見分けが、ほかのサイトでは何もさせない
+    // その場の TS は札を持たない。スクリプトの冒頭の見分けが、ほかのサイトでは何もさせない
     (doc.sites.length === 0
       ? ""
-      : `札（${doc.sites.join("・")}）は写しに付きません。その場の JS は、どの起点でも走ります。`);
+      : `札（${doc.sites.join("・")}）は写しに付きません。その場の TS は、どの起点でも走ります。`);
   location.hash = "start";
   // 画面とタブを今出す —— 隠れた箱には focus が効かない（hashchange が画面を出すのは、この後）。
   // 読む窓は閉じない —— タブで元と見比べられる
@@ -2073,7 +2073,7 @@ const clearPlace = (at) => {
 };
 
 /**
- * 右の列のタブ。**JS の箱は隠すだけ** —— 書きかけも、流した位置も、字の位置も残る（Chrome 152 で実測）。
+ * 右の列のタブ。**TS の箱は隠すだけ** —— 書きかけも、流した位置も、字の位置も残る（Chrome 152 で実測）。
  * 読む窓のタブと × は、何か開いている間だけ出る。
  */
 const showStartTab = (tab) => {

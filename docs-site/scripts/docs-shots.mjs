@@ -64,7 +64,7 @@ const DPR = 1;
  * （窓 − 一覧 300 − 間 24 − 余白 40）が、ちょうど COLUMN になる。dashboard の組み方が変われば、幅の見張りが言う
  */
 const WINDOW = 996;
-/** 新しいクロールの欄に入れる JS。placeholder と同じ物を、本当に書いた状態で写す */
+/** 新しいクロールの欄に入れる TS。placeholder と同じ物を、本当に書いた状態で写す */
 const INLINE = '(() => {\n  document.querySelector<HTMLButtonElement>("#accept")?.click();\n})();\n';
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -100,7 +100,7 @@ const pressValidate = (page, file) =>
     [...row.querySelectorAll("button")].find((b) => b.textContent === "検証").click();
   }, file);
 
-/** 新しいクロールの左の列（起点）と右の列（その場の JS）に書く。start と start-js は同じ状態の両側。 */
+/** 新しいクロールの左の列（起点）と右の列（その場の TS）に書く。start と start-js は同じ状態の両側。 */
 const writeStart = async (page) => {
   await fill(page, "start-seeds", "https://laws.e-gov.go.jp/");
   await fill(page, "start-inline-name", "close-banner");

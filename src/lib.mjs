@@ -70,7 +70,7 @@ export const hostAllowed = (host, port) =>
  * 書く口。**台帳へそのまま渡す POST は、この形だけ**:
  *
  * - `/api/crawls` —— クロールを始める
- * - `/api/crawls/<id>/inline/<name>/fix` —— 型で落ちたクロールの、その場の JS の直し方を Claude に訊く
+ * - `/api/crawls/<id>/inline/<name>/fix` —— 型で落ちたクロールの、その場の TS の直し方を Claude に訊く
  *   （CAPTURE-49。台帳は型の検査に通った案だけを返し、費用を数える）
  *
  * **端を固めて照らす** —— 末尾の足し・query・`%`（`%2F` も `%2e%2e` も）・`.` を通さない。id と名前の字まで絞るのは、
@@ -98,7 +98,7 @@ export const writeRefusal = (headers, port) => {
 };
 
 /**
- * 書く口が受ける本文の上限。起点の URL と、その場で書いた JS が入る。**capture-ledger の
+ * 書く口が受ける本文の上限。起点の URL と、その場で書いた TS が入る。**capture-ledger の
  * `POST /api/crawls` の上限（`src/api/crawls.ts` の `CRAWL_BODY_LIMIT`）と同じ 1 MiB** —— 片方だけを
  * 変えると、dashboard が通すのに台帳が 413、の形になる。dashboard は `/healthz` の `writeLimit` で知り、
  * 送る前に止める。超えたら 413（台帳まで行かない）。

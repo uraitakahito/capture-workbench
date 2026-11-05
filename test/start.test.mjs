@@ -114,10 +114,10 @@ const CATALOG = ["autofetch", "autoscroll"];
 const NO_INLINE = { name: "", phase: "behavior", source: "" };
 const run = (picked, inline = NO_INLINE) => ({ catalog: CATALOG, picked, defaults: CATALOG, inline });
 
-test("走らせるものが既定のまま（既定の顔ぶれを全部選び、その場の JS が空）なら scripts を送らない", () => {
+test("走らせるものが既定のまま（既定の顔ぶれを全部選び、その場の TS が空）なら scripts を送らない", () => {
   // 台帳の既定と、台帳にスクリプトが無いときの 400 を生かす
   assert.equal("scripts" in startBody("https://site.test/", null, run(CATALOG)), false);
-  // 台帳にスクリプトが無く、その場の JS も無いときも送らない（台帳が「スクリプトが無い」と言う）
+  // 台帳にスクリプトが無く、その場の TS も無いときも送らない（台帳が「スクリプトが無い」と言う）
   assert.equal(scriptsOf({ catalog: [], picked: [], defaults: [], inline: NO_INLINE }), undefined);
 });
 
@@ -193,7 +193,7 @@ test("全部外すと scripts: [] を送る —— 何も走らせない", () =>
   assert.deepEqual(startBody("https://site.test/", null, run([])).scripts, []);
 });
 
-test("その場の JS は先頭に、名前・phase・source を送る（source は削らない）", () => {
+test("その場の TS は先頭に、名前・phase・source を送る（source は削らない）", () => {
   const source = "\n(() => {\n  void 0;\n})();\n\n";
   const body = startBody("https://site.test/", null, run(CATALOG, { name: " close-banner ", phase: "preload", source }));
   assert.deepEqual(body.scripts, [
@@ -203,7 +203,7 @@ test("その場の JS は先頭に、名前・phase・source を送る（source 
   ]);
 });
 
-test("空白だけの JS は送らない", () => {
+test("空白だけの TS は送らない", () => {
   assert.equal(scriptsOf(run(CATALOG, { name: "x", phase: "behavior", source: " \n\t" })), undefined);
 });
 
@@ -295,7 +295,7 @@ test("変数とシークレットの 400 は、台帳が名指した名前（シ
     startAnswer(400, { error: "secrets cannot be passed as variables", names: ["api_token"] }).text,
     "400 —— secrets cannot be passed as variables: api_token",
   );
-  // 宣言の形が読めないその場の JS は、id と理由（hint）
+  // 宣言の形が読めないその場の TS は、id と理由（hint）
   assert.equal(
     startAnswer(400, { error: "invalid params", script: "inline-probe", hint: "同じ名前が 2 度: q" }).text,
     "400 —— invalid params: inline-probe（同じ名前が 2 度: q）",
@@ -318,7 +318,7 @@ test("上限ちょうどは送れ、1 バイト超えは送れない", () => {
   assert.equal(sizeOf("x", 10 ** 9, Infinity).over, false);
 });
 
-test("行数は JS の行で、空の箱は 0 行", () => {
+test("行数は TS の行で、空の箱は 0 行", () => {
   assert.equal(sizeOf("", 0, 1024).lines, 0);
   assert.equal(sizeOf("a", 0, 1024).lines, 1);
   assert.equal(sizeOf("a\n", 0, 1024).lines, 2);

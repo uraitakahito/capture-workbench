@@ -196,10 +196,10 @@ follow).
 ③ クロールごとの値 (per-crawl values): the fields for the variables the ticked scripts declare\
 ④ 始める (start)
 
-![The right column of the new crawl view: the tab その場の JS, the name of the script, when it runs, and the script box](../../assets/screens/start-js.webp)
+![The right column of the new crawl view: the tab その場の TS, the name of the script, when it runs, and the script box](../../assets/screens/start-js.webp)
 
 ① the right column's tabs\
-② JS の名前 (name of the script)\
+② スクリプトの名前 (name of the script)\
 ③ the script box
 
 - **It sends the seed URLs, whether the depth is 0, what runs — only when it differs from the
@@ -251,7 +251,7 @@ follow).
   it will send (UTF-8 bytes) and how much of the limit that is. The limit is the one the writing
   route enforces, handed out by the server as `writeLimit` in `/healthz`. Over it, the line turns
   red and 始める cannot be pressed.
-- **The name of your script becomes its id.** Write it in the box labelled JS の名前 (name of the
+- **The name of your script becomes its id.** Write it in the box labelled スクリプトの名前 (name of the
   script) in the right column. The `inline-` in front stays: `close-banner` gives the id
   `inline-close-banner`. Start with a lowercase letter, then use only lowercase letters, digits and
   `-`, up to 57 characters (the ledger's rule). This view does not check it: a wrong or empty name is
@@ -278,7 +278,7 @@ follow).
 - **A registered script can be read in the right column.** Press 読む (read) next to its checkbox:
   a second tab opens in the right column, named like `autoscroll v2`, with the source of that
   version in colour. The view does not change. The box is only hidden: your script, its scroll
-  position and the cursor stay, and the その場の JS (your script) tab brings it back. You can tick
+  position and the cursor stay, and the その場の TS (your script) tab brings it back. You can tick
   and untick while reading, and read a site script whose checkbox is disabled. One script is open
   at a time; another 読む replaces it, and × closes it. The window has 写す (copy), 下敷きにする
   (use as a template) and a link that opens the script in the [script collection view](#script-collection), which alone
@@ -326,7 +326,7 @@ follow).
   欄に戻す on a script of your own: this view opens with its name, phase and source. The source
   comes from the ledger's `/api/crawls/:id/inline/:name` (a crawl's detail only carries its size).
   The seed URLs and the ticked scripts are left alone. If the right column was showing a registered
-  script, it switches back to the その場の JS tab.
+  script, it switches back to the その場の TS tab.
 - **下敷きにする (use as a template) in the [script collection view](#script-collection) brings a registered script
   here** as a script of your own, named `my-<id>` unless the name box already has one. Only the form
   that names the script's own id, `__bh.opts["<id>"]` (where it reads its options), is changed to
@@ -334,7 +334,7 @@ follow).
   left column says on which lines. The original is unticked,
   so it does not run twice. If the box already holds a script, the script collection view asks before
   replacing it. 下敷きにする in the right column's reading window does the same, and asks inside
-  that window; afterwards the その場の JS tab is in front, and the reading window stays open for
+  that window; afterwards the その場の TS tab is in front, and the reading window stays open for
   comparing. A site script's sites do not come along: a script of your own runs from any seed,
   and the check at the top of the script (comparing `location.hostname`) keeps it idle on other
   sites.

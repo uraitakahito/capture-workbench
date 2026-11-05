@@ -102,7 +102,7 @@ test("書く口は、ほかのオリジン・Origin の無い要求・JSON で�
   assert.equal(writeRefusal({ ...fromThisPage, host: "evil.test:7080", origin: "http://evil.test:7080" }, 7080)?.status, 403);
 });
 
-test("書く口は、クロールを始める口と、その場の JS の直し方を訊く口の 2 つの形だけ", () => {
+test("書く口は、クロールを始める口と、その場の TS の直し方を訊く口の 2 つの形だけ", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   assert.equal(isWriteRoute("/api/crawls"), true);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner/fix`), true);

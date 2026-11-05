@@ -1,6 +1,6 @@
 ---
 title: 中継の口
-description: dashboard のサーバが答える口 —— /healthz、台帳への素通し、書く口（クロールを始める・その場の JS の直し方を訊く）、WACZ の中身へ行く /wacz/ の口。Host の門、通すヘッダと、失敗の形
+description: dashboard のサーバが答える口 —— /healthz、台帳への素通し、書く口（クロールを始める・その場の TS の直し方を訊く）、WACZ の中身へ行く /wacz/ の口。Host の門、通すヘッダと、失敗の形
 ---
 
 dashboard のサーバは中継しかしません。
@@ -11,7 +11,7 @@ dashboard のロジックはブラウザの側（`public/`）に在り、サー�
 | --- | --- |
 | `GET /healthz` | サーバ自身（生存と、dashboard が要る設定） |
 | `POST /api/crawls` | 台帳へ（書く口。クロールを始める） |
-| `POST /api/crawls/:id/inline/:name/fix` | 台帳へ（書く口。その場の JS の型の誤りの直し方を訊く） |
+| `POST /api/crawls/:id/inline/:name/fix` | 台帳へ（書く口。その場の TS の型の誤りの直し方を訊く） |
 | `/api/*`（ほか） | 台帳へ素通し（GET だけ） |
 | `/wacz/:id/…` | 台帳に署名をもらい、daemon へ |
 | それ以外 | `public/` のファイル |
@@ -71,7 +71,7 @@ dashboard のサーバが持つ書く口の 1 つです。
 宣言したシークレットが Windmill に在るかも台帳が確かめ、dashboard はシークレットの値に触りません（値は Windmill の変数に在り、dashboard の欄にも本文にもありません）。
 
 - **dashboard のページからの JSON だけを通す。**
-  `Origin` が dashboard でなければ 403、`content-type` が JSON でなければ 415、本文が 1 MiB を超えたら 413 です（起点の URL と、欄で書いた JS の合計。台帳の `POST /api/crawls` と同じ上限）。
+  `Origin` が dashboard でなければ 403、`content-type` が JSON でなければ 415、本文が 1 MiB を超えたら 413 です（起点の URL と、欄で書いた TS の合計。台帳の `POST /api/crawls` と同じ上限）。
   別のサイトのページに、利用者のブラウザから POST させる手（CSRF）を止めるためです。
   Chrome の Private Network Access には頼りません。
 - アクセストークンの付け方と、401 でのやり直しは、上の `/api/*` と同じです。
@@ -86,10 +86,10 @@ dashboard のサーバが持つ書く口の 1 つです。
 
 門の判定は `src/lib.mjs` の `writeRefusal` に在り、試験から直接呼べます。
 
-## POST /api/crawls/:id/inline/:name/fix —— その場の JS の直し方を訊く口
+## POST /api/crawls/:id/inline/:name/fix —— その場の TS の直し方を訊く口
 
 これも書く口です。
-型の検査で落ちたクロールを開き、型の誤りの在るその場の JS の「直し方を訊く」を押すと使います（[画面](/screens/)）。
+型の検査で落ちたクロールを開き、型の誤りの在るその場の TS の「直し方を訊く」を押すと使います（[画面](/screens/)）。
 本文は `{}` です。
 台帳が Claude に訊き、**クロールが落ちたのと同じ型の検査に通った直しだけ**を、理由・置き換えた行・往復の回数・費用つきで返します。
 dashboard は答えを描くだけです。
@@ -105,10 +105,10 @@ dashboard は答えを描くだけです。
 | --- | --- |
 | 200 `{ rounds, source, edits, notes, compiled, usage }` | 検査に通った直しがある（`edits` は置き換えた範囲ごとの `before` と `after`、`usage.usd` は費用） |
 | 409 `scripts compile` | いまの組み合わせが型を通る（直す物が無い） |
-| 422 | 誤りがこの JS に無い、2 往復で通らなかった（回数と費用つき）、Claude が断った |
+| 422 | 誤りがこのスクリプトに無い、2 往復で通らなかった（回数と費用つき）、Claude が断った |
 | 429 `claude budget exhausted` | 組織がこの月の上限に届いた（`spentUsd` と `budgetUsd` つき）。Claude は呼ばない |
 | 502・503 | Claude か ts-compile-service が答えなかった |
-| 404 | 名乗りにクロールを始める許可が無い、クロールかその場の JS が無い、台帳に API の鍵が無く口ごと無い |
+| 404 | 名乗りにクロールを始める許可が無い、クロールかその場の TS が無い、台帳に API の鍵が無く口ごと無い |
 
 ## /wacz/:id/… —— WACZ の中身へ行く口
 

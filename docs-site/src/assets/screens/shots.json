@@ -2,7 +2,7 @@
   "//": "npm run docs:shots の生成物。手で直さない —— source を直して緑にすると、絵は古いまま残る",
   "chrome": "152.0.7977.54",
   "dpr": 1,
-  "source": "70d8d4100cfef0f87ee8898c6a747a7c8e5fae0f0099c9560c8c33b03b69e11e",
+  "source": "5ce830a4ab559a1cf6cee94fa7f8ba9a83d5dd9d64a7040029189eae4c281112",
   "shots": {
     "tabs": {
       "width": 579,

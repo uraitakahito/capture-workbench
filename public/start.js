@@ -8,7 +8,7 @@
  * 片方だけが変わった日に、dashboard が通すのに台帳が断る（または逆）形になる。
  */
 
-/** 走らせるものの欄が、何も選んでいない形（台帳にスクリプトが無く、その場の JS も無い）。 */
+/** 走らせるものの欄が、何も選んでいない形（台帳にスクリプトが無く、その場の TS も無い）。 */
 const NOTHING_CHOSEN = {
   catalog: [],
   picked: [],
@@ -53,10 +53,10 @@ export const defaultIds = (scripts, hosts) =>
 
 /**
  * 走らせるもの（台帳の `scripts`）。**既定のまま —— 選んだ物が既定の顔ぶれ（`defaultIds`）と同じで、
- * その場の JS が空 —— なら送らない**（`undefined`）。台帳も起点から同じ物を選ぶので、省いても走る物は
+ * その場の TS が空 —— なら送らない**（`undefined`）。台帳も起点から同じ物を選ぶので、省いても走る物は
  * 変わらない。省くのは、台帳にスクリプトが無いときと、起点に合う物が無いときの 400 を台帳に言わせるため。
  *
- * 送るときは、その場の JS を先に、選んだスクリプトを台帳の並び（`catalog` の順）で。全部外せば `[]` ——
+ * 送るときは、その場の TS を先に、選んだスクリプトを台帳の並び（`catalog` の順）で。全部外せば `[]` ——
  * 「何も走らせない」。source は削らない —— 台帳が打つ sha256 は、書いたバイト列の物。名前は前後の
  * 空白だけ落とす。綴りは検査しない（台帳が 400 で言う）。
  */
@@ -303,7 +303,7 @@ export const startAnswer = (status, answer) => {
       ? answer.names
       : Array.isArray(answer.secrets)
         ? answer.secrets.map((s) => (s.path === undefined ? String(s.name) : `${String(s.name)}（${String(s.path)}）`))
-        : typeof answer.script === "string" // 宣言の形が読めないその場の JS（invalid params）
+        : typeof answer.script === "string" // 宣言の形が読めないその場の TS（invalid params）
           ? [answer.script]
           : Array.isArray(answer.seeds)
             ? answer.seeds
@@ -326,7 +326,7 @@ export const startAnswer = (status, answer) => {
 export const bodyBytes = (body) => new TextEncoder().encode(JSON.stringify(body)).length;
 
 /**
- * 欄の下の 1 行。行数は JS の、割合は送る本文の。**上限を超えたら押せない**（over）。
+ * 欄の下の 1 行。行数は TS の、割合は送る本文の。**上限を超えたら押せない**（over）。
  * 上限は `/healthz` の `writeLimit`（dashboard が知らなければ Infinity を渡し、門に任せる）。
  */
 export const sizeOf = (source, bytes, limit) => ({
@@ -354,8 +354,8 @@ export const withNocheck = (source, on) => {
 };
 
 /**
- * スクリプト 1 本を、その場の JS の下敷きにする（スクリプト集の画面の「下敷きにする」）。**替えるのは 1 つの
- * 形だけ** —— `__bh.opts["<id>"]` の id を `inline-<名前>` に。台帳はその場の JS を `inline-<名前>` の id で
+ * スクリプト 1 本を、その場の TS の下敷きにする（スクリプト集の画面の「下敷きにする」）。**替えるのは 1 つの
+ * 形だけ** —— `__bh.opts["<id>"]` の id を `inline-<名前>` に。台帳はその場の TS を `inline-<名前>` の id で
  * 走らせ、設定もその id の下に置くので、替えないと元の id の設定を読む。報告（`__bh.report(data)`）とログの行は
  * id を取らない —— 誰の行かは BrowserHive が付ける（capture-scripts v0.7.0 の受け皿から）。
  *

@@ -271,7 +271,7 @@ test("クロール 1 本は、dashboard が読む seeds・error・scripts・fail
   assert.deepEqual(detail.scripts, []);
 });
 
-test("同梱の台本に、その場の JS で完走した行と、compile の段で落ちた行が在る", () => {
+test("同梱の台本に、その場の TS で完走した行と、compile の段で落ちた行が在る", () => {
   const withInline = scenario.crawls.filter((c) => c.scripts?.some((s) => s.inline !== undefined));
   assert.deepEqual([...new Set(withInline.map((c) => c.state))].sort(), ["failed", "succeeded"]);
   assert.equal(withInline.filter((c) => c.state === "failed").length, 1, "compile の段で落ちた行は 1 本");
@@ -283,7 +283,7 @@ test("同梱の台本に、その場の JS で完走した行と、compile の�
   assert.equal("inline" in broken.scripts[1], false);
 });
 
-test("scripts を受けると、その場の JS は inline- の id・版 1 で写り、詳しい所には名前・口・バイト数だけが出る", () => {
+test("scripts を受けると、その場の TS は inline- の id・版 1 で写り、詳しい所には名前・口・バイト数だけが出る", () => {
   const rows = [];
   const inline = { name: "close-banner", phase: "preload", source: "x;" };
   const answer = submitCrawl(
@@ -310,7 +310,7 @@ test("scripts を受けると、その場の JS は inline- の id・版 1 で�
   assert.equal("scripts" in submittedRow(rows[0], NOW), false);
 });
 
-test("名前の口は、受けた行と台本の行の両方で、その場の JS を source ごと返す", () => {
+test("名前の口は、受けた行と台本の行の両方で、その場の TS を source ごと返す", () => {
   const rows = [];
   const inline = { name: "close-banner", phase: "preload", source: "x;" };
   submitCrawl(
@@ -631,7 +631,7 @@ test("知らない鍵は schema の 400 で、台帳の鍵（maxDepth・variable
   );
 });
 
-test("変数は宣言に照らして台帳と同じ文で 400 —— 必須が無い・知らない名前。宣言の無いその場の JS が在れば知らない名前を許す", () => {
+test("変数は宣言に照らして台帳と同じ文で 400 —— 必須が無い・知らない名前。宣言の無いその場の TS が在れば知らない名前を許す", () => {
   const rows = [];
   const post = (body) => submitCrawl(rows, { seeds: ["https://laws.e-gov.go.jp/"], ...body }, NOW, RUNS, versions, WINDMILL);
   assert.deepEqual(post({ variables: { qeury: "x" } }), {
@@ -642,7 +642,7 @@ test("変数は宣言に照らして台帳と同じ文で 400 —— 必須が�
     status: 400,
     body: { error: "missing variables", names: ["q"] },
   });
-  // 宣言を添えないその場の JS が 1 本でも在れば、知らない名前は通る（その JS が読むかもしれない）
+  // 宣言を添えないその場の TS が 1 本でも在れば、知らない名前は通る（その TS が読むかもしれない）
   assert.equal(post({ scripts: [probe()], variables: { anything: "x" } }).status, 202);
   assert.equal(rows.length, 1, "断った本は行にしない");
   // 同じ名前を別の種類で宣言している・シークレットの名前を変数で渡している（台帳の checkValues と同じ文）
@@ -727,7 +727,7 @@ test("行の詳しい所は variables と secrets を必ず持つ —— 台本�
     [["api_token", "f/waggle_secrets/api_token", null]],
   );
   assert.ok(Date.parse(detail.secrets[0].editedAt) > 0);
-  // 宣言はその場の JS の params に在り、台本の Windmill に api_token が置いてある（同じ頼みを送れば通る形）
+  // 宣言はその場の TS の params に在り、台本の Windmill に api_token が置いてある（同じ頼みを送れば通る形）
   assert.ok(c.scripts[0].inline.params.some((p) => p.name === "api_token" && p.kind === "secret"));
   assert.ok(scenario.windmillSecrets.includes("api_token"));
   const other = crawlDetail(scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0002")));
@@ -1086,7 +1086,7 @@ test("台本の 5b0c0009 は、時間切れのページ（warn と error の行�
   for (const log of logs) for (const line of log.lines) if (line.script !== undefined) assert.ok(ran.has(line.script), line.script);
 });
 
-test("代役は、型で落ちた 5b0c0008 に取り直した型の誤りを返し、その場の JS に直し方を訊ける", () => {
+test("代役は、型で落ちた 5b0c0008 に取り直した型の誤りを返し、その場の TS に直し方を訊ける", () => {
   const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0008"));
   // 画面が取り直しに行くのは、失敗の文が型の検査で落ちたと言う行だけ
   assert.equal(failedOnTypes(crawlDetail(c).error), true);
