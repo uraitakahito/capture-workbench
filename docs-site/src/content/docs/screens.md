@@ -46,7 +46,7 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
 "replay ↗" next to it opens the whole crawl in replay as one archive, once the ledger has written
 the crawl's bundle.
 
-![The crawls table: running, finished, cut-off and failed rows; rows whose crawl has a bundle have replay ↗ next to run ↗](../../assets/screens/crawls.webp)
+![The crawls table: running, finished, cut-off and failed rows; rows whose crawl has a bundle have replay ↗ next to run ↗, and the running row reads replay r1（途中）↗](../../assets/screens/crawls.webp)
 
 ① state\
 ② the link to the run
@@ -71,6 +71,16 @@ the crawl's bundle.
   stops a crawl over a bundle it could not write: an opened row says why first, in the ledger's
   words (`replayBundle.error`), and replay ↗ keeps opening the version written before, if there is
   one. The rules for these links are `replayBundleHref` in `public/replay.js`, pinned by
+  `test/replay.test.mjs`.
+- **A version written mid-crawl says so.** While a crawl runs, replay ↗ opens the version the
+  ledger has written so far. Pages captured in later levels are not in it, so a link to one ends
+  in Not Found in replay. The link therefore reads `replay r1（途中）↗` ("mid-crawl"), in the warning
+  color, with an explanation on hover. A finished row reads the same while the version it points at
+  is older than the end of the crawl (`builtAt` before `finishedAt`): the flow runs `report` (the
+  crawl ends here) before `replay_bundle` (the last version is written here), so the last version
+  arrives slightly later. A row whose next version could not be written keeps opening the earlier
+  one the same way. The pages table of an opened row keeps the text "replay ↗" and only takes the
+  color and the explanation. The rule is `isPartialBundle` in `public/replay.js`, pinned by
   `test/replay.test.mjs`.
 
 ![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the values passed and the secrets used, the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
@@ -471,7 +481,8 @@ ledger that starts crawls and records what came back).
 ## Polling
 
 While at least one crawl is running, the lists are fetched every 2 seconds; otherwise every 30
-seconds. Without keeping a copy, the dashboard still looks live while something runs, and stays
+seconds. A crawl that has just finished keeps the 2-second pace until its last bundle version shows
+up, for at most a minute. Without keeping a copy, the dashboard still looks live while something runs, and stays
 quiet when nothing does. The search view does not poll; it fetches only when you search.
 
 When a fetch fails, the dashboard keeps the last tables it could draw and shows the reason at the

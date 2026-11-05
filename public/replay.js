@@ -77,6 +77,41 @@ export const replayBundleHref = (origin, replayBundle, page) => {
 };
 
 /**
+ * クロールの行（一覧か詳しい所の答え）の合本が、途中の版か（CAPTURE-114）。途中の版には後の段で撮るページが入っていないので、
+ * そのページへのリンクは replay で Not Found になる。走行中なら途中。終わった行は、指す版を書いた時刻（`builtAt`）が
+ * 終わった時刻（`finishedAt`）より前なら途中 —— flow は report（ここでクロールが終わる）の後に replay_bundle（ここで最後の
+ * 版を書く）を走らせるので、最後の版は少し遅れて届く。次の版を書けなかった行も、ここに入る。どちらの時刻も台帳の時計。
+ * 開ける版が無ければ false（link を出さない）。
+ */
+export const isPartialBundle = (crawl) => {
+  if (bundleKeyOf(crawl.replayBundle) === undefined) return false;
+  if (crawl.state === "running") return true;
+  return Date.parse(crawl.replayBundle.builtAt) < Date.parse(crawl.finishedAt);
+};
+
+/** 終わった行の最後の版を待つ長さ。これを過ぎたら、来ないものとして速く引き直すのをやめる。 */
+const FINAL_BUNDLE_WAIT_MS = 60_000;
+
+/**
+ * 終わったのに、最後の版がまだ見えていないか。見えるまで速く引き直す（`app.js` の `pace`）。走行中でなくなると引き直しは
+ * 30 秒ごとになるので、待たないと、最後の版が書かれた後も古い版を開く link が残る。走行中の行は終わった時刻が無いので
+ * 待たない（別に速く引いている）。台帳が書けなかったと言っている行と、終わってから `FINAL_BUNDLE_WAIT_MS` を過ぎた行も待たない。
+ */
+export const awaitsFinalBundle = (crawl, now = Date.now()) => {
+  const finished = Date.parse(crawl.finishedAt);
+  if (Number.isNaN(finished) || now - finished >= FINAL_BUNDLE_WAIT_MS) return false;
+  if (replayBundleFailure(crawl.replayBundle) !== undefined) return false;
+  return bundleKeyOf(crawl.replayBundle) === undefined || isPartialBundle(crawl);
+};
+
+/** クロールの行の合本の link の字。途中の版なら、番号と「途中」を言う。 */
+export const replayBundleText = (crawl) =>
+  isPartialBundle(crawl) ? `replay r${String(crawl.replayBundle.rev)}（途中）↗` : "replay ↗";
+
+/** 途中の版の link に添える説明（title）。 */
+export const PARTIAL_BUNDLE_NOTE = "走行中に書いた途中の版です。まだ入っていないページは Not Found になります";
+
+/**
  * 合本を書けなかった理由の 1 行（台帳の `replayBundle.error`。文は言い換えない）。失敗が無ければ undefined。台帳は指す版を
  * 前へだけ進め、失敗の理由は次に書けたら消す —— 書けた版が在れば、replay ↗ はその（前の）版を開く。
  */

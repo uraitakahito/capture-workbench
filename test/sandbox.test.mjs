@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
 import { outcomeOf } from "../public/pages.js";
-import { replayBundleHref } from "../public/replay.js";
+import { isPartialBundle, replayBundleHref } from "../public/replay.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
 import {
@@ -41,6 +41,7 @@ import {
   pickable,
   readingLastGood,
   replayBundleOf,
+  scenarioAt,
   scriptRows,
   searchOf,
   signedUrlOf,
@@ -189,7 +190,7 @@ test("合本の欄は台帳と同じ形で、行と詳しい所で同じ。鍵�
   let seen = 0;
   for (const c of scenario.crawls) {
     const bundle = crawlRow(c, NOW).replayBundle;
-    assert.deepEqual(crawlDetail(c).replayBundle, bundle, c.crawlId);
+    assert.deepEqual(crawlDetail(scenarioAt(c, NOW)).replayBundle, bundle, c.crawlId);
     if (bundle === null) continue;
     seen += 1;
     assert.deepEqual(Object.keys(bundle).sort(), LEDGER_BUNDLE_KEYS, c.crawlId);
@@ -1034,6 +1035,19 @@ test("読めないページは log: null と理由 —— taskId の無いペー
   assert.equal(pageLog(named, "1").body.reason, "manifest-missing");
   // 数を読んでいないページの logCounts は null
   assert.equal(pageRow(crawlOf("5b0c0006").pages[0]).logCounts, null);
+});
+
+test("台本の途中の版: 走行中の行と次の版を書けなかった行は途中で、最後の版まで書けた行は途中でない", () => {
+  const row = (id) => crawlRow(crawlOf(id), NOW);
+  assert.equal(isPartialBundle(row("5b0c0001")), true, "走行中");
+  assert.equal(isPartialBundle(row("5b0c0003")), true, "次の版を書けなかった");
+  assert.equal(isPartialBundle(row("5b0c0009")), false, "最後の版まで書けた");
+  // 詳しい所も一覧の行と同じに読める（開いた行のページの表の replay ↗ が使う）
+  for (const id of ["5b0c0001", "5b0c0003", "5b0c0009"]) {
+    const detail = crawlDetail(scenarioAt(crawlOf(id), NOW));
+    assert.equal(isPartialBundle(detail), isPartialBundle(row(id)), id);
+    assert.equal(detail.finishedAt, row(id).finishedAt, id);
+  }
 });
 
 test("5b0c0009 のページの表では、WACZ が台帳の指す合本に入った 2 ページにだけ replay ↗ が付く", () => {
