@@ -514,11 +514,11 @@ test("版の一覧は新しい順で、どの版にも source が無い。知ら
   assert.deepEqual(versionsOf(versions, "nope"), { status: 404, body: { error: "not found" } });
 });
 
-test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.7.0）", () => {
+test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.9.0）", () => {
   const fetch1 = versionOf(versions, "autofetch", "1");
   assert.equal(fetch1.status, 200);
-  assert.equal(fetch1.body.sha256.slice(0, 12), "3f1de4b0630b");
-  assert.equal(fetch1.body.bytes, 4345);
+  assert.equal(fetch1.body.sha256.slice(0, 12), "f24100fd1c9b");
+  assert.equal(fetch1.body.bytes, 4778);
   const scroll1 = versionOf(versions, "autoscroll", "1").body;
   assert.equal(scroll1.sha256.slice(0, 12), "4117c0345645");
   assert.equal(scroll1.bytes, 2706);
@@ -542,7 +542,7 @@ test("受け皿の型は台本の file の中身。台本に無ければ 404（�
   assert.equal(types.status, 200);
   assert.equal(types.body.version, 1);
   assert.equal(types.body.bytes, Buffer.byteLength(types.body.source, "utf8"));
-  // 写しは capture-scripts v0.7.0（受け皿に log が在り、report は data だけを取る。vars と secrets は v0.6.0 から）
+  // 写しは capture-scripts v0.9.0（受け皿は v0.7.0 のまま。log が在り、report は data だけを取る。vars と secrets は v0.6.0 から）
   assert.equal(types.body.sha256.slice(0, 12), "de649718ebb8");
   assert.equal(types.body.bytes, 3125);
   assert.match(types.body.source, /warn\(message: string, data\?: object\): void;/);
