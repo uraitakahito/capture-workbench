@@ -39,8 +39,8 @@
  * ## http・loopback・公開しない
  *
  * https のページから `127.0.0.1` を叩くと Chrome の Private Network Access が
- * 止める（seaweedfs の `scripts/ui.sh` に実測の記録がある）。だから dashboard 自身を
- * loopback の http で配る。外に出さない。
+ * 止める（実測。seaweedfs の filer は preflight に `Access-Control-Allow-Private-Network`
+ * を返さなかった）。だから dashboard 自身を loopback の http で配る。外に出さない。
  */
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
