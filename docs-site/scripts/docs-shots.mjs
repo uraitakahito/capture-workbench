@@ -126,14 +126,15 @@ const SHOTS = [
     name: "crawls",
     hash: "#crawls",
     box: "#face-crawls table",
-    // 表は折り返さない欄で、中身の幅に伸びる。開いた行は crawl-detail。合本の在る行は run ↗ の後に replay ↗
+    // 表は折り返さない欄で、中身の幅に伸びる。開いた行は crawl-detail。合本の在る行は run ↗ の後に replay ↗（先頭の走行中の行は途中の版）
     wide: true,
     ready: () =>
       document.querySelector("#crawls tr.head td:nth-child(8)")?.textContent === "1m 40s" &&
-      document.querySelector("#crawls tr.head td:last-child a + a")?.textContent === "replay ↗",
+      document.querySelector("#crawls tr.head td:last-child a + a")?.textContent === "replay r1（途中）↗",
     marks: [
       { n: 1, at: "#crawls tr.head:first-child td:first-child" },
-      { n: 2, at: "#crawls tr.head:first-child td:last-child a" },
+      // 合本の無い行の run ↗。先頭の走行中の行は、隣に replay ↗ があって丸が重なる
+      { n: 2, at: "#crawls tr.head:nth-child(4) td:last-child a" },
     ],
   },
   {

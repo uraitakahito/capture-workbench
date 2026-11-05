@@ -65,8 +65,8 @@ export const idOf = (name) =>
 
 /**
  * 行の合本の欄 (`replayBundle`)。形は CAPTURE-56 で台帳が足す src/api/crawls.ts の replayBundleOf と同じ ——
- * 書けた版も、書けなかった記録も無ければ null。台本の行の `replayBundle` は `{ rev, pages, builtAt, error }` で、鍵は
- * 台帳と同じ置き場 (`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`) に組む。`rev` を省いた行は失敗だけの行
+ * 書けた版も、書けなかった記録も無ければ null。台本の行の `replayBundle` は `{ rev, pages, builtSecondsAgo, error }` で
+ * （`builtAt` は `scenarioAt` が組む）、鍵は台帳と同じ置き場 (`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`) に組む。`rev` を省いた行は失敗だけの行
  * (鍵・版・ページの数・時刻が null)。受けた行 (`submittedRow`) は null を持つ。
  */
 export const replayBundleOf = (c) => {
@@ -84,6 +84,25 @@ export const replayBundleOf = (c) => {
 };
 
 /**
+ * 台本の行に、時刻を入れる。台本の時刻は「何秒前」で、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。一覧の行と
+ * 詳しい所が同じ時刻を返すように、どちらもこれを通す。dashboard は `builtAt` と `finishedAt` を比べて途中の版を見分ける
+ * ので、片方だけを固定の日付にできない。
+ */
+export const scenarioAt = (c, now) => ({
+  ...c,
+  finishedAt:
+    c.state === "running"
+      ? null
+      : new Date(now - (c.startedSecondsAgo - c.tookSeconds) * 1000).toISOString(),
+  ...(typeof c.replayBundle?.builtSecondsAgo === "number" && {
+    replayBundle: {
+      ...c.replayBundle,
+      builtAt: new Date(now - c.replayBundle.builtSecondsAgo * 1000).toISOString(),
+    },
+  }),
+});
+
+/**
  * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.57.4) と同じ。合本の欄 (`replayBundle`) は
  * CAPTURE-56 の形から。時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
  */
@@ -95,16 +114,13 @@ export const crawlRow = (c, now) => ({
   requestedBy: c.requestedBy ?? "sandbox",
   orgId: c.orgId ?? "acme",
   startedAt: new Date(now - c.startedSecondsAgo * 1000).toISOString(),
-  finishedAt:
-    c.state === "running"
-      ? null
-      : new Date(now - (c.startedSecondsAgo - c.tookSeconds) * 1000).toISOString(),
+  finishedAt: scenarioAt(c, now).finishedAt,
   pagesDiscovered: c.pagesDiscovered ?? 0,
   pagesCaptured: c.pagesCaptured ?? 0,
   error: c.error ?? null,
   waczCount: c.waczCount ?? 0,
   lastJob: c.lastJobId === undefined ? null : { id: c.lastJobId, depth: c.lastJobDepth ?? 0 },
-  replayBundle: replayBundleOf(c),
+  replayBundle: replayBundleOf(scenarioAt(c, now)),
 });
 
 /**
@@ -164,7 +180,7 @@ export const fixOf = (c, name) => {
 const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [] });
 
 /**
- * /api/crawls/:id。台帳はほかの欄 (上限など) も返すが、dashboard が読むのは seeds・rules・
+ * /api/crawls/:id。台帳はほかの欄 (上限など) も返すが、dashboard が読むのは seeds・rules・finishedAt・
  * error・scripts・replayBundle・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に
  * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ台帳の既定。
  * `replayBundle` は一覧の行と同じ形 (台帳も同じ関数で組む)。
@@ -177,6 +193,7 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   rules,
   state: c.state,
   stopReason: c.stopReason ?? null,
+  finishedAt: c.finishedAt ?? null,
   error: c.error ?? null,
   scripts: scripts.map(detailScript),
   replayBundle: replayBundleOf(c),
@@ -1150,7 +1167,7 @@ const handle = (req, res, raw) => {
       mine === undefined
         ? (() => {
             const c = s.crawls.find((x) => x.crawlId === one[1]);
-            return c === undefined ? undefined : crawlDetail(c);
+            return c === undefined ? undefined : crawlDetail(scenarioAt(c, STARTED));
           })()
         : crawlDetail(submittedRow(mine, Date.now()), mine.scripts, mine.rules, {
             variables: mine.variables,

@@ -8,7 +8,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { replayBundleFailure, replayBundleHref, replayHref, replayTs } from "../public/replay.js";
+import {
+  awaitsFinalBundle,
+  isPartialBundle,
+  replayBundleFailure,
+  replayBundleHref,
+  replayBundleText,
+  replayHref,
+  replayTs,
+} from "../public/replay.js";
 import { hitReplayHref } from "../public/search.js";
 
 const ORIGIN = "http://127.0.0.1:8899";
@@ -185,4 +193,71 @@ test("合本を書けなかった理由は 1 行で、台帳の文のまま。�
     replayBundleFailure(NEVER_WRITTEN),
     "合本を書けませんでした（replay で開ける版はまだありません）: could not write r1 to the store: The specified bucket does not exist",
   );
+});
+
+// ── 途中の版（CAPTURE-114）───────────────────────────────────────────────────
+
+const FINISHED = "2026-10-12T08:41:20.000Z";
+const beforeEnd = { ...BUNDLE, builtAt: "2026-10-12T08:40:50.000Z" };
+const afterEnd = { ...BUNDLE, builtAt: "2026-10-12T08:41:20.144Z" };
+const ended = (replayBundle) => ({ state: "succeeded", finishedAt: FINISHED, replayBundle });
+const SOON = Date.parse(FINISHED) + 5_000;
+
+test("走行中の行の合本は途中の版で、字に版の番号と「途中」を出す", () => {
+  const running = { state: "running", finishedAt: null, replayBundle: { ...BUNDLE, rev: 1 } };
+  assert.equal(isPartialBundle(running), true);
+  assert.equal(replayBundleText(running), "replay r1（途中）↗");
+});
+
+test("終わった行は、版を書いた時刻が終わった時刻より前なら途中で、同じか後なら完成した版", () => {
+  assert.equal(isPartialBundle(ended(beforeEnd)), true);
+  assert.equal(replayBundleText(ended(beforeEnd)), `replay r${String(BUNDLE.rev)}（途中）↗`);
+  assert.equal(isPartialBundle(ended(afterEnd)), false);
+  assert.equal(replayBundleText(ended(afterEnd)), "replay ↗");
+  assert.equal(isPartialBundle(ended({ ...BUNDLE, builtAt: FINISHED })), false, "同じ時刻は途中でない");
+});
+
+test("失敗で終わった行も、同じ決まりで途中かを言う", () => {
+  assert.equal(isPartialBundle({ ...ended(beforeEnd), state: "failed" }), true);
+  assert.equal(isPartialBundle({ ...ended(afterEnd), state: "failed" }), false);
+});
+
+test("開ける版が無い行は、途中と言わない（link を出さない）", () => {
+  for (const replayBundle of [null, undefined, NEVER_WRITTEN]) {
+    assert.equal(isPartialBundle(ended(replayBundle)), false);
+    assert.equal(isPartialBundle({ state: "running", finishedAt: null, replayBundle }), false);
+  }
+});
+
+test("次の版を書けなかった行は、前の版を途中の版として開く", () => {
+  const failedNext = ended({ ...beforeEnd, error: "could not write r3 to the store: socket hang up" });
+  assert.equal(isPartialBundle(failedNext), true);
+  assert.equal(sourceOf(replayBundleHref(ORIGIN, failedNext.replayBundle)), `/wacz/org/acme/crawls/${CRAWL}/r2/replay.json`);
+});
+
+test("終わった行は、最後の版が見えるまで待つ。版が古いか、まだ無いときだけ", () => {
+  assert.equal(awaitsFinalBundle(ended(beforeEnd), SOON), true, "版が古い");
+  assert.equal(awaitsFinalBundle(ended(null), SOON), true, "1 段だけのクロールは、最初の版がまだ無い");
+  assert.equal(awaitsFinalBundle(ended(afterEnd), SOON), false, "最後の版が見えた");
+});
+
+test("走行中の行は、最後の版を待つ行に数えない（別に速く引いている）", () => {
+  assert.equal(awaitsFinalBundle({ state: "running", finishedAt: null, replayBundle: BUNDLE }, SOON), false);
+});
+
+test("台帳が書けなかったと言っている行は、待たない", () => {
+  assert.equal(awaitsFinalBundle(ended(NEVER_WRITTEN), SOON), false, "1 度も書けなかった");
+  assert.equal(awaitsFinalBundle(ended({ ...beforeEnd, error: "socket hang up" }), SOON), false, "次の版を書けなかった");
+});
+
+test("終わってから 1 分を過ぎた行は、待たない（来ない版を速く引き続けない）", () => {
+  const end = Date.parse(FINISHED);
+  assert.equal(awaitsFinalBundle(ended(beforeEnd), end + 59_999), true);
+  assert.equal(awaitsFinalBundle(ended(beforeEnd), end + 60_000), false);
+  assert.equal(awaitsFinalBundle(ended(null), end + 60_000), false);
+});
+
+test("終わった時刻の読めない行は、待たない", () => {
+  assert.equal(awaitsFinalBundle({ state: "succeeded", finishedAt: null, replayBundle: null }, SOON), false);
+  assert.equal(awaitsFinalBundle({ state: "succeeded", replayBundle: null }, SOON), false);
 });

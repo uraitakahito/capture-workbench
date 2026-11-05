@@ -41,7 +41,15 @@ import {
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, noteText } from "/fix.js";
-import { replayBundleFailure, replayBundleHref, replayHref } from "/replay.js";
+import {
+  awaitsFinalBundle,
+  isPartialBundle,
+  PARTIAL_BUNDLE_NOTE,
+  replayBundleFailure,
+  replayBundleHref,
+  replayBundleText,
+  replayHref,
+} from "/replay.js";
 import {
   answerOf,
   highlightParts,
@@ -154,6 +162,16 @@ const linkCell = (href, text) => {
   const td = document.createElement("td");
   if (href !== undefined) td.append(link(href, text));
   return td;
+};
+
+/** クロールの合本を開く link。途中の版なら、警告の色と説明を付ける（字は呼び手が決める）。 */
+const bundleLink = (href, text, crawl) => {
+  const a = link(href, text);
+  if (isPartialBundle(crawl)) {
+    a.classList.add("partial");
+    a.title = PARTIAL_BUNDLE_NOTE;
+  }
+  return a;
 };
 
 /** dashboard の中の行き先（hash）。新しいタブで開かない。 */
@@ -572,7 +590,7 @@ const restoreScroll = () => {
  * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/replay.js` の `replayBundleHref`。
  * 2 つを引く間に台帳が次の版を書いても、指す版に無いページを開かせない）。**列は足さない** —— 出るのはふつう
  * 撮れたページ（結末が `captured` の 1 語）で、結末の列の幅の中に収まる。列を足すと表が広がり、docs の画面の絵
- * （本文の幅）に収まらなかった（2026-11-05 に測った）。
+ * （本文の幅）に収まらなかった（2026-11-05 に測った）。同じ理由で、途中の版でも字は増やさず、色と説明だけを付ける。
  */
 const pagesOf = (one) => {
   const box = document.createElement("div");
@@ -600,7 +618,7 @@ const pagesOf = (one) => {
     const outcome = document.createElement("td");
     const said = tag("span", outcomeOf(page, one.state), "outcome");
     const replay = replayBundleHref(settings.replayOrigin, one.replayBundle, page);
-    if (replay !== undefined) said.append(" ", link(replay, "replay ↗"));
+    if (replay !== undefined) said.append(" ", bundleLink(replay, "replay ↗", one));
     outcome.append(said);
     const toggle = document.createElement("td");
     toggle.append(button(log === undefined ? "ログ ▾" : "閉じる ▴", () => toggleOne(one.crawlId, page.id)));
@@ -794,7 +812,7 @@ const drawCrawls = () => {
     // （docs の画面の絵の印が、この欄の先頭の link を指す）
     const go = linkCell(runHref(crawl), "run ↗");
     const replay = replayBundleHref(settings.replayOrigin, crawl.replayBundle);
-    if (replay !== undefined) go.append(link(replay, "replay ↗"));
+    if (replay !== undefined) go.append(bundleLink(replay, replayBundleText(crawl), crawl));
     row.append(go);
     row.onclick = (event) => {
       if (event.target instanceof HTMLAnchorElement) return;
@@ -2643,7 +2661,8 @@ window.addEventListener("hashchange", route);
  * **走っている間だけ速く引く。** 1 往復 1 クエリなので、写しを持たなくても live に
  * 見える。走っていなければ 30 秒 —— 動いていないときは黙る。
  */
-const pace = () => (crawls.some((c) => c.state === "running") ? 2_000 : 30_000);
+// 終わった行が最後の合本の版を待つ間も速く引く。30 秒に落とすと、その間ずっと古い版を開く link が残る
+const pace = () => (crawls.some((c) => c.state === "running" || awaitsFinalBundle(c)) ? 2_000 : 30_000);
 
 /** 次の引きの予約。**1 つだけ** —— 始めた直後に引き直しても、引く輪が 2 本にならない。 */
 let timer;
