@@ -68,7 +68,7 @@ test("空の欄は、空の seeds になる（dashboard はこれを送らない
 test("202 は始めた 1 本を、409 は塞いでいる 1 本を、決めた文で名指す", () => {
   const ok = startAnswer(202, { crawlId: "9072b625-1111-4000-8000-000000000000" });
   assert.equal(ok.kind, "ok");
-  assert.equal(ok.text, "始めました（crawl 9072b625）。一覧の行に印を付けました。");
+  assert.equal(ok.text, "クロール開始しました（crawl 9072b625）。");
   const busy = startAnswer(409, {
     error: "a crawl is already in progress",
     crawlId: "5b0c0001-6a1e-4000-8000-000000000001",
