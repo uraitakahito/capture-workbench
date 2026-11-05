@@ -97,6 +97,7 @@ dashboard が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | ページとログを見る | 台本のクロールに `pages` を書く（ページの行と、BrowserHive の答えの形の `log`。`counts` は省けば行から数える）。代役は台帳の `/api/crawls/:id/pages`（`after` と `limit`。続きは本文の `next`）と `/api/crawls/:id/pages/:page/log` に答え、`failures` の要素に `page` を付ける。`after` が数字だけでない・`limit` が範囲の外なら 400。`log` の無いページは、ログを読めない理由を返す（台本の `logReason`。省けば taskId の無いページは `not-captured`、在れば `no-log`）。台本のクロール `5b0c0009` は、時間切れのページ（warn と error の行）・捨てた行と途中で切った行を持つページ・robots.txt で撮らなかったページを持つ。`pages` の無い行は一覧が空。「続きを読む」を見るなら、行に台帳の 1 回分より多いページを書く（代役の 1 回分は台帳と同じ既定で、`sandbox/fake-ledger.mjs` の `pageList` に在る） |
 | 走らせたものの在る行を見る | 台本のクロールに `scripts` を書く（その場の物は `inline` つき）。同梱の台本には、その場の JS で完走した行と、compile の段で落ちた行が在る。代役も台帳と同じく、1 本の詳しい所には source を載せず、「欄に戻す」は名前の口（`/api/crawls/:id/inline/:name`）から取る。クロール `5b0c0008` の autoscroll の `sha256` はわざと台帳の v1 と違えてあり、版の番号が使い回されたときに、クロールの「読む」が出す知らせを見られる |
 | 検索を試す | 検索の画面で語を打つ（同梱の台本では「ランプ」で 2 件）。代役は台本の `searchPages`（アーカイブごとのページ一覧の行。`stage` の無い行が文書の行）から、台帳と同じ決まりで答える —— 写しの行が在るアーカイブでは写しの行だけを引き、`hidden` のアーカイブは出さない。**代役は OpenSearch を持たない**: 題か本文に語を含む行を拾うだけで、点数も分かち書きも無い。`q` が無い・空・ほかの欄があれば、台帳の schema と同じ文で 400 |
+| クロールの合本を見る | 台本のクロール `5b0c0009` を開く。行の run ↗ の隣に replay ↗ が出て、ページの表では撮れたページの結末の後ろに replay ↗ が付く（行の `replayBundle` は r2、ページの `bundledRev` は 1 と 2）。時間切れのページと robots.txt で撮らなかったページには付かない。`5b0c0003` は r2 の次の版を書けなかった行（replay ↗ は r2 を開き、開いた行が理由を言う）、`5b0c0002` は 1 度も書けなかった行（replay ↗ が出ず、開いた行が理由を言う）。台本の行に `replayBundle`（`rev`・`pages`・`builtAt`・`error`。失敗だけの行は `rev` を省く）を、ページに `capturedAt` と `bundledRev` を書く。鍵は代役が台帳と同じ形（`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`）に組む。**代役は合本を書かない** —— replay ↗ の先には何も無い |
 | 直し方を訊く | クロール `5b0c0008`（型の検査で落ちた行）を開く。代役は `/api/crawls/:id/diagnostics` に台本の行の `diagnosed`（台帳の答えそのまま。無い行は型を通る答え）で、`POST /api/crawls/:id/inline/:name/fix` に `fixes`（その場の JS の名前ごとの `{ status, body }`）で答える。**代役は Claude を呼ばない** —— `fixes` に無い名前は 404。`5b0c0008` は TS7006 の 1 件と、検査に通った直し（2〜3 行目。直した版は TypeScript 6.0.3 の strict で通る）を持つ。ほかの答えを見るなら、`fixes` に 429 や 422 の `status` と台帳の本文を書く |
 
 代役にできないこともあります。
@@ -104,7 +105,7 @@ dashboard が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 - **認可を真似ない。**
   名乗りは何でも通るので、許可が無いときの画面はここでは出ません。
 - **replay ↗ と run ↗ の飛び先は、サンドボックスの外です。**
-  開いても、代役の行は向こうに在りません。
+  開いても、代役の行（と合本）は向こうに在りません。
 - 検証の報告の版は `wacz-validator unknown` と出ます（image に `.git` を入れないため）。
 - 画面の赤い文は、直し方に capture-ledger のコマンドを挙げます。
   サンドボックスでは、台帳は代役、daemon は `sandbox-validator` のコンテナと読み替えてください。

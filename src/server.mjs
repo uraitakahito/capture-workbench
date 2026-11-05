@@ -71,8 +71,8 @@ const LEDGER = optional("DASHBOARD_LEDGER_URL", "http://127.0.0.1:7070");
 const ISSUER = optional("DASHBOARD_ISSUER_URL", "http://127.0.0.1:9099");
 const SUBJECT = optional("DASHBOARD_SUBJECT", userInfo().username);
 /**
- * 深いリンクの行き先。**dashboard はこれを組み立てない** —— 台帳が返すのは `objectKey` と
- * `lastJob.id` だけで、どこで開くかは配備の事実。1 か所で決めて `/healthz` で配る。
+ * 深いリンクの行き先。**dashboard はこれを組み立てない** —— 台帳が返すのは `objectKey`・クロールの合本の鍵
+ * （`replayBundle.key`）・`lastJob.id` だけで、どこで開くかは配備の事実。1 か所で決めて `/healthz` で配る。
  */
 const REPLAY = optional("DASHBOARD_REPLAY_URL", "http://127.0.0.1:8899");
 const WINDMILL = optional("DASHBOARD_WINDMILL_URL", "http://127.0.0.1:8000");

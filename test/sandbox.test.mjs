@@ -9,6 +9,8 @@
  * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。ページの口（`GET /api/crawls/:id/pages` と
  * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で台帳が足す形から（台帳の版は、口が出たら書く）。
  * 型の誤りの取り直し（`GET /api/crawls/:id/diagnostics`）と直し方（`POST …/inline/:name/fix`）は CAPTURE-49 の形から。
+ * 合本の欄（行と詳しい所の `replayBundle`・ページの行の `capturedAt` と `bundledRev`）は、CAPTURE-56 で台帳が足す形から
+ * （台帳の版は、出たら書く）。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -16,6 +18,7 @@ import { readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
 import { outcomeOf } from "../public/pages.js";
+import { replayBundleHref } from "../public/replay.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
 import {
@@ -37,6 +40,7 @@ import {
   pageRow,
   pickable,
   readingLastGood,
+  replayBundleOf,
   scriptRows,
   searchOf,
   signedUrlOf,
@@ -53,7 +57,7 @@ const versions = catalogOf(scenario);
 const at = (list) => list.map((v) => `${v.id}@${String(v.version)}`);
 const NOW = Date.parse("2026-10-12T12:00:00.000Z");
 
-/** capture-ledger の src/api/crawls.ts が /api/crawls の 1 行に返す欄 (v0.57.4)。 */
+/** capture-ledger の src/api/crawls.ts が /api/crawls の 1 行に返す欄 (v0.57.4。`replayBundle` は CAPTURE-56 から)。 */
 const LEDGER_CRAWL_KEYS = [
   "crawlId",
   "state",
@@ -68,7 +72,10 @@ const LEDGER_CRAWL_KEYS = [
   "error",
   "waczCount",
   "lastJob",
+  "replayBundle",
 ].sort();
+/** 行と詳しい所の `replayBundle` の欄（null でなければ。CAPTURE-56 の src/api/crawls.ts の replayBundleOf）。 */
+const LEDGER_BUNDLE_KEYS = ["key", "rev", "pages", "builtAt", "error"].sort();
 
 /** capture-ledger の src/api/routes.ts が /api/archives の 1 行に返す欄 (v0.57.4)。 */
 const LEDGER_ARCHIVE_KEYS = [
@@ -174,6 +181,43 @@ test("同梱の台本は、画面の状態の言い分けを全部出す", () =>
   }
   assert.ok([...texts].some((text) => text.startsWith("成功 (")), "知らない stopReason の行");
   assert.ok((scenario.hidden ?? []).length > 0, "見えない archive の行");
+});
+
+// ── 合本の欄（CAPTURE-56 で台帳が足す行の replayBundle）────────────────────────────────
+
+test("合本の欄は台帳と同じ形で、行と詳しい所で同じ。鍵は台帳と同じ置き場の版を指す", () => {
+  let seen = 0;
+  for (const c of scenario.crawls) {
+    const bundle = crawlRow(c, NOW).replayBundle;
+    assert.deepEqual(crawlDetail(c).replayBundle, bundle, c.crawlId);
+    if (bundle === null) continue;
+    seen += 1;
+    assert.deepEqual(Object.keys(bundle).sort(), LEDGER_BUNDLE_KEYS, c.crawlId);
+    if (bundle.rev === null) {
+      // 失敗だけの行は、鍵・ページの数・時刻を持たない（台帳の replayBundleOf と同じ）
+      assert.deepEqual([bundle.key, bundle.pages, bundle.builtAt], [null, null, null], c.crawlId);
+      assert.equal(typeof bundle.error, "string", c.crawlId);
+    } else {
+      assert.equal(bundle.key, `org/acme/crawls/${c.crawlId}/r${String(bundle.rev)}/replay.json`, c.crawlId);
+      assert.equal(typeof bundle.pages, "number", c.crawlId);
+      assert.ok(Date.parse(bundle.builtAt) > 0, c.crawlId);
+    }
+  }
+  assert.ok(seen > 0);
+  // 書けた版も失敗も無い行は null
+  assert.equal(replayBundleOf({ crawlId: "x", replayBundle: {} }), null);
+});
+
+test("同梱の台本は、合本の 3 つの形（書けた版・書けた版の後の失敗・失敗だけ）と、合本の無い行を出す。受けた行は持たない", () => {
+  const bundles = scenario.crawls.map((c) => crawlRow(c, NOW).replayBundle);
+  assert.ok(bundles.some((b) => b?.key && b.error === null), "書けた版");
+  assert.ok(bundles.some((b) => b?.key && b.error !== null), "書けた版の後の失敗（前の版を開く）");
+  assert.ok(bundles.some((b) => b !== null && b.key === null), "失敗だけ（replay ↗ が出ない）");
+  assert.ok(bundles.some((b) => b === null), "合本の無い行");
+  const rows = [];
+  submitCrawl(rows, { seeds: ["https://site.test/"] }, NOW, RUNS, versions);
+  assert.equal(submittedRow(rows[0], NOW).replayBundle, null);
+  assert.equal(crawlDetail(submittedRow(rows[0], NOW), rows[0].scripts).replayBundle, null);
 });
 
 test("台本が少しの間だけ読めないときは、前に読めた台本で答える", () => {
@@ -889,7 +933,18 @@ test("判断の口は、台本の行の規則・判断・robots を返す（受�
 // ── ページの口（CAPTURE-18 で台帳が足す GET /api/crawls/:id/pages と …/pages/:page/log の形）────────
 
 /** ページの 1 行の欄（一覧の pages[i] と、ログの答えの page）。 */
-const LEDGER_PAGE_KEYS = ["id", "url", "depth", "state", "reason", "taskId", "archiveId", "logCounts"].sort();
+const LEDGER_PAGE_KEYS = [
+  "id",
+  "url",
+  "depth",
+  "state",
+  "reason",
+  "taskId",
+  "archiveId",
+  "capturedAt",
+  "bundledRev",
+  "logCounts",
+].sort();
 /** ページの行の logCounts の欄（BrowserHive の答えの log.counts と dropped）。 */
 const LOG_COUNTS_KEYS = ["debug", "info", "warn", "error", "dropped"].sort();
 /** ログの 1 行で、必ず在る欄と、在ってよい欄（BrowserHive の答えの log.lines[i] をそのまま）。 */
@@ -976,6 +1031,21 @@ test("読めないページは log: null と理由 —— taskId の無いペー
   assert.equal(pageLog(named, "1").body.reason, "manifest-missing");
   // 数を読んでいないページの logCounts は null
   assert.equal(pageRow(crawlOf("5b0c0006").pages[0]).logCounts, null);
+});
+
+test("5b0c0009 のページの表では、WACZ が台帳の指す合本に入った 2 ページにだけ replay ↗ が付く", () => {
+  const c = crawlOf("5b0c0009");
+  const bundle = crawlDetail(c).replayBundle;
+  const pages = pageList(c, query()).body.pages;
+  const linked = pages.filter((p) => replayBundleHref("http://127.0.0.1:8899", bundle, p) !== undefined);
+  assert.deepEqual(linked.map((p) => [p.id, p.bundledRev]), [["1201", 1], ["1203", bundle.rev]]);
+  // 版に入ったページは WACZ と撮った時刻を持つ（合本の中で直に開く）。ほかのページは、どちらも持たない
+  for (const p of pages) {
+    const bundled = p.bundledRev !== null;
+    assert.equal(p.archiveId !== null, bundled, p.id);
+    assert.equal(p.capturedAt !== null, bundled, p.id);
+    if (bundled) assert.match(replayBundleHref("http://127.0.0.1:8899", bundle, p), /#view=replay&/, p.id);
+  }
 });
 
 test("ページの id が数字だけでなければ 400、ほかの行のページと、行が無ければ 404", () => {

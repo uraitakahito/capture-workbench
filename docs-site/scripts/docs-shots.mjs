@@ -126,9 +126,11 @@ const SHOTS = [
     name: "crawls",
     hash: "#crawls",
     box: "#face-crawls table",
-    // 表は折り返さない欄で、中身の幅に伸びる。開いた行は crawl-detail
+    // 表は折り返さない欄で、中身の幅に伸びる。開いた行は crawl-detail。合本の在る行は run ↗ の後に replay ↗
     wide: true,
-    ready: () => document.querySelector("#crawls tr.head td:nth-child(8)")?.textContent === "1m 40s",
+    ready: () =>
+      document.querySelector("#crawls tr.head td:nth-child(8)")?.textContent === "1m 40s" &&
+      document.querySelector("#crawls tr.head td:last-child a + a")?.textContent === "replay ↗",
     marks: [
       { n: 1, at: "#crawls tr.head:first-child td:first-child" },
       { n: 2, at: "#crawls tr.head:first-child td:last-child a" },
@@ -167,7 +169,8 @@ const SHOTS = [
     name: "crawl-pages",
     hash: "#crawls",
     box: "#crawls tr.detail .pages",
-    // 開いた行の「ページ」の表（台本の 5b0c0009）。時間切れのページのログを開いて写す。表は中身の幅で、COLUMN に収まる
+    // 開いた行の「ページ」の表（台本の 5b0c0009）。時間切れのページのログを開いて写す。表は中身の幅で、COLUMN に収まる。
+    // 合本に入った 2 ページは、結末の後ろに replay ↗
     maxWidth: COLUMN,
     prepare: async (page) => {
       await page.evaluate(() => {
@@ -184,7 +187,8 @@ const SHOTS = [
     },
     ready: () =>
       document.querySelector("#crawls tr.detail .logbox .chip.on")?.textContent === "すべて 4" &&
-      document.querySelectorAll("#crawls tr.detail .logbox .loglines tr").length === 4,
+      document.querySelectorAll("#crawls tr.detail .logbox .loglines tr").length === 4 &&
+      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a").length === 2,
     marks: [
       { n: 1, at: "#crawls tr.detail .pagelist th:nth-child(2)" },
       { n: 2, at: "#crawls tr.detail .pagelist tr:nth-child(2) td:nth-child(3)" },

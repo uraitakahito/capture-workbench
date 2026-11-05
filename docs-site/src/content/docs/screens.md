@@ -17,7 +17,7 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 
 | View | What it lists |
 | --- | --- |
-| Crawls | one row per crawl: state, pages captured, pages discovered, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, link to the run |
+| Crawls | one row per crawl: state, pages captured, pages discovered, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replay (the whole crawl as one archive) |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
 | Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replay](https://github.com/uraitakahito/replay) (which plays a WACZ back in the browser) |
 | Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replay |
@@ -42,9 +42,11 @@ what you have read stays listed when the table is fetched again.
 
 Each row is one crawl. It shows the state, the first 8 characters of the id, who started it and
 for which organization, the first seed URL, pages captured, pages discovered, the number of
-WACZ files and the time taken. "run ↗" at the right end opens the Windmill run in a new tab.
+WACZ files and the time taken. "run ↗" at the right end opens the Windmill run in a new tab, and
+"replay ↗" next to it opens the whole crawl in replay as one archive, once the ledger has written
+the crawl's bundle.
 
-![The crawls table: running, finished, cut-off and failed rows](../../assets/screens/crawls.webp)
+![The crawls table: running, finished, cut-off and failed rows; rows whose crawl has a bundle have replay ↗ next to run ↗](../../assets/screens/crawls.webp)
 
 ① state\
 ② the link to the run
@@ -58,6 +60,18 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
 - **run ↗ is the run of the last level that was handed over.** The link is built from the id of
   `lastJob` that the ledger returns, plus the Windmill origin and workspace the server hands out
   through `/healthz`. Rows where the ledger has no `lastJob` get no link.
+- **replay ↗ opens the crawl as one archive.** After each level, the ledger writes the crawl's
+  bundle (合本) to the store: a `replay.json` that lists every WACZ file of the crawl, and the
+  index of its pages (`pages.json`) that replay's server answers from when replay looks a page
+  up. replay opens them as one archive, so a link on a captured page leads to a page captured into
+  another WACZ file.
+  The link opens the list of pages (`#view=pages`) of the version the ledger points at
+  (`replayBundle.key`), at the replay origin the server hands out through `/healthz`. A crawl with
+  no bundle (nothing captured yet, or a ledger that writes none) gets no link. The ledger never
+  stops a crawl over a bundle it could not write: an opened row says why first, in the ledger's
+  words (`replayBundle.error`), and replay ↗ keeps opening the version written before, if there is
+  one. The rules for these links are `replayBundleHref` in `public/replay.js`, pinned by
+  `test/replay.test.mjs`.
 
 ![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the values passed and the secrets used, the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
 
@@ -104,9 +118,9 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   link, Windmill で調べる (inspect in Windmill), to the script `f/waggle/inspect_crawl` in Windmill
   with this crawl's id already filled in (Windmill keeps a run's arguments in the URL's hash).
 
-![The pages table of an opened crawl: four pages with their URL, outcome and warn and error counts, and the log of the page that timed out, opened, with lines from a script, an exception in the captured page and BrowserHive's timeout](../../assets/screens/crawl-pages.webp)
+![The pages table of an opened crawl: four pages with their URL, outcome (replay ↗ after the captured ones) and warn and error counts, and the log of the page that timed out, opened, with lines from a script, an exception in the captured page and BrowserHive's timeout](../../assets/screens/crawl-pages.webp)
 
-① the outcome (the ledger's state and reason)\
+① the outcome (the ledger's state and reason), with replay ↗ for a page in the crawl's bundle\
 ② the warn and error counts\
 ③ ログ (log): opens the page's log, and closes it on a second press\
 ④ the level filter
@@ -119,8 +133,14 @@ WACZ files and the time taken. "run ↗" at the right end opens the Windmill run
   that never got a report as `pending` (whether it was captured is unknown), so in a crawl that has
   ended such a page reads `pending（報告なし —— クロールが先に終わった）` (no report: the crawl
   ended first) — a crawl that failed the type check captured nothing, and its seed would otherwise
-  look like it is still waiting. The warn and error counts
-  are what the ledger counted in that capture's `.result.json`; a page whose counts the ledger has
+  look like it is still waiting. A page whose WACZ is in the bundle the ledger points at has
+  replay ↗ after its outcome: it opens that page inside the crawl's bundle, at the time it was
+  captured (`#view=replay&url=…&ts=…`). What decides it is the ledger's `bundledRev`, the first
+  version of the bundle that the page's WACZ went into: the link appears when it is no later than
+  the version in the opened row's `replayBundle`. A page without a WACZ, a WACZ in no version yet,
+  and a WACZ that went into a version newer than the one fetched with the row get no link. The
+  warn and error counts are what the ledger counted in that capture's `.result.json`; a page whose
+  counts the ledger has
   not read shows "—", which is not the same as 0. The table holds one batch from the ledger, with
   続きを読む (read on) when there is more. A ledger without the pages route gets a one-line note.
 - **ログ (log) shows the log lines of that page.** The dashboard fetches the ledger's
@@ -343,7 +363,9 @@ The WACZ files you can see, newest capture first.
   capture time (`#view=replay&url=…&ts=…`). The page's own scripts run there, so pictures that the
   page shows with JavaScript appear too. The DOM snapshots BrowserHive took (before and after the
   scripts) are on replay's Pages tab. replay does not pick a start page on its own: it lists the
-  pages newest first, and it does not read the WACZ's `mainPageURL`.
+  pages newest first, and it does not read the WACZ's `mainPageURL`. It opens that one WACZ: to
+  follow links into the crawl's other pages, open the crawl with replay ↗ on its row in the
+  [crawls view](#crawls).
 
 ## Search
 

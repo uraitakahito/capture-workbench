@@ -30,6 +30,10 @@
  * 検索の口 (`GET /api/search`。CAPTURE-53) にも、台本の `searchPages` から答える。**代役は OpenSearch を持たない** ——
  * 語を含む行を拾うだけで、点数も分かち書きも無い。
  *
+ * クロールの合本 (CAPTURE-54。台帳が段ごとに保管庫へ書く replay.json と pages.json) の欄も返す —— 行と詳しい所の
+ * `replayBundle` (台本の行の `replayBundle` から。鍵は台帳と同じ形に組む) と、ページの行の `capturedAt`・`bundledRev`
+ * (台本のページから)。**代役は合本を書かない** —— 保管庫も replay も無いので、replay ↗ の先には何も無い。
+ *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -60,8 +64,28 @@ export const idOf = (name) =>
     .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12}).*/, "$1-$2-$3-$4-$5");
 
 /**
- * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.57.4) と同じ。
- * 時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
+ * 行の合本の欄 (`replayBundle`)。形は CAPTURE-56 で台帳が足す src/api/crawls.ts の replayBundleOf と同じ ——
+ * 書けた版も、書けなかった記録も無ければ null。台本の行の `replayBundle` は `{ rev, pages, builtAt, error }` で、鍵は
+ * 台帳と同じ置き場 (`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`) に組む。`rev` を省いた行は失敗だけの行
+ * (鍵・版・ページの数・時刻が null)。受けた行 (`submittedRow`) は null を持つ。
+ */
+export const replayBundleOf = (c) => {
+  const said = c.replayBundle ?? null;
+  const rev = said?.rev ?? null;
+  const error = said?.error ?? null;
+  if (rev === null && error === null) return null;
+  return {
+    key: rev === null ? null : `org/${c.orgId ?? "acme"}/crawls/${c.crawlId}/r${String(rev)}/replay.json`,
+    rev,
+    pages: rev === null ? null : said.pages,
+    builtAt: rev === null ? null : said.builtAt,
+    error,
+  };
+};
+
+/**
+ * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.57.4) と同じ。合本の欄 (`replayBundle`) は
+ * CAPTURE-56 の形から。時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
  */
 export const crawlRow = (c, now) => ({
   crawlId: c.crawlId,
@@ -80,6 +104,7 @@ export const crawlRow = (c, now) => ({
   error: c.error ?? null,
   waczCount: c.waczCount ?? 0,
   lastJob: c.lastJobId === undefined ? null : { id: c.lastJobId, depth: c.lastJobDepth ?? 0 },
+  replayBundle: replayBundleOf(c),
 });
 
 /**
@@ -140,8 +165,9 @@ const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [
 
 /**
  * /api/crawls/:id。台帳はほかの欄 (上限など) も返すが、dashboard が読むのは seeds・rules・
- * error・scripts・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に持たない
- * (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ台帳の既定。
+ * error・scripts・replayBundle・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に
+ * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ台帳の既定。
+ * `replayBundle` は一覧の行と同じ形 (台帳も同じ関数で組む)。
  * `secrets` は台帳 v0.67.0 と同じく `{ name, path, editedAt, rotated }` の列で、値は無い。`failures` の要素は
  * `{ url, depth, reason, page }` (page はページの行の id。CAPTURE-18 で台帳が足す)。
  */
@@ -153,6 +179,7 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   stopReason: c.stopReason ?? null,
   error: c.error ?? null,
   scripts: scripts.map(detailScript),
+  replayBundle: replayBundleOf(c),
   failures: (c.failures ?? []).map((f) => ({ url: f.url, depth: f.depth, reason: f.reason ?? null, page: f.page })),
   variables: values.variables,
   secrets: values.secrets,
@@ -178,6 +205,8 @@ const countsOf = (log) =>
 /**
  * ページの 1 行。欄は CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` の形と同じ (id は数字だけの文字列)。
  * `logCounts` は台本の `log` から組み (level ごとの数と dropped)、`log` の無いページは null (数を読んでいない)。
+ * `capturedAt` と `bundledRev` (CAPTURE-56) は WACZ の撮った時刻と、その WACZ が最初に入った合本の版で、台本の
+ * ページから (WACZ の無いページ・どの版にも入っていないページは null)。
  */
 export const pageRow = (p) => ({
   id: p.id,
@@ -187,6 +216,8 @@ export const pageRow = (p) => ({
   reason: p.reason ?? null,
   taskId: p.taskId ?? null,
   archiveId: p.archiveId ?? null,
+  capturedAt: p.capturedAt ?? null,
+  bundledRev: p.bundledRev ?? null,
   logCounts: p.log === undefined ? null : { ...countsOf(p.log), dropped: p.log.dropped ?? 0 },
 });
 
@@ -967,6 +998,8 @@ export const submittedRow = (row, now) => {
     error: null,
     waczCount: 0,
     lastJob: null,
+    // 受けた行は WACZ を持たないので、合本も無い
+    replayBundle: null,
   };
 };
 

@@ -7,7 +7,7 @@
  * null）を入れる（CAPTURE-48）。だから当たりは「アーカイブの 1 時点」で、同じアーカイブが時点ごとに並ぶ。
  * 返るのは見せてよいアーカイブの物だけ（台帳が OpenFGA の can_view で絞る）。
  */
-import { replayHref, replayTs } from "./replay.js";
+import { replayHref, replaySourceHref, replayTs } from "./replay.js";
 
 /** 検索の口。語はそのまま `q` に（台帳は空を 400 で断る）。 */
 export const searchPath = (words) => `/api/search?${new URLSearchParams({ q: words })}`;
@@ -63,7 +63,7 @@ export const highlightParts = (fragment) => {
  */
 export const hitReplayHref = (origin, hit) => {
   if (typeof hit?.stage !== "string" || hit.stage === "") return replayHref(origin, hit);
-  const base = `${origin}/?source=/wacz/${encodeURIComponent(hit.objectKey)}`;
+  const base = replaySourceHref(origin, hit.objectKey);
   const ts = replayTs(hit.capturedAt);
   if (typeof hit.url !== "string" || hit.url === "" || ts === undefined) return base;
   return `${base}#${new URLSearchParams({ view: "replay", url: hit.url, ts })}`;
