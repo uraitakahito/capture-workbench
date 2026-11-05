@@ -17,7 +17,7 @@
     "        頼まれた要素 inline (name・phase・source) を付ける (台帳は、その場の物にだけ返す)。",
     "        台帳のスクリプトの sha256 は、台帳のその版と同じ値にする。**5b0c0008 の autoscroll だけはわざと違う** ——",
     "        読む所が「このクロールが走らせた v1 とは中身が違う」と言うのを見る場 (版の番号は使い回される)。",
-    "catalog: スクリプトの版の並び。source は file (sandbox/catalog の写し・capture-scripts v0.7.0) から読み、",
+    "catalog: スクリプトの版の並び。id の現れる順が既定の実行順 (capture-scripts の catalog.json の順)。source は file (sandbox/catalog の写し・capture-scripts v0.7.0) から読み、",
     "         sha256 と bytes は代役が source から数える。options と enabled は省けば {} と true。",
     "         /api/scripts は各 id に 1 行 (有効な版の中の最新、無ければ最新版を enabled: false で)。",
     "         autoscroll v2 は中身が同じで設定だけ違う版。autofetch は enabled: false —— capture-scripts の",
@@ -376,14 +376,6 @@
   "windmillSecrets": ["api_token"],
   "windmillVariables": ["plain_token"],
   "catalog": [
-    {
-      "id": "autofetch",
-      "version": 1,
-      "phase": "behavior",
-      "file": "catalog/autofetch.ts",
-      "createdAt": "2026-10-14T12:26:38.668Z",
-      "enabled": false
-    },
     { "id": "autoscroll", "version": 1, "phase": "behavior", "file": "catalog/autoscroll.ts", "createdAt": "2026-10-14T12:26:38.656Z" },
     {
       "id": "autoscroll",
@@ -403,6 +395,14 @@
         { "name": "query", "kind": "variable", "required": false, "summary": "法令名の検索語。省けばソースの既定" }
       ],
       "createdAt": "2026-10-29T00:00:00.000Z"
+    },
+    {
+      "id": "autofetch",
+      "version": 1,
+      "phase": "behavior",
+      "file": "catalog/autofetch.ts",
+      "createdAt": "2026-10-14T12:26:38.668Z",
+      "enabled": false
     }
   ],
   "hostTypes": { "version": 1, "file": "catalog/host.d.ts", "createdAt": "2026-10-17T00:36:15.178Z" }

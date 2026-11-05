@@ -15,15 +15,20 @@ import {
   declaredOf,
   defaultIds,
   hasNocheck,
+  INLINE_ROW,
+  liveOrder,
   marksOf,
+  movedOrder,
   moveRow,
   NOCHECK,
   onSeed,
+  orderOf,
   plainClick,
   PRESETS,
   removeRow,
   scriptsOf,
   seedHosts,
+  shownOrder,
   sizeOf,
   startAnswer,
   startBody,
@@ -107,27 +112,89 @@ test("dashboard のサーバに届かなければ、そう言う", () => {
 });
 
 /**
- * 走らせるものの欄。台帳のスクリプトは札の無い autofetch・autoscroll の 2 本（スクリプト集の画面と同じ id 順）で、
+ * 走らせるものの欄。台帳のスクリプトは札の無い autoscroll・autofetch の 2 本（台帳の並び）で、
  * どちらも既定の顔ぶれとする（autofetch を既定から外した台帳は、下の `SCRIPTS`）。
  */
-const CATALOG = ["autofetch", "autoscroll"];
+const CATALOG = ["autoscroll", "autofetch"];
 const NO_INLINE = { name: "", phase: "behavior", source: "" };
-const run = (picked, inline = NO_INLINE) => ({ catalog: CATALOG, picked, defaults: CATALOG, inline });
+const LATER = { name: "close-banner", phase: "behavior", source: "x;" };
+const run = (picked, inline = NO_INLINE, order = [INLINE_ROW, ...CATALOG]) => ({
+  order,
+  picked,
+  defaults: CATALOG,
+  inline,
+});
 
-test("走らせるものが既定のまま（既定の顔ぶれを全部選び、その場の TS が空）なら scripts を送らない", () => {
+test("走らせるものが既定のまま（既定の顔ぶれを全部選び、順も動かさず、その場の TS が空）なら scripts を送らない", () => {
   // 台帳の既定と、台帳にスクリプトが無いときの 400 を生かす
   assert.equal("scripts" in startBody("https://site.test/", null, run(CATALOG)), false);
   // 台帳にスクリプトが無く、その場の TS も無いときも送らない（台帳が「スクリプトが無い」と言う）
-  assert.equal(scriptsOf({ catalog: [], picked: [], defaults: [], inline: NO_INLINE }), undefined);
+  assert.equal(scriptsOf({ order: [INLINE_ROW], picked: [], defaults: [], inline: NO_INLINE }), undefined);
 });
 
-test("スクリプトを 1 つ外すと、選んだ物だけを台帳の並びで送る", () => {
-  // 押した順ではなく、台帳の並び
-  assert.deepEqual(scriptsOf(run(["autoscroll"])), [{ catalog: "autoscroll" }]);
-  assert.deepEqual(scriptsOf(run(["autoscroll", "autofetch"], { ...NO_INLINE, source: "x;" })).slice(1), [
-    { catalog: "autofetch" },
+test("スクリプトを 1 つ外すと、選んだ物だけを走る順で送る", () => {
+  assert.deepEqual(scriptsOf(run(["autofetch"])), [{ catalog: "autofetch" }]);
+  // 押した順ではなく、走る順
+  assert.deepEqual(scriptsOf(run(["autofetch", "autoscroll"], LATER)).slice(1), [
     { catalog: "autoscroll" },
+    { catalog: "autofetch" },
   ]);
+});
+
+test("顔ぶれが既定のままでも、順を動かしたら scripts を送る —— 省くと台帳が既定の順で走らせる", () => {
+  const swapped = [INLINE_ROW, "autofetch", "autoscroll"];
+  assert.deepEqual(scriptsOf(run(CATALOG, NO_INLINE, swapped)), [{ catalog: "autofetch" }, { catalog: "autoscroll" }]);
+});
+
+test("動かして元の順に戻したら、また省く", () => {
+  const swapped = run(CATALOG, NO_INLINE, [INLINE_ROW, "autofetch", "autoscroll"]);
+  assert.equal(scriptsOf(run(CATALOG, NO_INLINE, movedOrder(swapped, "autofetch", 1))), undefined);
+});
+
+test("動かす前の順は、その場の TS が先頭で台帳の並びのまま —— 台帳の順が変われば付いていく", () => {
+  assert.deepEqual(orderOf(undefined, ["b", "a"]), [INLINE_ROW, "b", "a"]);
+  assert.deepEqual(orderOf(undefined, ["a", "b"]), [INLINE_ROW, "a", "b"]);
+});
+
+test("動かした後の順は保つ —— 台帳に新しく現れた id は後ろへ足し、消えた id は落とす", () => {
+  const moved = ["b", INLINE_ROW, "a"];
+  assert.deepEqual(orderOf(moved, ["a", "b"]), moved);
+  assert.deepEqual(orderOf(moved, ["c", "a", "b"]), ["b", INLINE_ROW, "a", "c"]);
+  assert.deepEqual(orderOf(moved, ["a"]), [INLINE_ROW, "a"]);
+});
+
+test("その場の TS の印は、どのスクリプトの id にもならない", () => {
+  // 台帳の id は ^[a-z][a-z0-9-]*$（capture-ledger の POST /api/crawls）
+  assert.equal(/^[a-z][a-z0-9-]*$/.test(INLINE_ROW), false);
+});
+
+test("番号の付く行は、チェックの付いたスクリプトと、読み込みの後に走るその場の TS だけ", () => {
+  assert.deepEqual(liveOrder(run(["autofetch"])), ["autofetch"]);
+  assert.deepEqual(liveOrder(run(["autofetch"], LATER)), [INLINE_ROW, "autofetch"]);
+  // 空白だけの TS は書いていない。遷移の前に走る物は順を選べない
+  assert.deepEqual(liveOrder(run(["autofetch"], { ...LATER, source: " \n\t" })), ["autofetch"]);
+  assert.deepEqual(liveOrder(run(["autofetch"], { ...LATER, phase: "preload" })), ["autofetch"]);
+});
+
+test("↑↓ は隣の番号の行と入れ替える", () => {
+  assert.deepEqual(movedOrder(run(CATALOG), "autofetch", -1), [INLINE_ROW, "autofetch", "autoscroll"]);
+  assert.deepEqual(movedOrder(run(CATALOG), "autoscroll", 1), [INLINE_ROW, "autofetch", "autoscroll"]);
+});
+
+test("↑↓ は間の外れた行を飛ばし、外れた行はその位置に残る", () => {
+  const order = [INLINE_ROW, "a", "x", "b"];
+  assert.deepEqual(movedOrder({ ...run(["a", "b"]), order }, "b", -1), [INLINE_ROW, "b", "x", "a"]);
+});
+
+test("端を越えるなら同じ順を返す —— 書いていないその場の TS とは入れ替えない", () => {
+  const top = run(CATALOG);
+  assert.equal(movedOrder(top, "autoscroll", -1), top.order);
+  assert.equal(movedOrder(top, "autofetch", 1), top.order);
+});
+
+test("その場の TS も番号の行と入れ替えられる", () => {
+  assert.deepEqual(movedOrder(run(CATALOG, LATER), INLINE_ROW, 1), ["autoscroll", INLINE_ROW, "autofetch"]);
+  assert.deepEqual(movedOrder(run(CATALOG, LATER), "autoscroll", -1), ["autoscroll", INLINE_ROW, "autofetch"]);
 });
 
 test("起点のホストは台帳と同じく hostname —— 小文字になり、IDN は punycode になる", () => {
@@ -140,12 +207,24 @@ test("読めない行と空行は、起点のホストに数えない（台帳�
 });
 
 /**
- * 台帳の `GET /api/scripts` の形（id 順）。札の無い 2 本のうち autofetch は既定に入らない（capture-scripts の
+ * 台帳の `GET /api/scripts` の形（カタログの順）。札の無い 2 本のうち autofetch は既定に入らない（capture-scripts の
  * カタログの `default: false`）。もう 1 本は laws.e-gov.go.jp 用。
  */
 const SITE = { id: "egov-law-search", sites: ["laws.e-gov.go.jp"], enabled: true };
-const SCRIPTS = [{ id: "autofetch", sites: [], enabled: false }, { id: "autoscroll", sites: [], enabled: true }, SITE];
+const SCRIPTS = [{ id: "autoscroll", sites: [], enabled: true }, SITE, { id: "autofetch", sites: [], enabled: false }];
 const IDS = SCRIPTS.map((script) => script.id);
+const ORDER = [INLINE_ROW, ...IDS];
+
+test("行は走る順のまま、起点に合わないサイト用の行だけ下へまとめる", () => {
+  assert.deepEqual(shownOrder(ORDER, SCRIPTS, seedHosts("https://other-site.test/")), [
+    INLINE_ROW,
+    "autoscroll",
+    "autofetch",
+    "egov-law-search",
+  ]);
+  // 起点に合えば、走る順の位置に戻る
+  assert.deepEqual(shownOrder(ORDER, SCRIPTS, seedHosts("https://laws.e-gov.go.jp/")), ORDER);
+});
 
 test("札の無いスクリプトは、起点が無くても、どの起点でも既定", () => {
   assert.deepEqual(defaultIds(SCRIPTS, new Set()), ["autoscroll"]);
@@ -155,7 +234,7 @@ test("札の無いスクリプトは、起点が無くても、どの起点で�
 test("既定に入らないスクリプト（enabled: false）は、どの起点でも既定に数えない —— サイト用でも", () => {
   assert.equal(defaultIds(SCRIPTS, seedHosts("https://laws.e-gov.go.jp/")).includes("autofetch"), false);
   const offSite = { ...SITE, enabled: false };
-  assert.deepEqual(defaultIds([SCRIPTS[1], offSite], seedHosts("https://laws.e-gov.go.jp/")), ["autoscroll"]);
+  assert.deepEqual(defaultIds([SCRIPTS[0], offSite], seedHosts("https://laws.e-gov.go.jp/")), ["autoscroll"]);
 });
 
 test("サイト用のスクリプトは、起点のどれかが札のホストにあるときだけ既定 —— ポートは見ない", () => {
@@ -169,23 +248,23 @@ test("サイト用のスクリプトは、起点のどれかが札のホスト�
 
 test("起点に合わないサイト用のスクリプトは既定に数えない —— 残りを全部選んでいれば scripts を省く", () => {
   const defaults = defaultIds(SCRIPTS, seedHosts("https://other-site.test/"));
-  assert.equal(scriptsOf({ catalog: IDS, picked: defaults, defaults, inline: NO_INLINE }), undefined);
+  assert.equal(scriptsOf({ order: ORDER, picked: defaults, defaults, inline: NO_INLINE }), undefined);
 });
 
 test("起点に合うサイト用のスクリプトを外したら scripts を送る —— 省くと台帳が既定で入れる", () => {
   const defaults = defaultIds(SCRIPTS, seedHosts("https://laws.e-gov.go.jp/"));
-  assert.deepEqual(scriptsOf({ catalog: IDS, picked: ["autoscroll"], defaults, inline: NO_INLINE }), [
+  assert.deepEqual(scriptsOf({ order: ORDER, picked: ["autoscroll"], defaults, inline: NO_INLINE }), [
     { catalog: "autoscroll" },
   ]);
   // 付けたままなら省く（台帳が同じ 2 本を選ぶ）
-  assert.equal(scriptsOf({ catalog: IDS, picked: ["autoscroll", "egov-law-search"], defaults, inline: NO_INLINE }), undefined);
+  assert.equal(scriptsOf({ order: ORDER, picked: ["autoscroll", "egov-law-search"], defaults, inline: NO_INLINE }), undefined);
 });
 
 test("既定に入らないスクリプトを付けたら scripts を送る —— 省くと台帳は入れない", () => {
   const defaults = defaultIds(SCRIPTS, seedHosts("https://other-site.test/"));
-  assert.deepEqual(scriptsOf({ catalog: IDS, picked: ["autofetch", "autoscroll"], defaults, inline: NO_INLINE }), [
-    { catalog: "autofetch" },
+  assert.deepEqual(scriptsOf({ order: ORDER, picked: ["autofetch", "autoscroll"], defaults, inline: NO_INLINE }), [
     { catalog: "autoscroll" },
+    { catalog: "autofetch" },
   ]);
 });
 
@@ -193,13 +272,28 @@ test("全部外すと scripts: [] を送る —— 何も走らせない", () =>
   assert.deepEqual(startBody("https://site.test/", null, run([])).scripts, []);
 });
 
-test("その場の TS は先頭に、名前・phase・source を送る（source は削らない）", () => {
+test("その場の TS は、名前・phase・source を送る（source は削らない）", () => {
   const source = "\n(() => {\n  void 0;\n})();\n\n";
   const body = startBody("https://site.test/", null, run(CATALOG, { name: " close-banner ", phase: "preload", source }));
-  assert.deepEqual(body.scripts, [
-    { inline: { name: "close-banner", phase: "preload", source } },
-    { catalog: "autofetch" },
+  assert.deepEqual(body.scripts[0], { inline: { name: "close-banner", phase: "preload", source } });
+});
+
+test("読み込みの後に走るその場の TS は、順の中の位置で送る", () => {
+  const inline = { inline: LATER };
+  assert.deepEqual(scriptsOf(run(CATALOG, LATER)), [inline, { catalog: "autoscroll" }, { catalog: "autofetch" }]);
+  assert.deepEqual(scriptsOf(run(CATALOG, LATER, ["autoscroll", INLINE_ROW, "autofetch"])), [
     { catalog: "autoscroll" },
+    inline,
+    { catalog: "autofetch" },
+  ]);
+});
+
+test("遷移の前に走るその場の TS は、順の中の位置によらず先頭に送る", () => {
+  const preload = { ...LATER, phase: "preload" };
+  assert.deepEqual(scriptsOf(run(CATALOG, preload, ["autoscroll", "autofetch", INLINE_ROW])), [
+    { inline: preload },
+    { catalog: "autoscroll" },
+    { catalog: "autofetch" },
   ]);
 });
 

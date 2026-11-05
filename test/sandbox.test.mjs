@@ -390,15 +390,15 @@ test("scripts を省くと、起点で選んだ既定を走らせたものとし
 /** 版を `id@版:enabled` で並べる（一覧の口の 1 行が既定に入るかまで比べる）。 */
 const atOn = (list) => list.map((v) => `${v.id}@${String(v.version)}:${String(v.enabled)}`);
 
-test("一覧の口は各 id に 1 行 —— 有効な版の中の最新、無ければ最新版を enabled: false で。サイト用も札つきで", () => {
-  assert.deepEqual(atOn(pickable(versions)), ["autofetch@1:false", "autoscroll@2:true", "egov-law-search@1:true"]);
-  assert.deepEqual(pickable(versions)[2].sites, ["laws.e-gov.go.jp"]);
+test("一覧の口は各 id に 1 行で、カタログの順 —— 有効な版の中の最新、無ければ最新版を enabled: false で。サイト用も札つきで", () => {
+  assert.deepEqual(atOn(pickable(versions)), ["autoscroll@2:true", "egov-law-search@1:true", "autofetch@1:false"]);
+  assert.deepEqual(pickable(versions)[1].sites, ["laws.e-gov.go.jp"]);
   // 新しい版だけを無効にすると、有効な古い版が出る（版ごとの巻き戻し）
   const off = versions.map((v) => (v.id === "autoscroll" && v.version === 2 ? { ...v, enabled: false } : v));
-  assert.deepEqual(atOn(pickable(off)), ["autofetch@1:false", "autoscroll@1:true", "egov-law-search@1:true"]);
+  assert.deepEqual(atOn(pickable(off)), ["autoscroll@1:true", "egov-law-search@1:true", "autofetch@1:false"]);
   // 全部の版を無効にすると、消えずに最新版が enabled: false で出る
   const allOff = versions.map((v) => (v.id === "autoscroll" ? { ...v, enabled: false } : v));
-  assert.deepEqual(atOn(pickable(allOff)), ["autofetch@1:false", "autoscroll@2:false", "egov-law-search@1:true"]);
+  assert.deepEqual(atOn(pickable(allOff)), ["autoscroll@2:false", "egov-law-search@1:true", "autofetch@1:false"]);
 });
 
 test("既定の元（有効な各 id の最新版）は、既定に入らない id を飛ばす", () => {
@@ -432,6 +432,9 @@ test("代役の既定と、新しいクロールの画面の既定（public/star
   // dashboard が持つのは一覧の口の答え（pickable）だけ —— 版ごとに無効にした台帳でも、それで同じ顔ぶれになる
   const off = versions.map((v) => (v.id === "autoscroll" && v.version === 2 ? { ...v, enabled: false } : v));
   const allOff = versions.map((v) => (v.id === "autoscroll" ? { ...v, enabled: false } : v));
+  // 版が離れて並び、先に現れた版が無効でも、id の順は最初に現れた所（台帳の順は id に 1 つ）
+  const [scroll1, scroll2, egov, fetch1] = versions;
+  const apart = [{ ...scroll1, enabled: false }, egov, scroll2, fetch1];
   const seeds = [
     "",
     "https://other-site.test/",
@@ -440,7 +443,7 @@ test("代役の既定と、新しいクロールの画面の既定（public/star
     "https://www.e-gov.go.jp/",
     "not a url\nHTTPS://LAWS.E-GOV.GO.JP/",
   ];
-  for (const list of [versions, off, allOff]) {
+  for (const list of [versions, off, allOff, apart]) {
     for (const text of seeds) {
       const hosts = seedHosts(text);
       assert.deepEqual(

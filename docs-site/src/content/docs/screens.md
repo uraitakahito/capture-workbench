@@ -189,10 +189,10 @@ page only) or リンクを辿る (follow links), and press 始める. The right 
 a window for reading a registered script, and, while リンクを辿る is chosen, to 辿り方 (how to
 follow).
 
-![The left column of the new crawl view: the seed URL (e-Gov Law Search), script checkboxes including autofetch left unticked as 既定では走らない and the site script egov-law-search, the field for the variable query that egov-law-search declares, this page only or follow links, and 始める](../../assets/screens/start.webp)
+![The left column of the new crawl view: the seed URL (e-Gov Law Search), script rows (a run-order number, a checkbox, and ↑↓) including the row for your own script, the site script egov-law-search, and autofetch left unticked as 既定では走らない, the field for the variable query that egov-law-search declares, this page only or follow links, and 始める](../../assets/screens/start.webp)
 
 ① seed URLs\
-② スクリプト (scripts): the checkboxes and 読む (read)\
+② スクリプト (scripts): the run-order numbers, the checkboxes and 読む (read), and ↑↓\
 ③ クロールごとの値 (per-crawl values): the fields for the variables the ticked scripts declare\
 ④ 始める (start)
 
@@ -205,12 +205,20 @@ follow).
 - **It sends the seed URLs, whether the depth is 0, what runs — only when it differs from the
   default — and the per-crawl variables, only those with a value.** このページだけ sends `maxDepth: 0`; リンクを辿る sends the rules, and the depth
   and the page limit only when they are written (empty, they are the ledger's defaults). With the default set the seeds decide (of the scripts in
-  the default, those without sites and the site scripts for a seed's host) ticked and no script of your own, the form
-  sends no `scripts`, and the ledger picks the same set from the seeds. A ledger with no scripts is still a
+  the default, those without sites and the site scripts for a seed's host) ticked and unmoved, and no script of your own, the form
+  sends no `scripts`, and the ledger picks the same set in the same order from the seeds. A ledger with no scripts is still a
   400, and so, with its own message, is one in which no script fits the seeds. Otherwise it
-  sends `scripts`: your script first, then the ticked registered scripts in the ledger's
-  order; unticking all of them sends `[]`, which runs nothing. The dashboard checks neither the URLs
+  sends `scripts` in the order of the numbers (a script of your own set to 遷移の前 goes first);
+  unticking all of them sends `[]`, which runs nothing. The dashboard checks neither the URLs
   nor the script's name; the ledger says what is wrong with a 400, naming the ids it refused.
+- **The numbers show the order the scripts run in, and ↑↓ change it.** The ticked rows are numbered
+  and run in that order. They start in the order of `catalog.json` in
+  [capture-scripts](https://github.com/uraitakahito/capture-scripts) (from ledger v0.75.0), so ticking
+  `autofetch` alone runs it after `autoscroll`. ↑↓ swap numbered rows. Unticking leaves the row where it is and only
+  takes away its number and arrows. Site scripts that fit no seed collect at the bottom. A script of
+  your own set to 読み込みの後 (after load) gets a row when you write it, first at the top, and moves
+  with the others; one set to 遷移の前 (before navigation) gets no row and always runs first. The
+  order you set survives re-fetching the list and starting a crawl; reloading the page resets it.
 - **A site script can be ticked only when a seed is on its site.** A script with sites can be
   ticked only while one of the seeds is on one of those hosts. The seed's hostname must match
   exactly and its port is ignored (`laws.e-gov.go.jp` and `www.e-gov.go.jp` are different hosts).

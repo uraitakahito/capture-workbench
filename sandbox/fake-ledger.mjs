@@ -820,24 +820,28 @@ export const catalogOf = (s, read = readBeside) =>
     };
   });
 
-/** 各 id の最新版を id 順で。有効かどうかは見ない（台帳の resolveScripts の名指しの側）。 */
+/**
+ * 各 id の最新版を、台本の `catalog` に現れた順で（台帳の既定の実行順。capture-scripts の catalog.json の並びの写し）。
+ * 有効かどうかは見ない（台帳の resolveScripts の名指しの側）。
+ */
 export const latestOf = (versions) =>
-  [...new Set(versions.map((v) => v.id))]
-    .sort()
-    .map((id) => versions.filter((v) => v.id === id).reduce((a, b) => (b.version > a.version ? b : a)));
+  [...new Set(versions.map((v) => v.id))].map((id) =>
+    versions.filter((v) => v.id === id).reduce((a, b) => (b.version > a.version ? b : a)),
+  );
 
-/** 有効な各 id の最新版を id 順で。サイト用のスクリプトも入る（台帳の enabledLatest。既定の顔ぶれの元）。 */
-export const latestEnabled = (versions) => latestOf(versions.filter((v) => v.enabled));
+/**
+ * 有効な各 id の最新版を同じ順で。サイト用のスクリプトも入る（台帳の enabledLatest。既定の顔ぶれの元）。順は
+ * 無効な版も数えて決める —— 台帳の順は id に 1 つなので、一覧の口と既定の順はずれない。
+ */
+export const latestEnabled = (versions) => pickable(versions).filter((v) => v.enabled);
 
 /**
  * 一覧の口（`GET /api/scripts`）の顔ぶれ。各 id に 1 行で、既定で走る版（有効な版の中の最新）があればそれ、
  * 無ければ最新版を `enabled: false` で（台帳 v0.64.0 の pickable）。既定に入らないスクリプトも、名指せば
  * 走るので載せる。
  */
-export const pickable = (versions) => {
-  const enabled = latestEnabled(versions);
-  return latestOf(versions).map((v) => enabled.find((e) => e.id === v.id) ?? v);
-};
+export const pickable = (versions) =>
+  latestOf(versions).map((latest) => latestOf(versions.filter((v) => v.id === latest.id && v.enabled))[0] ?? latest);
 
 /**
  * `GET /api/scripts` の行。身元と札と enabled に、宣言 `params` を添える（台帳 v0.67.0。新しいクロールの画面が
@@ -858,7 +862,7 @@ export const scriptRows = (versions) =>
 const onSeed = (sites, hosts) => sites.length === 0 || sites.some((site) => hosts.has(site));
 
 /**
- * 既定の顔ぶれ: 有効な各 id の最新版のうち、札の無い物と、起点に合うサイト用の物（id 順）。
+ * 既定の顔ぶれ: 有効な各 id の最新版のうち、札の無い物と、起点に合うサイト用の物（カタログの順）。
  * **最新版を選んでから札で絞る** —— 台帳の resolveScripts と同じ順。逆にすると、札を付け直した id の
  * 札の無い古い版が出てくる。
  */
