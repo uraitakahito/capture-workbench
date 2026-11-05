@@ -10,7 +10,7 @@
  *
  * `POST /api/crawls` (dashboard の新しいクロールの画面) にも答える。受けた行は代役が起きている間だけ在り、
  * 台本の `submit.runsSeconds` 秒走ってから完走になる (台本の行とは別に持つ)。走らせるもの
- * (`scripts`。台帳のスクリプトの名指しとその場の JS) も台帳と同じ形で受け、1 本の詳しい所に返す。
+ * (`scripts`。台帳のスクリプトの名指しとその場の TS) も台帳と同じ形で受け、1 本の詳しい所に返す。
  *
  * 台帳のスクリプト (台本の `catalog`) は版の並びで、source は sandbox/catalog の写しから読む。スクリプトを読む口
  * (版の一覧・1 版・受け皿の型) にも答える。札 (`sites`) のある版はサイト用のスクリプトで、台帳と同じく
@@ -116,7 +116,7 @@ const detailScript = (s) => ({
   version: s.version,
   phase: s.phase,
   sha256: s.sha256,
-  // 札。その場の JS と、札の無い物は空
+  // 札。その場の TS と、札の無い物は空
   sites: s.sites ?? [],
   jsSha256: s.jsSha256 ?? null,
   compiledWith: s.compiledWith ?? null,
@@ -131,7 +131,7 @@ const detailScript = (s) => ({
 
 /**
  * /api/crawls/:id/inline/:name。欄は capture-ledger v0.59.0 の src/api/crawls.ts と同じ ——
- * その場の JS 1 本の source を返す（dashboard の「欄に戻す」が使う）。台帳のスクリプトと、知らない名前は 404。
+ * その場の TS 1 本の source を返す（dashboard の「欄に戻す」が使う）。台帳のスクリプトと、知らない名前は 404。
  */
 export const inlineSource = (scripts, name) => {
   const script = (scripts ?? []).find((x) => x.inline?.name === name);
@@ -524,7 +524,7 @@ export const crawlRulesCheck = (seedTexts, ruleTexts) => {
   };
 };
 
-/** その場の JS の名前の綴り (台帳の schema と同じ。`inline-` と合わせて 64 字まで)。 */
+/** その場の TS の名前の綴り (台帳の schema と同じ。`inline-` と合わせて 64 字まで)。 */
 const INLINE_NAME = /^[a-z][a-z0-9-]*$/;
 /** クロールごとの値の名前の綴り (台帳 v0.67.0 の schema と capture-scripts の check.mjs と同じ。64 字まで)。 */
 const VALUE_NAME = /^[a-z][a-z0-9_]*$/;
@@ -573,7 +573,7 @@ const elementRefusal = (element, i) => {
 
 /**
  * 宣言 (`params`) の形を見る (台帳 v0.67.0 の schema)。断るなら文を返す。名前は `^[a-z][a-z0-9_]*$` で 64 字まで、
- * kind は variable か secret、required は真偽値、summary は文字列 (その場の JS では省ける)、知らない鍵は断る。
+ * kind は variable か secret、required は真偽値、summary は文字列 (その場の TS では省ける)、知らない鍵は断る。
  * 同じ名前が 2 度ある宣言は schema では見ず、`paramsReading` が台帳の `readParams` と同じ文で断る。
  */
 const paramsRefusal = (params, at) => {
@@ -600,7 +600,7 @@ const paramsRefusal = (params, at) => {
 };
 
 /**
- * その場の JS の宣言を、台帳の `readParams` (schema の後) と同じく読む。同じ名前が 2 度あれば 400
+ * その場の TS の宣言を、台帳の `readParams` (schema の後) と同じく読む。同じ名前が 2 度あれば 400
  * `{ error: "invalid params", script, hint }` (文は台帳と同じ)。通れば、省いた required を false にした宣言。
  */
 const paramsReading = (inline) => {
@@ -636,9 +636,9 @@ const variablesRefusal = (variables) => {
 
 /**
  * クロールごとの値を、台帳 (v0.67.0 の `checkValues` と route) と同じ順で解く: 同じ名前を別の種類で宣言している →
- * 必須の変数が無い → シークレットの名前を変数で渡している → 知らない変数 (宣言を添えないその場の JS が 1 本でも在れば
- * 見ない —— その JS が読むかもしれない) → シークレットが多すぎる → 宣言したシークレットが Windmill に在るか → 在るが
- * secret でない。宣言は走らせるものから集める (台帳のスクリプトは版の `params`、その場の JS は `inline.params`)。
+ * 必須の変数が無い → シークレットの名前を変数で渡している → 知らない変数 (宣言を添えないその場の TS が 1 本でも在れば
+ * 見ない —— その TS が読むかもしれない) → シークレットが多すぎる → 宣言したシークレットが Windmill に在るか → 在るが
+ * secret でない。宣言は走らせるものから集める (台帳のスクリプトは版の `params`、その場の TS は `inline.params`)。
  * 同じ名前の宣言は 1 つにまとめる (名前順)。required でないシークレットが Windmill に無ければ、渡さないだけで断らない
  * (スクリプトは undefined を読む)。通れば、行に固定する `variables` と `secrets` (名前・path・確かめたときの edited_at・
  * 途中で替わったか) を返す。
@@ -704,7 +704,7 @@ const resolveValues = (variables = {}, run, windmill) => {
 /**
  * 走らせるものを、台帳 (capture-ledger v0.61.0) と同じ順で解く: 形 (schema) → 重ね → 台帳に無い id →
  * 起点に合わないサイト用のスクリプト。省けば既定の顔ぶれ (`defaultSet`) で、それが空なら 400。
- * その場の JS は `inline-<name>`・版 1 で、sha256 は source から打つ (台帳と同じ)。札は持たない。
+ * その場の TS は `inline-<name>`・版 1 で、sha256 は source から打つ (台帳と同じ)。札は持たない。
  */
 const resolveRun = (scripts, versions, hosts) => {
   if (scripts === undefined) {
@@ -716,7 +716,7 @@ const resolveRun = (scripts, versions, hosts) => {
     const refused = elementRefusal(element, i);
     if (refused !== undefined) return schemaError(refused);
   }
-  // その場の JS の宣言を読む (台帳の readParams。schema の後、名指しを解く前)。省いた required は false に
+  // その場の TS の宣言を読む (台帳の readParams。schema の後、名指しを解く前)。省いた required は false に
   const read = [];
   for (const element of scripts) {
     if (!("inline" in element)) {
@@ -1088,7 +1088,7 @@ const handle = (req, res, raw) => {
     });
     return;
   }
-  // その場の JS 1 本（「欄に戻す」の口）。受けた行と台本の行のどちらからでも引く
+  // その場の TS 1 本（「欄に戻す」の口）。受けた行と台本の行のどちらからでも引く
   const back = /^\/api\/crawls\/([^/]+)\/inline\/([^/]+)$/.exec(pathname);
   if (req.method === "GET" && back !== null) {
     const mine = submitted.find((row) => row.crawlId === back[1]);

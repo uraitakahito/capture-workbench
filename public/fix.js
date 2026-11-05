@@ -6,7 +6,7 @@
  *
  * - `GET /api/crawls/:id/diagnostics` —— 行に固定した組み合わせを ts-compile-service に送り直した型の誤り。
  *   Claude は呼ばない。台帳が ts-compile の宛先を持たない配備には、口ごと無い（Fastify の 404）
- * - `POST /api/crawls/:id/inline/:name/fix` —— その場の JS の直し方を Claude に訊く。**検査に通った案だけ**が
+ * - `POST /api/crawls/:id/inline/:name/fix` —— その場の TS の直し方を Claude に訊く。**検査に通った案だけ**が
  *   200 で返り、Claude を呼んだ答えには回数と費用が載る
  *
  * 台帳の文（`error`）は言い換えない。状態の数と一緒に、そのまま出す。
