@@ -289,7 +289,7 @@ export const summaryOf = (answer, follow) => {
  */
 export const startAnswer = (status, answer) => {
   const id = typeof answer.crawlId === "string" ? `（crawl ${answer.crawlId.slice(0, 8)}）` : "";
-  if (status === 202) return { kind: "ok", text: `始めました${id}。一覧の行に印を付けました。` };
+  if (status === 202) return { kind: "ok", text: `クロール開始しました${id}。` };
   if (status === 409) {
     return { kind: "run", text: `走行中のクロールがあります${id}。終わるまで次は始められません。` };
   }
