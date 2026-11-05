@@ -14,7 +14,7 @@
   "//secrets": "**この repo は秘密を持たない。** 台帳に示すアクセストークンは開発用 issuer の POST /token からその場で取得する (pnpm run oidc:token が中でやっているのと同じこと)。.env に書くのは「誰として見るか」だけで、鍵の置き場が無い。",
   "type": "module",
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "scripts": {
     "dev": "node --env-file-if-exists=.env --env-file-if-exists=.env.local src/server.mjs",

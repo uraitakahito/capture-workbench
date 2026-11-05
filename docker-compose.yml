@@ -22,7 +22,7 @@
 # 名前空間にあるから (`container image list`)。ほかの project の image とぶつけない。
 services:
   sandbox-ledger:
-    image: node:24-alpine
+    image: node:26-alpine
     command: ["node", "/sandbox/fake-ledger.mjs"]
     volumes:
       - ./sandbox:/sandbox:ro
