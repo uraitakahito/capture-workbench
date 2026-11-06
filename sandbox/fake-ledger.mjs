@@ -13,7 +13,7 @@
  * (`scripts`。台帳のスクリプトの名指しとその場の TS) も台帳と同じ形で受け、1 本の詳しい所に返す。
  *
  * 台帳のスクリプト (台本の `catalog`) は版の並びで、source は sandbox/catalog の写しから読む。スクリプトを読む口
- * (版の一覧・1 版・受け皿の型) にも答える。札 (`sites`) のある版はサイト用のスクリプトで、台帳と同じく
+ * (版の一覧・1 版・受け皿の型) にも答える。対象サイト (`sites`) のある版はサイト用のスクリプトで、台帳と同じく
  * 起点のホストで選び、合わない名指しは 400 で断る。
  *
  * クロールごとの値 (台帳 v0.67.0) も受ける。版の `params` (宣言) を一覧と 1 版の口に出し、頼みの `variables` を
@@ -127,14 +127,14 @@ export const crawlRow = (c, now) => ({
 
 /**
  * /api/crawls/:id の、走らせたもの 1 本。欄は capture-ledger v0.61.0 の src/api/crawls.ts と同じ ——
- * 台帳のスクリプトは身元と札だけ、その場の物にだけ `inline` が付く。**source は載せない**（名前・口・バイト数）。
+ * 台帳のスクリプトは身元と対象サイトだけ、その場の物にだけ `inline` が付く。**source は載せない**（名前・口・バイト数）。
  */
 const detailScript = (s) => ({
   id: s.id,
   version: s.version,
   phase: s.phase,
   sha256: s.sha256,
-  // 札。その場の TS と、札の無い物は空
+  // 対象サイト。その場の TS と、対象サイトの無い物は空
   sites: s.sites ?? [],
   jsSha256: s.jsSha256 ?? null,
   compiledWith: s.compiledWith ?? null,
@@ -823,7 +823,7 @@ const resolveValues = (variables = {}, run, windmill) => {
 /**
  * 走らせるものを、台帳 (capture-ledger v0.61.0) と同じ順で解く: 形 (schema) → 重ね → 台帳に無い id →
  * 起点に合わないサイト用のスクリプト。省けば既定の顔ぶれ (`defaultSet`) で、それが空なら 400。
- * その場の TS は `inline-<name>`・版 1 で、sha256 は source から打つ (台帳と同じ)。札は持たない。
+ * その場の TS は `inline-<name>`・版 1 で、sha256 は source から打つ (台帳と同じ)。対象サイトは持たない。
  */
 const resolveRun = (scripts, versions, hosts) => {
   if (scripts === undefined) {
@@ -963,7 +963,7 @@ export const pickable = (versions) =>
   latestOf(versions).map((latest) => latestOf(versions.filter((v) => v.id === latest.id && v.enabled))[0] ?? latest);
 
 /**
- * `GET /api/scripts` の行。身元と札と enabled に、宣言 `params` を添える（台帳 v0.67.0。新しいクロールの画面が
+ * `GET /api/scripts` の行。身元と対象サイトと enabled に、宣言 `params` を添える（台帳 v0.67.0。新しいクロールの画面が
  * 変数の欄をこれから描く）。source・options・bytes は一覧に無い（台帳と同じ）。
  */
 export const scriptRows = (versions) =>
@@ -977,13 +977,13 @@ export const scriptRows = (versions) =>
     params,
   }));
 
-/** 札の無いスクリプトはいつでも、サイト用のスクリプトは札のどれかが起点のホストにあるとき（台帳の onSeed）。 */
+/** 対象サイトの無いスクリプトはいつでも、サイト用のスクリプトは対象サイトのどれかが起点のホストにあるとき（台帳の onSeed）。 */
 const onSeed = (sites, hosts) => sites.length === 0 || sites.some((site) => hosts.has(site));
 
 /**
- * 既定の顔ぶれ: 有効な各 id の最新版のうち、札の無い物と、起点に合うサイト用の物（カタログの順）。
- * **最新版を選んでから札で絞る** —— 台帳の resolveScripts と同じ順。逆にすると、札を付け直した id の
- * 札の無い古い版が出てくる。
+ * 既定の顔ぶれ: 有効な各 id の最新版のうち、対象サイトの無い物と、起点に合うサイト用の物（カタログの順）。
+ * **最新版を選んでから対象サイトで絞る** —— 台帳の resolveScripts と同じ順。逆にすると、対象サイトを付け直した id の
+ * 対象サイトの無い古い版が出てくる。
  */
 export const defaultSet = (versions, hosts) => latestEnabled(versions).filter((v) => onSeed(v.sites, hosts));
 
@@ -1039,7 +1039,7 @@ export const hostTypesOf = (s, read = readBeside) => {
 /**
  * `POST /api/crawls` を真似る。受けたら `rows` の先頭に足す (新しい順)。
  *
- * 答えの文と形は capture-ledger の src/api/crawls.ts から写した (v0.58.0。札の 400 と既定が空の 400 は
+ * 答えの文と形は capture-ledger の src/api/crawls.ts から写した (v0.58.0。対象サイトの 400 と既定が空の 400 は
  * v0.61.0。試験が固定する)。
  * **走行中の 1 本は、受けた行だけで数える** —— 台本の走行中の行は飾りで、それで 409 に
  * すると何も始められない。409 を見たいなら、走っている間にもう 1 度始める。
@@ -1309,7 +1309,7 @@ const handle = (req, res, raw) => {
     return;
   }
   if (req.method === "GET" && pathname === "/api/scripts") {
-    // 各 id に 1 行、札と enabled と宣言つきで（台帳 v0.64.0。既定で走るのは、enabled の物のうち札の無い物と起点に合う物）
+    // 各 id に 1 行、対象サイトと enabled と宣言つきで（台帳 v0.64.0。既定で走るのは、enabled の物のうち対象サイトの無い物と起点に合う物）
     send(res, 200, { scripts: scriptRows(versionsIn(s)) });
     return;
   }
