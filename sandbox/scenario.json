@@ -17,7 +17,7 @@
     "        頼まれた要素 inline (name・phase・source) を付ける (台帳は、その場の物にだけ返す)。",
     "        台帳のスクリプトの sha256 は、台帳のその版と同じ値にする。**5b0c0008 の autoscroll だけはわざと違う** ——",
     "        読む所が「このクロールが走らせた v1 とは中身が違う」と言うのを見る場 (版の番号は使い回される)。",
-    "catalog: スクリプトの版の並び。id の現れる順が既定の実行順 (capture-scripts の catalog.json の順)。source は file (sandbox/catalog の写し・capture-scripts v0.9.0) から読み、",
+    "catalog: スクリプトの版の並び。id の現れる順が既定の実行順 (capture-scripts の catalog.json の順)。source は file (sandbox/catalog の写し・capture-scripts v0.11.0) から読み、",
     "         sha256 と bytes は代役が source から数える。options と enabled は省けば {} と true。",
     "         /api/scripts は各 id に 1 行 (有効な版の中の最新、無ければ最新版を enabled: false で)。",
     "         autoscroll v2 は中身が同じで設定だけ違う版。autofetch は enabled: false —— capture-scripts の",
@@ -28,7 +28,7 @@
     "hostTypes: 受け皿の型 (/api/host-types)。消すと、型を取り込んでいない台帳の 404 になる。",
     "crawls の variables・secrets: 1 本の詳しい所の「渡した値」(変数の名前と値) と「使ったシークレット」(名前・Windmill の path・",
     "        確かめたときの editedAt・途中で替わったかの rotated)。台帳 v0.67.0 の形で、値を持つのは variables だけ。",
-    "        5b0c0007 は、その場の TS が params で query (変数・必須) と api_token (シークレット) を宣言し、変数に「個人情報」を受けた行。",
+    "        5b0c0007 は、その場の TS が defineParams で query (必須) を、params で api_token (シークレット) を宣言し、変数に「個人情報」を受けた行。",
     "windmillSecrets / windmillVariables: Windmill の代わり。始める口が、宣言したシークレットをこれに照らす —— windmillSecrets に在れば通り、",
     "        windmillVariables に在れば「secret でない」の 400、どちらにも無い必須の物は「無い」の 400 (台帳と同じ文)。値はどこにも書かない。",
     "crawls の pages: 開いた行の「ページ」の表と、1 ページのログ (台帳の GET /api/crawls/:id/pages と …/pages/:page/log の形)。",
@@ -176,13 +176,12 @@
           "id": "inline-search",
           "version": 1,
           "phase": "behavior",
-          "sha256": "7df500bc549c173ed97af3ac2f31d77d046f2ceef59e30e5d75766850e508ae5",
+          "sha256": "2893630c53b2022cc5985e2d04ea087b005d36c77e8bcf1dfe432e252cd9bc2a",
           "inline": {
             "name": "search",
             "phase": "behavior",
-            "source": "(() => {\n  const query = globalThis.__bh.vars.query ?? \"\";\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.log.info(\"検索語を入れて押した\", { query });\n  globalThis.__bh.report({ query, token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\" });\n})();\n",
+            "source": "import { z } from \"zod\";\n\n(() => {\n  const { query } = defineParams(z.object({ query: z.string().min(1).describe(\"ニュースの検索語\") }));\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.log.info(\"検索語を入れて押した\", { query });\n  globalThis.__bh.report({ query, token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\" });\n})();\n",
             "params": [
-              { "name": "query", "kind": "variable", "required": true, "summary": "ニュースの検索語" },
               { "name": "api_token", "kind": "secret", "required": false, "summary": "会員 API のトークン。Windmill の f/waggle_secrets/api_token に置く" }
             ]
           }
@@ -266,12 +265,11 @@
           "id": "inline-search",
           "version": 1,
           "phase": "behavior",
-          "sha256": "7df500bc549c173ed97af3ac2f31d77d046f2ceef59e30e5d75766850e508ae5",
+          "sha256": "2893630c53b2022cc5985e2d04ea087b005d36c77e8bcf1dfe432e252cd9bc2a",
           "inline": {
             "name": "search",
             "phase": "behavior",
-            "source": "(() => {\n  const query = globalThis.__bh.vars.query ?? \"\";\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.log.info(\"検索語を入れて押した\", { query });\n  globalThis.__bh.report({ query, token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\" });\n})();\n",
-            "params": [{ "name": "query", "kind": "variable", "required": true, "summary": "ニュースの検索語" }]
+            "source": "import { z } from \"zod\";\n\n(() => {\n  const { query } = defineParams(z.object({ query: z.string().min(1).describe(\"ニュースの検索語\") }));\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.log.info(\"検索語を入れて押した\", { query });\n  globalThis.__bh.report({ query, token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\" });\n})();\n"
           }
         },
         { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "4117c03456450619b28c720b33969fd6d4aa3905710e27f162fe78834ad5281f" }
@@ -389,7 +387,7 @@
       "file": "catalog/egov-law-search.ts",
       "sites": ["laws.e-gov.go.jp"],
       "params": [
-        { "name": "query", "kind": "variable", "required": false, "summary": "法令名の検索語。省けばソースの既定" }
+        { "name": "query", "kind": "variable", "required": true, "summary": "法令名の検索語", "schema": { "type": "string", "minLength": 1 } }
       ],
       "createdAt": "2026-10-29T00:00:00.000Z"
     },

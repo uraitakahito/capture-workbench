@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, noteText } from "../public/fix.js";
+import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "../public/fix.js";
 
 /** 代役の 5b0c0008（sandbox/scenario.json）と同じ、行に残った失敗の文。 */
 const FAILED =
@@ -62,6 +62,28 @@ test("直し方を訊けるのは、誤りの在るスクリプトだけ", () =>
   assert.equal(hasErrorsIn(said, "inline-other"), false);
   assert.equal(hasErrorsIn(diagnosisOf(200, { typescript: "6.0.3", diagnostics: [] }), "inline-close-banner"), false);
   assert.equal(hasErrorsIn(undefined, "inline-close-banner"), false);
+});
+
+test("必須の変数が足りない行では、どのスクリプトにも直し方を訊かない —— 台帳の口が Claude を呼ばず 422 で断るので", () => {
+  const said = diagnosisOf(200, {
+    typescript: "6.0.3",
+    diagnostics: [
+      { script: "inline-search", line: 2, col: 11, code: "BH0001", message: "必須の変数 query が渡されていない" },
+      { script: "inline-close-banner", line: 2, col: 18, code: "TS7006", message: "m" },
+    ],
+  });
+  assert.equal(lacksValues(said), true);
+  assert.equal(hasErrorsIn(said, "inline-search"), false);
+  assert.equal(hasErrorsIn(said, "inline-close-banner"), false);
+  // BH0001 が無ければ、ふつうの誤りの行として訊ける
+  const typed = diagnosisOf(200, {
+    typescript: "6.0.3",
+    diagnostics: [{ script: "inline-close-banner", line: 2, col: 18, code: "TS7006", message: "m" }],
+  });
+  assert.equal(lacksValues(typed), false);
+  assert.equal(hasErrorsIn(typed, "inline-close-banner"), true);
+  assert.equal(lacksValues(undefined), false);
+  assert.equal(lacksValues(diagnosisOf(503, { error: "ts-compile unreachable" })), false);
 });
 
 test("200 は、何の検査に通った直しかと、回数と費用を言う", () => {

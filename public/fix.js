@@ -60,9 +60,16 @@ export const diagnosisOf = (status, body) => {
   return { kind: "trouble", text: `${String(status)} —— ${saidOf(body)}` };
 };
 
-/** そのスクリプトに型の誤りがあるか（「直し方を訊く」を出すか）。 */
+/** 必須の変数が足りない行か（`BH0001`）。TS の誤りではなく、値を渡せば通る。 */
+export const lacksValues = (diagnosis) =>
+  diagnosis?.kind === "errors" && diagnosis.rows.some((row) => row.code === "BH0001");
+
+/**
+ * そのスクリプトに型の誤りがあるか（「直し方を訊く」を出すか）。**足りない変数が 1 つでも在れば出さない** —— 台帳の
+ * 直し方の口は、クロールのどこかに `BH0001` があれば Claude を呼ばず 422 で断る（通る案は必須を任意にする形だけになるため）。
+ */
 export const hasErrorsIn = (diagnosis, scriptId) =>
-  diagnosis?.kind === "errors" && diagnosis.rows.some((row) => row.script === scriptId);
+  diagnosis?.kind === "errors" && !lacksValues(diagnosis) && diagnosis.rows.some((row) => row.script === scriptId);
 
 /** 回数と費用。Claude を呼んだ答えにだけ在る。 */
 const spentOf = (body) => {

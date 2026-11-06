@@ -14,6 +14,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
@@ -45,6 +46,8 @@ import {
   scriptRows,
   searchOf,
   signedUrlOf,
+  checkInline,
+  readDeclared,
   submitCrawl,
   submittedRow,
   versionOf,
@@ -374,13 +377,13 @@ test("走行中でも、走らせるものの誤りは 409 より先に 400 —�
 });
 
 test("scripts を省くと、起点で選んだ既定を走らせたものとして返す —— 合うサイト用のスクリプトは札ごと", () => {
-  const ranFrom = (seed) => {
+  const ranFrom = (seed, variables) => {
     const rows = [];
-    submitCrawl(rows, { seeds: [seed] }, NOW, RUNS, versions);
+    submitCrawl(rows, { seeds: [seed], ...(variables && { variables }) }, NOW, RUNS, versions);
     return crawlDetail(submittedRow(rows[0], NOW), rows[0].scripts).scripts;
   };
   assert.deepEqual(at(ranFrom("https://other-site.test/")), ["autoscroll@2"]);
-  const onSite = ranFrom("https://laws.e-gov.go.jp/");
+  const onSite = ranFrom("https://laws.e-gov.go.jp/", { query: "個人情報" });
   assert.deepEqual(at(onSite), ["autoscroll@2", "egov-law-search@1"]);
   // 札は台帳 v0.61.0 と同じく詳しい所に出る。札の無い物は空の並び
   assert.deepEqual(
@@ -467,7 +470,13 @@ test("既定に入らないスクリプトも、名指せば最新版が走る�
 test("起点に合わないサイト用のスクリプトを名指すと、台帳と同じ文で 400 —— 走行中でも 409 より先", () => {
   const rows = [];
   const post = (seeds) =>
-    submitCrawl(rows, { seeds, scripts: [{ catalog: "autofetch" }, { catalog: "egov-law-search" }] }, NOW, RUNS, versions);
+    submitCrawl(
+      rows,
+      { seeds, scripts: [{ catalog: "autofetch" }, { catalog: "egov-law-search" }], variables: { query: "個人情報" } },
+      NOW,
+      RUNS,
+      versions,
+    );
   assert.deepEqual(post(["https://other-site.test/"]), {
     status: 400,
     body: {
@@ -515,7 +524,7 @@ test("版の一覧は新しい順で、どの版にも source が無い。知ら
   assert.deepEqual(versionsOf(versions, "nope"), { status: 404, body: { error: "not found" } });
 });
 
-test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.9.0）", () => {
+test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.11.0）", () => {
   const fetch1 = versionOf(versions, "autofetch", "1");
   assert.equal(fetch1.status, 200);
   assert.equal(fetch1.body.sha256.slice(0, 12), "f24100fd1c9b");
@@ -526,12 +535,12 @@ test("1 版は source を持ち、sha256 と bytes は source から数える（
   assert.match(scroll1.source.split("\n")[32], /remainingMs < stepDelayMs \+ settleMs/);
   // v0.7.0 から report は id を取らない（写しが古いままなら、ここで分かる）
   assert.match(scroll1.source.split("\n")[47], /globalThis\.__bh\.report\(\{$/);
-  // egov-law-search は v0.6.0 で変数 query を読む形になり、v0.7.0 で途中の様子を log に書く形になった
+  // egov-law-search は v0.7.0 で途中の様子を log に書く形になり、v0.11.0 で必須の変数 query を defineParams で読む形になった
   const egov1 = versionOf(versions, "egov-law-search", "1").body;
-  assert.equal(egov1.sha256.slice(0, 12), "87ae2cec6079");
-  assert.equal(egov1.bytes, 3438);
-  assert.match(egov1.source.split("\n")[18], /__bh\.vars\.query \?\? opts\.query/);
-  assert.match(egov1.source.split("\n")[40], /__bh\.log\.warn\("検索窓が無い"/);
+  assert.equal(egov1.sha256.slice(0, 12), "04608507b189");
+  assert.equal(egov1.bytes, 3394);
+  assert.match(egov1.source.split("\n")[17], /const \{ query \} = defineParams\($/);
+  assert.match(egov1.source.split("\n")[45], /__bh\.log\.warn\("検索窓が無い"/);
   assert.deepEqual(versionOf(versions, "autoscroll", "2").body.options, { maxSteps: 60 });
   assert.deepEqual(versionOf(versions, "autoscroll", "9"), { status: 404, body: { error: "not found" } });
   assert.equal(versionOf(versions, "autoscroll", "abc").body.message, "params/version must be integer");
@@ -543,12 +552,13 @@ test("受け皿の型は台本の file の中身。台本に無ければ 404（�
   assert.equal(types.status, 200);
   assert.equal(types.body.version, 1);
   assert.equal(types.body.bytes, Buffer.byteLength(types.body.source, "utf8"));
-  // 写しは capture-scripts v0.9.0（受け皿は v0.7.0 のまま。log が在り、report は data だけを取る。vars と secrets は v0.6.0 から）
-  assert.equal(types.body.sha256.slice(0, 12), "de649718ebb8");
-  assert.equal(types.body.bytes, 3125);
+  // 写しは capture-scripts v0.11.0（log が在り、report は data だけを取る。変数は defineParams で読み、__bh.vars は型に無い）
+  assert.equal(types.body.sha256.slice(0, 12), "5a69495ec243");
+  assert.equal(types.body.bytes, 3575);
   assert.match(types.body.source, /warn\(message: string, data\?: object\): void;/);
   assert.match(types.body.source, /report\(data: object\): void;/);
-  assert.match(types.body.source, /vars: Readonly<Record<string, string \| undefined>>/);
+  assert.match(types.body.source, /declare function defineParams</);
+  assert.doesNotMatch(types.body.source, /^\s*vars:/m);
   const { hostTypes: _hostTypes, ...without } = scenario;
   assert.deepEqual(hostTypesOf(without), { status: 404, body: { error: "not found" } });
 });
@@ -605,11 +615,15 @@ const WINDMILL = { secrets: scenario.windmillSecrets, variables: scenario.windmi
 const probe = (params) => ({
   inline: { name: "probe", phase: "behavior", source: "x;", ...(params === undefined ? {} : { params }) },
 });
+/** `fields` を defineParams で宣言するその場の TS。 */
+const declaring = (name, fields) => ({
+  inline: { name, phase: "behavior", source: `import { z } from "zod";\nconst v = defineParams(z.object({ ${fields} }));\n` },
+});
 
-test("一覧の口と 1 版の口は宣言（params）を運ぶ —— egov-law-search は変数 query を宣言し、ほかは空", () => {
+test("一覧の口と 1 版の口は宣言（params）を運ぶ —— egov-law-search は必須の変数 query を宣言し、ほかは空", () => {
   const list = scriptRows(versions);
   assert.deepEqual(list.find((v) => v.id === "egov-law-search").params, [
-    { name: "query", kind: "variable", required: false, summary: "法令名の検索語。省けばソースの既定" },
+    { name: "query", kind: "variable", required: true, summary: "法令名の検索語", schema: { type: "string", minLength: 1 } },
   ]);
   assert.deepEqual(list.find((v) => v.id === "autoscroll").params, []);
   // 一覧の行の欄は、身元と札と enabled と宣言だけ（source・options・bytes は 1 版の口）
@@ -625,7 +639,7 @@ test("一覧の口と 1 版の口は宣言（params）を運ぶ —— egov-law-
 test("知らない鍵は schema の 400 で、台帳の鍵（maxDepth・variables）は通る。variables の形の誤りも schema の 400", () => {
   const post = (body) => submitCrawl([], { seeds: ["https://laws.e-gov.go.jp/"], ...body }, NOW, RUNS, versions, WINDMILL);
   assert.equal(post({ foo: 1 }).body.message, "body must NOT have additional properties");
-  assert.equal(post({ maxDepth: 2 }).status, 202);
+  assert.equal(post({ maxDepth: 2, variables: { query: "個人情報" } }).status, 202);
   assert.equal(post({ variables: { query: "個人情報" } }).status, 202);
   assert.equal(post({ variables: [] }).body.message, "body/variables must be object");
   assert.equal(post({ variables: { Query: "x" } }).body.message, "body/variables property name must be valid");
@@ -636,32 +650,84 @@ test("知らない鍵は schema の 400 で、台帳の鍵（maxDepth・variable
   );
 });
 
-test("変数は宣言に照らして台帳と同じ文で 400 —— 必須が無い・知らない名前。宣言の無いその場の TS が在れば知らない名前を許す", () => {
+test("必須の変数が無ければ、ほかの値の誤りより先に 400 で名指し、行を立てない —— 台帳のスクリプトもその場の TS も", () => {
   const rows = [];
   const post = (body) => submitCrawl(rows, { seeds: ["https://laws.e-gov.go.jp/"], ...body }, NOW, RUNS, versions, WINDMILL);
-  assert.deepEqual(post({ variables: { qeury: "x" } }), {
+  assert.deepEqual(post({}), {
     status: 400,
-    body: { error: "unknown variables", names: ["qeury"] },
+    body: {
+      error: "missing variables",
+      names: ["query"],
+      diagnostics: [{ file: "egov-law-search.ts", code: "BH0001", message: "必須の変数 query が渡されていない" }],
+    },
   });
-  assert.deepEqual(post({ scripts: [probe([{ name: "q", kind: "variable", required: true, summary: "語" }])] }), {
+  // 知らない名前を一緒に送っても、先に言うのは足りない名前
+  assert.deepEqual(post({ variables: { qeury: "x" } }).body.names, ["query"]);
+  const onSite = (body) => submitCrawl(rows, { seeds: ["https://site.test/"], ...body }, NOW, RUNS, versions, WINDMILL);
+  assert.deepEqual(onSite({ scripts: [declaring("a", 'q: z.string()'), declaring("b", 'r: z.string(), q: z.string()')] }).body, {
+    error: "missing variables",
+    names: ["q", "r"],
+    diagnostics: [
+      { file: "inline-a.ts", code: "BH0001", message: "必須の変数 q が渡されていない" },
+      { file: "inline-b.ts", code: "BH0001", message: "必須の変数 r が渡されていない" },
+      { file: "inline-b.ts", code: "BH0001", message: "必須の変数 q が渡されていない" },
+    ],
+  });
+  assert.equal(rows.length, 0, "断った本は行にしない");
+  // .optional() は渡さなくてよい
+  assert.equal(onSite({ scripts: [declaring("a", "q: z.string().optional()")] }).status, 202);
+});
+
+test("値は宣言に照らして台帳と同じ順と文で 400 —— 別の種類か形の宣言 → シークレットの名前 → 知らない名前 → 形に合わない", () => {
+  const post = (body) => submitCrawl([], { seeds: ["https://site.test/"], ...body }, NOW, RUNS, versions, WINDMILL);
+  // 宣言の無い名前は渡せない。宣言の無いその場の TS が在っても同じ（読むなら defineParams で宣言する）
+  assert.deepEqual(post({ variables: { qeury: "x" } }), { status: 400, body: { error: "unknown variables", names: ["qeury"] } });
+  assert.deepEqual(post({ scripts: [probe()], variables: { anything: "x" } }), {
     status: 400,
-    body: { error: "missing variables", names: ["q"] },
+    body: { error: "unknown variables", names: ["anything"] },
   });
-  // 宣言を添えないその場の TS が 1 本でも在れば、知らない名前は通る（その TS が読むかもしれない）
-  assert.equal(post({ scripts: [probe()], variables: { anything: "x" } }).status, 202);
-  assert.equal(rows.length, 1, "断った本は行にしない");
-  // 同じ名前を別の種類で宣言している・シークレットの名前を変数で渡している（台帳の checkValues と同じ文）
-  const later = NOW + RUNS * 1000;
-  const twoKinds = [probe([{ name: "q", kind: "variable" }]), { inline: { name: "other", phase: "behavior", source: "y;", params: [{ name: "q", kind: "secret" }] } }];
-  assert.deepEqual(submitCrawl(rows, { seeds: ["https://site.test/"], scripts: twoKinds }, later, RUNS, versions, WINDMILL), {
+  // 同じ名前を別の種類か別の形で宣言している —— どちらにも渡せない
+  const opt = "q: z.string().optional()";
+  assert.deepEqual(post({ scripts: [declaring("a", opt), { inline: { ...declaring("b", "r: z.string().optional()").inline, params: [{ name: "q", kind: "secret" }] } }] }), {
     status: 400,
     body: { error: "conflicting params", names: ["q"] },
   });
-  assert.deepEqual(
-    submitCrawl(rows, { seeds: ["https://site.test/"], scripts: [probe([{ name: "api_token", kind: "secret" }])], variables: { api_token: "x" } }, later, RUNS, versions, WINDMILL),
-    { status: 400, body: { error: "secrets cannot be passed as variables", names: ["api_token"] } },
-  );
-  // 宣言の形の誤りは schema の 400。同じ名前が 2 度あるのは台帳の readParams の 400（summary は省ける）
+  assert.deepEqual(post({ scripts: [declaring("a", opt), declaring("b", "q: z.string().min(1).optional()")] }), {
+    status: 400,
+    body: { error: "conflicting params", names: ["q"] },
+  });
+  // 同じ形なら 1 つの変数
+  assert.equal(post({ scripts: [declaring("a", opt), declaring("b", opt)], variables: { q: "x" } }).status, 202);
+  // シークレットの名前を変数で渡している（記録に値が残る）
+  assert.deepEqual(post({ scripts: [probe([{ name: "api_token", kind: "secret" }])], variables: { api_token: "x" } }), {
+    status: 400,
+    body: { error: "secrets cannot be passed as variables", names: ["api_token"] },
+  });
+  // 形に合わない値。全部を名指し、理由は hint に
+  const typed = declaring("a", 'level: z.enum(["low", "high"]), word: z.string().min(2).max(3), code: z.string().length(2)');
+  assert.deepEqual(post({ scripts: [typed], variables: { level: "mid", word: "x", code: "abc" } }), {
+    status: 400,
+    body: {
+      error: "invalid variables",
+      names: ["code", "level", "word"],
+      hint: "code は 2 字まで / level は low・high のどれか / word は 2 字以上",
+    },
+  });
+  assert.deepEqual(post({ scripts: [typed], variables: { level: "low", word: "abcd", code: "ab" } }).body.hint, "word は 3 字まで");
+  // 長さは code point で数える（台帳の Ajv の決まりと同じ）
+  assert.equal(post({ scripts: [typed], variables: { level: "low", word: "𠮷野", code: "𠮷野" } }).status, 202);
+});
+
+test("その場の TS の params に変数は書けない。宣言の形の誤りは schema の 400、同じ名前が 2 度あるのは台帳の handler の 400", () => {
+  const post = (body) => submitCrawl([], { seeds: ["https://site.test/"], ...body }, NOW, RUNS, versions, WINDMILL);
+  assert.deepEqual(post({ scripts: [probe([{ name: "q", kind: "variable", required: true, summary: "語" }])] }), {
+    status: 400,
+    body: {
+      error: "invalid params",
+      script: "inline-probe",
+      hint: "params に書けるのはシークレットだけ。変数は source の defineParams で宣言する",
+    },
+  });
   assert.equal(
     post({ scripts: [probe([{ name: "Q", kind: "variable", summary: "語" }])] }).body.message,
     'body/scripts/0/inline/params/0/name must match pattern "^[a-z][a-z0-9_]*$"',
@@ -671,13 +737,52 @@ test("変数は宣言に照らして台帳と同じ文で 400 —— 必須が�
     "body/scripts/0/inline/params/0/kind must be equal to one of the allowed values",
   );
   assert.equal(
-    post({ scripts: [probe([{ name: "q", kind: "variable", default: "x" }])] }).body.message,
+    post({ scripts: [probe([{ name: "q", kind: "secret", default: "x" }])] }).body.message,
     "body/scripts/0/inline/params/0 must NOT have additional properties",
   );
-  assert.deepEqual(post({ scripts: [probe([{ name: "q", kind: "variable" }, { name: "q", kind: "variable" }])] }), {
+  assert.deepEqual(post({ scripts: [probe([{ name: "q", kind: "secret" }, { name: "q", kind: "secret" }])] }), {
     status: 400,
     body: { error: "invalid params", script: "inline-probe", hint: "params に q が 2 度ある" },
   });
+});
+
+test("代役の読み手は、見本の形の defineParams を本物と同じ形の宣言にする", () => {
+  // 本物の capture-scripts の egov-law-search と、台本の見本
+  const egov = versionOf(versions, "egov-law-search", "1").body;
+  assert.deepEqual(readDeclared(egov.source), egov.params);
+  const sample = scenario.crawls.find((c) => c.crawlId.startsWith("5b0c0007")).scripts[0].inline.source;
+  assert.deepEqual(readDeclared(sample), [
+    { name: "query", kind: "variable", required: true, summary: "ニュースの検索語", schema: { type: "string", minLength: 1 } },
+  ]);
+  assert.deepEqual(
+    readDeclared('const p = defineParams(\n  z.object({\n    level: z.enum(["low", "high"]).optional(),\n    word: z\n      .string()\n      .max(9)\n      .describe("語 \\"x\\""),\n    code: z.string().length(2),\n  }),\n);'),
+    [
+      { name: "level", kind: "variable", required: false, schema: { type: "string", enum: ["low", "high"] } },
+      { name: "word", kind: "variable", required: true, summary: '語 "x"', schema: { type: "string", maxLength: 9 } },
+      { name: "code", kind: "variable", required: true, schema: { type: "string", minLength: 2, maxLength: 2 } },
+    ],
+  );
+  assert.deepEqual(readDeclared("x;"), []);
+});
+
+test("POST /api/scripts/check は宣言を返し、行を立てない。欄が出ない理由は diagnostics で、形の誤りは schema の 400", () => {
+  const source = declaring("a", 'word: z.string().describe("語")').inline.source;
+  const word = { name: "word", kind: "variable", required: true, summary: "語", schema: { type: "string" } };
+  assert.deepEqual(checkInline({ source, phase: "behavior" }), { status: 200, body: { params: [word], diagnostics: [] } });
+  assert.deepEqual(checkInline({ source: "x;", phase: "behavior" }), { status: 200, body: { params: [], diagnostics: [] } });
+  assert.deepEqual(checkInline({ source: "x;", phase: "preload" }).body.diagnostics, []);
+  assert.deepEqual(checkInline({ source, phase: "preload" }).body.diagnostics, [
+    { file: "inline-check.ts", code: "BH0004", message: "preload では defineParams を使えない (受け皿が無い)" },
+  ]);
+  assert.deepEqual(checkInline({ source: "const v = defineParams(schema);", phase: "behavior" }).body, {
+    params: [],
+    diagnostics: [{ file: "inline-check.ts", code: "BH0002", message: "defineParams の引数を読めない (z.object({ … }) をその場に書く)" }],
+  });
+  assert.equal(checkInline({ source: "x;" }).body.message, "body must have required property 'phase'");
+  assert.equal(checkInline({ phase: "behavior" }).body.message, "body must have required property 'source'");
+  assert.equal(checkInline({ source: 1, phase: "behavior" }).body.message, "body/source must be string");
+  assert.equal(checkInline({ source: "x;", phase: "other" }).body.message, "body/phase must be equal to one of the allowed values");
+  assert.equal(checkInline({ source: "x;", phase: "behavior", z: 1 }).body.message, "body must NOT have additional properties");
 });
 
 test("宣言したシークレットは Windmill の代わりに照らす —— 無い必須の物は path つきで 400、secret でなければ 400、在れば行に名前と path", () => {
@@ -732,9 +837,11 @@ test("行の詳しい所は variables と secrets を必ず持つ —— 台本�
     [["api_token", "f/waggle_secrets/api_token", null]],
   );
   assert.ok(Date.parse(detail.secrets[0].editedAt) > 0);
-  // 宣言はその場の TS の params に在り、台本の Windmill に api_token が置いてある（同じ頼みを送れば通る形）
-  assert.ok(c.scripts[0].inline.params.some((p) => p.name === "api_token" && p.kind === "secret"));
+  // シークレットの宣言はその場の TS の params に在り、台本の Windmill に api_token が置いてある（同じ頼みを送れば通る形）
+  assert.deepEqual(c.scripts[0].inline.params.map((p) => [p.name, p.kind]), [["api_token", "secret"]]);
   assert.ok(scenario.windmillSecrets.includes("api_token"));
+  // 台本の sha256 は source の本物の値
+  assert.equal(c.scripts[0].sha256, createHash("sha256").update(c.scripts[0].inline.source).digest("hex"));
   const other = crawlDetail(scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0002")));
   assert.deepEqual([other.variables, other.secrets], [{}, []]);
   // 受けた行も同じ欄を持ち、値は一覧の行には出ない

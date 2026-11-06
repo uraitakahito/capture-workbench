@@ -72,11 +72,17 @@ export const hostAllowed = (host, port) =>
  * - `/api/crawls` —— クロールを始める
  * - `/api/crawls/<id>/inline/<name>/fix` —— 型で落ちたクロールの、その場の TS の直し方を Claude に訊く
  *   （CAPTURE-49。台帳は型の検査に通った案だけを返し、費用を数える）
+ * - `/api/scripts/check` —— 書いている途中のその場の TS が宣言した変数を訊く。**書かない**が、source を本文で送るので
+ *   POST で、JSON だけを通す門も要る（よそのページから叩かれると、ts-compile-service を働かせられる）
  *
  * **端を固めて照らす** —— 末尾の足し・query・`%`（`%2F` も `%2e%2e` も）・`.` を通さない。id と名前の字まで絞るのは、
  * fetch が URL の `..` を畳み、台帳のほかの口に届かせないため。判断は台帳がする —— ここは中継する形を絞るだけ。
  */
-const WRITE_ROUTES = [/^\/api\/crawls$/, /^\/api\/crawls\/[0-9a-f-]+\/inline\/[a-z0-9-]+\/fix$/];
+const WRITE_ROUTES = [
+  /^\/api\/crawls$/,
+  /^\/api\/crawls\/[0-9a-f-]+\/inline\/[a-z0-9-]+\/fix$/,
+  /^\/api\/scripts\/check$/,
+];
 
 export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url));
 

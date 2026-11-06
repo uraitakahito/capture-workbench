@@ -121,7 +121,8 @@ export const scriptsOf = (run) => {
  * チェックしたスクリプトが宣言した、クロールごとの値（capture-scripts の `catalog.json` の `params`。台帳の
  * `GET /api/scripts` が版ごとに運ぶ）。`kind`（`variable` か `secret`）で選び、**同じ名前は 1 つにまとめる** ——
  * 名前の空間は 1 クロールに 1 つ（台帳の決まり）で、2 本のスクリプトが同じ名前を宣言すれば同じ値を読む。必須はどれかが
- * 必須なら必須、説明は最初の宣言の物、`by` は宣言したスクリプトの id。並びは台帳の並びに宣言の順。
+ * 必須なら必須、説明と値の形（`schema`）は最初の宣言の物、`by` は宣言したスクリプトの id。並びは台帳の並びに宣言の順。
+ * 別の形で宣言していても、ここでは断らない（台帳が 400 `conflicting params` で言う）。
  * `params` を運ばない台帳（v0.66 まで）の行は、何も宣言していないとして読む。
  */
 export const declaredOf = (scripts, picked, kind) => {
@@ -132,7 +133,13 @@ export const declaredOf = (scripts, picked, kind) => {
       if (param.kind !== kind) continue;
       const seen = out.find((d) => d.name === param.name);
       if (seen === undefined) {
-        out.push({ name: param.name, required: param.required === true, summary: param.summary ?? "", by: [script.id] });
+        out.push({
+          name: param.name,
+          required: param.required === true,
+          summary: param.summary ?? "",
+          ...(param.schema === undefined ? {} : { schema: param.schema }),
+          by: [script.id],
+        });
       } else {
         seen.required = seen.required || param.required === true;
         seen.by.push(script.id);
@@ -143,8 +150,62 @@ export const declaredOf = (scripts, picked, kind) => {
 };
 
 /**
+ * 欄に出す宣言。チェックしたスクリプトの宣言（`declaredOf`）の前に、その場の TS が `defineParams` で宣言した変数
+ * （`inlineParams`。台帳の `POST /api/scripts/check` の答え）を足す。**箱が空なら足さない** —— 消した TS の答えを残さない。
+ * 画面の `drawValues` と `variablesNow` の両方がここを読む（片方だけだと、欄は出るのに値が送られない）。
+ */
+export const declaredWith = (scripts, picked, inline, inlineParams, kind) =>
+  written(inline)
+    ? declaredOf([{ id: INLINE_ROW, params: inlineParams }, ...scripts], [INLINE_ROW, ...picked], kind)
+    : declaredOf(scripts, picked, kind);
+
+/**
+ * `POST /api/scripts/check` の答えを、欄の宣言と箱の下の 1 行（`note`。無ければ空）にする。
+ *
+ * 言うのは**欄が出ない理由**だけ: 宣言を読めない（`BH0002`）・遷移の前では宣言できない（`BH0004`）・確かめられなかった。
+ * ふつうの型の誤りは言わない —— 打っている途中の TS はたいてい誤りを持ち、走らせれば compile の段が言う。
+ */
+export const inlineDeclared = (status, body) => {
+  if (status === 200 && Array.isArray(body?.params)) {
+    const blocking = (body.diagnostics ?? []).filter((d) => d.code === "BH0002" || d.code === "BH0004");
+    return { params: body.params, note: blocking.map((d) => `${String(d.code)}: ${String(d.message)}`).join(" ／ ") };
+  }
+  const said = body?.message ?? body?.error ?? "答えに文がありません";
+  return {
+    params: [],
+    note: status === 0 ? `dashboard 自身に届きません（${said}）` : `宣言を確かめられません（${String(status)} —— ${said}）`,
+  };
+};
+
+/**
+ * 箱が止まってから訊く係。返す関数を、箱が変わるたびに呼ぶ。`current` は今の箱を文字列で返し、`ask` は投げずに答えを返す。
+ *
+ * - 変わるたびに待ち直す —— 打っている間は訊かない
+ * - **走行中は 1 本だけ** —— 答えが来るまで次を送らない
+ * - 訊いた後に箱が変わっていれば、答えは前の TS の物なので捨てて待ち直す。画面に届くのは今の箱の答えだけ
+ */
+export const askWhenSettled = ({ current, ask, answered, waitMs = 800 }) => {
+  let timer;
+  let asking = false;
+  const run = async () => {
+    if (asking) return; // 答えが来たところで、今の箱と比べる
+    const asked = current();
+    asking = true;
+    const answer = await ask(asked);
+    asking = false;
+    if (asked === current()) answered(answer);
+    else changed();
+  };
+  const changed = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => void run(), waitMs);
+  };
+  return changed;
+};
+
+/**
  * 送る変数（台帳の `variables`）。**宣言された名前のうち、欄に値の在る物だけ。** 空白だけの欄は送らない ——
- * 送れば、スクリプトは「無い」（undefined。ソースの既定へ落ちる）ではなく空の文字列を読む。値は削らない。
+ * 送れば、スクリプトは「無い」（任意の変数なら undefined、必須の変数なら台帳の 400）ではなく空の文字列を読む。値は削らない。
  * 宣言から外れた名前の値（チェックを外した後も `values` に残る）は送らない。綴り・長さ・数は検査しない（台帳が 400 で言う）。
  */
 export const variablesOf = (declared, values) =>

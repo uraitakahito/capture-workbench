@@ -14,13 +14,15 @@ import {
   ACTIONS,
   addRow,
   addSkipRow,
+  askWhenSettled,
   asTemplate,
   bodyBytes,
   checkQuery,
-  declaredOf,
+  declaredWith,
   defaultIds,
   hasNocheck,
   INLINE_ROW,
+  inlineDeclared,
   liveOrder,
   marksOf,
   movedOrder,
@@ -40,7 +42,7 @@ import {
   withNocheck,
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
-import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, noteText } from "/fix.js";
+import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "/fix.js";
 import {
   awaitsFinalBundle,
   isPartialBundle,
@@ -678,6 +680,7 @@ const typeErrorsOf = (one) => {
   box.append(
     tag("p", `型の誤り（組み合わせを ts-compile-service に送り直した。TypeScript ${said.typescript}・${String(said.rows.length)} 件）`),
     table,
+    ...(lacksValues(said) ? [tag("p", "必須の変数が渡されていません。値を渡して始め直してください", "state warn")] : []),
   );
   return [box];
 };
@@ -1015,32 +1018,66 @@ const runOf = () => {
     order: orderOf(moved, scripts.map((script) => script.id)),
     picked,
     defaults: defaultIds(scripts, hosts),
-    inline: {
-      name: $("start-inline-name").value,
-      phase: $("start-inline-preload").checked ? "preload" : "behavior",
-      source: $("start-inline-source").value,
-    },
+    inline: inlineNow(),
   };
 };
 
-/** 送る変数（`start.js` の `variablesOf`）。選んだスクリプトが宣言した名前のうち、欄に値の在る物。 */
-const variablesNow = () => {
+/** その場の TS の欄の今の中身。 */
+const inlineNow = () => ({
+  name: $("start-inline-name").value,
+  phase: $("start-inline-preload").checked ? "preload" : "behavior",
+  source: $("start-inline-source").value,
+});
+
+/** 箱の TS について台帳が答えた宣言と、箱の下の 1 行（`start.js` の `inlineDeclared`）。 */
+let inlineAnswer = { params: [], note: "" };
+
+/** 欄に出す宣言（`start.js` の `declaredWith`）。`drawValues` と `variablesNow` が同じ物を見る。 */
+const declaredNow = (kind) => {
   const { scripts, picked } = pickedNow();
-  return variablesOf(declaredOf(scripts, picked, "variable"), values);
+  return declaredWith(scripts, picked, inlineNow(), inlineAnswer.params, kind);
 };
+
+/** 送る変数（`start.js` の `variablesOf`）。宣言された名前のうち、欄に値の在る物。 */
+const variablesNow = () => variablesOf(declaredNow("variable"), values);
 
 /** 最後に描いた宣言の形。同じなら描き直さない —— 打っている欄を手の下で作り直さない。 */
 let valuesKey;
 
 /**
- * クロールごとの値の欄。選んだスクリプト（`pickedNow`）が宣言した変数を 1 行ずつ（名前・説明・値の欄。必須に印）、
+ * 値の欄 1 つ。宣言の `schema.enum` があれば選択の欄、ほかは文字の欄。選択の欄は先頭に空の行を置く —— 選ばなければ
+ * 送らない（必須なら、始めたときに台帳が 400 で名指す）。
+ */
+const valueField = (v) => {
+  const wanted = values.get(v.name) ?? "";
+  if (v.schema?.enum === undefined) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.spellcheck = false;
+    input.value = wanted;
+    if (v.required) input.placeholder = "必須";
+    return input;
+  }
+  const select = document.createElement("select");
+  select.append(
+    new Option(v.required ? "必須" : "渡さない", ""),
+    ...v.schema.enum.map((value) => new Option(value, value)),
+  );
+  // 覚えていた値が選択肢に無ければ空の行に。見えている物が送る物なので、覚えている値も合わせる
+  select.value = v.schema.enum.includes(wanted) ? wanted : "";
+  values.set(v.name, select.value);
+  return select;
+};
+
+/**
+ * クロールごとの値の欄。選んだスクリプトとその場の TS（`declaredNow`）が宣言した変数を 1 行ずつ（名前・説明・値の欄。必須に印）、
  * シークレットを名前の列に（値の欄は無い —— 値は Windmill の変数に人が置く）。宣言が 1 つも無ければ fieldset ごと隠す。
- * 打った値は `values` に持ち、欄を作り直しても戻す。描き直すのはチェックの change と、起点が変わったとき（`syncPicks`）。
+ * 打った値は `values` に持ち、欄を作り直しても戻す。描き直すのはチェックの change と、起点が変わったとき（`syncPicks`）と、
+ * 箱の宣言の答えが来たとき（`declaredChanged`）。
  */
 const drawValues = () => {
-  const { scripts, picked } = pickedNow();
-  const vars = declaredOf(scripts, picked, "variable");
-  const secrets = declaredOf(scripts, picked, "secret");
+  const vars = declaredNow("variable");
+  const secrets = declaredNow("secret");
   const key = JSON.stringify([vars, secrets]);
   if (key === valuesKey) return;
   valuesKey = key;
@@ -1051,12 +1088,8 @@ const drawValues = () => {
   for (const v of vars) {
     const row = document.createElement("tr");
     const head = document.createElement("td");
-    const input = document.createElement("input");
-    input.type = "text";
+    const input = valueField(v);
     input.id = `start-var-${v.name}`;
-    input.spellcheck = false;
-    input.value = values.get(v.name) ?? "";
-    if (v.required) input.placeholder = "必須";
     input.addEventListener("input", () => values.set(v.name, input.value));
     const name = tag("label", v.name, "mono");
     name.htmlFor = input.id;
@@ -1356,13 +1389,50 @@ $("start-page").addEventListener("change", syncFollow);
 $("start-follow").addEventListener("change", syncFollow);
 
 /**
- * 箱の中身が変わったら、溝と「型を検査しない」のチェックを中身に合わせる（貼った JS が印を持っていれば
- * 付く）。**チェックを押したときには呼ばない** —— checkbox は change の前に input を出すので、そこで
+ * 箱の TS が宣言した変数を、箱が止まってから台帳に訊く（`POST /api/scripts/check`。行は立たない）。箱が空なら訊かない。
+ * 答えが今の箱の物なら、値の欄と「始める」を合わせる（同じ宣言なら `valuesKey` が欄を作り直さない）。
+ */
+const declaredChanged = askWhenSettled({
+  current: () => {
+    const { source, phase } = inlineNow();
+    return JSON.stringify({ source, phase });
+  },
+  ask: async (asked) => {
+    if (JSON.parse(asked).source.trim() === "") return { params: [], note: "" };
+    let status = 0;
+    let body = {};
+    try {
+      const res = await fetch("/api/scripts/check", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: asked,
+      });
+      status = res.status;
+      body = await res.json().catch(() => ({}));
+    } catch (err) {
+      body = { error: failedText(err) };
+    }
+    return inlineDeclared(status, body);
+  },
+  answered: (answer) => {
+    inlineAnswer = answer;
+    $("start-inline-note").hidden = answer.note === "";
+    $("start-inline-note").textContent = answer.note;
+    drawValues();
+    syncStart();
+  },
+});
+
+/**
+ * 箱の中身が変わったら、溝と「型を検査しない」のチェックを中身に合わせ、宣言を訊き直す（貼った JS が印を持っていれば
+ * 付く）。欄に戻す・ファイル・下敷きは value を直に入れて input を出さないので、全部の道がここを通る。
+ * **チェックを押したときには呼ばない** —— checkbox は change の前に input を出すので、そこで
  * 中身から読み直すと、押した向きが change に届く前に戻ってしまう。
  */
 const drawSource = () => {
   drawGutter();
   $("start-nocheck").checked = hasNocheck($("start-inline-source").value);
+  declaredChanged();
 };
 
 /**
@@ -1411,6 +1481,8 @@ const startCrawl = async (event) => {
 // 箱のときだけ、サイト用のチェックは起点のときだけ
 $("start").addEventListener("input", (event) => {
   if (event.target === $("start-inline-source")) drawSource();
+  // 遷移の前では宣言できない（BH0004）。訊く本文の phase も変わる
+  if (event.target === $("start-inline-behavior") || event.target === $("start-inline-preload")) declaredChanged();
   if (event.target === $("start-seeds")) {
     syncPicks();
     drawMarks(); // 前の起点の答えは、今の起点に合わない

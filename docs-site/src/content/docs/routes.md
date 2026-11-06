@@ -1,6 +1,6 @@
 ---
 title: Routes
-description: What the dashboard's server answers — /healthz, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script), and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
+description: What the dashboard's server answers — /healthz, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
 ---
 
 The dashboard's server only relays. The dashboard's logic lives in the browser (`public/`); all the
@@ -13,6 +13,7 @@ not.
 | `GET /healthz` | the server itself (liveness, and the settings the dashboard needs) |
 | `POST /api/crawls` | the ledger (writes: starts a crawl) |
 | `POST /api/crawls/:id/inline/:name/fix` | the ledger (writes: asks how to fix an inline script's type errors) |
+| `POST /api/scripts/check` | the ledger (asks what an inline script declares; writes nothing, and goes through the same checks because the source travels in the body) |
 | `/api/*` (the rest) | passed through to the ledger (GET only) |
 | `/wacz/:id/…` | signed by the ledger, then answered by the daemon |
 | anything else | the files in `public/` |
@@ -77,7 +78,7 @@ This is one of the routes of the dashboard's server that write. The form on the 
 passed the checks below to the ledger's `POST /api/crawls` as it is, and returns the answer as
 it is. The ledger is the one that checks and decides the seed URLs, the policy (depth, page
 limit, which scripts run), the `userAgent` and the per-crawl variables (`variables`: the spelling and number of the
-names, the length of the values, and whether a ticked script declared each name). Whether a
+names, the length and shape of the values, and whether a script that runs declared each name). Whether a
 declared secret exists in Windmill is also the ledger's check; the dashboard never touches a
 secret's value (it lives in a Windmill variable, and is neither in the form nor in the body).
 
@@ -98,6 +99,24 @@ secret's value (it lives in a Windmill variable, and is neither in the form nor 
 
 The checks are `writeRefusal` in `src/lib.mjs`, which the tests call directly.
 
+## POST /api/scripts/check — asking what an inline script declares
+
+The new crawl view calls this once the box has stopped changing for 800 ms, with one request at a
+time, and draws a field for each variable declared by `defineParams` ([Screens](/screens/)). The body
+is `{ source, phase }`. The ledger creates no row: it asks ts-compile-service and returns
+`{ params, diagnostics }`. The dashboard's server passes the body and the answer through.
+
+- It writes nothing, but it goes through the same checks as `POST /api/crawls` (`Origin`, JSON, 1 MiB) and
+  gets the same token: the source travels in the body, and a page from another site must not be able to put
+  ts-compile-service to work. The shapes are `isWriteRoute` in `src/lib.mjs`, with no query and nothing after `/check`.
+
+| The ledger's answer | When |
+| --- | --- |
+| 200 `{ params, diagnostics }` | it could ask. `diagnostics` has the errors of the source except a missing required variable (`BH0001`), which is what the fields are for; the view shows `BH0002` and `BH0004` only |
+| 400 | the body has another shape (Fastify's `message`) |
+| 404 | the identity may not start crawls (`{"error":"not found"}`), or the ledger has no ts-compile-service configured and does not serve the route at all |
+| 503 `{"error": "ts-compile unreachable"}` | ts-compile-service did not answer |
+
 ## POST /api/crawls/:id/inline/:name/fix — asking how to fix an inline script
 
 This is also a route that writes. 直し方を訊く (ask for a fix), on an opened crawl that failed the type
@@ -115,7 +134,7 @@ the replaced lines, the rounds and the cost; the dashboard only draws the answer
 | --- | --- |
 | 200 `{ rounds, source, edits, notes, compiled, usage }` | a fix passed the check (`edits`: each replaced range with `before` and `after`; `usage.usd`: the cost) |
 | 409 `scripts compile` | the scripts type-check now; there is nothing to fix |
-| 422 | the errors are not in this script, two rounds did not pass (with the rounds and the cost), or Claude declined |
+| 422 | a required variable is missing from the crawl (`missing variables`; Claude is not called, and the view says to start again with the value), the errors are not in this script, two rounds did not pass (with the rounds and the cost), or Claude declined |
 | 429 `claude budget exhausted` | the organization reached this month's limit (with `spentUsd` and `budgetUsd`); Claude is not called |
 | 502 / 503 | Claude or ts-compile-service did not answer |
 | 404 | the identity may not start crawls, the crawl or the inline script does not exist, or the ledger has no API key and does not serve the route |
