@@ -1070,9 +1070,6 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   if (userAgent !== "" && !/^[\x20-\x7e]{1,512}$/.test(userAgent)) {
     return { status: 400, body: { error: "userAgent must be printable ASCII, at most 512 characters" } };
   }
-  if (userAgent !== "" && !/\bBrowserHive\b/.test(userAgent)) {
-    return { status: 400, body: { error: "userAgent must contain BrowserHive" } };
-  }
   if (body.seeds.length === 0) return { status: 400, body: { error: "seeds must not be empty" } };
   if (!body.seeds.every(httpUrl)) {
     return { status: 400, body: { error: "every seed must be an http(s) URL" } };
