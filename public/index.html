@@ -89,6 +89,16 @@
               <p id="start-secrets" class="start-secrets" hidden></p>
               <p class="start-hint">チェックしたスクリプトが宣言した変数が並びます。値は文字列で、空の欄は送りません（スクリプトはソースの既定を読みます）。必須の欄が空なら、台帳が 400 で名指します。</p>
             </fieldset>
+            <!--
+              クロールごとの User-Agent。空なら送らず、browser の字のまま撮る。dashboard は字を検査しない（形と BrowserHive の有無は
+              台帳の決まりで、違えば台帳が 400 で言う）。{chrome} を解くのは BrowserHive で、解いた字は WACZ の settings.userAgent に残る
+            -->
+            <fieldset class="start-run" id="start-ua">
+              <legend>User-Agent</legend>
+              <textarea id="start-ua-text" class="start-ua-text" rows="2" spellcheck="false" placeholder="空なら HeadlessChrome のまま"></textarea>
+              <div class="start-row"><button type="button" id="start-ua-compatible">Headless を外す型を入れる</button></div>
+              <p class="start-hint"><code>{chrome}</code> はブラウザの字（Headless なし）に置き換わります。<code>BrowserHive</code> を含まない字は断られます。</p>
+            </fieldset>
             <div class="start-row">
               <label><input type="radio" name="start-depth" id="start-page" checked /> このページだけ</label>
               <!-- 辿るときは、右の列の「辿り方」のタブで深さ・枚数・規則を決める -->

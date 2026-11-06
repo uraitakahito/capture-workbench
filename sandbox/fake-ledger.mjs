@@ -179,7 +179,7 @@ export const fixOf = (c, name) => {
 };
 
 /** クロールごとの値 (台帳 v0.67.0 の行の `variables`・`secrets`)。台本の行に無ければ、何も渡さなかったクロール。 */
-const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [] });
+const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [], userAgent: c.userAgent ?? null });
 
 /**
  * /api/crawls/:id。台帳はほかの欄 (上限など) も返すが、dashboard が読むのは seeds・rules・finishedAt・
@@ -202,6 +202,7 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   failures: (c.failures ?? []).map((f) => ({ url: f.url, depth: f.depth, reason: f.reason ?? null, page: f.page })),
   variables: values.variables,
   secrets: values.secrets,
+  userAgent: values.userAgent ?? null,
 });
 
 /**
@@ -550,7 +551,7 @@ const VALUE_NAME = /^[a-z][a-z0-9_]*$/;
 /** 宣言したシークレットを置く Windmill のフォルダ (台帳と capture-scheduler の決まり)。 */
 const SECRETS_FOLDER = "f/waggle_secrets/";
 /** `POST /api/crawls` の body の鍵 (台帳 v0.67.0 の schema。`additionalProperties: false`)。外の鍵は 400。 */
-const BODY_KEYS = ["seeds", "fromTargets", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
+const BODY_KEYS = ["userAgent", "seeds", "fromTargets", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
 /** Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。試験が渡さなければ、何も置いていない Windmill。 */
 const NO_WINDMILL = { secrets: [], variables: [], editedAt: null };
 
@@ -964,6 +965,15 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   if (!Array.isArray(body?.seeds)) {
     return { status: 400, body: { error: "provide exactly one of seeds or fromTargets" } };
   }
+  // 台帳と同じ順と文 (schema は文字列だけを見て、形は handler が読める文で断る)
+  if ("userAgent" in body && typeof body.userAgent !== "string") return schemaError("body/userAgent must be string");
+  const userAgent = (body.userAgent ?? "").trim();
+  if (userAgent !== "" && !/^[\x20-\x7e]{1,512}$/.test(userAgent)) {
+    return { status: 400, body: { error: "userAgent must be printable ASCII, at most 512 characters" } };
+  }
+  if (userAgent !== "" && !/\bBrowserHive\b/.test(userAgent)) {
+    return { status: 400, body: { error: "userAgent must contain BrowserHive" } };
+  }
   if (body.seeds.length === 0) return { status: 400, body: { error: "seeds must not be empty" } };
   if (!body.seeds.every(httpUrl)) {
     return { status: 400, body: { error: "every seed must be an http(s) URL" } };
@@ -998,6 +1008,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
     rules: ruled.rules,
     variables: valued.variables,
     secrets: valued.secrets,
+    userAgent: userAgent === "" ? null : userAgent,
   };
   rows.unshift(row);
   return { status: 202, body: { crawlId: row.crawlId } };
@@ -1174,6 +1185,7 @@ const handle = (req, res, raw) => {
           })()
         : crawlDetail(submittedRow(mine, Date.now()), mine.scripts, mine.rules, {
             variables: mine.variables,
+            userAgent: mine.userAgent,
             secrets: mine.secrets,
           });
     send(res, detail === undefined ? 404 : 200, detail ?? { error: "not found" });

@@ -1143,3 +1143,35 @@ test("代役の 5b0c0008（型で落ちた行）は、起点の頁を pending �
   assert.deepEqual(answer.body.pages.map((p) => [p.url, p.state]), [["https://sandbox.test/news", "pending"]]);
   assert.equal(outcomeOf(answer.body.pages[0], c.state), "pending（報告なし —— クロールが先に終わった）");
 });
+
+// ── クロールごとの User-Agent（capture-ledger の src/api/crawls.ts の形）──────────────
+
+test("User-Agent は打った字のまま行に残り、詳しい答えが返す。省けば null", () => {
+  const start = (body) => {
+    const rows = [];
+    const answer = submitCrawl(rows, { seeds: ["https://site.test/"], ...body }, NOW, RUNS, versions, WINDMILL);
+    return { answer, rows };
+  };
+  const asked = start({ userAgent: "{chrome} BrowserHive" });
+  assert.equal(asked.answer.status, 202);
+  assert.equal(crawlDetail(asked.rows[0]).userAgent, "{chrome} BrowserHive");
+  const none = start({});
+  assert.equal(none.answer.status, 202);
+  assert.equal(crawlDetail(none.rows[0]).userAgent, null);
+  const blank = start({ userAgent: "   " });
+  assert.equal(crawlDetail(blank.rows[0]).userAgent, null);
+});
+
+test("User-Agent は台帳と同じ文で断る。行は立たない", () => {
+  const refused = (userAgent) => {
+    const rows = [];
+    const { status, body } = submitCrawl(rows, { seeds: ["https://site.test/"], userAgent }, NOW, RUNS, versions, WINDMILL);
+    assert.equal(rows.length, 0);
+    // 画面と同じ順で読む（`startAnswer`。schema の 400 は error と message の両方を持つ）
+    return [status, body.message ?? body.error];
+  };
+  assert.deepEqual(refused("curl/8.0"), [400, "userAgent must contain BrowserHive"]);
+  assert.deepEqual(refused("NotBrowserHiveAtAll"), [400, "userAgent must contain BrowserHive"]);
+  assert.deepEqual(refused("クローラー BrowserHive"), [400, "userAgent must be printable ASCII, at most 512 characters"]);
+  assert.deepEqual(refused(1), [400, "body/userAgent must be string"]);
+});

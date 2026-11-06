@@ -205,14 +205,22 @@ export const removeRow = (rows, i) => rows.filter((_, k) => k !== i);
 export const rulesOf = (rows) => rows.map(({ action, pattern }) => ({ [action]: pattern.trim() }));
 
 /**
+ * User-Agent の箱の字を、送る字にする。貼ったときの改行は空白にし、前後の空白を落とす。字の規則は台帳が持つので、
+ * ここでは検査しない。
+ */
+export const userAgentOf = (text) => text.replace(/\s*\n\s*/g, " ").trim();
+
+/**
  * 欄から台帳へ送る body。起点は空行を落とすだけ。
  *
  * 「このページだけ」（`follow` が null）なら `maxDepth: 0` を足す。「リンクを辿る」なら規則の並びを
  * 必ず送り、深さと枚数は書いたときだけ送る —— 空なら台帳の既定に任せ、既定の数を dashboard に写さない。
  * 走らせるものは `scriptsOf`。クロールごとの変数（`variablesOf`）は、1 つでも在るときだけ送る（空の object は送らない）。
+ * User-Agent（`userAgentOf`）も、書いたときだけ送る。
  */
-export const startBody = (text, follow, run = NOTHING_CHOSEN, variables = {}) => {
+export const startBody = (text, follow, run = NOTHING_CHOSEN, variables = {}, userAgentText = "") => {
   const scripts = scriptsOf(run);
+  const userAgent = userAgentOf(userAgentText);
   return {
     seeds: seedsOf(text),
     ...(follow === null
@@ -224,6 +232,7 @@ export const startBody = (text, follow, run = NOTHING_CHOSEN, variables = {}) =>
         }),
     ...(scripts !== undefined && { scripts }),
     ...(Object.keys(variables).length > 0 && { variables }),
+    ...(userAgent !== "" && { userAgent }),
   };
 };
 

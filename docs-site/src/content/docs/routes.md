@@ -76,7 +76,7 @@ This is one of the routes of the dashboard's server that write. The form on the 
 ([Screens](/screens/)) uses it. The server does not check the contents: it hands the body that
 passed the checks below to the ledger's `POST /api/crawls` as it is, and returns the answer as
 it is. The ledger is the one that checks and decides the seed URLs, the policy (depth, page
-limit, which scripts run) and the per-crawl variables (`variables`: the spelling and number of the
+limit, which scripts run), the `userAgent` and the per-crawl variables (`variables`: the spelling and number of the
 names, the length of the values, and whether a ticked script declared each name). Whether a
 declared secret exists in Windmill is also the ledger's check; the dashboard never touches a
 secret's value (it lives in a Windmill variable, and is neither in the form nor in the body).

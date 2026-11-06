@@ -14,7 +14,7 @@
  *   - 部品の箱だけを切り抜き、高さに上限を付ける。DPR 1
  *   - 画素が前の絵と同じなら書かない（sharp の版が替わってバイト列だけが変わっても、何も足さない）
  *
- * 予算（1 枚 32 KB・全部で 226 KB）と幅の上限は `scripts/check-doc-refs.mjs` の規則 7 が見る。
+ * 予算（1 枚 32 KB・全部で 234 KB）と幅の上限は `scripts/check-doc-refs.mjs` の規則 7 が見る。
  *
  * ## 縮めずに読める絵に
  *
@@ -105,6 +105,14 @@ const writeStart = async (page) => {
   await fill(page, "start-seeds", "https://laws.e-gov.go.jp/");
   await fill(page, "start-inline-name", "close-banner");
   await fill(page, "start-inline-source", INLINE);
+};
+
+/** 左の列を全部撮るときは、列を流さず伸ばす。変数の欄と User-Agent の箱が揃うと、窓の高さでは「始める」が切れる。 */
+const writeStartWhole = async (page) => {
+  await writeStart(page);
+  await page.addStyleTag({
+    content: "#face-start,.start{height:auto!important}.start-side{overflow:visible!important}",
+  });
 };
 
 /**
@@ -208,7 +216,7 @@ const SHOTS = [
     hash: "#start",
     box: ".start-side",
     until: "#start-go",
-    prepare: writeStart,
+    prepare: writeStartWhole,
     ready: () => {
       const site = [...document.querySelectorAll("#start-picks label.pick")].find((l) =>
         l.textContent.startsWith("egov-law-search"),
@@ -224,7 +232,8 @@ const SHOTS = [
       { n: 1, at: 'label[for="start-seeds"]' },
       { n: 2, at: ".start-run legend" },
       { n: 3, at: ".start-values legend" },
-      { n: 4, at: "#start-go", edge: "box" },
+      { n: 4, at: "#start-ua legend" },
+      { n: 5, at: "#start-go", edge: "box" },
     ],
   },
   {
