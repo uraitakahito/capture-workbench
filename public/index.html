@@ -196,7 +196,7 @@
               <p id="start-said" class="start-said" aria-live="polite"></p>
             </div>
             <!--
-              読む窓。スクリプトの 1 版か受け皿の型を、スクリプト集の画面と同じ部品で出す（app.js の IN_START）。版の札と
+              読む窓。スクリプトの 1 版か受け皿の型を、スクリプト集の画面と同じ部品で出す（app.js の IN_START）。版のリンクと
               行の URL は持たない —— 要るなら「スクリプト集の画面で開く」。source は他人が書いたもの。文字は textContent で
             -->
             <div id="start-read" class="start-read" hidden>
@@ -257,7 +257,7 @@
       <!--
         スクリプト集の画面（読む所）。左に一覧（既定で走る版と受け皿の型）、右に書いたままの source。本文は
         1 行 1 つの <li>（WACZ の画面の行の並びと同じ組み方）で、押した行が URL になる
-        （#scripts/<id>[@版][:行]・履歴は増やさない）。版の札は見出しに、開いた id の分だけ。
+        （#scripts/<id>[@版][:行]・履歴は増やさない）。版のリンクは見出しに、開いた id の分だけ。
         source は他人が書いたもの —— 文字は textContent で。色は worker（Shiki）が付け、1 色で描いた
         同じ <li> に後から塗る。塗れないときは #reading-colors に 1 行（本文は 1 色のまま読める）。
       -->

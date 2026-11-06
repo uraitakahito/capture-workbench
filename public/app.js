@@ -1744,7 +1744,7 @@ $("search").onsubmit = (event) => {
 
 // ── スクリプト集（読む所）──────────────────────────────────────────
 /**
- * 読む所の状態。**取るのは開いたときだけ** —— 一覧（有効な各 id の最新版）は引き直しの答えを使い、版の札と
+ * 読む所の状態。**取るのは開いたときだけ** —— 一覧（有効な各 id の最新版）は引き直しの答えを使い、版のリンクと
  * 1 版の中身は開いた id の分だけ取る。受け皿の型は画面を最初に開いたとき 1 回で、refresh には入れない
  * （入れると、型を取り込んでいない台帳で引き直し全体が落ちる）。
  */
@@ -1753,7 +1753,7 @@ const reading = {
   hash: undefined,
   /** 開いている物: URL が名指した物（target）と、その中身（doc。版か型） */
   open: undefined,
-  /** 1 版の中身。`id@版` で覚え、版の札の sha256 と食い違えば取り直す（番号は使い回される） */
+  /** 1 版の中身。`id@版` で覚え、版の一覧の sha256 と食い違えば取り直す（番号は使い回される） */
   docs: new Map(),
   /** 有効な各 id の最新版（GET /api/scripts の最後の答え）。サイト用のスクリプトも札つきで入る */
   latest: [],
@@ -1991,7 +1991,7 @@ const copyButton = (source) => {
 };
 
 /**
- * 見出し: 名前（と版の札・サイト用なら札）・事実の 1 行・ボタンと注記。名前を省くと名前の行を描かない
+ * 見出し: 名前（と版のリンク・サイト用なら対象サイト）・事実の 1 行・ボタンと注記。名前を省くと名前の行を描かない
  * （新しいクロールの読む窓は、タブが名前）。
  */
 const drawReadingHead = (at, { name, chips, sites = [], facts, standing, actions = [], aside }) => {
@@ -2015,7 +2015,7 @@ const drawReadingHead = (at, { name, chips, sites = [], facts, standing, actions
   at.head.replaceChildren(...rows, meta, row);
 };
 
-/** 版の札。押すとその版の URL へ（版を替えるのは移動なので、履歴に残す）。 */
+/** 版のリンク。押すとその版の URL へ（版を替えるのは移動なので、履歴に残す）。 */
 const chipsOf = (id, versions, shown, defaultVersion) => {
   const box = document.createElement("span");
   box.className = "rchips";
@@ -2030,7 +2030,7 @@ const chipsOf = (id, versions, shown, defaultVersion) => {
   return box;
 };
 
-/** 1 版の中身。覚えた物の sha256 が版の札と違えば（番号が使い回された）取り直す。 */
+/** 1 版の中身。覚えた物の sha256 が版の一覧と違えば（番号が使い回された）取り直す。 */
 const docOf = async (id, version, sha256) => {
   const key = `${id}@${String(version)}`;
   const kept = reading.docs.get(key);
