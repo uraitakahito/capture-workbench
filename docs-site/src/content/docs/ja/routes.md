@@ -1,6 +1,6 @@
 ---
 title: 中継の口
-description: dashboard のサーバが答える口 —— /healthz、台帳への素通し、書く口（クロールを始める・その場の TS の直し方を訊く）、WACZ の中身へ行く /wacz/ の口。Host の門、通すヘッダと、失敗の形
+description: dashboard のサーバが答える口 —— /healthz、台帳への素通し、書く口（クロールを始める・その場の TS の直し方を訊く）、その場の TS の宣言を訊く口、WACZ の中身へ行く /wacz/ の口。Host の門、通すヘッダと、失敗の形
 ---
 
 dashboard のサーバは中継しかしません。
@@ -12,6 +12,7 @@ dashboard のロジックはブラウザの側（`public/`）に在り、サー�
 | `GET /healthz` | サーバ自身（生存と、dashboard が要る設定） |
 | `POST /api/crawls` | 台帳へ（書く口。クロールを始める） |
 | `POST /api/crawls/:id/inline/:name/fix` | 台帳へ（書く口。その場の TS の型の誤りの直し方を訊く） |
+| `POST /api/scripts/check` | 台帳へ（その場の TS の宣言を訊く。何も書かないが、本文で source を送るので書く口と同じ門を通す） |
 | `/api/*`（ほか） | 台帳へ素通し（GET だけ） |
 | `/wacz/:id/…` | 台帳に署名をもらい、daemon へ |
 | それ以外 | `public/` のファイル |
@@ -67,7 +68,7 @@ dashboard は開いたときにこれを読み、誰として見ているかと�
 dashboard のサーバが持つ書く口の 1 つです。
 新しいクロールの画面の欄（[画面](/screens/)）が使います。
 中身は検査せず、門を通った本文をそのまま台帳の `POST /api/crawls` へ渡し、答えをそのまま返します。
-起点の URL も方針（深さ・枚数・走らせるスクリプト）も、`userAgent` も、クロールごとの変数（`variables`。名前の綴り・数・値の長さ・スクリプトが宣言した名前か）も、検査して決めるのは台帳です。
+起点の URL も方針（深さ・枚数・走らせるスクリプト）も、`userAgent` も、クロールごとの変数（`variables`。名前の綴り・数・値の長さと形・走るスクリプトが宣言した名前か）も、検査して決めるのは台帳です。
 宣言したシークレットが Windmill に在るかも台帳が確かめ、dashboard はシークレットの値に触りません（値は Windmill の変数に在り、dashboard の欄にも本文にもありません）。
 
 - **dashboard のページからの JSON だけを通す。**
@@ -85,6 +86,21 @@ dashboard のサーバが持つ書く口の 1 つです。
 | 503 `{"error": "windmill unreachable"}` | 宣言したシークレットが在るかを Windmill に訊けない（flow も動かないので、台帳はクロールを始めない） |
 
 門の判定は `src/lib.mjs` の `writeRefusal` に在り、試験から直接呼べます。
+
+## POST /api/scripts/check —— その場の TS の宣言を訊く口
+
+新しいクロールの画面が、箱が 800 ms 止まると 1 本ずつ呼び、`defineParams` で宣言された変数の欄を描きます（[画面](/screens/)）。
+本文は `{ source, phase }` です。台帳は行を立てず、ts-compile-service に訊いて `{ params, diagnostics }` を返します。dashboard のサーバは本文と答えをそのまま渡します。
+
+- 何も書きませんが、`POST /api/crawls` と同じ門（`Origin`・JSON・1 MiB）を通り、同じトークンを付けます。source を本文で運ぶ口で、別のサイトのページから ts-compile-service を働かせられないようにするためです。
+  形は `src/lib.mjs` の `isWriteRoute` に在り、query も `/check` の後ろの足しも通しません。
+
+| 台帳の答え | いつ |
+| --- | --- |
+| 200 `{ params, diagnostics }` | 訊けた。`diagnostics` は source の誤りで、足りない必須の変数（`BH0001`）は除く（欄がそのために在るため）。画面が出すのは `BH0002` と `BH0004` だけ |
+| 400 | 本文の形が違う（Fastify の `message`） |
+| 404 | 名乗りにクロールを始める許可が無い（`{"error":"not found"}`）か、台帳に ts-compile-service の設定が無く、口ごと無い |
+| 503 `{"error": "ts-compile unreachable"}` | ts-compile-service が答えない |
 
 ## POST /api/crawls/:id/inline/:name/fix —— その場の TS の直し方を訊く口
 
@@ -105,7 +121,7 @@ dashboard は答えを描くだけです。
 | --- | --- |
 | 200 `{ rounds, source, edits, notes, compiled, usage }` | 検査に通った直しがある（`edits` は置き換えた範囲ごとの `before` と `after`、`usage.usd` は費用） |
 | 409 `scripts compile` | いまの組み合わせが型を通る（直す物が無い） |
-| 422 | 誤りがこのスクリプトに無い、2 往復で通らなかった（回数と費用つき）、Claude が断った |
+| 422 | クロールに必須の変数が足りない（`missing variables`。Claude は呼ばず、画面は値を渡して始め直すよう言う）、誤りがこのスクリプトに無い、2 往復で通らなかった（回数と費用つき）、Claude が断った |
 | 429 `claude budget exhausted` | 組織がこの月の上限に届いた（`spentUsd` と `budgetUsd` つき）。Claude は呼ばない |
 | 502・503 | Claude か ts-compile-service が答えなかった |
 | 404 | 名乗りにクロールを始める許可が無い、クロールかその場の TS が無い、台帳に API の鍵が無く口ごと無い |

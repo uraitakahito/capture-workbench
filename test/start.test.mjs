@@ -12,7 +12,10 @@ import {
   asTemplate,
   bodyBytes,
   checkQuery,
+  askWhenSettled,
   declaredOf,
+  declaredWith,
+  inlineDeclared,
   defaultIds,
   hasNocheck,
   INLINE_ROW,
@@ -343,6 +346,146 @@ test("宣言はチェックしたスクリプトの物だけを台帳の並び�
   // params を運ばない行と、チェックを外した物は何も宣言しない
   assert.deepEqual(declaredOf(DECLARING, ["autoscroll"], "variable"), []);
   assert.deepEqual(declaredOf(DECLARING, [], "secret"), []);
+});
+
+test("値の形（schema）は最初の宣言の物を運ぶ。schema の無い宣言には鍵が無い", () => {
+  const LEVEL = { name: "level", kind: "variable", required: true, schema: { type: "string", enum: ["low", "high"] } };
+  const scripts = [
+    { id: "a", sites: [], params: [LEVEL] },
+    { id: "b", sites: [], params: [{ ...LEVEL, schema: { type: "string" } }] },
+  ];
+  assert.deepEqual(declaredOf(scripts, ["a", "b"], "variable"), [
+    { name: "level", required: true, summary: "", schema: LEVEL.schema, by: ["a", "b"] },
+  ]);
+  assert.equal("schema" in declaredOf(DECLARING, ["egov-law-search"], "variable")[0], false);
+});
+
+const typedInline = (source, phase = "behavior") => ({ name: "search", phase, source });
+
+test("欄に出す宣言は、その場の TS の宣言が先で、チェックした物が続く。同じ名前は 1 つにまとめる", () => {
+  const WORD = { name: "word", kind: "variable", required: true, summary: "語" };
+  assert.deepEqual(declaredWith(DECLARING, ["egov-law-search"], typedInline("x;"), [WORD], "variable"), [
+    { name: "word", required: true, summary: "語", by: ["@inline"] },
+    { name: "query", required: false, summary: QUERY.summary, by: ["egov-law-search"] },
+  ]);
+  // 下敷きで写して元のチェックを残したとき: 同じ名前は 1 行で、必須はどちらかが必須なら必須
+  assert.deepEqual(
+    declaredWith(DECLARING, ["egov-law-search"], typedInline("x;"), [{ ...QUERY, required: true }], "variable"),
+    [{ name: "query", required: true, summary: QUERY.summary, by: ["@inline", "egov-law-search"] }],
+  );
+  // シークレットの種類を訊いても変数は混ざらない
+  assert.deepEqual(declaredWith(DECLARING, [], typedInline("x;"), [WORD], "secret"), []);
+});
+
+test("箱が空なら、前の答えの宣言を出さない —— 消した TS の欄と値を残さない", () => {
+  const WORD = { name: "word", kind: "variable", required: true };
+  assert.deepEqual(declaredWith(DECLARING, [], typedInline(""), [WORD], "variable"), []);
+  assert.deepEqual(declaredWith(DECLARING, [], typedInline(" \n "), [WORD], "variable"), []);
+  assert.deepEqual(variablesOf(declaredWith(DECLARING, [], typedInline(""), [WORD], "variable"), new Map([["word", "x"]])), {});
+  assert.deepEqual(variablesOf(declaredWith(DECLARING, [], typedInline("x;"), [WORD], "variable"), new Map([["word", "x"]])), {
+    word: "x",
+  });
+});
+
+test("宣言の答えは、欄の宣言と、欄が出ない理由の 1 行になる —— ふつうの型の誤りは言わない", () => {
+  const PARAM = { name: "word", kind: "variable", required: true };
+  assert.deepEqual(inlineDeclared(200, { params: [PARAM], diagnostics: [] }), { params: [PARAM], note: "" });
+  assert.deepEqual(
+    inlineDeclared(200, { params: [PARAM], diagnostics: [{ code: "TS2322", message: "型が違う" }] }),
+    { params: [PARAM], note: "" },
+  );
+  assert.deepEqual(
+    inlineDeclared(200, {
+      params: [],
+      diagnostics: [
+        { code: "BH0002", message: "z.number は読めない (値は文字列だけ)" },
+        { code: "TS2322", message: "型が違う" },
+        { code: "BH0004", message: "preload では defineParams を使えない (受け皿が無い)" },
+      ],
+    }),
+    {
+      params: [],
+      note: "BH0002: z.number は読めない (値は文字列だけ) ／ BH0004: preload では defineParams を使えない (受け皿が無い)",
+    },
+  );
+  assert.deepEqual(inlineDeclared(503, { error: "ts-compile unreachable" }), {
+    params: [],
+    note: "宣言を確かめられません（503 —— ts-compile unreachable）",
+  });
+  // 口を出していない台帳（Fastify の文）。本文の形が違う 200 も、読めたことにしない
+  assert.equal(
+    inlineDeclared(404, { error: "Not Found", message: "Route POST:/api/scripts/check not found" }).note,
+    "宣言を確かめられません（404 —— Route POST:/api/scripts/check not found）",
+  );
+  assert.deepEqual(inlineDeclared(200, {}), { params: [], note: "宣言を確かめられません（200 —— 答えに文がありません）" });
+  assert.deepEqual(inlineDeclared(0, { error: "fetch failed" }), { params: [], note: "dashboard 自身に届きません（fetch failed）" });
+});
+
+/** `askWhenSettled` を偽の答えで組む。`release()` で走行中の 1 本に答える。 */
+const settling = (t, start = "") => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const state = { box: start, asked: [], answers: [], release: undefined };
+  state.changed = askWhenSettled({
+    current: () => state.box,
+    ask: (asked) => {
+      state.asked.push(asked);
+      return new Promise((resolve) => {
+        state.release = () => resolve(`答え ${asked}`);
+      });
+    },
+    answered: (answer) => state.answers.push(answer),
+  });
+  state.settle = async () => {
+    state.release();
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+  return state;
+};
+
+test("箱が 800 ms 止まってから 1 度だけ訊く —— 変わるたびに待ち直す", async (t) => {
+  const state = settling(t);
+  state.box = "a";
+  state.changed();
+  t.mock.timers.tick(799);
+  state.box = "ab";
+  state.changed();
+  t.mock.timers.tick(799);
+  assert.deepEqual(state.asked, []);
+  t.mock.timers.tick(1);
+  assert.deepEqual(state.asked, ["ab"]);
+  await state.settle();
+  assert.deepEqual(state.answers, ["答え ab"]);
+});
+
+test("走行中は 1 本だけ。答えが前の箱の物なら捨て、待ち直して今の箱を訊く", async (t) => {
+  const state = settling(t);
+  state.box = "a";
+  state.changed();
+  t.mock.timers.tick(800);
+  state.box = "ab";
+  state.changed();
+  t.mock.timers.tick(800);
+  assert.deepEqual(state.asked, ["a"], "走行中は送らない");
+  await state.settle();
+  assert.deepEqual(state.answers, [], "前の箱の答えは描かない");
+  assert.deepEqual(state.asked, ["a"], "答えが来てもすぐには送らない");
+  t.mock.timers.tick(800);
+  assert.deepEqual(state.asked, ["a", "ab"]);
+  await state.settle();
+  assert.deepEqual(state.answers, ["答え ab"]);
+});
+
+test("訊いている間に箱が元へ戻れば、その答えは今の箱の物", async (t) => {
+  const state = settling(t);
+  state.box = "a";
+  state.changed();
+  t.mock.timers.tick(800);
+  state.box = "ab";
+  state.changed();
+  state.box = "a";
+  state.changed();
+  await state.settle();
+  assert.deepEqual(state.answers, ["答え a"]);
 });
 
 test("送る変数は宣言された名前の値だけ。空白だけの欄と、宣言から外れた名前は送らず、値は削らない", () => {

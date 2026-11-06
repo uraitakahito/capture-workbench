@@ -102,10 +102,11 @@ test("書く口は、ほかのオリジン・Origin の無い要求・JSON で�
   assert.equal(writeRefusal({ ...fromThisPage, host: "evil.test:7080", origin: "http://evil.test:7080" }, 7080)?.status, 403);
 });
 
-test("書く口は、クロールを始める口と、その場の TS の直し方を訊く口の 2 つの形だけ", () => {
+test("書く口は、クロールを始める口と、その場の TS の直し方を訊く口と、宣言を訊く口の 3 つの形だけ", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   assert.equal(isWriteRoute("/api/crawls"), true);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner/fix`), true);
+  assert.equal(isWriteRoute("/api/scripts/check"), true);
   // 末尾の足し・query・ほかの段
   assert.equal(isWriteRoute("/api/crawls/"), false);
   assert.equal(isWriteRoute("/api/crawls?x=1"), false);
@@ -114,6 +115,12 @@ test("書く口は、クロールを始める口と、その場の TS の直し�
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner`), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}/pages`), false);
   assert.equal(isWriteRoute(`/api/archives/${id}/url`), false);
+  assert.equal(isWriteRoute("/api/scripts/check/"), false);
+  assert.equal(isWriteRoute("/api/scripts/check?x=1"), false);
+  assert.equal(isWriteRoute("/api/scripts/check/x"), false);
+  assert.equal(isWriteRoute("/api/scripts"), false);
+  assert.equal(isWriteRoute("/api/scripts/checks"), false);
+  assert.equal(isWriteRoute("/xapi/scripts/check"), false);
 });
 
 test("書く口は、% と . で台帳のほかの口へ回り込む形を断る", () => {
@@ -124,6 +131,10 @@ test("書く口は、% と . で台帳のほかの口へ回り込む形を断る
   assert.equal(isWriteRoute("/api/crawls/%2e%2e/inline/x/fix"), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}%2Fx/inline/close-banner/fix`), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close%2Dbanner/fix`), false);
+  assert.equal(isWriteRoute("/api/scripts/../crawls"), false);
+  assert.equal(isWriteRoute("/api/scripts/check/../../crawls"), false);
+  assert.equal(isWriteRoute("/api/scripts/%63heck"), false);
+  assert.equal(isWriteRoute("/api/scripts/check%2F"), false);
 });
 
 test("書く口の本文は、上限ちょうどまで受け、1 バイト超えたら断る", async () => {

@@ -278,7 +278,7 @@ const server = createServer((request, reply) => {
   }
 
   /**
-   * 書く口（`lib.mjs` の `isWriteRoute`）。**中身は検査しない** —— クロールを始める頼みも、直し方を訊く頼みも
+   * 書く口（`lib.mjs` の `isWriteRoute`）。**中身は検査しない** —— クロールを始める頼みも、直し方を訊く頼みも、宣言を訊く頼みも
    * 台帳が検査して決め、答えをそのまま返す。門だけはここで見る。
    */
   if (isWriteRoute(url) && request.method === "POST") {
@@ -300,7 +300,7 @@ const server = createServer((request, reply) => {
     // 読む口は GET だけ。ほかの method を GET として通すと、書けたように見えてしまう。
     if (request.method !== "GET") {
       reply.writeHead(405, { allow: "GET", "content-type": "text/plain; charset=utf-8" });
-      reply.end("GET だけ（書く口は POST /api/crawls と POST /api/crawls/:id/inline/:name/fix）\n");
+      reply.end("GET だけ（書く口は POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/scripts/check）\n");
       return;
     }
     void toLedger(url)

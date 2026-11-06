@@ -594,7 +594,7 @@ const elementRefusal = (element, i) => {
 /**
  * 宣言 (`params`) の形を見る (台帳 v0.67.0 の schema)。断るなら文を返す。名前は `^[a-z][a-z0-9_]*$` で 64 字まで、
  * kind は variable か secret、required は真偽値、summary は文字列 (その場の TS では省ける)、知らない鍵は断る。
- * 同じ名前が 2 度ある宣言は schema では見ず、`paramsReading` が台帳の `readParams` と同じ文で断る。
+ * kind: variable と、同じ名前が 2 度ある宣言は schema では見ず、`paramsReading` が台帳の handler と同じ文で断る。
  */
 const paramsRefusal = (params, at) => {
   if (params === undefined) return undefined;
@@ -620,11 +620,22 @@ const paramsRefusal = (params, at) => {
 };
 
 /**
- * その場の TS の宣言を、台帳の `readParams` (schema の後) と同じく読む。同じ名前が 2 度あれば 400
- * `{ error: "invalid params", script, hint }` (文は台帳と同じ)。通れば、省いた required を false にした宣言。
+ * その場の TS の宣言を、台帳の handler (schema の後) と同じく読む。`params` に書けるのはシークレットだけで、変数なら 400、
+ * 同じ名前が 2 度あれば 400 (どちらも `{ error: "invalid params", script, hint }`。文は台帳と同じ)。
+ * 通れば、省いた required を false にした宣言。
  */
 const paramsReading = (inline) => {
   if (inline.params === undefined) return { params: undefined };
+  if (inline.params.some((p) => p.kind === "variable")) {
+    return {
+      status: 400,
+      body: {
+        error: "invalid params",
+        script: `inline-${inline.name}`,
+        hint: "params に書けるのはシークレットだけ。変数は source の defineParams で宣言する",
+      },
+    };
+  }
   const out = [];
   for (const p of inline.params) {
     if (out.some((q) => q.name === p.name)) {
@@ -654,47 +665,135 @@ const variablesRefusal = (variables) => {
   return undefined;
 };
 
+/** `defineParams(z.object({ … }))` の中身。 */
+const DEFINE_PARAMS = /defineParams\(\s*z\.object\(\{([\s\S]*?)\}\)\s*,?\s*\)/;
+/** 中身の 1 行: 名前と、`string()` か `enum([…])` と、続く呼び出しの列。 */
+const DECLARED_FIELD =
+  /([a-z][a-z0-9_]*)\s*:\s*z\s*\.\s*(?:string\(\)|enum\(\[([^\]]*)\]\))((?:\s*\.\s*[a-z]+\((?:"(?:[^"\\]|\\.)*"|\d*)\))*)/g;
+const DECLARED_CALL = /\.\s*([a-z]+)\(("(?:[^"\\]|\\.)*"|\d*)\)/g;
+
 /**
- * クロールごとの値を、台帳 (v0.67.0 の `checkValues` と route) と同じ順で解く: 同じ名前を別の種類で宣言している →
- * 必須の変数が無い → シークレットの名前を変数で渡している → 知らない変数 (宣言を添えないその場の TS が 1 本でも在れば
- * 見ない —— その TS が読むかもしれない) → シークレットが多すぎる → 宣言したシークレットが Windmill に在るか → 在るが
- * secret でない。宣言は走らせるものから集める (台帳のスクリプトは版の `params`、その場の TS は `inline.params`)。
- * 同じ名前の宣言は 1 つにまとめる (名前順)。required でないシークレットが Windmill に無ければ、渡さないだけで断らない
- * (スクリプトは undefined を読む)。通れば、行に固定する `variables` と `secrets` (名前・path・確かめたときの edited_at・
- * 途中で替わったか) を返す。
+ * その場の TS の `defineParams(z.object({ … }))` を読む。**代役だけの近道** —— 本物は ts-compile-service が構文木を歩き、
+ * 呼べる形を外れれば読めないと言う。ここは見本と docs に出てくる形 (`"` の文字列と数のリテラル) だけを正規表現で読む。
+ * 答えの形は本物と同じで、鍵は name・kind・required・summary (`.describe` が無ければ無い)・schema
+ * (type・minLength・maxLength・enum)。`/api/scripts/check` と `submitCrawl` の両方がここを読む。
+ */
+export const readDeclared = (source) =>
+  [...(DEFINE_PARAMS.exec(source)?.[1] ?? "").matchAll(DECLARED_FIELD)].map(([, name, list, chain]) => {
+    const schema = { type: "string" };
+    if (list !== undefined) schema.enum = [...list.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+    let required = true;
+    let summary;
+    for (const [, method, argument] of chain.matchAll(DECLARED_CALL)) {
+      if (method === "min" || method === "length") schema.minLength = Number(argument);
+      if (method === "max" || method === "length") schema.maxLength = Number(argument);
+      if (method === "optional") required = false;
+      if (method === "describe") summary = JSON.parse(argument);
+    }
+    return { name, kind: "variable", required, ...(summary === undefined ? {} : { summary }), schema };
+  });
+
+/**
+ * POST /api/scripts/check。書いている途中のその場の TS が宣言した変数を返す (台帳の `src/api/scripts.ts`)。行は立たない。
+ * 本物は TS の誤りも `diagnostics` に返す (`BH0001` は除く) が、代役は型を検査しないので、欄が出ない理由の 2 つだけを言う。
+ */
+export const checkInline = (body) => {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) return schemaError("body must be object");
+  if (Object.keys(body).some((key) => key !== "source" && key !== "phase")) {
+    return schemaError("body must NOT have additional properties");
+  }
+  for (const key of ["source", "phase"]) {
+    if (!(key in body)) return schemaError(`body must have required property '${key}'`);
+  }
+  if (typeof body.source !== "string") return schemaError("body/source must be string");
+  if (body.phase !== "preload" && body.phase !== "behavior") {
+    return schemaError("body/phase must be equal to one of the allowed values");
+  }
+  const declares = /\bdefineParams\(/.test(body.source);
+  const said = (code, message) => ({ file: "inline-check.ts", code, message });
+  return {
+    status: 200,
+    body: {
+      params: readDeclared(body.source),
+      diagnostics: [
+        ...(declares && !DEFINE_PARAMS.test(body.source)
+          ? [said("BH0002", "defineParams の引数を読めない (z.object({ … }) をその場に書く)")]
+          : []),
+        ...(declares && body.phase === "preload"
+          ? [said("BH0004", "preload では defineParams を使えない (受け皿が無い)")]
+          : []),
+      ],
+    },
+  };
+};
+
+/** 値が宣言の形に合わないなら、人に見せる文 (台帳の `crawl/values.ts` の `shapeProblem`)。長さは code point で数える。 */
+const shapeProblem = (name, value, schema) => {
+  const length = [...value].length;
+  if (schema.enum !== undefined && !schema.enum.includes(value)) return `${name} は ${schema.enum.join("・")} のどれか`;
+  if (schema.minLength !== undefined && length < schema.minLength) return `${name} は ${String(schema.minLength)} 字以上`;
+  if (schema.maxLength !== undefined && length > schema.maxLength) return `${name} は ${String(schema.maxLength)} 字まで`;
+  return undefined;
+};
+
+/**
+ * クロールごとの値を、台帳の route と `checkValues` と同じ順で解く: 必須の変数が無い (台帳は compile の答えの `BH0001` で
+ * 断る。行も立たない) → 同じ名前を別の種類か別の形で宣言している → シークレットの名前を変数で渡している → 知らない変数 →
+ * 値が宣言の形に合わない → シークレットが多すぎる → 宣言したシークレットが Windmill に在るか → 在るが secret でない。
+ * 宣言は走らせるものから集める。台帳のスクリプトは版の `params`、その場の TS は変数が source の `defineParams`
+ * (`readDeclared`) でシークレットが `inline.params`。同じ名前の宣言は 1 つにまとめる (名前順)。required でないシークレットが
+ * Windmill に無ければ、渡さないだけで断らない (スクリプトは undefined を読む)。通れば、行に固定する `variables` と `secrets`
+ * (名前・path・確かめたときの edited_at・途中で替わったか) を返す。
+ *
+ * `BH0001` の誤りに行と列は無い (代役は構文木を読まない)。本物には在る。
  */
 const resolveValues = (variables = {}, run, windmill) => {
   const declared = new Map();
-  let undeclaredInline = false;
+  const lacking = [];
   for (const s of run) {
-    const params = s.inline === undefined ? (s.params ?? []) : s.inline.params;
-    if (params === undefined) {
-      undeclaredInline = true;
-      continue;
-    }
+    const params = s.inline === undefined ? (s.params ?? []) : [...readDeclared(s.inline.source), ...(s.inline.params ?? [])];
     for (const p of params) {
-      const entry = declared.get(p.name) ?? { kinds: new Set(), required: false, declaredBy: [] };
+      const entry = declared.get(p.name) ?? { kinds: new Set(), schemas: new Map(), required: false, declaredBy: [] };
       entry.kinds.add(p.kind);
+      if (p.schema !== undefined) entry.schemas.set(JSON.stringify(p.schema), p.schema);
       entry.required = entry.required || p.required === true;
       entry.declaredBy.push(s.id);
       declared.set(p.name, entry);
+      if (p.kind === "variable" && p.required === true && !(p.name in variables)) {
+        lacking.push({ file: `${s.id}.ts`, code: "BH0001", message: `必須の変数 ${p.name} が渡されていない`, name: p.name });
+      }
     }
   }
   const names = [...declared.keys()].sort();
   const refuse = (body) => ({ status: 400, body });
-  const conflicting = names.filter((name) => declared.get(name).kinds.size > 1);
+  if (lacking.length > 0) {
+    return refuse({
+      error: "missing variables",
+      names: [...new Set(lacking.map((d) => d.name))],
+      diagnostics: lacking.map(({ file, code, message }) => ({ file, code, message })),
+    });
+  }
+  const conflicting = names.filter((name) => declared.get(name).kinds.size > 1 || declared.get(name).schemas.size > 1);
   if (conflicting.length > 0) return refuse({ error: "conflicting params", names: conflicting });
   const ofKind = (kind) => names.filter((name) => declared.get(name).kinds.has(kind));
   const given = Object.keys(variables).sort();
-  const missing = ofKind("variable").filter((name) => declared.get(name).required && !(name in variables));
-  if (missing.length > 0) return refuse({ error: "missing variables", names: missing });
   const secretNames = ofKind("secret");
   const asVariable = given.filter((name) => secretNames.includes(name));
   if (asVariable.length > 0) return refuse({ error: "secrets cannot be passed as variables", names: asVariable });
-  if (!undeclaredInline) {
-    const variableNames = ofKind("variable");
-    const unknown = given.filter((name) => !variableNames.includes(name));
-    if (unknown.length > 0) return refuse({ error: "unknown variables", names: unknown });
+  const variableNames = ofKind("variable");
+  const unknown = given.filter((name) => !variableNames.includes(name));
+  if (unknown.length > 0) return refuse({ error: "unknown variables", names: unknown });
+  const misfits = given.flatMap((name) => {
+    const [schema] = declared.get(name).schemas.values();
+    const problem = schema === undefined ? undefined : shapeProblem(name, variables[name], schema);
+    return problem === undefined ? [] : [{ name, problem }];
+  });
+  if (misfits.length > 0) {
+    return refuse({
+      error: "invalid variables",
+      names: misfits.map((m) => m.name),
+      hint: misfits.map((m) => m.problem).join(" / "),
+    });
   }
   if (secretNames.length > 32) return refuse({ error: "too many secrets", count: secretNames.length, max: 32 });
   const wanted = secretNames.map((name) => ({
@@ -985,7 +1084,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   const hosts = new Set(body.seeds.map((seed) => new URL(seed).hostname));
   const run = resolveRun(body.scripts, versions, hosts);
   if (run.status !== undefined) return run;
-  // 値の誤り (必須の変数が無い・知らない変数・Windmill に無いシークレット) も、行を立てる前 —— 走行中でも 409 より先
+  // 値の誤り (必須の変数が無い・知らない変数・形に合わない値・Windmill に無いシークレット) も、行を立てる前 —— 走行中でも 409 より先
   const valued = resolveValues(body.variables, run.scripts, windmill);
   if (valued.status !== undefined) return valued;
   const running = rows.find((row) => now < row.startedAt + row.runsSeconds * 1000);
@@ -1113,6 +1212,18 @@ const handle = (req, res, raw) => {
       return;
     }
     const answer = submitCrawl(submitted, body, Date.now(), s.submit?.runsSeconds ?? 15, versionsIn(s), windmillOf(s));
+    send(res, answer.status, answer.body);
+    return;
+  }
+  if (req.method === "POST" && pathname === "/api/scripts/check") {
+    let body;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      send(res, 400, { error: "body is not valid JSON" });
+      return;
+    }
+    const answer = checkInline(body);
     send(res, answer.status, answer.body);
     return;
   }

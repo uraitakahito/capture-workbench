@@ -241,8 +241,8 @@ follow).
   起点を書くと選べます (write a seed to choose). A box you unticked stays unticked when the seeds
   change. The rule is the ledger's: naming a site script that fits no seed gets a 400 from it.
   The example is `egov-law-search` from capture-scripts (sites `laws.e-gov.go.jp`), which searches law titles
-  within [e-Gov Law Search](https://laws.e-gov.go.jp/) for the word in the variable `query` (「セキュリティ」
-  when none is given); seed `https://laws.e-gov.go.jp/` to choose it, as in the picture above.
+  within [e-Gov Law Search](https://laws.e-gov.go.jp/) for the word in the required variable `query`; seed
+  `https://laws.e-gov.go.jp/` to choose it, as in the picture above.
 - **The User-Agent box sets the crawl's `User-Agent`.** Left empty, nothing is sent and the browser's
   own value (with `HeadlessChrome`) goes out. The button Headless を外す型を入れる (put in the form without Headless)
   fills in `{chrome} BrowserHive`: BrowserHive turns `{chrome}` into the browser's own value without Headless, so
@@ -251,26 +251,35 @@ follow).
   dashboard shows its sentence as it is. The text stays in the box after starting, like the variables and the
   script. The opened row of the crawls view shows the text as typed; the value actually sent is in the WACZ's
   `settings.userAgent`.
-- **When a ticked script declares values, the クロールごとの値 (per-crawl values) box appears.** A
-  script declares the names it reads in `params` in the `catalog.json` of
-  [capture-scripts](https://github.com/uraitakahito/capture-scripts); the ledger keeps them with each
-  version and `GET /api/scripts` carries them (from v0.67.0). A variable (`kind: variable`) becomes
-  one row with its name, its description and a field for the value: `query` in the picture above is
-  declared by `egov-law-search` as the search word, and the script reads it as `__bh.vars.query`. A
-  required declaration is marked 必須 (required). Only the fields with a value are sent, as
-  `variables`; an empty field is not sent and the script falls back to the default in its source.
+- **When a ticked script or your own script declares values, the クロールごとの値 (per-crawl values) box
+  appears.** A script declares the variables it reads in its source with
+  `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))`. For a script in
+  [capture-scripts](https://github.com/uraitakahito/capture-scripts) the declarations are also in the
+  `params` of its `catalog.json`; the ledger keeps them with each version and `GET /api/scripts`
+  carries them. For your own script, the view asks the ledger once the box has stopped changing for
+  800 ms (`POST /api/scripts/check`), so the field also appears after a file is read, 欄に戻す (back to
+  the form) and 下敷きにする (use as a template). A variable (`kind: variable`) becomes one row with its
+  name, its description and a field for the value, or a choice when the declaration is a `z.enum`:
+  `query` in the picture above is declared by `egov-law-search` as the search word. A required declaration
+  (no `.optional()`) is marked 必須 (required). Only the fields with a value are sent, as `variables`;
+  an empty optional field is not sent and the script reads `undefined`.
   The values are remembered: after a 202, and when unticking a script removes its rows, they stay,
   and come back when the script is ticked again. The dashboard does not check them: the spelling of a
   name (a lowercase letter, then lowercase letters, digits and `_`, up to 64 characters), at most 32
-  per crawl and values up to 4,096 characters are the ledger's rules, and when a required field is
-  empty or a name no script declared is sent, the ledger answers 400 naming it (under the left
-  column you read something like `400 —— missing variables: query`). A secret (`kind: secret`) is
+  per crawl, values up to 4,096 characters and the shape the script declared are the ledger's rules. When a
+  required field is empty, a name no script declared is sent or a value does not fit, the ledger answers
+  400 naming it before it creates a row (under the left column you read something like
+  `400 —— missing variables: query`). When your own script's declaration cannot be read, or the ledger
+  cannot be asked, the reason is under the box in red: `BH0002` (the form cannot be read without running it),
+  `BH0004` (a script that runs before navigation has nowhere to read a variable), or 宣言を確かめられません
+  (could not check the declarations) with the ledger's sentence. Ordinary type errors are not shown
+  there; the compile step reports them when the crawl runs. A secret (`kind: secret`) is
   listed under 使うシークレット (secrets used) by name only, with no field: its value is put by a
   person into the Windmill variable `f/waggle_secrets/<name>`, the ledger checks that it exists
   (otherwise a 400 naming it with its path), and Windmill resolves it for the script on every crawl.
   The value never reaches the dashboard, the ledger or the WACZ. No bundled script declares a secret,
-  so this view passes variables only; the declaration of a script of your own (`inline.params`) can
-  be added only when calling the ledger's API directly.
+  so this view passes variables only; your own script can declare a secret (`inline.params`) only when
+  calling the ledger's API directly.
 - **A script left out of the default is listed unticked.** It reads 既定では走らない (does not run
   by default) beside its name, as autofetch does in the picture above: a script whose entry in the
   `catalog.json` of [capture-scripts](https://github.com/uraitakahito/capture-scripts) says
