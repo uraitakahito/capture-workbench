@@ -196,7 +196,8 @@ dashboard は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 - **User-Agent の箱で、クロールの `User-Agent` を決める。**
   空なら何も送らず、ブラウザの字（`HeadlessChrome` を含む）のまま撮ります。
   「Headless を外す型を入れる」を押すと `{chrome} BrowserHive` が入ります。`{chrome}` は BrowserHive がブラウザの字から Headless を外した物に置き換えるので、Headless を断るサイトも撮れ、ブラウザを上げても字が古くなりません。
-  dashboard は字を検査しません。`BrowserHive` の語を含まない字は台帳が 400 で断り、その文をそのまま出します。
+  `BrowserHive` の語を含めるかは打つ人が決めます。含むと、相手のサイトに BrowserHive が撮っていると分かり、robots.txt もその名前の規則で読みます。含まなければ `*` の規則だけを読みます。
+  dashboard は字を検査しません。形（印字可能な ASCII・512 字以下）に合わない字は台帳が 400 で断り、その文をそのまま出します。
   始めた後も、字は変数やスクリプトと同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は WACZ の `settings.userAgent` で読めます。
 - **チェックしたスクリプトやその場の TS が値を宣言していれば、「クロールごとの値」の欄が出る。**
   スクリプトは読む変数を、ソースの `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))` で宣言します。[capture-scripts](https://github.com/uraitakahito/capture-scripts) のスクリプトは `catalog.json` の `params` にも同じ宣言があり、台帳は版ごとに持ち、`GET /api/scripts` が運びます。

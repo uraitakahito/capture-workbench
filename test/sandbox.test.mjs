@@ -1267,6 +1267,11 @@ test("User-Agent は打った字のまま行に残り、詳しい答えが返す
   assert.equal(crawlDetail(none.rows[0]).userAgent, null);
   const blank = start({ userAgent: "   " });
   assert.equal(crawlDetail(blank.rows[0]).userAgent, null);
+  for (const userAgent of ["{chrome}", "curl/8.0", "NotBrowserHiveAtAll"]) {
+    const unnamed = start({ userAgent });
+    assert.equal(unnamed.answer.status, 202);
+    assert.equal(crawlDetail(unnamed.rows[0]).userAgent, userAgent);
+  }
 });
 
 test("User-Agent は台帳と同じ文で断る。行は立たない", () => {
@@ -1277,8 +1282,6 @@ test("User-Agent は台帳と同じ文で断る。行は立たない", () => {
     // 画面と同じ順で読む（`startAnswer`。schema の 400 は error と message の両方を持つ）
     return [status, body.message ?? body.error];
   };
-  assert.deepEqual(refused("curl/8.0"), [400, "userAgent must contain BrowserHive"]);
-  assert.deepEqual(refused("NotBrowserHiveAtAll"), [400, "userAgent must contain BrowserHive"]);
-  assert.deepEqual(refused("クローラー BrowserHive"), [400, "userAgent must be printable ASCII, at most 512 characters"]);
+  assert.deepEqual(refused("クローラー"), [400, "userAgent must be printable ASCII, at most 512 characters"]);
   assert.deepEqual(refused(1), [400, "body/userAgent must be string"]);
 });
