@@ -32,6 +32,7 @@ import {
   sizeOf,
   startAnswer,
   startBody,
+  userAgentOf,
   summaryOf,
   variablesOf,
   withNocheck,
@@ -611,4 +612,19 @@ test("規則の 400 は、名指した行と起点を文の後に添える", () 
     startAnswer(400, { error: "seeds the rules do not follow", seeds: ["https://ads.site.test/"] }).text,
     "400 —— seeds the rules do not follow: https://ads.site.test/",
   );
+});
+
+// ── User-Agent の箱 ──────────────────────────────
+
+test("User-Agent の箱: 貼ったときの改行は空白に、前後の空白は落とす", () => {
+  assert.equal(userAgentOf("Mozilla/5.0 (X11)\n  Chrome/156 BrowserHive"), "Mozilla/5.0 (X11) Chrome/156 BrowserHive");
+  assert.equal(userAgentOf("  {chrome} BrowserHive \n"), "{chrome} BrowserHive");
+  assert.equal(userAgentOf(" \n "), "");
+});
+
+test("User-Agent の箱が空なら鍵ごと送らず、今までと同じ本文。書けば鍵に載る（{chrome} は解かない）", () => {
+  const empty = startBody("https://site.test/", null);
+  assert.deepEqual(startBody("https://site.test/", null, undefined, {}, " \n "), empty);
+  assert.equal("userAgent" in empty, false);
+  assert.equal(startBody("https://site.test/", null, undefined, {}, "{chrome} BrowserHive").userAgent, "{chrome} BrowserHive");
 });

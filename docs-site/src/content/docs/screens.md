@@ -103,7 +103,8 @@ the crawl's bundle.
   `variables`, name and value) and the secrets it used (`secrets`: the name, the path of the Windmill
   variable, and its `edited_at` when the ledger checked that it existed). A secret's value never
   appears: neither the ledger nor the WACZ holds it, only Windmill does. If the Windmill variable was
-  rewritten while the crawl ran, the row says from which level. A crawl given nothing reads 渡した値:
+  rewritten while the crawl ran, the row says from which level. Above them is the `User-Agent` the crawl
+  asked for, as typed, or HeadlessChrome のまま (still HeadlessChrome). A crawl given nothing reads 渡した値:
   なし (values passed: none), and a row from an older ledger without values shows nothing here. Last
   are the pages that failed, the latest 5 that the ledger returns (the state column gives the total); if none did, it says so and lists the seed
   URLs.
@@ -192,7 +193,7 @@ tests read the same file the browser reads, so there is no copy to rot.
 
 ## Start a crawl
 
-The 新しいクロール (new crawl) view starts a crawl. The left column holds the seed URLs, the registered scripts,
+The 新しいクロール (new crawl) view starts a crawl. The left column holds the seed URLs, the registered scripts, the User-Agent box,
 the per-crawl values (when a ticked script declares any), the depth and the 始める (start) button; the
 right column holds the box for a script of your own, and how to follow links. The box
 stretches to the bottom of the window and has line numbers on its left, so a large script can be
@@ -201,12 +202,13 @@ page only) or リンクを辿る (follow links), and press 始める. The right 
 a window for reading a registered script, and, while リンクを辿る is chosen, to 辿り方 (how to
 follow).
 
-![The left column of the new crawl view: the seed URL (e-Gov Law Search), script rows (a run-order number, a checkbox, and ↑↓) including the row for your own script, the site script egov-law-search, and autofetch left unticked as 既定では走らない, the field for the variable query that egov-law-search declares, this page only or follow links, and 始める](../../assets/screens/start.webp)
+![The left column of the new crawl view: the seed URL (e-Gov Law Search), script rows (a run-order number, a checkbox, and ↑↓) including the row for your own script, the site script egov-law-search, and autofetch left unticked as 既定では走らない, the field for the variable query that egov-law-search declares, the User-Agent box with its button, this page only or follow links, and 始める](../../assets/screens/start.webp)
 
 ① seed URLs\
 ② スクリプト (scripts): the run-order numbers, the checkboxes and 読む (read), and ↑↓\
 ③ クロールごとの値 (per-crawl values): the fields for the variables the ticked scripts declare\
-④ 始める (start)
+④ User-Agent: the box and the button that fills in the form without Headless\
+⑤ 始める (start)
 
 ![The right column of the new crawl view: the tab その場の TS, the name of the script, when it runs, and the script box](../../assets/screens/start-js.webp)
 
@@ -241,6 +243,14 @@ follow).
   The example is `egov-law-search` from capture-scripts (sites `laws.e-gov.go.jp`), which searches law titles
   within [e-Gov Law Search](https://laws.e-gov.go.jp/) for the word in the variable `query` (「セキュリティ」
   when none is given); seed `https://laws.e-gov.go.jp/` to choose it, as in the picture above.
+- **The User-Agent box sets the crawl's `User-Agent`.** Left empty, nothing is sent and the browser's
+  own value (with `HeadlessChrome`) goes out. The button Headless を外す型を入れる (put in the form without Headless)
+  fills in `{chrome} BrowserHive`: BrowserHive turns `{chrome}` into the browser's own value without Headless, so
+  a site that refuses Headless can be captured, and the text never goes stale when the browser is upgraded. The dashboard
+  does not check the text: the ledger refuses text without the word `BrowserHive` with a 400, and the
+  dashboard shows its sentence as it is. The text stays in the box after starting, like the variables and the
+  script. The opened row of the crawls view shows the text as typed; the value actually sent is in the WACZ's
+  `settings.userAgent`.
 - **When a ticked script declares values, the クロールごとの値 (per-crawl values) box appears.** A
   script declares the names it reads in `params` in the `catalog.json` of
   [capture-scripts](https://github.com/uraitakahito/capture-scripts); the ledger keeps them with each

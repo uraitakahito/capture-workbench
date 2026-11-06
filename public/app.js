@@ -370,6 +370,12 @@ const valuesOf = (one) => {
   const box = document.createElement("div");
   box.className = "values";
   if (one.variables === undefined && one.secrets === undefined) return box;
+  // 打った字のまま。解いた字は WACZ の settings.userAgent に在る
+  box.append(
+    typeof one.userAgent === "string"
+      ? tag("p", `User-Agent: ${one.userAgent}`)
+      : tag("p", "User-Agent: HeadlessChrome のまま", "muted"),
+  );
   const vars = Object.entries(one.variables ?? {});
   const secrets = one.secrets ?? [];
   if (vars.length === 0 && secrets.length === 0) {
@@ -1144,7 +1150,7 @@ const drawGutter = () => {
 const syncStart = () => {
   drawRunOrder();
   const follow = followOf();
-  const body = startBody($("start-seeds").value, follow, runOf(), variablesNow());
+  const body = startBody($("start-seeds").value, follow, runOf(), variablesNow(), $("start-ua-text").value);
   const limit = settings.writeLimit ?? Infinity;
   const size = sizeOf($("start-inline-source").value, bodyBytes(body), limit);
   const line = $("start-size");
@@ -1365,7 +1371,7 @@ const drawSource = () => {
  */
 const startCrawl = async (event) => {
   event.preventDefault();
-  const body = startBody($("start-seeds").value, followOf(), runOf(), variablesNow());
+  const body = startBody($("start-seeds").value, followOf(), runOf(), variablesNow(), $("start-ua-text").value);
   if (body.seeds.length === 0) return;
   $("start-go").disabled = true;
   let status = 0;
@@ -1423,6 +1429,12 @@ $("start-nocheck").addEventListener("change", (event) => {
   syncStart();
 });
 $("start").addEventListener("submit", (event) => void startCrawl(event));
+// 型を入れるだけ。欄の input と同じ道を通すので、本文の大きさも一緒に数え直す
+$("start-ua-compatible").addEventListener("click", () => {
+  const box = $("start-ua-text");
+  box.value = "{chrome} BrowserHive";
+  box.dispatchEvent(new Event("input", { bubbles: true }));
+});
 $("start-inline-file").addEventListener("change", () => void readFileIntoForm());
 
 // ── 検証 ───────────────────────────────────────────────────────────
