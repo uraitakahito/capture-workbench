@@ -284,8 +284,14 @@ follow).
   script back by this name.
 - **A script of your own is type-checked as strict TypeScript** at the first level's compile step,
   and a single error fails the crawl; open its row to read the number of diagnostics and the first
-  five. Wrap it in an IIFE, give the elements you look up a type, and use `?.`. Do not write
-  `export`: the page then gets a syntax error and nothing runs.
+  five. Wrap it in an IIFE, give the elements you look up a type, and use `?.`. It cannot contain
+  `export`: compile stops it with `BH0006`, because the page would get a syntax error and nothing
+  would run.
+- **It can use Zod.** Start with `import { z } from "zod"` or `import * as z from "zod/mini"`. Compile
+  stops any other form with `BH0003`, and stops it before navigation (遷移の前) with `BH0004`.
+  ts-compile-service bundles only the names in use into the JavaScript, which adds about 85 KB to the
+  script (15 KB for `zod/mini`). A crawl still succeeds when a value has the wrong shape, so use
+  `safeParse` and `__bh.log.error` rather than `parse`.
 - **For a bundled script, tick 型を検査しない (skip the type check).** Ticking it puts
   `// @ts-nocheck` on the first line of the box, and unticking takes it off: what you see is what is
   sent, and the ledger's sha256 covers it too. A pasted script that already starts with that line
