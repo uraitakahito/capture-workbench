@@ -90,8 +90,8 @@ export const defaultVersionOf = (latest, id) => {
 
 /**
  * この版と既定の顔ぶれの関係。`defaultVersion` は `defaultVersionOf` の答え（既定に入らない id なら
- * undefined）。無効な版は、名指せば走るが、既定では走らない。サイト用のスクリプト（札のある版）が既定で
- * 走るのは、起点のどれかが札のホストにあるときだけ。
+ * undefined）。無効な版は、名指せば走るが、既定では走らない。サイト用のスクリプト（対象サイトのある版）が既定で
+ * 走るのは、起点のどれかが対象サイトのホストにあるときだけ。
  */
 export const standingOf = (doc, defaultVersion) => {
   if (doc.enabled === false) return { text: "無効（既定では走らない）", kind: "warn" };

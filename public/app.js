@@ -240,7 +240,7 @@ const failuresText = (one) => {
     : failures.map((f) => `${f.url} — ${f.reason ?? "理由なし"}`).join("\n");
 };
 
-/** 札の印（サイト用のスクリプトのホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。 */
+/** 対象サイトの印（サイト用のスクリプトのホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。 */
 const siteChip = (sites, suffix = " 用") => tag("span", `${sites.join("・")}${suffix}`, "site");
 
 /** 差分の箱。**DOM で組む**（public/ では HTML を差し込まない）。消した行と足した行を、行番号と印で並べる。 */
@@ -322,7 +322,7 @@ const askFix = async (crawlId, name) => {
 
 /**
  * 走らせたもの。**並びが実行順。** 台帳のスクリプトは版を、その場で書いた物は「その場」と出す ——
- * その場の物にだけ、台帳は頼まれた要素（`inline`）を返す。サイト用のスクリプトには札を添える。
+ * その場の物にだけ、台帳は頼まれた要素（`inline`）を返す。サイト用のスクリプトには対象サイトを添える。
  */
 const ranOf = (one) => {
   const scripts = one.scripts ?? [];
@@ -843,7 +843,7 @@ const drawCrawls = () => {
 
 // ── 新しいクロール ─────────────────────────────────────────────────
 /**
- * 描いたスクリプトの行（スクリプト集の画面と同じ、台帳の並び。札の無い物もサイト用の物も）。宣言した値の欄はこの並びで
+ * 描いたスクリプトの行（スクリプト集の画面と同じ、台帳の並び。対象サイトの無い物もサイト用の物も）。宣言した値の欄はこの並びで
  * 出す —— ↑↓ で行を動かしても、打っている変数の欄は動かない。画面の行と送る物の順は `moved` から決まる（`orderOf`）。
  * `why` はサイト用のスクリプトにだけ在る、押せない理由の欄。
  */
@@ -898,7 +898,7 @@ const pickedOf = (script) => chosen.get(script.id) ?? script.enabled;
  */
 const values = new Map();
 
-/** 最後に描いたチェックの形（id と版と札と、既定に入るか、宣言した値）。同じなら描き直さない。 */
+/** 最後に描いたチェックの形（id と版と対象サイトと、既定に入るか、宣言した値）。同じなら描き直さない。 */
 let catalogKey;
 
 /**
@@ -935,7 +935,7 @@ const drawPicks = (scripts) => {
     const why = script.sites.length === 0 ? undefined : tag("span", "", "why");
     // 既定に入らないスクリプト。チェックは外れた状態で出るが、付ければ走る（台帳は名指しを通す）
     const off = script.enabled ? [] : [tag("span", "既定では走らない", "off")];
-    // 名前と札をまとめる。狭い列で札や「読む」が折り返しても、名前の下に揃う（理由の行と同じ）
+    // 名前と対象サイトをまとめる。狭い列で対象サイトや「読む」が折り返しても、名前の下に揃う（理由の行と同じ）
     const head = tag("span", "", "phead");
     head.append(name, ...(script.sites.length === 0 ? [] : [siteChip(script.sites)]), ...off, read);
     label.append(input, head, ...(why === undefined ? [] : [why]));
@@ -949,7 +949,7 @@ const drawPicks = (scripts) => {
 };
 
 /**
- * チェックを起点に合わせる。サイト用のスクリプトは、起点のどれかが札のホストにあるときだけ押せる
+ * チェックを起点に合わせる。サイト用のスクリプトは、起点のどれかが対象サイトのホストにあるときだけ押せる
  * （台帳の決まりの写し。`start.js` の `onSeed`）。**人が付け外ししたチェックは覚えたまま** —— 起点を
  * 書き換えて合わなくなれば押せなくなり、合うようになれば、人が選んだとおり（選んでいなければ台帳の既定のとおり）に付く。
  */
@@ -1755,7 +1755,7 @@ const reading = {
   open: undefined,
   /** 1 版の中身。`id@版` で覚え、版の一覧の sha256 と食い違えば取り直す（番号は使い回される） */
   docs: new Map(),
-  /** 有効な各 id の最新版（GET /api/scripts の最後の答え）。サイト用のスクリプトも札つきで入る */
+  /** 有効な各 id の最新版（GET /api/scripts の最後の答え）。サイト用のスクリプトも対象サイトつきで入る */
   latest: [],
   /** 受け皿の型。undefined はまだ訊いていない、null は台帳に無い（404） */
   types: undefined,
@@ -1790,7 +1790,7 @@ const find = async (path) => {
   return body;
 };
 
-/** 一覧の 1 項目。ふつうの <a> なので、中ボタンで別の窓に開ける（書く欄と並べる道）。札があれば名前に添える */
+/** 一覧の 1 項目。ふつうの <a> なので、中ボタンで別の窓に開ける（書く欄と並べる道）。対象サイトがあれば名前に添える */
 const listItem = (href, name, version, key, sites = []) => {
   const a = document.createElement("a");
   a.href = href;
@@ -2140,7 +2140,7 @@ const openReading = async (asked) => {
     if (stale()) return;
     let target = asked;
     if (target === undefined) {
-      // 一覧の頭（札の無い物が先に並ぶ）
+      // 一覧の頭（対象サイトの無い物が先に並ぶ）
       const first = reading.latest.find((s) => s.enabled && s.sites.length === 0) ?? reading.latest[0];
       target = first !== undefined ? { id: first.id } : reading.types !== null ? {} : undefined;
       if (target !== undefined) history.replaceState(null, "", readingHash(target));
@@ -2206,10 +2206,10 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
       ? "id を替える所はありませんでした。"
       : `${changed.join("・")} 行目の id を inline-${name} に替えました。`) +
     `台帳の ${doc.id} は外しました（両方走ると 2 回走ります）。` +
-    // その場の TS は札を持たない。スクリプトの冒頭の見分けが、ほかのサイトでは何もさせない
+    // その場の TS は対象サイトを持たない。スクリプトの冒頭の見分けが、ほかのサイトでは何もさせない
     (doc.sites.length === 0
       ? ""
-      : `札（${doc.sites.join("・")}）は写しに付きません。その場の TS は、どの起点でも走ります。`);
+      : `対象サイト（${doc.sites.join("・")}）は写しに付きません。その場の TS は、どの起点でも走ります。`);
   location.hash = "start";
   // 画面とタブを今出す —— 隠れた箱には focus が効かない（hashchange が画面を出すのは、この後）。
   // 読む窓は閉じない —— タブで元と見比べられる
@@ -2254,7 +2254,7 @@ const showStartTab = (tab) => {
   $("start-rules").hidden = tab !== "rules";
 };
 
-/** 読む窓の見出し。名前はタブに在るので描かない（サイト用の札は standing の文が言う）。 */
+/** 読む窓の見出し。名前はタブに在るので描かない（対象サイトは standing の文が言う）。 */
 const drawStartReadHead = () => {
   const { target, doc } = startRead;
   const full = tag("a", "スクリプト集の画面で開く");

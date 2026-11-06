@@ -116,7 +116,7 @@ test("dashboard のサーバに届かなければ、そう言う", () => {
 });
 
 /**
- * 走らせるものの欄。台帳のスクリプトは札の無い autoscroll・autofetch の 2 本（台帳の並び）で、
+ * 走らせるものの欄。台帳のスクリプトは対象サイトの無い autoscroll・autofetch の 2 本（台帳の並び）で、
  * どちらも既定の顔ぶれとする（autofetch を既定から外した台帳は、下の `SCRIPTS`）。
  */
 const CATALOG = ["autoscroll", "autofetch"];
@@ -211,7 +211,7 @@ test("読めない行と空行は、起点のホストに数えない（台帳�
 });
 
 /**
- * 台帳の `GET /api/scripts` の形（カタログの順）。札の無い 2 本のうち autofetch は既定に入らない（capture-scripts の
+ * 台帳の `GET /api/scripts` の形（カタログの順）。対象サイトの無い 2 本のうち autofetch は既定に入らない（capture-scripts の
  * カタログの `default: false`）。もう 1 本は laws.e-gov.go.jp 用。
  */
 const SITE = { id: "egov-law-search", sites: ["laws.e-gov.go.jp"], enabled: true };
@@ -230,7 +230,7 @@ test("行は走る順のまま、起点に合わないサイト用の行だけ�
   assert.deepEqual(shownOrder(ORDER, SCRIPTS, seedHosts("https://laws.e-gov.go.jp/")), ORDER);
 });
 
-test("札の無いスクリプトは、起点が無くても、どの起点でも既定", () => {
+test("対象サイトの無いスクリプトは、起点が無くても、どの起点でも既定", () => {
   assert.deepEqual(defaultIds(SCRIPTS, new Set()), ["autoscroll"]);
   assert.deepEqual(defaultIds(SCRIPTS, seedHosts("https://other-site.test/")), ["autoscroll"]);
 });
@@ -241,7 +241,7 @@ test("既定に入らないスクリプト（enabled: false）は、どの起点
   assert.deepEqual(defaultIds([SCRIPTS[0], offSite], seedHosts("https://laws.e-gov.go.jp/")), ["autoscroll"]);
 });
 
-test("サイト用のスクリプトは、起点のどれかが札のホストにあるときだけ既定 —— ポートは見ない", () => {
+test("サイト用のスクリプトは、起点のどれかが対象サイトのホストにあるときだけ既定 —— ポートは見ない", () => {
   assert.deepEqual(defaultIds(SCRIPTS, seedHosts("https://other-site.test/\nhttp://laws.e-gov.go.jp:8080/a")), [
     "autoscroll",
     "egov-law-search",
