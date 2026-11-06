@@ -246,8 +246,12 @@ follow).
 - **The User-Agent box sets the crawl's `User-Agent`.** Left empty, nothing is sent and the browser's
   own value (with `HeadlessChrome`) goes out. The button Headless を外す型を入れる (put in the form without Headless)
   fills in `{chrome} BrowserHive`: BrowserHive turns `{chrome}` into the browser's own value without Headless, so
-  a site that refuses Headless can be captured, and the text never goes stale when the browser is upgraded. Whether
-  to include the word `BrowserHive` is up to whoever types: with it, a site can tell that BrowserHive took the page and
+  a site that refuses Headless can be captured, and the text never goes stale when the browser is upgraded.
+  For example, the [Prime Minister's Office of Japan](https://www.kantei.go.jp/) answers HTTP 404 to text containing
+  `HeadlessChrome`. Started with the box empty and このページだけ (this page only), the page ends in
+  `failed: http_error: HTTP 404: Not Found`: nothing is captured and no replay ↗ appears. Fill in
+  `{chrome} BrowserHive` with the button and it is captured and opens with replay ↗ (checked on 2026-11-07; what a
+  site answers can change). Whether to include the word `BrowserHive` is up to whoever types: with it, a site can tell that BrowserHive took the page and
   robots.txt is read under that name; without it, only the `*` rules are read. The dashboard does not check the text:
   the ledger refuses text of the wrong form (printable ASCII, at most 512 characters) with a 400, and the dashboard
   shows its sentence as it is. The text stays in the box after starting, like the variables and the
