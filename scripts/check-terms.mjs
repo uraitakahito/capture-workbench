@@ -1,5 +1,5 @@
 /**
- * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 8 つ。
+ * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 9 つ。
  *
  * ## なぜ要るのか
  *
@@ -42,6 +42,10 @@
  *   JS になるのは変換の後なので、走った JS（`behaviors/custom.jsonl`）・`jsSha256`・束ねた JS・dashboard 自身の
  *   素の JS はそのまま。だから形の並びだけを見る。コードの名前（`start-tab-js`・`.start-js`）も替えていない。
  *   capture-ledger と capture-scheduler も同じ形で見張っている
+ * - **スクリプトの `sites` は「対象サイト」、版を選ぶ小さなボタンは「版のリンク」と書く。** 2026-11 に「札」から
+ *   そろえた（画面の字・docs・コメント・代役・試験の名前で 70 行あまり）。「札」は tag を 1 字で写した書き手の癖で、
+ *   読み手に通じない。コードの名前（`chipsOf`・`.rchips`・`siteChip`）も、en の docs の version chips も替えていない
+ *   （browserhive・capture-ledger・capture-scheduler も見張っている）
  *
  * 書き手（人と Claude）は長くこの形で書いてきたので、見張らなければ戻ってくる。
  *
@@ -103,7 +107,7 @@ const WHOLE =
 const SCENARIO =
   /^sandbox\/|^test\/sandbox\.test\.mjs$|^docs-site\/scripts\/docs-shots\.mjs$|^docs-site\/src\/content\/docs\/ja\/development\.md$/u;
 /** スクリプト 1 本の意味の「台本」の形。SCENARIO の中でも、この形は赤。 */
-const TAIHON = /サイト用の台本|札の(無い|ある)台本|合わない台本|札を省いた台本|見本の台本/u;
+const TAIHON = /サイト用の台本|対象サイトの(無い|ある)台本|合わない台本|対象サイトを省いた台本|見本の台本/u;
 /**
  * 古い画面の名前（2026-11 まで）。物のスクリプトと、ふつうの言葉の中身は残すので、画面の名前だった形だけを並べる。
  * 足すときは、物の意味（`<legend>スクリプト</legend>`・台帳にスクリプトがありません）・ふつうの言葉
@@ -149,7 +153,7 @@ const RULES = [
       line.includes("目録") || (SCENARIO.test(file) ? TAIHON.test(line) : line.includes("台本")),
     say:
       "「目録」か、スクリプトの意味の「台本」が残っています。ページで走らせる物は「スクリプト」、" +
-      "置き場は「台帳」（台帳に無い・台帳 v1）、札のある物は「サイト用のスクリプト」と書きます（代役の台本はそのまま）。",
+      "置き場は「台帳」（台帳に無い・台帳 v1）、対象サイトのある物は「サイト用のスクリプト」と書きます（代役の台本はそのまま）。",
   },
   {
     find: (line) => line.replace(NOT_NET, "").includes("網"),
@@ -168,6 +172,10 @@ const RULES = [
     say:
       "箱の古い呼び名が残っています。箱に書く物は TypeScript なので、「その場の TS」「スクリプトの名前」「TS の箱」と" +
       "書きます（変換後の JS・束ねた JS・jsSha256 はそのまま）。",
+  },
+  {
+    find: (line) => line.includes("札"),
+    say: "「札」が残っています。スクリプトの `sites` は「対象サイト」、版を選ぶ小さなボタンは「版のリンク」と書きます。",
   },
 ];
 
