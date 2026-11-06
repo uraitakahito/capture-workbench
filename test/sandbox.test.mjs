@@ -58,7 +58,7 @@ const versions = catalogOf(scenario);
 const at = (list) => list.map((v) => `${v.id}@${String(v.version)}`);
 const NOW = Date.parse("2026-10-12T12:00:00.000Z");
 
-/** capture-ledger の src/api/crawls.ts が /api/crawls の 1 行に返す欄 (v0.57.4。`replayBundle` は CAPTURE-56 から)。 */
+/** capture-ledger の src/api/crawls.ts が /api/crawls の 1 行に返す欄 (v0.57.4。`replayBundle` は CAPTURE-56 から、`pagesFailed` は v0.77.0 から)。 */
 const LEDGER_CRAWL_KEYS = [
   "crawlId",
   "state",
@@ -70,6 +70,7 @@ const LEDGER_CRAWL_KEYS = [
   "finishedAt",
   "pagesDiscovered",
   "pagesCaptured",
+  "pagesFailed",
   "error",
   "waczCount",
   "lastJob",
@@ -177,7 +178,7 @@ test("時刻は台本の何秒前から組み、走行中は終わりが無い",
 test("同梱の台本は、画面の状態の言い分けを全部出す", () => {
   // 言い分けの規則は public/format.js の stateOf。サンドボックスは、その全部の枝を画面に出すためにある
   const texts = new Set(scenario.crawls.map((c) => stateOf(crawlRow(c, NOW)).text));
-  for (const text of ["走行中", "完走", "打ち切り (深さ)", "打ち切り (枚数)", "失敗"]) {
+  for (const text of ["走行中", "完走", "完走・1 枚取れず", "打ち切り (深さ)", "打ち切り (枚数)", "失敗"]) {
     assert.ok(texts.has(text), text);
   }
   assert.ok([...texts].some((text) => text.startsWith("成功 (")), "知らない stopReason の行");

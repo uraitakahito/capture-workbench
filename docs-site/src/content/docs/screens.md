@@ -105,7 +105,7 @@ the crawl's bundle.
   appears: neither the ledger nor the WACZ holds it, only Windmill does. If the Windmill variable was
   rewritten while the crawl ran, the row says from which level. A crawl given nothing reads 渡した値:
   なし (values passed: none), and a row from an older ledger without values shows nothing here. Last
-  are the pages that failed, as many as the ledger returns; if none did, it says so and lists the seed
+  are the pages that failed, the latest 5 that the ledger returns (the state column gives the total); if none did, it says so and lists the seed
   URLs.
 - **A crawl that failed the type check shows all of its type errors, and can ask for a fix.** When the
   ledger's `error` says the compile step failed with a 422, the dashboard also fetches
@@ -183,7 +183,9 @@ the crawl's bundle.
 `state` alone is not enough. `succeeded` mixes crawls that followed everything to the end with
 crawls that stopped at the depth or page limit. The dashboard words them apart using `stopReason`
 (完走 for completed, 打ち切り for stopped at a limit), and shows an unknown `stopReason` as it
-is, in parentheses.
+is, in parentheses. If some pages could not be fetched it adds the count (the ledger's
+`pagesFailed`), as in 完走・2 枚取れず, and the row is not green even if everything was followed. A
+crawl that captured nothing is closed as `failed` by the ledger, so it reads 失敗.
 
 The wording rules are `stateOf` in `public/format.js`, pinned by `test/format.test.mjs`. The
 tests read the same file the browser reads, so there is no copy to rot.

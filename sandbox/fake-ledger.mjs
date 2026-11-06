@@ -104,7 +104,8 @@ export const scenarioAt = (c, now) => ({
 
 /**
  * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.57.4) と同じ。合本の欄 (`replayBundle`) は
- * CAPTURE-56 の形から。時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
+ * CAPTURE-56 の形から、`pagesFailed` は v0.77.0 から (台帳と同じく、ページの行の failed を数える)。
+ * 時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
  */
 export const crawlRow = (c, now) => ({
   crawlId: c.crawlId,
@@ -117,6 +118,7 @@ export const crawlRow = (c, now) => ({
   finishedAt: scenarioAt(c, now).finishedAt,
   pagesDiscovered: c.pagesDiscovered ?? 0,
   pagesCaptured: c.pagesCaptured ?? 0,
+  pagesFailed: (c.pages ?? []).filter((page) => page.state === "failed").length,
   error: c.error ?? null,
   waczCount: c.waczCount ?? 0,
   lastJob: c.lastJobId === undefined ? null : { id: c.lastJobId, depth: c.lastJobDepth ?? 0 },
@@ -1016,6 +1018,7 @@ export const submittedRow = (row, now) => {
     finishedAt: done ? new Date(end).toISOString() : null,
     pagesDiscovered: 0,
     pagesCaptured: done ? row.seeds.length : 0,
+    pagesFailed: 0,
     error: null,
     waczCount: 0,
     lastJob: null,
