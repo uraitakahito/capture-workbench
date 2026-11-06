@@ -2,15 +2,14 @@
  * dashboard が state をどう言葉にするか。
  *
  * **ここが嘘をつくと、dashboard 全体が嘘になる。** 実機の 68 本のうち 41 本は「成功」だが
- * 打ち切りで、1 本は `succeeded` なのに `stopReason` が `failed` だった ——
- * `state` だけを描く実装は、その 42 本を取り違える。
+ * 打ち切りだった —— `state` だけを描く実装は、その 41 本を取り違える。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { stateOf, took } from "../public/format.js";
 
-const crawl = (state, stopReason) => ({ state, stopReason });
+const crawl = (state, stopReason, pagesFailed = 0) => ({ state, stopReason, pagesFailed });
 
 test("完走と打ち切りを、同じ「成功」にしない", () => {
   assert.equal(stateOf(crawl("succeeded", "completed")).text, "完走");
@@ -21,20 +20,29 @@ test("完走と打ち切りを、同じ「成功」にしない", () => {
   assert.equal(stateOf(crawl("succeeded", "max_depth")).kind, "warn");
 });
 
-test("succeeded なのに stopReason が failed の行を、ただの成功にしない", () => {
-  // 実機に 1 本ある。隠すと、その行だけが嘘になる。
-  const odd = stateOf(crawl("succeeded", "failed"));
-  assert.equal(odd.text, "成功 (failed)");
+test("知らない stopReason は、そのまま見せる（緑にしない）", () => {
+  const odd = stateOf(crawl("succeeded", "なにか新しい理由"));
+  assert.equal(odd.text, "成功 (なにか新しい理由)");
   assert.notEqual(odd.kind, "ok");
 });
 
-test("知らない stopReason は、そのまま見せる", () => {
-  assert.equal(stateOf(crawl("succeeded", "なにか新しい理由")).text, "成功 (なにか新しい理由)");
+test("取れなかったページがあれば数を添え、全部を辿っても緑にしない", () => {
+  assert.deepEqual(stateOf(crawl("succeeded", "completed", 2)), {
+    text: "完走・2 枚取れず",
+    kind: "warn",
+  });
+  assert.equal(stateOf(crawl("succeeded", "max_depth", 1)).text, "打ち切り (深さ)・1 枚取れず");
+  assert.equal(stateOf(crawl("succeeded", "max_pages", 3)).text, "打ち切り (枚数)・3 枚取れず");
+  assert.equal(stateOf(crawl("succeeded", "なにか新しい理由", 1)).text, "成功 (なにか新しい理由)・1 枚取れず");
 });
 
-test("走行中と失敗は stopReason を見ない", () => {
-  assert.equal(stateOf(crawl("running", null)).text, "走行中");
-  assert.equal(stateOf(crawl("failed", "failed")).text, "失敗");
+test("取れなかったページが無ければ、緑の完走のまま", () => {
+  assert.deepEqual(stateOf(crawl("succeeded", "completed", 0)), { text: "完走", kind: "ok" });
+});
+
+test("走行中と失敗は stopReason を見ず、取れなかった数も添えない", () => {
+  assert.equal(stateOf(crawl("running", null, 2)).text, "走行中");
+  assert.equal(stateOf(crawl("failed", "failed", 2)).text, "失敗");
 });
 
 test("走行中は「いままで」を出す —— finishedAt の null は時間が無いことではない", () => {

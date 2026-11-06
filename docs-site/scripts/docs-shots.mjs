@@ -14,7 +14,7 @@
  *   - 部品の箱だけを切り抜き、高さに上限を付ける。DPR 1
  *   - 画素が前の絵と同じなら書かない（sharp の版が替わってバイト列だけが変わっても、何も足さない）
  *
- * 予算（1 枚 32 KB・全部で 224 KB）と幅の上限は `scripts/check-doc-refs.mjs` の規則 7 が見る。
+ * 予算（1 枚 32 KB・全部で 226 KB）と幅の上限は `scripts/check-doc-refs.mjs` の規則 7 が見る。
  *
  * ## 縮めずに読める絵に
  *
@@ -128,6 +128,12 @@ const SHOTS = [
     box: "#face-crawls table",
     // 表は折り返さない欄で、中身の幅に伸びる。開いた行は crawl-detail。合本の在る行は run ↗ の後に replay ↗（先頭の走行中の行は途中の版）
     wide: true,
+    // 撮る窓より表が広いと、main の中で横に流れて右端が切れる。絵には表の全部を写す
+    prepare: async (page) => {
+      await page.evaluate(() => {
+        document.querySelector("main").style.overflowX = "visible";
+      });
+    },
     ready: () =>
       document.querySelector("#crawls tr.head td:nth-child(8)")?.textContent === "1m 40s" &&
       document.querySelector("#crawls tr.head td:last-child a + a")?.textContent === "replay r1（途中）↗",

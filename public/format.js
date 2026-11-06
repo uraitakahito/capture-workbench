@@ -8,23 +8,26 @@
 /**
  * クロールの状態を、**言葉にする**。
  *
- * **`state` だけでは足りない。** 実機の内訳（68 本の時点）:
+ * **`state` だけでは足りない。** `succeeded` は「1 枚以上撮れた」で（1 枚も撮れなければ台帳が `failed` で
+ * 締める。capture-ledger v0.77.0）、全部を辿った完走と、上限で止めた打ち切りが混ざる。実機の内訳（68 本の時点）:
  *
  *   succeeded / max_depth  41   ← 「成功」だが打ち切り
  *   failed    / failed     22
  *   succeeded / completed   4   ← 本当に全部辿った
- *   succeeded / failed      1   ← 状態と理由が食い違う。**隠さない**
  *
- * 最後の 1 本が肝。`succeeded` を無条件に「成功」と描くと、その行だけが嘘になる。
- * 知らない `stopReason` は、括弧に入れてそのまま見せる。
+ * **全部を辿っても、取れなかったページがあれば緑にしない。** 数を添える（`pagesFailed`）。緑の「完走」は、
+ * 頼んだ物が全部撮れたときだけ。知らない `stopReason` は、括弧に入れてそのまま見せる。
  */
 export const stateOf = (crawl) => {
   if (crawl.state === "running") return { text: "走行中", kind: "run" };
   if (crawl.state !== "succeeded") return { text: "失敗", kind: "bad" };
-  if (crawl.stopReason === "completed") return { text: "完走", kind: "ok" };
-  if (crawl.stopReason === "max_depth") return { text: "打ち切り (深さ)", kind: "warn" };
-  if (crawl.stopReason === "max_pages") return { text: "打ち切り (枚数)", kind: "warn" };
-  return { text: `成功 (${String(crawl.stopReason)})`, kind: "warn" };
+  const short = crawl.pagesFailed > 0 ? `・${String(crawl.pagesFailed)} 枚取れず` : "";
+  if (crawl.stopReason === "completed") {
+    return { text: `完走${short}`, kind: short === "" ? "ok" : "warn" };
+  }
+  if (crawl.stopReason === "max_depth") return { text: `打ち切り (深さ)${short}`, kind: "warn" };
+  if (crawl.stopReason === "max_pages") return { text: `打ち切り (枚数)${short}`, kind: "warn" };
+  return { text: `成功 (${String(crawl.stopReason)})${short}`, kind: "warn" };
 };
 
 /**

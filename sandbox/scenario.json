@@ -114,17 +114,13 @@
     {
       "crawlId": "5b0c0005-6a1e-4000-8000-000000000005",
       "state": "succeeded",
-      "stopReason": "failed",
+      "stopReason": "paused",
       "seeds": ["https://sandbox.test/odd"],
       "startedSecondsAgo": 3600,
       "tookSeconds": 30,
-      "pagesCaptured": 0,
-      "pagesDiscovered": 0,
-      "waczCount": 0,
-      "failures": [{ "url": "https://sandbox.test/odd", "depth": 0, "reason": "http 500", "page": "501" }],
-      "pages": [
-        { "id": "501", "url": "https://sandbox.test/odd", "depth": 0, "state": "failed", "reason": "http 500", "taskId": "019a5b0c-0501-7000-8000-000000000501" }
-      ]
+      "pagesCaptured": 1,
+      "pagesDiscovered": 1,
+      "waczCount": 1
     },
     {
       "crawlId": "5b0c0006-6a1e-4000-8000-000000000006",
