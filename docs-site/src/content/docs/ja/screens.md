@@ -196,6 +196,7 @@ dashboard は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 - **User-Agent の箱で、クロールの `User-Agent` を決める。**
   空なら何も送らず、ブラウザの字（`HeadlessChrome` を含む）のまま撮ります。
   「Headless を外す型を入れる」を押すと `{chrome} BrowserHive` が入ります。`{chrome}` は BrowserHive がブラウザの字から Headless を外した物に置き換えるので、Headless を断るサイトも撮れ、ブラウザを上げても字が古くなりません。
+  たとえば[首相官邸の公式サイト](https://www.kantei.go.jp/)は、`HeadlessChrome` を含む字に HTTP 404 を返します。欄を空のまま「このページだけ」で始めると、ページの結末が `failed: http_error: HTTP 404: Not Found` になり、1 枚も撮れず replay ↗ も出ません。ボタンで `{chrome} BrowserHive` を入れて始めると撮れて、replay ↗ で開けます（2026-11-07 に確かめました。相手のサイトの答えは変わることがあります）。
   `BrowserHive` の語を含めるかは打つ人が決めます。含むと、相手のサイトに BrowserHive が撮っていると分かり、robots.txt もその名前の規則で読みます。含まなければ `*` の規則だけを読みます。
   dashboard は字を検査しません。形（印字可能な ASCII・512 字以下）に合わない字は台帳が 400 で断り、その文をそのまま出します。
   始めた後も、字は変数やスクリプトと同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は WACZ の `settings.userAgent` で読めます。
