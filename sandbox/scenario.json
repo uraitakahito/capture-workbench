@@ -68,12 +68,16 @@
     {
       "crawlId": "5b0c0002-6a1e-4000-8000-000000000002",
       "state": "succeeded",
-      "stopReason": "completed",
+      "stopReason": "max_depth",
       "seeds": ["https://sandbox.test/about"],
+      "maxDepth": 0,
+      "decisions": [
+        { "depth": 1, "rule": 1, "action": "follow", "hostname": "sandbox.test", "links": 8, "samples": ["https://sandbox.test/"] }
+      ],
       "startedSecondsAgo": 900,
       "tookSeconds": 75,
       "pagesCaptured": 1,
-      "pagesDiscovered": 0,
+      "pagesDiscovered": 8,
       "waczCount": 1,
       "lastJobId": "019a5b0c-0002-7000-8000-000000000002",
       "lastJobDepth": 0,

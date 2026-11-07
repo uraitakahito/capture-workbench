@@ -71,6 +71,7 @@ const LEDGER_CRAWL_KEYS = [
   "orgId",
   "startedAt",
   "finishedAt",
+  "maxDepth",
   "pagesDiscovered",
   "pagesCaptured",
   "pagesFailed",

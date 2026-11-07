@@ -17,7 +17,7 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 
 | View | What it lists |
 | --- | --- |
-| Crawls | one row per crawl: state, pages captured, pages discovered, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replay (the whole crawl as one archive) |
+| Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replay (the whole crawl as one archive) |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
 | Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replay](https://github.com/uraitakahito/replay) (which plays a WACZ back in the browser) |
 | Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replay |
@@ -41,7 +41,7 @@ what you have read stays listed when the table is fetched again.
 ## Crawls
 
 Each row is one crawl. It shows the state, the first 8 characters of the id, who started it and
-for which organization, the first seed URL, pages captured, pages discovered, the number of
+for which organization, the first seed URL, pages captured, links (リンク), the number of
 WACZ files and the time taken. "run ↗" at the right end opens the Windmill run in a new tab, and
 "replay ↗" next to it opens the whole crawl in replay as one archive, once the ledger has written
 the crawl's bundle.
@@ -51,10 +51,13 @@ the crawl's bundle.
 ① state\
 ② the link to the run
 
-- **Pages captured and pages discovered are separate columns.** Pages discovered
-  (`pagesDiscovered`) counts what was found by following links, so a crawl of depth 0 ends up as
-  "captured 1, discovered 0". Shown as `1 / 0` in one cell, the numerator looks bigger than the
-  denominator, and people trip over it.
+- **Pages captured and links are separate columns.** The links column (`pagesDiscovered`) is the
+  number of links on the captured pages that the rules let through. Links that were not captured
+  count too, so it is not the denominator of pages captured. A crawl of depth 0 counts them as
+  well; it just does not follow them. A depth-0 crawl started before capture-ledger v0.83.0 did
+  not count them, so it shows 0.
+- **A row with no captured pages shows `−` for links.** There was no page to count, so it does
+  not claim there were 0 links.
 - **For a running crawl, the time taken is "so far".** A missing finish time means "not finished
   yet", not "no time".
 - **run ↗ is the run of the last level that was handed over.** The link is built from the id of
@@ -182,9 +185,10 @@ the crawl's bundle.
 ### The state is worded together with stopReason
 
 `state` alone is not enough. `succeeded` mixes crawls that followed everything to the end with
-crawls that stopped at the depth or page limit. The dashboard words them apart using `stopReason`
-(完走 for completed, 打ち切り for stopped at a limit), and shows an unknown `stopReason` as it
-is, in parentheses. If some pages could not be fetched it adds the count (the ledger's
+crawls that were cut at the depth or page limit. The dashboard words them apart using `stopReason`
+(完走 for completed, 打ち切り for cut at a limit), and shows an unknown `stopReason` as it
+is, in parentheses. A depth-0 crawl asked not to follow links, so it is not cut even if links are
+left over: it reads このページだけ (the ledger's `maxDepth` on the list). If some pages could not be fetched it adds the count (the ledger's
 `pagesFailed`), as in 完走・2 枚取れず, and the row is not green even if everything was followed. A
 crawl that captured nothing is closed as `failed` by the ledger, so it reads 失敗.
 
