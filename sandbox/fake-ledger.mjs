@@ -116,6 +116,7 @@ export const crawlRow = (c, now) => ({
   orgId: c.orgId ?? "acme",
   startedAt: new Date(now - c.startedSecondsAgo * 1000).toISOString(),
   finishedAt: scenarioAt(c, now).finishedAt,
+  maxDepth: c.maxDepth ?? 2,
   pagesDiscovered: c.pagesDiscovered ?? 0,
   pagesCaptured: c.pagesCaptured ?? 0,
   pagesFailed: (c.pages ?? []).filter((page) => page.state === "failed").length,
@@ -1105,6 +1106,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
     variables: valued.variables,
     secrets: valued.secrets,
     userAgent: userAgent === "" ? null : userAgent,
+    maxDepth: body.maxDepth ?? 2,
   };
   rows.unshift(row);
   return { status: 202, body: { crawlId: row.crawlId } };
@@ -1123,6 +1125,7 @@ export const submittedRow = (row, now) => {
     orgId: "acme",
     startedAt: new Date(row.startedAt).toISOString(),
     finishedAt: done ? new Date(end).toISOString() : null,
+    maxDepth: row.maxDepth,
     pagesDiscovered: 0,
     pagesCaptured: done ? row.seeds.length : 0,
     pagesFailed: 0,

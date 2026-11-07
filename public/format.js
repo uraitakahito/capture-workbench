@@ -9,11 +9,11 @@
  * クロールの状態を、**言葉にする**。
  *
  * **`state` だけでは足りない。** `succeeded` は「1 枚以上撮れた」で（1 枚も撮れなければ台帳が `failed` で
- * 締める。capture-ledger v0.77.0）、全部を辿った完走と、上限で止めた打ち切りが混ざる。実機の内訳（68 本の時点）:
+ * 締める。capture-ledger v0.77.0）、全部を辿った完走と、上限で切った打ち切りが混ざる。`max_depth`・`max_pages` が
+ * 立つのは、まだ撮っていないリンクが残っていたときだけ（capture-ledger v0.83.0）。
  *
- *   succeeded / max_depth  41   ← 「成功」だが打ち切り
- *   failed    / failed     22
- *   succeeded / completed   4   ← 本当に全部辿った
+ * **深さ 0 のクロールは「このページだけ」と言う。** 辿らないと頼んだのだから、リンクが残っていても打ち切りでは
+ * ない。行の `maxDepth` で決める。
  *
  * **全部を辿っても、取れなかったページがあれば緑にしない。** 数を添える（`pagesFailed`）。緑の「完走」は、
  * 頼んだ物が全部撮れたときだけ。知らない `stopReason` は、括弧に入れてそのまま見せる。
@@ -22,6 +22,9 @@ export const stateOf = (crawl) => {
   if (crawl.state === "running") return { text: "走行中", kind: "run" };
   if (crawl.state !== "succeeded") return { text: "失敗", kind: "bad" };
   const short = crawl.pagesFailed > 0 ? `・${String(crawl.pagesFailed)} 枚取れず` : "";
+  if (crawl.maxDepth === 0) {
+    return { text: `このページだけ${short}`, kind: short === "" ? "ok" : "warn" };
+  }
   if (crawl.stopReason === "completed") {
     return { text: `完走${short}`, kind: short === "" ? "ok" : "warn" };
   }
@@ -29,6 +32,13 @@ export const stateOf = (crawl) => {
   if (crawl.stopReason === "max_pages") return { text: `打ち切り (枚数)${short}`, kind: "warn" };
   return { text: `成功 (${String(crawl.stopReason)})${short}`, kind: "warn" };
 };
+
+/**
+ * リンクの数（`pagesDiscovered`）。撮ったページのリンクのうち規則が通した本数で、撮らなかった物も入る ——
+ * 撮れた数の分母ではない。**1 枚も撮れていなければ数える物が無いので、`−` と書く**（0 と書くと「リンクが 0 本
+ * だった」と読める）。
+ */
+export const linksOf = (crawl) => (crawl.pagesCaptured === 0 ? "−" : String(crawl.pagesDiscovered));
 
 /**
  * かかった時間。**走行中は「いままで」を出す** —— `finishedAt` が null なのは

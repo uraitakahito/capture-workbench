@@ -7,7 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { stateOf, took } from "../public/format.js";
+import { linksOf, stateOf, took } from "../public/format.js";
 
 const crawl = (state, stopReason, pagesFailed = 0) => ({ state, stopReason, pagesFailed });
 
@@ -38,6 +38,35 @@ test("取れなかったページがあれば数を添え、全部を辿って�
 
 test("取れなかったページが無ければ、緑の完走のまま", () => {
   assert.deepEqual(stateOf(crawl("succeeded", "completed", 0)), { text: "完走", kind: "ok" });
+});
+
+test("リンクの数は、1 枚でも撮れていれば数のまま（0 も 0 と言う）", () => {
+  assert.equal(linksOf({ pagesCaptured: 1, pagesDiscovered: 47 }), "47");
+  assert.equal(linksOf({ pagesCaptured: 1, pagesDiscovered: 0 }), "0");
+});
+
+test("1 枚も撮れていなければ、リンクの数は − で、0 本だったとは言わない", () => {
+  assert.equal(linksOf({ pagesCaptured: 0, pagesDiscovered: 0 }), "−");
+});
+
+test("深さ 0 のクロールは、理由によらず「このページだけ」と言い、打ち切りと言わない", () => {
+  // 辿らないと頼んだのだから、リンクが残っていても（max_depth）打ち切りではない
+  const page = (stopReason, pagesFailed = 0) => ({ ...crawl("succeeded", stopReason, pagesFailed), maxDepth: 0 });
+  assert.deepEqual(stateOf(page("max_depth")), { text: "このページだけ", kind: "ok" });
+  assert.deepEqual(stateOf(page("completed")), { text: "このページだけ", kind: "ok" });
+  // 取れなかった数は添え、緑にしない
+  assert.deepEqual(stateOf(page("completed", 1)), { text: "このページだけ・1 枚取れず", kind: "warn" });
+});
+
+test("深さが 1 以上なら、打ち切りと完走を言い分けたまま", () => {
+  const followed = (stopReason) => ({ ...crawl("succeeded", stopReason), maxDepth: 1 });
+  assert.equal(stateOf(followed("max_depth")).text, "打ち切り (深さ)");
+  assert.equal(stateOf(followed("completed")).text, "完走");
+});
+
+test("深さ 0 でも、走行中と失敗はそのまま", () => {
+  assert.equal(stateOf({ ...crawl("running", null), maxDepth: 0 }).text, "走行中");
+  assert.equal(stateOf({ ...crawl("failed", "failed"), maxDepth: 0 }).text, "失敗");
 });
 
 test("走行中と失敗は stopReason を見ず、取れなかった数も添えない", () => {

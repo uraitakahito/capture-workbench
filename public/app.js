@@ -9,7 +9,7 @@
  * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
  * `outerHTML` のようなほかの API は見ない。
  */
-import { count, judgedUnder, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
+import { count, judgedUnder, linksOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
   addRow,
@@ -421,7 +421,7 @@ const ACTION_LABEL = Object.fromEntries(ACTIONS);
 /**
  * 規則が何を決めたか（台帳の `GET /api/crawls/:id/decisions`）。規則ごとの数（段を跨いで足し、0 回の規則に
  * 印）と、落とした物（規則・どれにも当たらない・robots.txt、ホスト名ごと）、その下に Windmill で調べる 1 行。
- * **決めたリンクが 1 本も無ければ数を並べない** —— このページだけのクロールでも全部の規則に「当たって
+ * **決めたリンクが 1 本も無ければ数を並べない** —— リンクの無いページでも全部の規則に「当たって
  * いません」が付き、読み違える。読めなければ 1 行で言う（台帳が古ければ口が無い）。
  */
 const decisionsOf = (one) => {
@@ -434,7 +434,7 @@ const decisionsOf = (one) => {
     return box;
   }
   if (decided.decisions.length === 0) {
-    box.append(tag("p", "規則で決めたリンクはありません（リンクを見ていないか、1 本も見つけていない）", "muted"));
+    box.append(tag("p", "規則で決めたリンクはありません", "muted"));
   } else {
     box.append(tag("p", "規則ごと（段を跨いで足した、別々の URL の数）"));
     const list = document.createElement("ol");
@@ -810,11 +810,9 @@ const drawCrawls = () => {
     row.append(cell(crawl.crawlId.slice(0, 8), "mono"));
     row.append(cell(`${crawl.requestedBy} / ${crawl.orgId}`));
     row.append(cell(crawl.seeds[0] ?? "", "wide"));
-    // **2 つの数を 1 つの欄に混ぜない。** `pagesDiscovered` はリンクを辿って見つけた数
-    // なので、深さ 0 のクロールは「撮れた 1・見つけた 0」になる —— `1 / 0` と並べると
-    // 「分母より分子が大きい」に見えて、毎回つまずく（実機を見て気づいた）。
+    // **2 つの数を 1 つの欄に混ぜない。** リンクの数は撮れた数の分母ではない（`linksOf`）
     row.append(cell(String(crawl.pagesCaptured), "num mono"));
-    row.append(cell(String(crawl.pagesDiscovered), "num mono"));
+    row.append(cell(linksOf(crawl), "num mono"));
     row.append(cell(String(crawl.waczCount), "num mono"));
     row.append(cell(took(crawl), "num mono"));
     // 行き先: run と、台帳が合本を書けていれば、クロールを 1 つのアーカイブとして replay で。**run ↗ が先頭**
