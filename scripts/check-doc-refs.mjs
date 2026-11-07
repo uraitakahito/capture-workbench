@@ -173,8 +173,9 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // 番号の印の所まで切ってあり、詰めれば本文が指す所が消える。足した 1 枚ぶんだけ上げた）。2026-11-06 に 224 → 226 KB
 // （状態の欄に「完走・1 枚取れず」が出て、クロールの画面の絵が 1.7 KB 増えたとき。理由は同じ）。2026-11-06 に
 // 226 → 234 KB（CAPTURE-116 で新しいクロールの左の列に User-Agent の枠が、開いた行に 1 行が増えたとき。理由は同じ）。同じ日に
-// 234 → 235 KB（User-Agent の欄の注記を替えて、新しいクロールの絵が 0.2 KB はみ出したとき。理由は同じ）
-const BUDGET = { one: 32 * 1024, all: 235 * 1024 };
+// 234 → 235 KB（User-Agent の欄の注記を替えて、新しいクロールの絵が 0.2 KB はみ出したとき。理由は同じ）。2026-11-07 に
+// 235 → 260 KB（CAPTURE-174 で定期実行の画面の絵 23.6 KB を足し、クロールの行の印で 1 枚が少し増えたとき。理由は同じ）
+const BUDGET = { one: 32 * 1024, all: 260 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);

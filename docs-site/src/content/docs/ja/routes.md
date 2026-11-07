@@ -13,6 +13,9 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 | `POST /api/crawls` | 台帳へ（書く口。クロールを始める） |
 | `POST /api/crawls/:id/inline/:name/fix` | 台帳へ（書く口。その場の TS の型の誤りの直し方を訊く） |
 | `POST /api/scripts/check` | 台帳へ（その場の TS の宣言を訊く。何も書かないが、本文で source を送るので書く口と同じ門を通す） |
+| `POST /api/schedules` | 台帳へ（書く口。定期実行の予定を作る） |
+| `POST /api/schedules/:id/<操作>` | 台帳へ（書く口。`pause`・`resume`・`run`・`repin`・`delete`） |
+| `POST /api/crawls/:id/failed` | 台帳へ（書く口。走ったままのクロールを締める） |
 | `/api/*`（ほか） | 台帳へ素通し（GET だけ） |
 | `/wacz/:id/…` | 台帳に署名をもらい、daemon へ |
 | それ以外 | `public/` のファイル |
@@ -101,6 +104,19 @@ workbench のサーバが持つ書く口の 1 つです。
 | 400 | 本文の形が違う（Fastify の `message`） |
 | 404 | 名乗りにクロールを始める許可が無い（`{"error":"not found"}`）か、台帳に ts-compile-service の設定が無く、口ごと無い |
 | 503 `{"error": "ts-compile unreachable"}` | ts-compile-service が答えない |
+
+## POST /api/schedules —— 定期実行の口
+
+定期実行の画面（[画面](/screens/)）と、新しいクロールの画面の「定期にする」が使います。
+予定を作る `POST /api/schedules`、操作の `POST /api/schedules/:id/<操作>`、走ったままの行を締める `POST /api/crawls/:id/failed` の 3 つの形です。
+読むのは `GET /api/schedules` で、ほかの読む口と同じ素通しです。
+
+- 門とアクセストークンは `POST /api/crawls` と同じです（`Origin`・JSON・1 MiB）。本文が無い操作も `{}` を送ります。
+- **中継するのは、この形ちょうどだけ。**
+  操作は `pause`・`resume`・`run`・`repin`・`delete` の 5 つで、id は 16 進の数字とハイフンです。
+  形は `src/lib.mjs` の `isWriteRoute` に在ります。
+- **消すのも POST です。** 中継の書く口は POST だけなので、台帳の口もその形にしてあります。
+- 判断は台帳がします。cron の式も頼みの中身も、断る文は台帳の物をそのまま出します。
 
 ## POST /api/crawls/:id/inline/:name/fix —— その場の TS の直し方を訊く口
 

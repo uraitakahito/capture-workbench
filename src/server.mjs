@@ -300,7 +300,7 @@ const server = createServer((request, reply) => {
     // 読む口は GET だけ。ほかの method を GET として通すと、書けたように見えてしまう。
     if (request.method !== "GET") {
       reply.writeHead(405, { allow: "GET", "content-type": "text/plain; charset=utf-8" });
-      reply.end("GET だけ（書く口は POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/scripts/check）\n");
+      reply.end("GET だけ（書く口は POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/crawls/:id/failed・POST /api/scripts/check・POST /api/schedules・POST /api/schedules/:id/<操作>）\n");
       return;
     }
     void toLedger(url)

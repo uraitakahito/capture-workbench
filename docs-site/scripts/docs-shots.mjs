@@ -111,7 +111,10 @@ const writeStart = async (page) => {
 const writeStartWhole = async (page) => {
   await writeStart(page);
   await page.addStyleTag({
-    content: "#face-start,.start{height:auto!important}.start-side{overflow:visible!important}",
+    // 窓の高さに収めるのをやめる。タブが増えて上の帯が 2 行になり、足元の行が「始める」の高さに重なった
+    content:
+      'body[data-face="start"]{height:auto!important}body[data-face="start"] main{overflow:visible!important}' +
+      "#face-start,.start{height:auto!important}.start-side{overflow:visible!important}",
   });
 };
 
@@ -126,7 +129,8 @@ const SHOTS = [
   {
     name: "tabs",
     hash: "#start",
-    box: "header h1, #tabs",
+    // タブが増えて、題と並べると本文の幅を超えた。タブだけを撮る
+    box: "#tabs",
     pad: 10,
     ready: () => document.getElementById("tab-start").classList.contains("on"),
   },
@@ -150,6 +154,16 @@ const SHOTS = [
       // 合本の無い行の run ↗。先頭の走行中の行は、隣に replay ↗ があって丸が重なる
       { n: 2, at: "#crawls tr.head:nth-child(4) td:last-child a" },
     ],
+  },
+  {
+    name: "schedules",
+    hash: "#schedules",
+    // 帯と、最初の予定（失敗が並ぶ）。帯は全部の画面に出るので、絵はここの 1 枚に任せる
+    box: "#schedule-band, #schedules article:first-child",
+    wide: true,
+    ready: () =>
+      document.querySelector("#schedules article h2")?.textContent.includes("毎朝の 5 サイト") === true &&
+      document.getElementById("schedule-band")?.hidden === false,
   },
   {
     name: "crawl-detail",
@@ -566,7 +580,10 @@ try {
     await page.evaluateOnNewDocument(freeze, NOW);
     await page.goto(`${BASE}/${shot.hash}`, { waitUntil: "networkidle0" });
     await page.addStyleTag({
-      content: "*{caret-color:transparent!important;animation:none!important;transition:none!important}",
+      content:
+        "*{caret-color:transparent!important;animation:none!important;transition:none!important}" +
+        // 代役の見本には失敗の予定が在り、帯は全部の画面に出る。写すのは定期実行の絵だけ（ほかの絵の切り口を動かさない）
+        (shot.name === "schedules" ? "" : "#schedule-band{display:none!important}"),
     });
     await page.evaluate(async () => {
       await document.fonts.ready;
