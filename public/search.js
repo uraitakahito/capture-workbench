@@ -7,7 +7,7 @@
  * null）を入れる（CAPTURE-48）。だから当たりは「アーカイブの 1 時点」で、同じアーカイブが時点ごとに並ぶ。
  * 返るのは見せてよいアーカイブの物だけ（台帳が OpenFGA の can_view で絞る）。
  */
-import { replayHref, replaySourceHref, replayTs } from "./replay.js";
+import { replaywebHref, replaywebSourceHref, replaywebTs } from "./replayweb.js";
 
 /** 検索の口。語はそのまま `q` に（台帳は空を 400 で断る）。 */
 export const searchPath = (words) => `/api/search?${new URLSearchParams({ q: words })}`;
@@ -57,14 +57,14 @@ export const highlightParts = (fragment) => {
 };
 
 /**
- * 当たった行の「replay ↗」の行き先。文書の行は取り込んだ URL を撮った時刻で直に開き（`replayHref`。頁の script も
+ * 当たった行の「replay ↗」の行き先。文書の行は取り込んだ URL を撮った時刻で直に開き（`replaywebHref`。頁の script も
  * 動く）、写しの行は写しの URI（`urn:browserhive:snapshot:<時点>:<文書の URL>`）を直に開く（script の無い DOM の
  * 写し）。写しの URI のレコードは 1 つなので、`ts` は撮った時刻でよい（replay がいちばん近い物を選ぶ）。
  */
-export const hitReplayHref = (origin, hit) => {
-  if (typeof hit?.stage !== "string" || hit.stage === "") return replayHref(origin, hit);
-  const base = replaySourceHref(origin, hit.objectKey);
-  const ts = replayTs(hit.capturedAt);
+export const hitReplaywebHref = (origin, hit) => {
+  if (typeof hit?.stage !== "string" || hit.stage === "") return replaywebHref(origin, hit);
+  const base = replaywebSourceHref(origin, hit.objectKey);
+  const ts = replaywebTs(hit.capturedAt);
   if (typeof hit.url !== "string" || hit.url === "" || ts === undefined) return base;
   return `${base}#${new URLSearchParams({ view: "replay", url: hit.url, ts })}`;
 };

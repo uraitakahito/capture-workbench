@@ -50,12 +50,12 @@ import {
   replayBundleFailure,
   replayBundleHref,
   replayBundleText,
-  replayHref,
-} from "/replay.js";
+  replaywebHref,
+} from "/replayweb.js";
 import {
   answerOf,
   highlightParts,
-  hitReplayHref,
+  hitReplaywebHref,
   parseSearchHash,
   searchFailure,
   searchHash,
@@ -595,7 +595,7 @@ const restoreScroll = () => {
  * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（台帳が古ければ口が無い）。
  *
  * 結末の後ろの「replay ↗」は、そのページをクロールの合本の中で開く。合本は詳しい所（`/api/crawls/:id`。ページと
- * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/replay.js` の `replayBundleHref`。
+ * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/replayweb.js` の `replayBundleHref`。
  * 2 つを引く間に台帳が次の版を書いても、指す版に無いページを開かせない）。**列は足さない** —— 出るのはふつう
  * 撮れたページ（結末が `captured` の 1 語）で、結末の列の幅の中に収まる。列を足すと表が広がり、docs の画面の絵
  * （本文の幅）に収まらなかった（2026-11-05 に測った）。同じ理由で、途中の版でも字は増やさず、色と説明だけを付ける。
@@ -625,7 +625,7 @@ const pagesOf = (one) => {
     url.append(tag("span", String(page.url), "mono url"));
     const outcome = document.createElement("td");
     const said = tag("span", outcomeOf(page, one.state), "outcome");
-    const replay = replayBundleHref(settings.replayOrigin, one.replayBundle, page);
+    const replay = replayBundleHref(settings.replaywebServerOrigin, one.replayBundle, page);
     if (replay !== undefined) said.append(" ", bundleLink(replay, "replay ↗", one));
     outcome.append(said);
     const toggle = document.createElement("td");
@@ -815,10 +815,10 @@ const drawCrawls = () => {
     row.append(cell(linksOf(crawl), "num mono"));
     row.append(cell(String(crawl.waczCount), "num mono"));
     row.append(cell(took(crawl), "num mono"));
-    // 行き先: run と、台帳が合本を書けていれば、クロールを 1 つのアーカイブとして replay で。**run ↗ が先頭**
+    // 行き先: run と、台帳が合本を書けていれば、クロールを 1 つのアーカイブとして replayweb-server で。**run ↗ が先頭**
     // （docs の画面の絵の印が、この欄の先頭の link を指す）
     const go = linkCell(runHref(crawl), "run ↗");
-    const replay = replayBundleHref(settings.replayOrigin, crawl.replayBundle);
+    const replay = replayBundleHref(settings.replaywebServerOrigin, crawl.replayBundle);
     if (replay !== undefined) go.append(bundleLink(replay, replayBundleText(crawl), crawl));
     row.append(go);
     row.onclick = (event) => {
@@ -1625,7 +1625,7 @@ const drawArchives = () => {
     row.append(check);
     row.append(hashCell(waczHash(archive.id), "開く"));
     row.append(
-      linkCell(replayHref(settings.replayOrigin, archive), "replay ↗"),
+      linkCell(replaywebHref(settings.replaywebServerOrigin, archive), "replay ↗"),
     );
     body.append(row);
   }
@@ -1673,7 +1673,7 @@ const drawHits = (hits) => {
       tag("div", `撮れたもの: ${hit.sourceUrl}（${new Date(hit.capturedAt).toLocaleString("ja-JP")}）`, "hit-note"),
     );
     row.append(what);
-    // 行き先: WACZ の画面（一覧に在るアーカイブだけ）と replay
+    // 行き先: WACZ の画面（一覧に在るアーカイブだけ）と replayweb-server
     const go = document.createElement("td");
     go.className = "hit-go";
     if (known.has(hit.archiveId)) {
@@ -1682,7 +1682,7 @@ const drawHits = (hits) => {
       open.textContent = "開く";
       go.append(open);
     }
-    go.append(link(hitReplayHref(settings.replayOrigin, hit), "replay ↗"));
+    go.append(link(hitReplaywebHref(settings.replaywebServerOrigin, hit), "replay ↗"));
     row.append(go);
     body.append(row);
   }

@@ -10,7 +10,7 @@ capture-workbench は、[Web Capture](https://uraitakahito.github.io/capture-led
 クロールを始めるのは [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録する台帳）、
 走らせるのは [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)（クロールを Windmill の flow で回す）、
 撮れたものを置くのは [seaweedfs](https://github.com/uraitakahito/seaweedfs)（Web Capture が共有する S3 互換の store）、
-開いて読むのは [replay](https://github.com/uraitakahito/replay)（WACZ をブラウザで再生する画面）です。
+開いて読むのは [replayweb-server](https://github.com/uraitakahito/replayweb-server)（WACZ をブラウザで再生する画面）です。
 WACZ（Web Archive Collection Zipped）は、撮ったページを 1 つの ZIP にまとめたアーカイブの形式です。
 
 人の頭の中では 1 本のクロールなのに、画面は 4 枚に割れていました。
@@ -27,7 +27,7 @@ flowchart LR
   D -->|"/api/* を素通し"| L["capture-ledger の API"]
   D -->|"署名付き URL を<br/>1 本だけ渡す"| V["wacz-validator の daemon"]
   V -->|"Range で読む"| S[("seaweedfs の store")]
-  B -.->|"行き先のリンク"| R["replay"]
+  B -.->|"行き先のリンク"| R["replayweb-server"]
   B -.->|"run のリンク"| W["Windmill"]
 ```
 
@@ -35,7 +35,7 @@ flowchart LR
 workbench は開発用の issuer からアクセストークンを取得し、それを付けて `/api/*` をそのまま台帳へ通します。
 書くのは、新しいクロールの画面から始めるときの `POST /api/crawls` だけで、同じ道で台帳へ通します。
 WACZ の検証と中身は、台帳に署名してもらった URL を daemon に渡して読ませます。
-replay と Windmill へは、画面の行からリンクで飛ぶだけです。
+replayweb-server と Windmill へは、画面の行からリンクで飛ぶだけです。
 
 ## 約束
 

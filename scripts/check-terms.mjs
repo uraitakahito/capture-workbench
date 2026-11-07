@@ -1,5 +1,5 @@
 /**
- * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 11 個。
+ * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 12 個。
  *
  * ## なぜ要るのか
  *
@@ -53,6 +53,8 @@
  * - **7080 の Web アプリは capture-workbench、文で短く書くときは workbench と書く。** 2026-11 に dashboard から替えた
  *   （repo の名前・URL・環境変数の `WORKBENCH_*` も）。この repo に、Grafana の dashboard のような別の意味は無いので、
  *   語を全部見る（大文字小文字を問わない）。許す形は無い
+ * - **WACZ を開くビューアは replayweb-server と書く。** 2026-11 に replay から替えた（repo の URL・環境変数・`/healthz` の
+ *   欄・ファイルの名前）。語の replay は、画面の「replay ↗」と合本の形式（replay.json）に残るので禁じず、旧い名前の形だけを見る
  *
  * 書き手（人と Claude）は長くこの形で書いてきたので、見張らなければ戻ってくる。
  *
@@ -134,6 +136,10 @@ const OLD_INLINE =
  * `workspace=crawler`・`crawler.no-dns`）と、ふつうの名詞（a crawler that…・The crawler honoured…・Browsertrix Crawler）に
  * 当たらないことを確かめる。カタカナのクローラは見ない。
  */
+/** replayweb-server の旧い名前の形。語の replay は禁じない（上の注記）。 */
+const OLD_REPLAY_NAMES =
+  /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b/u;
+
 const OLD_SUITE =
   /(?<![-/.=`\w])crawler ?(?:の|で|が|を|は|に|と|全体|—)|<h1>crawler<\/h1>|\bcrawler repos(?:itories)?\b|\ball of crawler\b|\b[Tt]he crawler's development\b|\b[Tt]he crawler (?:shares|produces)\b/u;
 
@@ -202,6 +208,12 @@ const RULES = [
     say:
       "語 dashboard が残っています。7080 の Web アプリは capture-workbench（文で短く書くときは workbench）、" +
       "環境変数は WORKBENCH_* と書きます。",
+  },
+  {
+    find: (line) => OLD_REPLAY_NAMES.test(line),
+    say:
+      "replay の旧い名前が残っています。WACZ を開くビューアは replayweb-server（環境変数は WORKBENCH_REPLAYWEB_SERVER_URL、" +
+      "`/healthz` の欄は replaywebServerOrigin）と書きます。",
   },
 ];
 

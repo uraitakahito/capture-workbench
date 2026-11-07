@@ -31,7 +31,7 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
   "ok": true,
   "subject": "alice",
   "organizations": ["acme"],
-  "replayOrigin": "http://127.0.0.1:8899",
+  "replaywebServerOrigin": "http://127.0.0.1:8899",
   "windmillOrigin": "http://127.0.0.1:8000",
   "windmillWorkspace": "crawler",
   "writeLimit": 1048576

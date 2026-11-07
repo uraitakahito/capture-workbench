@@ -14,10 +14,10 @@ WACZ の画面のタブは、アーカイブの行の「開く」で入るまで
 
 | 画面 | 何が並ぶか |
 | --- | --- |
-| クロール | 1 行 = 1 本。状態・撮れた数・リンクの数・WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の数・かかった時間・run と replay（クロールを 1 つのアーカイブとして）への行き先 |
+| クロール | 1 行 = 1 本。状態・撮れた数・リンクの数・WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の数・かかった時間・run と replayweb-server（クロールを 1 つのアーカイブとして）への行き先 |
 | 新しいクロール | 起点の URL・スクリプト・深さを選び、スクリプトが宣言した変数の値を書き、その場の TS を書いて始める。TS の箱は窓の高さいっぱい。スクリプトは右の列のタブで読める |
-| アーカイブ | 見えている WACZ（一覧）。行から検証・WACZ の画面・[replay](https://github.com/uraitakahito/replay)（WACZ をブラウザで再生する画面）へ |
-| 検索 | 台帳の全文検索。語を打って探し、当たったアーカイブの時点（文書か写し）を並べる。行から WACZ の画面と replay へ |
+| アーカイブ | 見えている WACZ（一覧）。行から検証・WACZ の画面・[replayweb-server](https://github.com/uraitakahito/replayweb-server)（WACZ をブラウザで再生する画面）へ |
+| 検索 | 台帳の全文検索。語を打って探し、当たったアーカイブの時点（文書か写し）を並べる。行から WACZ の画面と replayweb-server へ |
 | スクリプト集 | ページの中で走らせるスクリプトと、書くための型。行番号つきで読め、古い版も読める。空なら赤で言う |
 | WACZ | WACZ 1 本の中。[WACZ を見る](/wacz/)に書いた |
 
@@ -58,12 +58,12 @@ workbench は続きを取りに行きません。
   台帳が `lastJob` を持たない行には出ません。
 - **replay ↗ は、クロールを 1 つのアーカイブとして開く。**
   台帳は段ごとに、クロールの合本を保管庫へ書きます。
-  合本は、クロールの WACZ を全部並べた `replay.json` と、ページの一覧（`pages.json`）の組です。replay がページを引くと、replay の server がこの一覧から答えます。
+  合本は、クロールの WACZ を全部並べた `replay.json` と、ページの一覧（`pages.json`）の組です。ReplayWeb.page がページを引くと、replayweb-server がこの一覧から答えます。
   replay は合本を 1 つのアーカイブとして開くので、撮ったページのリンクから、別の WACZ に撮ったページへ行けます。
-  行き先は、サーバが `/healthz` で配る replay の origin と、台帳が指す版の鍵（`replayBundle.key`）から組み、ページ一覧（`#view=pages`）を開きます。
+  行き先は、サーバが `/healthz` で配る replayweb-server の origin と、台帳が指す版の鍵（`replayBundle.key`）から組み、ページ一覧（`#view=pages`）を開きます。
   合本の無いクロール（まだ何も撮っていない・合本を書かない台帳）の行には出ません。
   台帳は、合本を書けなくてもクロールを止めません。開いた行の先頭に書けなかった理由を台帳の文のまま（`replayBundle.error`）出し、replay ↗ は前に書けた版があればそれを開きます。
-  決まりは `public/replay.js` の `replayBundleHref` で、`test/replay.test.mjs` が固定しています。
+  決まりは `public/replayweb.js` の `replayBundleHref` で、`test/replayweb.test.mjs` が固定しています。
 - **途中の版は、字で言う。**
   走行中の行の replay ↗ は、その時点で台帳が書けた途中の版を開きます。
   後の段で撮るページはまだ入っていないので、そのページへのリンクは replay で Not Found になります。
@@ -72,7 +72,7 @@ workbench は続きを取りに行きません。
   flow は `report`（ここでクロールが終わる）の後に `replay_bundle`（ここで最後の版を書く）を走らせるので、最後の版は少し遅れて届きます。
   次の版を書けなかった行は、前の版を途中の版として開きます。
   開いた行のページの表は、字を増やさず、色と説明だけを付けます。
-  決まりは `public/replay.js` の `isPartialBundle` で、`test/replay.test.mjs` が固定しています。
+  決まりは `public/replayweb.js` の `isPartialBundle` で、`test/replayweb.test.mjs` が固定しています。
 
 ![クロールの画面の開いた行。走らせたもの（その場の TS に「欄に戻す」）・渡した値と使ったシークレット・規則ごとの数・落とした物・Windmill で調べるリンク](../../../assets/screens/crawl-detail.webp)
 
@@ -305,7 +305,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   報告に何が出るかは [WACZ を見る](/wacz/)に書きました。
 - **「開く」で WACZ の画面に入る**（`#wacz/<archiveId>`）。
 - **「replay ↗」は、取り込んだ URL を replay で直に開く。**
-  行き先は、サーバが `/healthz` で配る replay の origin、台帳が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
+  行き先は、サーバが `/healthz` で配る replayweb-server の origin、台帳が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
   頁の script が動くので、JS で出す絵も出ます。BrowserHive が撮った DOM の写し（スクリプトの前と後）は、replay の Pages タブにあります。
   replay は自分では最初の頁を選びません。ページ一覧を日付の新しい順に並べ、WACZ の `mainPageURL` は読みません。
   開くのはその WACZ 1 本です。クロールのほかのページへリンクで行くなら、[クロール](#クロール)の画面の行の replay ↗ から開きます。

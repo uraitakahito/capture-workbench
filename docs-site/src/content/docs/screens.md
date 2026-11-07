@@ -17,10 +17,10 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 
 | View | What it lists |
 | --- | --- |
-| Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replay (the whole crawl as one archive) |
+| Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replayweb-server (the whole crawl as one archive) |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
-| Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replay](https://github.com/uraitakahito/replay) (which plays a WACZ back in the browser) |
-| Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replay |
+| Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser) |
+| Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replayweb-server |
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
 | WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
 
@@ -65,16 +65,16 @@ the crawl's bundle.
   through `/healthz`. Rows where the ledger has no `lastJob` get no link.
 - **replay ↗ opens the crawl as one archive.** After each level, the ledger writes the crawl's
   bundle (合本) to the store: a `replay.json` that lists every WACZ file of the crawl, and the
-  index of its pages (`pages.json`) that replay's server answers from when replay looks a page
-  up. replay opens them as one archive, so a link on a captured page leads to a page captured into
+  index of its pages (`pages.json`) that replayweb-server answers from when ReplayWeb.page looks a page
+  up. ReplayWeb.page opens them as one archive, so a link on a captured page leads to a page captured into
   another WACZ file.
   The link opens the list of pages (`#view=pages`) of the version the ledger points at
-  (`replayBundle.key`), at the replay origin the server hands out through `/healthz`. A crawl with
+  (`replayBundle.key`), at the replayweb-server origin the server hands out through `/healthz`. A crawl with
   no bundle (nothing captured yet, or a ledger that writes none) gets no link. The ledger never
   stops a crawl over a bundle it could not write: an opened row says why first, in the ledger's
   words (`replayBundle.error`), and replay ↗ keeps opening the version written before, if there is
-  one. The rules for these links are `replayBundleHref` in `public/replay.js`, pinned by
-  `test/replay.test.mjs`.
+  one. The rules for these links are `replayBundleHref` in `public/replayweb.js`, pinned by
+  `test/replayweb.test.mjs`.
 - **A version written mid-crawl says so.** While a crawl runs, replay ↗ opens the version the
   ledger has written so far. Pages captured in later levels are not in it, so a link to one ends
   in Not Found in replay. The link therefore reads `replay r1（途中）↗` ("mid-crawl"), in the warning
@@ -83,8 +83,8 @@ the crawl's bundle.
   crawl ends here) before `replay_bundle` (the last version is written here), so the last version
   arrives slightly later. A row whose next version could not be written keeps opening the earlier
   one the same way. The pages table of an opened row keeps the text "replay ↗" and only takes the
-  color and the explanation. The rule is `isPartialBundle` in `public/replay.js`, pinned by
-  `test/replay.test.mjs`.
+  color and the explanation. The rule is `isPartialBundle` in `public/replayweb.js`, pinned by
+  `test/replayweb.test.mjs`.
 
 ![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the values passed and the secrets used, the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
 
