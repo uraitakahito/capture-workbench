@@ -2,7 +2,7 @@
   "name": "dashboard",
   "version": "0.1.0",
   "private": true,
-  "description": "crawler の開発用の Web アプリ。台帳の API を 1 枚に畳んで見る",
+  "description": "Web Capture を開発するときに手元で開く Web アプリ。台帳の API を 1 枚に畳んで見る",
   "//": [
     "package.json にコメントを書く方法の議論:",
     "https://stackoverflow.com/questions/14221579/how-do-i-add-comments-to-package-json-for-npm-install"

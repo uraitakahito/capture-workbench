@@ -1,13 +1,15 @@
 ---
 title: dashboard
-description: crawler の開発用の Web アプリ。1 本のクロールを 1 行で見る —— 秘密も npm の依存も持たず、台帳の API を中継するだけ
+description: Web Capture を開発するときに手元で開く Web アプリ。1 本のクロールを 1 行で見る —— 秘密も npm の依存も持たず、台帳の API を中継するだけ
 ---
 
-dashboard は crawler の開発用の Web アプリです。**1 本のクロールを 1 行で見ます。**
+dashboard は、[Web Capture](https://uraitakahito.github.io/capture-ledger/ja/#web-capture)（Web ページを撮ってアーカイブに残し、後から確かめられるようにする repo の一式）を開発するときに手元で開く Web アプリです。
+**1 本のクロールを 1 行で見ます。**
+新しいクロールを始めることも、撮れた WACZ の中身を読むこともできます。
 
 クロールを始めるのは [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録する台帳）、
 走らせるのは [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)（クロールを Windmill の flow で回す）、
-撮れたものを置くのは [seaweedfs](https://github.com/uraitakahito/seaweedfs)（crawler が共有する S3 互換の store）、
+撮れたものを置くのは [seaweedfs](https://github.com/uraitakahito/seaweedfs)（Web Capture が共有する S3 互換の store）、
 開いて読むのは [replay](https://github.com/uraitakahito/replay)（WACZ をブラウザで再生する画面）です。
 WACZ（Web Archive Collection Zipped）は、撮ったページを 1 つの ZIP にまとめたアーカイブの形式です。
 

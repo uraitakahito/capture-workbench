@@ -1,6 +1,6 @@
 # dashboard
 
-crawler の開発用の Web アプリ。**1 本のクロールを 1 行で見る。**
+Web Capture を開発するときに手元で開く Web アプリ。**1 本のクロールを 1 行で見る。**
 始める（[capture-ledger](https://github.com/uraitakahito/capture-ledger)）・走らせる（[capture-scheduler](https://github.com/uraitakahito/capture-scheduler) の Windmill）・置く（[seaweedfs](https://github.com/uraitakahito/seaweedfs)）・読む（[replay](https://github.com/uraitakahito/replay)）の 4 枚に割れていた画面を、台帳の API から 1 枚に組み立てる。
 npm の依存を持たず（例外は commit した色付けの 1 ファイル）、秘密も持たない。loopback（既定は `127.0.0.1:7080`）でだけ待ち受ける。
 

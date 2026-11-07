@@ -10,7 +10,7 @@ import { normalize, resolve, sep } from "node:path";
 /**
  * 環境変数の読み口。**空文字は「無い」と同じに扱う**（POSIX の `${VAR:-word}` 側）。
  *
- * crawler の他の repo と同じ意味に揃えてある —— `??` は未設定のときしか既定値に
+ * Web Capture の他の repo と同じ意味に揃えてある —— `??` は未設定のときしか既定値に
  * しないので、`NAME=` と書いた人が、名前の出ないエラーを遠くで踏む。
  */
 export const optional = (name, fallback) => {

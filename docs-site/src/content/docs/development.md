@@ -89,7 +89,7 @@ in `sandbox/sandbox.env`). The dashboard reads only `sandbox/sandbox.env`, never
 containers fit together is written at the top of `docker-compose.yml`.
 
 What it shows is decided by the scenario (`sandbox/scenario.json`) and the sample WACZ files (the
-archive files the crawler produces, in `sandbox/samples/`). The samples are copied from a corpus
+archive files [Web Capture](https://uraitakahito.github.io/capture-ledger/#web-capture) produces, in `sandbox/samples/`). The samples are copied from a corpus
 whose validation results are known; where they come from, and the result each one should get, is
 in `sandbox/samples/SOURCE.md`.
 

@@ -2,7 +2,7 @@
  * docs-site と repo の中身がずれていないかを見る。`npm run site:check` (build ＋ これ) で走る。
  *
  * `astro build` は守りにならない —— .md のページは Starlight の docs loader が描画の例外を握り潰して
- * exit 0 で終わる (crawler の他の repo で実測)。だから機械の守りはここに置く。見るのは:
+ * exit 0 で終わる (Web Capture の他の repo で実測)。だから機械の守りはここに置く。見るのは:
  *
  *   1. en と ja の対: docs/*.md と docs/ja/*.md が同じ file 名で揃っている (見出しの構造は見ない ——
  *      同じ見出しを強制すると日本語が悪くなる)
