@@ -556,7 +556,7 @@ const VALUE_NAME = /^[a-z][a-z0-9_]*$/;
 /** 宣言したシークレットを置く Windmill のフォルダ (台帳と capture-scheduler の決まり)。 */
 const SECRETS_FOLDER = "f/waggle_secrets/";
 /** `POST /api/crawls` の body の鍵 (台帳 v0.67.0 の schema。`additionalProperties: false`)。外の鍵は 400。 */
-const BODY_KEYS = ["userAgent", "seeds", "fromTargets", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
+const BODY_KEYS = ["userAgent", "seeds", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
 /** Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。試験が渡さなければ、何も置いていない Windmill。 */
 const NO_WINDMILL = { secrets: [], variables: [], editedAt: null };
 
@@ -1067,7 +1067,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
     if (refused !== undefined) return schemaError(refused);
   }
   if (!Array.isArray(body?.seeds)) {
-    return { status: 400, body: { error: "provide exactly one of seeds or fromTargets" } };
+    return { status: 400, body: { error: "seeds is required" } };
   }
   // 台帳と同じ順と文 (schema は文字列だけを見て、形は handler が読める文で断る)
   if ("userAgent" in body && typeof body.userAgent !== "string") return schemaError("body/userAgent must be string");
@@ -1075,7 +1075,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   if (userAgent !== "" && !/^[\x20-\x7e]{1,512}$/.test(userAgent)) {
     return { status: 400, body: { error: "userAgent must be printable ASCII, at most 512 characters" } };
   }
-  if (body.seeds.length === 0) return { status: 400, body: { error: "seeds must not be empty" } };
+  if (body.seeds.length === 0) return schemaError("body/seeds must NOT have fewer than 1 items");
   if (!body.seeds.every(httpUrl)) {
     return { status: 400, body: { error: "every seed must be an http(s) URL" } };
   }
