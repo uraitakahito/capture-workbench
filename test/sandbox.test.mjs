@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
 import { outcomeOf } from "../public/pages.js";
-import { isPartialBundle, replayBundleHref } from "../public/replay.js";
+import { isPartialBundle, replayBundleHref } from "../public/replayweb.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
 import {

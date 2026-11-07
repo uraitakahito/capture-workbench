@@ -27,7 +27,7 @@ capture-ledger は、OpenFGA（認可のサービス）の id のように「走
 | `WORKBENCH_ISSUER_URL` | `http://127.0.0.1:9099` | 開発用 issuer。capture-ledger の `pnpm run oidc:issuer` が立てるもの |
 | `WORKBENCH_SUBJECT` | この機械のユーザー名 | 誰として見るか。この名前に許可が要る（[クイックスタート](/quickstart/)） |
 | `WORKBENCH_ORGANIZATIONS` | `acme` | 名乗る組織（カンマ区切り） |
-| `WORKBENCH_REPLAY_URL` | `http://127.0.0.1:8899` | 「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
+| `WORKBENCH_REPLAYWEB_SERVER_URL` | `http://127.0.0.1:8899` | 「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
 | `WORKBENCH_WINDMILL_URL` | `http://127.0.0.1:8000` | クロールの行の「run ↗」の行き先 |
 | `WORKBENCH_WINDMILL_WORKSPACE` | `crawler` | 「run ↗」が開く Windmill の workspace |
 | `WORKBENCH_VALIDATOR_URL` | `http://127.0.0.1:7180` | 検証と WACZ の画面に答える [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon |
@@ -44,16 +44,16 @@ workbench は `WORKBENCH_SUBJECT` と `WORKBENCH_ORGANIZATIONS` の名前で、�
 
 ### 行き先は、workbench が組み立てない
 
-replay と Windmill の行き先は、配備の事実です。
+replayweb-server と Windmill の行き先は、配備の事実です。
 台帳が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[中継の口](/routes/)）。
 
 どの「replay ↗」も、保管庫の URL ではなく、replay と同じ origin の path を渡します。
 `?source=` の値は `/wacz/` と鍵で、鍵は `/` で区切って区切りごとに百分率の符号にし、その path をもう 1 度 query の値として符号にします。
-replay の server（v0.3.0 から）は区切りごとに 1 度だけ解くので、`%` を含む鍵（BrowserHive はラベルを百分率の符号で鍵に入れます）も、そのまま保管庫に届きます。
-決まりは `public/replay.js` の `replaySourceHref` で、WACZ 1 本もクロールの合本も同じです。
+replayweb-server（v0.3.0 から）は区切りごとに 1 度だけ解くので、`%` を含む鍵（BrowserHive はラベルを百分率の符号で鍵に入れます）も、そのまま保管庫に届きます。
+決まりは `public/replayweb.js` の `replaywebSourceHref` で、WACZ 1 本もクロールの合本も同じです。
 
-クロールの合本を開くには、合本のページの問い（`/q/…`）にも答える replay が要ります。
-replay は合本の WACZ とページの一覧を、自分と同じ origin の path から引きます。
+クロールの合本を開くには、合本のページの問い（`/q/…`）にも答える replayweb-server が要ります。
+ReplayWeb.page は合本の WACZ とページの一覧を、自分と同じ origin の path から引きます。
 
 ## 読む順
 

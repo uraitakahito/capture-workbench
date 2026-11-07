@@ -74,7 +74,7 @@ const SUBJECT = optional("WORKBENCH_SUBJECT", userInfo().username);
  * 深いリンクの行き先。**workbench はこれを組み立てない** —— 台帳が返すのは `objectKey`・クロールの合本の鍵
  * （`replayBundle.key`）・`lastJob.id` だけで、どこで開くかは配備の事実。1 か所で決めて `/healthz` で配る。
  */
-const REPLAY = optional("WORKBENCH_REPLAY_URL", "http://127.0.0.1:8899");
+const REPLAYWEB_SERVER = optional("WORKBENCH_REPLAYWEB_SERVER_URL", "http://127.0.0.1:8899");
 const WINDMILL = optional("WORKBENCH_WINDMILL_URL", "http://127.0.0.1:8000");
 const WORKSPACE = optional("WORKBENCH_WINDMILL_WORKSPACE", "crawler");
 /** WACZ を検証する daemon。**鍵を持たない** —— 台帳が署名した URL だけを読む。 */
@@ -232,7 +232,7 @@ const server = createServer((request, reply) => {
         ok: true,
         subject: SUBJECT,
         organizations: ORGANIZATIONS,
-        replayOrigin: REPLAY,
+        replaywebServerOrigin: REPLAYWEB_SERVER,
         windmillOrigin: WINDMILL,
         windmillWorkspace: WORKSPACE,
         // 書く口の上限。workbench は欄の下に本文の大きさを出し、超えたら送る前に止める
