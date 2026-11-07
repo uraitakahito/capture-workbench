@@ -20,7 +20,7 @@
  *      撮る道具) が、撮ったときから変わっていない
  *
  * 4 と 5 が要るのは、表が手で写した物だから。口や変数を足しても、表は誰かが直すまで古いまま ——
- * README に表があった頃、dashboard が読まなくなった口が書かれたまま残っていた。それをこの検査が PR で止める。
+ * README に表があった頃、workbench が読まなくなった口が書かれたまま残っていた。それをこの検査が PR で止める。
  *
  * 効いているのを見るには: ja のページを 1 枚 `.ja.md` に改名する → 赤。本文に `src/nope.mjs` → 赤。
  * routes.md から 1 行消す → 赤。.env.example の既定値を 1 つ変える → 赤。README の URL を綴り違える → 赤。
@@ -97,14 +97,14 @@ for (const { rel, text } of tablePage("routes.md")) {
 
 // ─── 5. 環境変数の表 ⇔ src/server.mjs ⇔ .env.example ──────────────────────
 // server.mjs は import しない (読み込んだ時点で待ち受けが始まる)。名前と既定値を文字から読む。
-// 既定値は「文字列の literal で書いてある物」だけを比べる (DASHBOARD_SUBJECT は OS のユーザー名)
+// 既定値は「文字列の literal で書いてある物」だけを比べる (WORKBENCH_SUBJECT は OS のユーザー名)
 const sides = [
   {
     rel: "src/server.mjs",
     vars: new Map(
       [
         ...readFileSync(resolve(ROOT, "src/server.mjs"), "utf8").matchAll(
-          /optional\("(DASHBOARD_[A-Z_]+)",\s*(?:"([^"]*)")?/g,
+          /optional\("(WORKBENCH_[A-Z_]+)",\s*(?:"([^"]*)")?/g,
         ),
       ].map((m) => [m[1], m[2]]),
     ),
@@ -114,16 +114,16 @@ const sides = [
     vars: new Map(
       [
         ...readFileSync(resolve(ROOT, ".env.example"), "utf8").matchAll(
-          /^#?(DASHBOARD_[A-Z_]+)=(.*)$/gm,
+          /^#?(WORKBENCH_[A-Z_]+)=(.*)$/gm,
         ),
       ].map((m) => [m[1], m[2]]),
     ),
   },
   ...tablePage("configuration.md").map(({ rel, text }) => ({
     rel,
-    // 行の形は | `DASHBOARD_PORT` | `7080` | …。既定値の cell が code でなければ (ユーザー名など) 比べない
+    // 行の形は | `WORKBENCH_PORT` | `7080` | …。既定値の cell が code でなければ (ユーザー名など) 比べない
     vars: new Map(
-      [...text.matchAll(/^\|\s*`(DASHBOARD_[A-Z_]+)`\s*\|\s*([^|]*?)\s*\|/gm)].map((m) => [
+      [...text.matchAll(/^\|\s*`(WORKBENCH_[A-Z_]+)`\s*\|\s*([^|]*?)\s*\|/gm)].map((m) => [
         m[1],
         /^`[^`]*`$/.test(m[2]) ? m[2].slice(1, -1) : undefined,
       ]),

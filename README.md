@@ -1,4 +1,4 @@
-# dashboard
+# capture-workbench
 
 Web Capture を開発するときに手元で開く Web アプリ。**1 本のクロールを 1 行で見る。**
 始める（[capture-ledger](https://github.com/uraitakahito/capture-ledger)）・走らせる（[capture-scheduler](https://github.com/uraitakahito/capture-scheduler) の Windmill）・置く（[seaweedfs](https://github.com/uraitakahito/seaweedfs)）・読む（[replay](https://github.com/uraitakahito/replay)）の 4 枚に割れていた画面を、台帳の API から 1 枚に組み立てる。
@@ -8,12 +8,12 @@ npm の依存を持たず（例外は commit した色付けの 1 ファイル�
 
 起こし方・画面の読み方・設定などは、docs サイトに:
 
-- **English** — <https://uraitakahito.github.io/dashboard/>
-- **日本語** — <https://uraitakahito.github.io/dashboard/ja/>
+- **English** — <https://uraitakahito.github.io/capture-workbench/>
+- **日本語** — <https://uraitakahito.github.io/capture-workbench/ja/>
 
 ## Related Projects
 
-- [capture-ledger](https://github.com/uraitakahito/capture-ledger) — 読む台帳の API。`dev:up` が dashboard を起こす
+- [capture-ledger](https://github.com/uraitakahito/capture-ledger) — 読む台帳の API。`dev:up` が workbench を起こす
 - [wacz-validator](https://github.com/uraitakahito/wacz-validator) — 「検証」と WACZ の画面に答える daemon
 - [capture-scheduler](https://github.com/uraitakahito/capture-scheduler) — クロールの run（Windmill）への行き先
 - [replay](https://github.com/uraitakahito/replay) — アーカイブを開く行き先

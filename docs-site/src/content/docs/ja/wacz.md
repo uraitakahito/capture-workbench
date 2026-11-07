@@ -6,14 +6,14 @@ description: アーカイブの行から、撮れたものが仕様どおりか�
 アーカイブの行からは、2 つのことができます。
 「検証」で撮れたものが WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の仕様どおりかを確かめ、「開く」で WACZ の中身に入ります。
 どちらも [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon が答えます。
-dashboard は、台帳に署名してもらった URL を daemon に渡すだけです。
+capture-workbench は、台帳に署名してもらった URL を daemon に渡すだけです。
 
 ## 先に台帳へ訊く
 
 ```mermaid
 sequenceDiagram
   participant B as ブラウザ
-  participant D as dashboard
+  participant D as workbench
   participant L as 台帳
   participant V as daemon
   B->>D: /wacz/:id/ の口
@@ -43,7 +43,7 @@ sequenceDiagram
   載せると、認可で閉じた意味が消えます。期限の内なら、URL を持つ者は誰でも読めるからです。
   報告に載る `source` は daemon が query を落とした identity なので、そのまま返してよいものです。
 - **署名は、口を呼ぶたびに取り直す。**
-  取っておくと、dashboard が有効な鍵を持ち続けることになります。
+  取っておくと、workbench が有効な鍵を持ち続けることになります。
 
 ## 検証の報告
 
@@ -62,15 +62,15 @@ sequenceDiagram
 
 **文は 1 つも持たない。**
 message も、日本語も、仕様へのリンクも、daemon が解決して返したものをそのまま出します。
-dashboard が rule を言い換えると、検証器が言い始めたことと静かにずれていくからです。
-dashboard が渡すのは `locale` だけです。
+workbench が rule を言い換えると、検証器が言い始めたことと静かにずれていくからです。
+workbench が渡すのは `locale` だけです。
 
 ### spec profile で見ている
 
-dashboard は profile を渡さないので、daemon は既定の `spec` で検証します。
-撮影のサーバ（BrowserHive）に限った rule は、dashboard には出ません。
+workbench は profile を渡さないので、daemon は既定の `spec` で検証します。
+撮影のサーバ（BrowserHive）に限った rule は、workbench には出ません。
 報告の行に `profile spec` と出るので、どの profile で見たかは画面で分かります。
-BrowserHive の規定で見たいなら、dashboard から profile を渡す口が要ります（いまは無い）。
+BrowserHive の規定で見たいなら、workbench から profile を渡す口が要ります（いまは無い）。
 
 ### daemon は自分では建て直らない
 
@@ -93,7 +93,7 @@ wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力�
   続きがあれば「続きを読む」が出ます。
 - **1 行**: 行を押すと、その行を丸ごと読みます（大きすぎる行は daemon が切り、「4 MiB で切った」と出ます）。
   CDXJ（WARC の索引の形式）と JSONL（1 行に 1 つの JSON）は、daemon が field に割って返します。
-  dashboard は割り方を持ちません。
+  workbench は割り方を持ちません。
   索引の行なら「このレコードを開く」が出ます。
 - **レコードの一覧**: `.warc.gz` を選ぶとこちらです。
   WARC を頭から歩いた 1 件 1 行で、200 件ずつ読み、種別で絞れます。
@@ -103,7 +103,7 @@ wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力�
   一覧の上には、その WARC の warcinfo（WARC が自分自身を説明するレコード）の欄を、書かれた順に出します。
   欄の名前が Dublin Core の語か WARC 1.1 の warcinfo の欄なら、3 列目にそう出て、その定義へリンクします。
   どちらでもない名前（作り手が決めた名前）は空です。
-  見分けるのは wacz-validator で、dashboard は検証の報告の `warcinfo` を描くだけです。
+  見分けるのは wacz-validator で、workbench は検証の報告の `warcinfo` を描くだけです。
 - **1 レコード**: WARC の見出し、HTTP の状態行と見出し、本文です。
   本文は文字か、raster の画像か、大きさだけです。
 
@@ -113,6 +113,6 @@ WACZ の画面の中で entry や行を選んでも、URL を書き換えるだ�
 ## 撮った中身は他人が書いたもの
 
 WACZ の中身は、撮ったページの作者が書いたものです。
-dashboard は、文字を `textContent` で入れ、画像は raster だけを `<img>` で出します。
+workbench は、文字を `textContent` で入れ、画像は raster だけを `<img>` で出します。
 daemon は画像に `nosniff` と `sandbox` を付け、SVG と HTML は 415 で断ります。
-生の HTML を差し込む API は dashboard に無く、`npm run check` が `public/` の JS に `innerHTML` が無いことを見張っています。
+生の HTML を差し込む API は workbench に無く、`npm run check` が `public/` の JS に `innerHTML` が無いことを見張っています。

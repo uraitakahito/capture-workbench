@@ -1,33 +1,33 @@
 ---
 title: クイックスタート
-description: dashboard を起こす（ふだんは capture-ledger の dev:up が起こす）、名乗りに許可を付ける、出た文から直す
+description: capture-workbench を起こす（ふだんは capture-ledger の dev:up が起こす）、名乗りに許可を付ける、出た文から直す
 ---
 
 ## ふだんは dev:up が起こす
 
-dashboard は、単体では何も見せません。
+capture-workbench は、単体では何も見せません。
 読む相手（台帳の API と開発用 issuer）と、検証と WACZ の画面に答える daemon が要ります。
-それをまとめて起こすのが [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録する台帳）の `dev:up` で、dashboard もその一部として起こされます。
+それをまとめて起こすのが [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録する台帳）の `dev:up` で、workbench もその一部として起こされます。
 
 ```sh
 cd ../capture-ledger
-pnpm run dev:up       # 終わると dashboard の URL を出す
+pnpm run dev:up       # 終わると workbench の URL を出す
 open http://127.0.0.1:7080/
 ```
 
-`dev:up` は、この repo が capture-ledger の隣（`../dashboard`）に在るものとして起こします。
-別の場所に置いたなら `pnpm run dev:up --dashboard <path>` です。
+`dev:up` は、この repo が capture-ledger の隣（`../capture-workbench`）に在るものとして起こします。
+別の場所に置いたなら `pnpm run dev:up --workbench <path>` です。
 スタックの起こし方の全体は、capture-ledger の[クイックスタート](https://uraitakahito.github.io/capture-ledger/ja/quickstart/)に在ります。
 
 | したいこと | capture-ledger で打つもの |
 | --- | --- |
-| dashboard だけを起こし直す | `pnpm run dev:up --from dashboard` |
+| workbench だけを起こし直す | `pnpm run dev:up --from workbench` |
 | 何が立っているかを見る | `pnpm run dev:status` |
 | 止める | `pnpm run dev:down`（ホストで動かしたものも止める） |
 
-## dashboard だけを直すとき
+## workbench だけを直すとき
 
-dashboard を直すだけなら、この repo で起こします。
+workbench を直すだけなら、この repo で起こします。
 npm の依存を持たないので、install は要りません。
 
 ```sh
@@ -37,16 +37,16 @@ npm run dev           # http://127.0.0.1:7080/
 台帳の API と issuer は立っている必要があります（`dev:up` が起こしたもので足ります）。
 「検証」と WACZ の画面には daemon も要ります。
 台帳のスタックを起こしたくなければ、[サンドボックス](/development/#サンドボックスで開く)で開けます。
-`npm run sandbox` が、台帳の代役と本物の daemon をコンテナで起こし、dashboard を 7081 で開きます。
+`npm run sandbox` が、台帳の代役と本物の daemon をコンテナで起こし、workbench を 7081 で開きます。
 
 `public/` の変更は、ブラウザを読み直すだけで効きます（サーバは要求のたびにディスクから読みます）。
 `src/` を変えたら起こし直してください。
-`dev:up` が起こした dashboard が 7080 を握っているなら、`npm run dev` はそう言って終わります（下の表）。
-並べて動かすなら、口をずらします（`DASHBOARD_PORT=7081 npm run dev`）。
+`dev:up` が起こした workbench が 7080 を握っているなら、`npm run dev` はそう言って終わります（下の表）。
+並べて動かすなら、口をずらします（`WORKBENCH_PORT=7081 npm run dev`）。
 
 ## 名乗りに許可を付ける
 
-dashboard は、既定ではこの機械のユーザー名で台帳に名乗ります（[設定](/configuration/)の `DASHBOARD_SUBJECT`）。
+workbench は、既定ではこの機械のユーザー名で台帳に名乗ります（[設定](/configuration/)の `WORKBENCH_SUBJECT`）。
 その名前に、組織のクロールの許可が要ります。
 
 ```sh
@@ -57,7 +57,7 @@ pnpm run fga:grant submitter "$(whoami)" acme   # 1 度だけ
 capture-ledger のクイックスタートをたどったなら、そこで済んでいます。
 許可が無いと、画面の上に赤で `not found` と出て、一覧は空のままです。
 台帳は、許可の無い名乗りにクロールの一覧を空で返し、スクリプトには 404 を返します。
-dashboard はその 404 を受けて、一覧を描かずに止まります。
+workbench はその 404 を受けて、一覧を描かずに止まります。
 
 ## 出た文から直す
 
@@ -68,14 +68,14 @@ dashboard はその 404 を受けて、一覧を描かずに止まります。
 | 画面の上（赤） | `… が名乗りを断った (…)。…` | issuer が名乗りを断った。issuer の端末を見る |
 | 画面の上（赤） | `… に届かない (…)。capture-ledger で pnpm run api は動いているか?` | 台帳の API が立っていない。`dev:up` で起こす |
 | 検証の欄・WACZ の画面 | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | daemon が立っていない。言われたとおりに打つ |
-| 名乗りの欄 | `dashboard 自身に届きません` | dashboard のサーバが止まっている。起こし直す |
+| 名乗りの欄 | `workbench 自身に届きません` | workbench のサーバが止まっている。起こし直す |
 | 足元 | `取りに行けませんでした（上の表は最後に描けたもの）` | 理由は画面の上の赤い文。表は最後に描けたものを残している |
 | スクリプト集の画面（赤） | `台帳にスクリプトがありません。…` | 走らせるスクリプトが台帳に無い。赤い文の中のコマンドで取り込む |
 | 新しいクロールの画面の「始める」の下 | `404 —— not found` | 名乗りにクロールを始める許可が無い。上の `fga:grant` |
 | 新しいクロールの画面の「始める」の下 | `404 —— Route POST:/api/crawls not found` | 台帳がクロールの投げ先（Windmill）を知らない。`dev:up` のスタックなら在る |
 | クロールの画面（移る） | 走行中の行に印 | 409。走っているのは全体で 1 本まで。印の付いた行が終わるのを待つ |
-| 端末 | `127.0.0.1:7080 は、既に動いている dashboard です (pid …)。` | 開くだけでよい。起こし直すなら `pnpm run dev:up --from dashboard` |
+| 端末 | `127.0.0.1:7080 は、既に動いている workbench です (pid …)。` | 開くだけでよい。起こし直すなら `pnpm run dev:up --from workbench` |
 | 端末 | `127.0.0.1:7080 は別のものが握っています …` | `pnpm run dev:status` で正体を見て、`pnpm run dev:down` で片付ける |
 
-dashboard は、失敗しても表を消しません。
+workbench は、失敗しても表を消しません。
 空の表は「見えるものが無い」と読めてしまい、「取りに行けない」と区別が付かないからです。

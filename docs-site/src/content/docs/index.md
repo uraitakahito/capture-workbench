@@ -1,9 +1,9 @@
 ---
-title: dashboard
+title: capture-workbench
 description: The web app you open locally while developing Web Capture — one row per crawl. It holds no secrets and no npm dependencies, and only relays the ledger's API
 ---
 
-dashboard is the web app you open locally while developing
+capture-workbench is the web app you open locally while developing
 [Web Capture](https://uraitakahito.github.io/capture-ledger/#web-capture) (the set of repositories
 that captures web pages into archives you can check later). **It shows one crawl as one row.** You
 can also start a new crawl and read the contents of a captured WACZ.
@@ -17,8 +17,8 @@ S3-compatible store Web Capture shares) and opened with
 (Web Archive Collection Zipped) is the archive format that packs the captured pages into a single
 ZIP.
 
-In your head that is one crawl, but it used to be spread over four screens. dashboard assembles
-one picture across those four from the ledger's API. From the same dashboard you can also check
+In your head that is one crawl, but it used to be spread over four screens. The workbench assembles
+one picture across those four from the ledger's API. From the same workbench you can also check
 whether a captured WACZ conforms to the spec, and look inside it. Those answers come from the
 daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that
 checks a WACZ rule by rule).
@@ -27,7 +27,7 @@ checks a WACZ rule by rule).
 
 ```mermaid
 flowchart LR
-  B["Browser"] -->|"screen · /api/* · /wacz/*"| D["dashboard"]
+  B["Browser"] -->|"screen · /api/* · /wacz/*"| D["workbench"]
   D -->|"gets an access token<br/>POST /token"| I["development issuer"]
   D -->|"passes /api/* through"| L["capture-ledger API"]
   D -->|"hands over one signed URL"| V["wacz-validator daemon"]
@@ -36,7 +36,7 @@ flowchart LR
   B -.->|"link to the run"| W["Windmill"]
 ```
 
-The browser only ever talks to dashboard (same origin). dashboard gets an access token from the
+The browser only ever talks to the workbench (same origin). The workbench gets an access token from the
 development issuer and passes `/api/*` straight through to the ledger with it. The only write is
 `POST /api/crawls`, sent the same way when you start a crawl from the form on the crawls view. For
 validating a WACZ and reading its contents, it asks the ledger to sign a URL and hands that URL to
@@ -48,28 +48,28 @@ the daemon, which reads the archive itself. replay and Windmill are only linked 
   development issuer's `POST /token` when needed. `.env` only says who you look as and where to
   look; there is nowhere to put a key or a token.
 - **So it is not a boundary.** The development issuer hands out a token for any name it is asked
-  for. The identity here is a convenience, not a protection, and the dashboard says so in its
+  for. The identity here is a convenience, not a protection, and the workbench says so in its
   header.
-- **It has no npm dependencies.** The dashboard is built from the Node standard library and plain
+- **It has no npm dependencies.** The workbench is built from the Node standard library and plain
   JavaScript that runs as-is in the browser, plus one committed file that colors the scripts
   (`public/vendor/shiki.js`). What has dependencies is the source of this site (`docs-site/`) and
   what that file is built from (`highlighter/`), see [Development](/development/).
-- **It only relays.** None of the dashboard's logic lives on the server. The moment it did, there would be a
+- **It only relays.** None of the workbench's logic lives on the server. The moment it did, there would be a
   copy of what the ledger knows.
 - **It owns no wording.** Validation messages, their Japanese text and the spec sections all come
-  back from the daemon already resolved, and are shown as they are. If the dashboard rephrased them,
+  back from the daemon already resolved, and are shown as they are. If the workbench rephrased them,
   it would quietly drift from what the validator has started to say.
 
 ## Not published
 
-The dashboard binds to `127.0.0.1` only and is served over plain http. Chrome's Private Network
+The workbench binds to `127.0.0.1` only and is served over plain http. Chrome's Private Network
 Access (PNA, which blocks requests from public pages to your local network) stops an https page
-from calling `127.0.0.1`. So there is no way to put **the dashboard** on GitHub Pages. What lives on
+from calling `127.0.0.1`. So there is no way to put **the workbench** on GitHub Pages. What lives on
 Pages is this documentation only.
 
 ## Where to go next
 
-- **[Quickstart](/quickstart/)** — bring the dashboard up, grant your identity access, fix things
+- **[Quickstart](/quickstart/)** — bring the workbench up, grant your identity access, fix things
   from the message you see.
 - **[Screens](/screens/)** — what each view shows, how states are worded, how often it polls.
 - **[Inspecting a WACZ](/wacz/)** — the two steps of validation, the report, the WACZ view.

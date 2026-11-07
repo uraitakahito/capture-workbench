@@ -17,7 +17,7 @@ export const logPath = (crawlId, pageId) =>
 
 /**
  * ページの一覧を、頭から少なくとも `want` 件を覆うまで引く（`read` は口を 1 回引いて答えを返す関数）。
- * **dashboard は自分では続きを取りに行かない** —— `want` は「続きを読む」を押したときだけ増え、0 なら台帳の
+ * **workbench は自分では続きを取りに行かない** —— `want` は「続きを読む」を押したときだけ増え、0 なら台帳の
  * 1 回分だけを引く。引き直し（走行中は 2 秒ごと）でも、押して読んだ所までは覆い直す。空の答えが来たら、
  * そこで終わりにする（進まない `next` で回り続けない）。
  */
@@ -38,7 +38,7 @@ export const moreOf = (list) =>
 
 /**
  * 結末: 台帳の state をそのまま、理由（skip_reason）があれば後ろに。**state は言い分けない** —— 決めるのは
- * 台帳で、増えても dashboard を直さずに済む。
+ * 台帳で、増えても workbench を直さずに済む。
  */
 export const outcomeOf = (page, crawlState) => {
   const said =

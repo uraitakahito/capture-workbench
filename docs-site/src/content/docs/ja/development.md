@@ -5,12 +5,12 @@ description: 依存の線、検査と試験が見るもの・見ないもの、�
 
 ## 依存の線
 
-**dashboard（repo の根）は npm の依存を持ちません。**
+**capture-workbench（repo の根）は npm の依存を持ちません。**
 在るのは node の http サーバ 1 本と、ブラウザで素のまま走る JS だけです。
-framework は通さないので、dashboard のためには install も lockfile も audit も要りません（[capture-scripts](https://github.com/uraitakahito/capture-scripts) と同じ判断）。
+framework は通さないので、workbench のためには install も lockfile も audit も要りません（[capture-scripts](https://github.com/uraitakahito/capture-scripts) と同じ判断）。
 分割したくなるほど育ったら、そのとき入れます。
 **例外は `public/vendor/shiki.js` の 1 ファイルです。**
-スクリプトの色付けを 1 ファイルに束ねて commit した物で（[同梱した色付け](#同梱した色付け)）、dashboard はそれを読むだけなので、install は今も要りません。
+スクリプトの色付けを 1 ファイルに束ねて commit した物で（[同梱した色付け](#同梱した色付け)）、workbench はそれを読むだけなので、install は今も要りません。
 
 依存が在るのは 2 つで、どちらも npm の別 project にしてあります。
 `docs-site/`（このサイトの原稿。Astro + Starlight と、画面の絵を撮る道具）と、`highlighter/`（`public/vendor/shiki.js` を作る元）です。
@@ -19,14 +19,14 @@ lockfile も audit も Dependabot もそこに閉じ、root に `node_modules` �
 | 打つもの | 何をするか |
 | --- | --- |
 | `npm run dev` | 画面（`public/`）を配り、`/api/*` を台帳へ、`/wacz/*` を daemon へ中継する |
-| `npm run check` | push の前に走らせる、dashboard の検査の全部。中身と並びは `package.json` の `check`（CI の `ci.yml` が走らせるのも同じ） |
+| `npm run check` | push の前に走らせる、workbench の検査の全部。中身と並びは `package.json` の `check`（CI の `ci.yml` が走らせるのも同じ） |
 | `npm run site:check` | docs を build し、docs と repo のずれを見る（先に `npm ci --prefix docs-site`） |
 | `npm run vendor` | `highlighter/` の lockfile から `public/vendor/`（束と、束ねた物の license の本文）を作り直す |
 | `npm run vendor:check` | 作り直して、commit した物と 1 バイトでも違えば落ちる（CI の `vendor.yml` が走らせる） |
 
-root の script は `pnpm run` で打っても同じです（[capture-ledger](https://github.com/uraitakahito/capture-ledger) の `dev:up` は、dashboard を `pnpm run dev` で起こします）。
+root の script は `pnpm run` で打っても同じです（[capture-ledger](https://github.com/uraitakahito/capture-ledger) の `dev:up` は、workbench を `pnpm run dev` で起こします）。
 `check` に `site:check` は入れていません。
-`check` が install なしで走ることも、dashboard の性質の一部だからです。
+`check` が install なしで走ることも、workbench の性質の一部だからです。
 
 ## 同梱した色付け
 
@@ -61,8 +61,8 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
 
 ## サンドボックスで開く
 
-台帳のスタックを起こさずに、dashboard を全部の状態で開く手です。
-相手（台帳の代役と、本物の検証の daemon）はコンテナで、dashboard は host で動きます。
+台帳のスタックを起こさずに、workbench を全部の状態で開く手です。
+相手（台帳の代役と、本物の検証の daemon）はコンテナで、workbench は host で動きます。
 
 1. この repo の隣（`../wacz-validator`）に [wacz-validator](https://github.com/uraitakahito/wacz-validator) を置く。
    daemon の image は、その Dockerfile の daemon の段から建てます。
@@ -74,10 +74,10 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
    ```
 
 3. 片付ける。
-   dashboard は Ctrl-C で止まり、コンテナは `npm run sandbox:down` で止まります。
+   workbench は Ctrl-C で止まり、コンテナは `npm run sandbox:down` で止まります。
 
 口は `dev:up` が起こすものとずらしてあるので、並べて動かせます（口は `sandbox/sandbox.env`）。
-dashboard が読む設定は `sandbox/sandbox.env` だけで、あなたの `.env` は読みません。
+workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.env` は読みません。
 コンテナの組み立ては、`docker-compose.yml` の頭に書いてあります。
 
 何を見せるかは、台本（`sandbox/scenario.json`）と標本の WACZ（撮ったページをまとめたアーカイブ。`sandbox/samples/`）が決めます。
@@ -115,7 +115,7 @@ dashboard が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
   本物との突き合わせは、`dev:up` のスタックでします。
 
 headless Chrome の `--dump-dom` で読もうとすると、終わりません。
-dashboard が一覧を引き続けるからです（止めたときには DOM は出ています）。
+workbench が一覧を引き続けるからです（止めたときには DOM は出ています）。
 自動で押すなら puppeteer のような、ページを操作する道具を使います。
 
 ## docs を直す
@@ -134,13 +134,13 @@ npm run site:check          # push の前に
   図はブラウザの側で描くので、構文を間違えても build は通ります。
   図を変えたら `npm run site:dev` で開いて、図が描けていて「Syntax error」が出ていないことを見ます。
   build したものを見るなら `npm run site:build && npm run site:preview` です。
-  preview は裏に回って `http://localhost:4321/dashboard/` で配り続けるので、見終えたら `cd docs-site && npx astro preview stop` で止めます。
+  preview は裏に回って `http://localhost:4321/capture-workbench/` で配り続けるので、見終えたら `cd docs-site && npx astro preview stop` で止めます。
 - **en と ja は同じ PR で直す。**
   対の検査が比べるのはファイル名だけで、中身は見ません。
   逐語訳でなくてよく、同じ事実をそれぞれの言葉で書きます。
 - **本文のリンクは `[x](/page/)` と書く。**
-  base（`/dashboard`）と `/ja` は `docs-site/src/plugins/hast-rebase-links.ts` が付けます。
-  frontmatter の中のリンクだけはそこを通らないので、`/dashboard/…` と書きます。
+  base（`/capture-workbench`）と `/ja` は `docs-site/src/plugins/hast-rebase-links.ts` が付けます。
+  frontmatter の中のリンクだけはそこを通らないので、`/capture-workbench/…` と書きます。
 - **日本語は、句読点の後で改行する。**
   文の途中で改行すると、表示で字の間に空白が出ます。
 - **「名乗り」は、誰として見るかにだけ使う。**
@@ -161,8 +161,8 @@ npm run docs:shots                   # 全部。画素が前と同じ絵は書�
 npm run docs:shots -- start crawls   # 名指した絵だけ
 ```
 
-- **dashboard を変えたら、撮り直してから PR にする。**
-  dashboard（`public/`。束ねた色付けの `public/vendor/` も）、代役（`sandbox/`）、撮る道具のどれかを変えると、`site:check` が「絵の元が、撮ったときと違う」で落ちます。
+- **workbench を変えたら、撮り直してから PR にする。**
+  workbench（`public/`。束ねた色付けの `public/vendor/` も）、代役（`sandbox/`）、撮る道具のどれかを変えると、`site:check` が「絵の元が、撮ったときと違う」で落ちます。
   全部を撮り直すと、`shots.json` の控え（`source`）が今の中身の sha256 になり、絵は画素が変わった物だけが書かれます。
   見た目の変わらない直しなら、変わるのは控えだけです。
   控えを手で写して緑にしないこと —— 絵が古いまま残ります。
@@ -179,9 +179,9 @@ npm run docs:shots -- start crawls   # 名指した絵だけ
   `site:check` は絵そのものの幅を読み、超えた絵で落ちます。
 - **撮る道具は、撮れない絵を撮らずに止まる。**
   撮る前に 3 つを見ます。幅（wide でない絵は `COLUMN` 以内）、切り口（見えている字が、切る矩形の端をまたがない）、番号の丸（切る矩形の中にあり、字に重ならない）。
-  dashboard が自分で隠した字（読む所の長い行や省略）は、切れたと数えません。
+  workbench が自分で隠した字（読む所の長い行や省略）は、切れたと数えません。
   止まったら、`SHOTS` の切り方（`maxWidth`・`maxHeight`・`snap`）か丸の置き場を直すか、代役の台本（`sandbox/scenario.json`）の字を短くします。
-  欄から字がはみ出しているなら、dashboard の不具合です。
+  欄から字がはみ出しているなら、workbench の不具合です。
 - **Chrome の版は決めてある**（`docs-shots.mjs` の `CHROME_BUILD`）。
   無ければ、道具が最初に `~/.cache/puppeteer` へ入れます。
   字の形は OS のフォントでも変わるので、撮るのは macOS です。

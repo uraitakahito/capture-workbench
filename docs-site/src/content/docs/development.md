@@ -1,17 +1,17 @@
 ---
 title: Development
-description: Where the dependencies stop, what the checks and tests see and do not see, opening the dashboard in the sandbox, editing these docs, re-taking the screenshots, releasing
+description: Where the dependencies stop, what the checks and tests see and do not see, opening capture-workbench in the sandbox, editing these docs, re-taking the screenshots, releasing
 ---
 
 ## Where the dependencies stop
 
-**The dashboard (the repository root) has no npm dependencies.** It is one Node http server and
-JavaScript that runs as-is in the browser. Nothing goes through a framework, so the dashboard needs
+**capture-workbench (the repository root) has no npm dependencies.** It is one Node http server and
+JavaScript that runs as-is in the browser. Nothing goes through a framework, so the workbench needs
 no install, no lockfile and no audit (the same call as
 [capture-scripts](https://github.com/uraitakahito/capture-scripts)). If it grows enough to want
 splitting up, that is the time to add them. **The one exception is `public/vendor/shiki.js`,** the
 coloring of the script collection view, bundled into a single file and committed (see
-[The bundled coloring](#the-bundled-coloring)). The dashboard only reads it, so it still needs no
+[The bundled coloring](#the-bundled-coloring)). The workbench only reads it, so it still needs no
 install.
 
 Two things have dependencies, each kept as a separate npm project: `docs-site/` (the source of
@@ -22,14 +22,14 @@ root.
 | Run | What it does |
 | --- | --- |
 | `npm run dev` | serves `public/`, relaying `/api/*` to the ledger and `/wacz/*` to the daemon |
-| `npm run check` | every check for the dashboard to run before pushing; what it runs, and in which order, is `check` in `package.json` (the same thing CI's `ci.yml` runs) |
+| `npm run check` | every check for the workbench to run before pushing; what it runs, and in which order, is `check` in `package.json` (the same thing CI's `ci.yml` runs) |
 | `npm run site:check` | builds the docs and checks that they match the repository (after `npm ci --prefix docs-site`) |
 | `npm run vendor` | rebuilds `public/vendor/` (the bundle and the license texts of what it bundles) from the lockfile in `highlighter/` |
 | `npm run vendor:check` | rebuilds, and fails if a single byte differs from what is committed (CI's `vendor.yml` runs it) |
 
 The root scripts work the same with `pnpm run` (the `dev:up` of
-[capture-ledger](https://github.com/uraitakahito/capture-ledger) starts the dashboard with `pnpm run dev`). `site:check` is deliberately not part of `check`: that `check` runs without
-installing anything is part of the dashboard's nature too.
+[capture-ledger](https://github.com/uraitakahito/capture-ledger) starts the workbench with `pnpm run dev`). `site:check` is deliberately not part of `check`: that `check` runs without
+installing anything is part of the workbench's nature too.
 
 ## The bundled coloring
 
@@ -67,10 +67,10 @@ same files the browser reads, so there is no copy to rot.
 **Relaying and identity are not checked in CI.** They cannot be confirmed without the ledger and
 the issuer running, so the evidence is gathered by hand and pasted into the PR.
 
-## Opening the dashboard in the sandbox
+## Opening the workbench in the sandbox
 
-A way to open the dashboard in every state without starting the ledger's stack. The other side (a
-stand-in for the ledger, and the real validation daemon) runs in containers, and the dashboard runs
+A way to open the workbench in every state without starting the ledger's stack. The other side (a
+stand-in for the ledger, and the real validation daemon) runs in containers, and the workbench runs
 on the host.
 
 1. Put [wacz-validator](https://github.com/uraitakahito/wacz-validator) next to this repository
@@ -82,10 +82,10 @@ on the host.
    open http://127.0.0.1:7081/
    ```
 
-3. Clean up. Ctrl-C stops the dashboard, and `npm run sandbox:down` stops the containers.
+3. Clean up. Ctrl-C stops the workbench, and `npm run sandbox:down` stops the containers.
 
 Its ports are moved away from the ones `dev:up` uses, so both can run side by side (the ports are
-in `sandbox/sandbox.env`). The dashboard reads only `sandbox/sandbox.env`, never your `.env`. How the
+in `sandbox/sandbox.env`). The workbench reads only `sandbox/sandbox.env`, never your `.env`. How the
 containers fit together is written at the top of `docker-compose.yml`.
 
 What it shows is decided by the scenario (`sandbox/scenario.json`) and the sample WACZ files (the
@@ -123,7 +123,7 @@ There are things the stand-in does not do:
   field, the stand-in does not follow (`test/sandbox.test.mjs` pins the copied set of fields).
   Checking against the real thing happens on the `dev:up` stack.
 
-Reading it with headless Chrome's `--dump-dom` never finishes, because the dashboard keeps fetching
+Reading it with headless Chrome's `--dump-dom` never finishes, because the workbench keeps fetching
 its lists (the DOM is there by the time you stop it). To press buttons automatically, use a tool
 that drives the page, such as puppeteer.
 
@@ -143,14 +143,14 @@ npm run site:check          # before pushing
   still builds. After changing a diagram, open it with `npm run site:dev` and make sure it is
   drawn and no "Syntax error" appears. To look at the built site, run
   `npm run site:build && npm run site:preview`. The preview moves itself to the background and
-  keeps serving `http://localhost:4321/dashboard/`, so stop it with
+  keeps serving `http://localhost:4321/capture-workbench/`, so stop it with
   `cd docs-site && npx astro preview stop` when you are done.
 - **Change English and Japanese in the same PR.** The pairing check only compares file names, not
   contents. It does not need to be a literal translation: write the same facts in each language's
   own words.
-- **Write links in the body as `[x](/page/)`.** The base (`/dashboard`) and `/ja` are added by
+- **Write links in the body as `[x](/page/)`.** The base (`/capture-workbench`) and `/ja` are added by
   `docs-site/src/plugins/hast-rebase-links.ts`. Links in the frontmatter do not go through it, so
-  write those as `/dashboard/…`.
+  write those as `/capture-workbench/…`.
 - **In Japanese, break lines after punctuation.** A line break in the middle of a sentence shows
   up as a space between characters.
 - **In the Japanese pages, 名乗り means only who you look as.** What the issuer returns is an access
@@ -160,7 +160,7 @@ npm run site:check          # before pushing
 ## Re-taking the screenshots
 
 The pictures on the [Screens](/screens/) page are taken by `npm run docs:shots`
-(`docs-site/scripts/docs-shots.mjs`) against the [sandbox](#opening-the-dashboard-in-the-sandbox). No
+(`docs-site/scripts/docs-shots.mjs`) against the [sandbox](#opening-the-workbench-in-the-sandbox). No
 picture is taken by hand. CI does not take them (that needs the stand-in's containers): they are
 taken locally, and CI watches what was taken.
 
@@ -171,7 +171,7 @@ npm run docs:shots                   # all of them; a picture whose pixels did n
 npm run docs:shots -- start crawls   # only the named ones
 ```
 
-- **After changing the dashboard, re-take the pictures before opening the PR.** Changing the dashboard
+- **After changing the workbench, re-take the pictures before opening the PR.** Changing the workbench
   (`public/`, the bundled coloring in `public/vendor/` included), the stand-in (`sandbox/`) or the
   tool makes `site:check` fail with 絵の元が、撮ったときと違う (the sources of the pictures differ from when the
   pictures were taken). Re-taking all of them sets the stamp in `shots.json` (`source`) to the
@@ -192,11 +192,11 @@ npm run docs:shots -- start crawls   # only the named ones
   itself and fails on one that is too wide.
 - **The tool stops rather than take a picture it should not.** Before taking one, it checks three
   things: the width (within `COLUMN` unless wide), the crop's edges (no visible text crosses them),
-  and the number marks (inside the crop, on top of no text). Text the dashboard hides itself (long
+  and the number marks (inside the crop, on top of no text). Text the workbench hides itself (long
   lines in the reading pane, an ellipsis) does not count as cut. When it stops, fix how `SHOTS`
   crops (`maxWidth`, `maxHeight`, `snap`) or where a mark goes, or shorten the text in the
   stand-in's scenario (`sandbox/scenario.json`). Text spilling out of its own box is a bug in the
-  dashboard.
+  workbench.
 - **Chrome's version is pinned** (`CHROME_BUILD` in `docs-shots.mjs`). If it is missing, the tool
   first installs it into `~/.cache/puppeteer`. Glyphs also depend on the OS's fonts, so the
   pictures are taken on macOS.

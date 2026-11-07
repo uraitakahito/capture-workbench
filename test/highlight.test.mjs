@@ -48,7 +48,7 @@ test("行の数は読む所と同じ（Shiki が最後の改行の後ろに返�
   }
 });
 
-test("スクリプトで使うどの色も、dashboard の地に対して 4.5:1 以上（明暗とも）", () => {
+test("スクリプトで使うどの色も、workbench の地に対して 4.5:1 以上（明暗とも）", () => {
   assert.ok(lightGround !== undefined && darkGround !== undefined, "app.css の --ground を 2 つ読めない");
   for (const source of catalog) {
     for (const line of paint(highlighter, source)) {

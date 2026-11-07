@@ -24,12 +24,12 @@ import {
 const ROOT = resolve("/tmp/public");
 
 test("空文字は「無い」と同じ —— 既定値に落ちる", () => {
-  process.env.DASHBOARD_TEST_PROBE = "";
-  assert.equal(optional("DASHBOARD_TEST_PROBE", "既定"), "既定");
-  process.env.DASHBOARD_TEST_PROBE = "値";
-  assert.equal(optional("DASHBOARD_TEST_PROBE", "既定"), "値");
-  delete process.env.DASHBOARD_TEST_PROBE;
-  assert.equal(optional("DASHBOARD_TEST_PROBE", "既定"), "既定");
+  process.env.WORKBENCH_TEST_PROBE = "";
+  assert.equal(optional("WORKBENCH_TEST_PROBE", "既定"), "既定");
+  process.env.WORKBENCH_TEST_PROBE = "値";
+  assert.equal(optional("WORKBENCH_TEST_PROBE", "既定"), "値");
+  delete process.env.WORKBENCH_TEST_PROBE;
+  assert.equal(optional("WORKBENCH_TEST_PROBE", "既定"), "既定");
 });
 
 test("ディレクトリの要求は index.html になる", () => {
@@ -64,7 +64,7 @@ test("知らない拡張子は配らない —— 拡張子が無いものも", 
   assert.equal(contentType("/x/Makefile"), undefined);
 });
 
-test("Host は dashboard の口だけを通す（127.0.0.1 と localhost）", () => {
+test("Host は workbench の口だけを通す（127.0.0.1 と localhost）", () => {
   assert.equal(hostAllowed("127.0.0.1:7080", 7080), true);
   assert.equal(hostAllowed("localhost:7080", 7080), true);
   // DNS rebinding: よその名前が 127.0.0.1 を指していても、Host には名前のほうが載る
@@ -74,14 +74,14 @@ test("Host は dashboard の口だけを通す（127.0.0.1 と localhost）", ()
   assert.equal(hostAllowed(undefined, 7080), false);
 });
 
-/** dashboard のページが fetch で送る要求の頭（同じオリジン・JSON）。 */
+/** workbench のページが fetch で送る要求の頭（同じオリジン・JSON）。 */
 const fromThisPage = {
   host: "127.0.0.1:7080",
   origin: "http://127.0.0.1:7080",
   "content-type": "application/json",
 };
 
-test("書く口は、dashboard のページからの JSON を通す", () => {
+test("書く口は、workbench のページからの JSON を通す", () => {
   assert.equal(writeRefusal(fromThisPage, 7080), undefined);
   assert.equal(writeRefusal({ ...fromThisPage, "content-type": "application/json; charset=utf-8" }, 7080), undefined);
   assert.equal(
@@ -92,7 +92,7 @@ test("書く口は、dashboard のページからの JSON を通す", () => {
 
 test("書く口は、ほかのオリジン・Origin の無い要求・JSON でない本文を断る", () => {
   assert.equal(writeRefusal({ ...fromThisPage, origin: "https://evil.test" }, 7080)?.status, 403);
-  // curl や別の道具は Origin を付けない。書く口は dashboard のページのためだけに在る
+  // curl や別の道具は Origin を付けない。書く口は workbench のページのためだけに在る
   assert.equal(writeRefusal({ host: fromThisPage.host, "content-type": "application/json" }, 7080)?.status, 403);
   // 同じ 127.0.0.1 でも、口が違えば別のオリジン
   assert.equal(writeRefusal({ ...fromThisPage, origin: "http://127.0.0.1:7081" }, 7080)?.status, 403);
@@ -145,6 +145,6 @@ test("書く口の本文は、上限ちょうどまで受け、1 バイト超え
 });
 
 test("書く口の上限は、台帳の POST /api/crawls と同じ 1 MiB", () => {
-  // 片方だけを変えると、dashboard が通すのに台帳が 413 になる（capture-ledger の CRAWL_BODY_LIMIT）
+  // 片方だけを変えると、workbench が通すのに台帳が 413 になる（capture-ledger の CRAWL_BODY_LIMIT）
   assert.equal(WRITE_LIMIT, 1024 * 1024);
 });

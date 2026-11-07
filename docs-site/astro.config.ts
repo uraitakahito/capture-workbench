@@ -4,7 +4,7 @@ import mermaid from "astro-mermaid";
 import { satteri } from "@astrojs/markdown-satteri";
 import hastRebaseLinks from "./src/plugins/hast-rebase-links";
 
-const BASE = "/dashboard";
+const BASE = "/capture-workbench";
 
 export default defineConfig({
   // user page の origin ＋ repo 名の base。actions/configure-pages は使わない (注入する物が無い)。
@@ -19,7 +19,7 @@ export default defineConfig({
     // 通るので、図を変えたらブラウザで見る
     mermaid({ theme: "neutral" }),
     starlight({
-      title: "dashboard Docs",
+      title: "capture-workbench Docs",
       // 表の中の code (口・環境変数の名前) を折り返さない
       customCss: ["./src/styles/tables.css", "./src/styles/screens.css"],
       // 英語が根 (接頭辞無し)、日本語は /ja/ の下。Web Capture の他の repo と同じ形
@@ -32,7 +32,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/uraitakahito/dashboard",
+          href: "https://github.com/uraitakahito/capture-workbench",
         },
       ],
       // Starlight はページを訳すがナビは訳さない。translations が無いと

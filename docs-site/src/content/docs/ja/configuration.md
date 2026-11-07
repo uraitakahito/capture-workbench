@@ -22,27 +22,27 @@ capture-ledger は、OpenFGA（認可のサービス）の id のように「走
 
 | 名前 | 既定値 | 何を決めるか |
 | --- | --- | --- |
-| `DASHBOARD_PORT` | `7080` | dashboard の待受。loopback（`127.0.0.1`）にだけ bind する |
-| `DASHBOARD_LEDGER_URL` | `http://127.0.0.1:7070` | 台帳の API |
-| `DASHBOARD_ISSUER_URL` | `http://127.0.0.1:9099` | 開発用 issuer。capture-ledger の `pnpm run oidc:issuer` が立てるもの |
-| `DASHBOARD_SUBJECT` | この機械のユーザー名 | 誰として見るか。この名前に許可が要る（[クイックスタート](/quickstart/)） |
-| `DASHBOARD_ORGANIZATIONS` | `acme` | 名乗る組織（カンマ区切り） |
-| `DASHBOARD_REPLAY_URL` | `http://127.0.0.1:8899` | 「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
-| `DASHBOARD_WINDMILL_URL` | `http://127.0.0.1:8000` | クロールの行の「run ↗」の行き先 |
-| `DASHBOARD_WINDMILL_WORKSPACE` | `crawler` | 「run ↗」が開く Windmill の workspace |
-| `DASHBOARD_VALIDATOR_URL` | `http://127.0.0.1:7180` | 検証と WACZ の画面に答える [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon |
+| `WORKBENCH_PORT` | `7080` | capture-workbench の待受。loopback（`127.0.0.1`）にだけ bind する |
+| `WORKBENCH_LEDGER_URL` | `http://127.0.0.1:7070` | 台帳の API |
+| `WORKBENCH_ISSUER_URL` | `http://127.0.0.1:9099` | 開発用 issuer。capture-ledger の `pnpm run oidc:issuer` が立てるもの |
+| `WORKBENCH_SUBJECT` | この機械のユーザー名 | 誰として見るか。この名前に許可が要る（[クイックスタート](/quickstart/)） |
+| `WORKBENCH_ORGANIZATIONS` | `acme` | 名乗る組織（カンマ区切り） |
+| `WORKBENCH_REPLAY_URL` | `http://127.0.0.1:8899` | 「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
+| `WORKBENCH_WINDMILL_URL` | `http://127.0.0.1:8000` | クロールの行の「run ↗」の行き先 |
+| `WORKBENCH_WINDMILL_WORKSPACE` | `crawler` | 「run ↗」が開く Windmill の workspace |
+| `WORKBENCH_VALIDATOR_URL` | `http://127.0.0.1:7180` | 検証と WACZ の画面に答える [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon |
 
 この表は、`src/server.mjs` と `.env.example` と突き合わされます（`npm run site:check`）。
 変数を足すときは、3 か所とも直します。
 
 ### 名乗りは便利さで、守りではない
 
-dashboard は `DASHBOARD_SUBJECT` と `DASHBOARD_ORGANIZATIONS` の名前で、開発用 issuer の `POST /token` からアクセストークンを取得します。
+workbench は `WORKBENCH_SUBJECT` と `WORKBENCH_ORGANIZATIONS` の名前で、開発用 issuer の `POST /token` からアクセストークンを取得します。
 開発用 issuer は、頼まれれば誰の名前でも出します。
 ここで名前を変えれば、その名前として見えるものが見えます。
-だから dashboard は境界ではなく、loopback の外に出しません。
+だから workbench は境界ではなく、loopback の外に出しません。
 
-### 行き先は、dashboard が組み立てない
+### 行き先は、workbench が組み立てない
 
 replay と Windmill の行き先は、配備の事実です。
 台帳が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[中継の口](/routes/)）。
@@ -61,7 +61,7 @@ replay は合本の WACZ とページの一覧を、自分と同じ origin の p
 
 - 同じ名前が両方に在れば、後から読む `.env.local` が勝ちます。
 - 端末で渡した変数は、どちらのファイルよりも勝ちます。
-  `DASHBOARD_PORT=7081 npm run dev` のように、その場だけ変えられます。
+  `WORKBENCH_PORT=7081 npm run dev` のように、その場だけ変えられます。
 
 ## 空は「無い」と同じ
 

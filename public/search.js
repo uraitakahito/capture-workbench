@@ -75,7 +75,7 @@ export const hitReplayHref = (origin, hit) => {
  */
 export const searchFailure = (status, body) => {
   const said = body?.message ?? body?.error ?? "答えに文がありません";
-  if (status === 0) return `dashboard 自身に届きません（${said}）`;
+  if (status === 0) return `workbench 自身に届きません（${said}）`;
   if (status === 503) {
     return `台帳の全文検索が答えません（OpenSearch。台帳の CAPTURE_LEDGER_OPENSEARCH_URL の先）: ${said}`;
   }

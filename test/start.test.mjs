@@ -70,7 +70,7 @@ test("URL は検査しない —— 読めない URL も、そのまま台帳へ
   assert.deepEqual(startBody("ftp://site.test/\nnot a url", null).seeds, ["ftp://site.test/", "not a url"]);
 });
 
-test("空の欄は、空の seeds になる（dashboard はこれを送らない）", () => {
+test("空の欄は、空の seeds になる（workbench はこれを送らない）", () => {
   assert.deepEqual(startBody(" \n \n", null).seeds, []);
 });
 
@@ -111,8 +111,8 @@ test("Fastify の答えは message を拾う —— error には \"Not Found\" �
   assert.equal(noRoute.text, "404 —— Route POST:/api/crawls not found");
 });
 
-test("dashboard のサーバに届かなければ、そう言う", () => {
-  assert.equal(startAnswer(0, { error: "Failed to fetch" }).text, "dashboard 自身に届きません（Failed to fetch）");
+test("workbench のサーバに届かなければ、そう言う", () => {
+  assert.equal(startAnswer(0, { error: "Failed to fetch" }).text, "workbench 自身に届きません（Failed to fetch）");
 });
 
 /**
@@ -418,7 +418,7 @@ test("宣言の答えは、欄の宣言と、欄が出ない理由の 1 行に�
     "宣言を確かめられません（404 —— Route POST:/api/scripts/check not found）",
   );
   assert.deepEqual(inlineDeclared(200, {}), { params: [], note: "宣言を確かめられません（200 —— 答えに文がありません）" });
-  assert.deepEqual(inlineDeclared(0, { error: "fetch failed" }), { params: [], note: "dashboard 自身に届きません（fetch failed）" });
+  assert.deepEqual(inlineDeclared(0, { error: "fetch failed" }), { params: [], note: "workbench 自身に届きません（fetch failed）" });
 });
 
 /** `askWhenSettled` を偽の答えで組む。`release()` で走行中の 1 本に答える。 */
