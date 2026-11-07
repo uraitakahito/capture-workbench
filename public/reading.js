@@ -6,7 +6,7 @@
  * node では fs の根になる）。読み込んだときに DOM に触らない。
  *
  * 読む物は 2 種類: スクリプトの 1 版（`GET /api/scripts/:id/versions/:version`）と、受け皿 `__bh` の型
- * （`GET /api/host-types`）。どちらも書いたままの TypeScript で、走った JS（アーカイブの
+ * （`GET /api/host-types`）。どちらも JS にする前の TypeScript で、走った JS（アーカイブの
  * `behaviors/custom.jsonl`）とは行が合わない。
  */
 

@@ -525,7 +525,7 @@ test("版の一覧は新しい順で、どの版にも source が無い。知ら
   assert.deepEqual(versionsOf(versions, "nope"), { status: 404, body: { error: "not found" } });
 });
 
-test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.11.1）", () => {
+test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.12.0）", () => {
   const fetch1 = versionOf(versions, "autofetch", "1");
   assert.equal(fetch1.status, 200);
   assert.equal(fetch1.body.sha256.slice(0, 12), "f24100fd1c9b");
@@ -536,10 +536,11 @@ test("1 版は source を持ち、sha256 と bytes は source から数える（
   assert.match(scroll1.source.split("\n")[32], /remainingMs < stepDelayMs \+ settleMs/);
   // v0.7.0 から report は id を取らない（写しが古いままなら、ここで分かる）
   assert.match(scroll1.source.split("\n")[47], /globalThis\.__bh\.report\(\{$/);
-  // egov-law-search は v0.7.0 で途中の様子を log に書く形になり、v0.11.0 で必須の変数 query を defineParams で読む形になった
+  // egov-law-search は v0.7.0 で途中の様子を log に書く形になり、v0.11.0 で必須の変数 query を defineParams で読む形になった。
+  // v0.12.0 から台帳が読むのは generated/ の物で、見分けの行に sites が書き込まれている
   const egov1 = versionOf(versions, "egov-law-search", "1").body;
-  assert.equal(egov1.sha256.slice(0, 12), "2d3687e8ba3f");
-  assert.equal(egov1.bytes, 3406);
+  assert.equal(egov1.sha256.slice(0, 12), "09fddfea0306");
+  assert.equal(egov1.bytes, 3376);
   assert.match(egov1.source.split("\n")[17], /const \{ query \} = defineParams\($/);
   assert.match(egov1.source.split("\n")[45], /__bh\.log\.warn\("検索窓が無い"/);
   assert.deepEqual(versionOf(versions, "autoscroll", "2").body.options, { maxSteps: 60 });
@@ -553,7 +554,7 @@ test("受け皿の型は台本の file の中身。台本に無ければ 404（�
   assert.equal(types.status, 200);
   assert.equal(types.body.version, 1);
   assert.equal(types.body.bytes, Buffer.byteLength(types.body.source, "utf8"));
-  // 写しは capture-scripts v0.11.1（log が在り、report は data だけを取る。変数は defineParams で読み、__bh.vars は型に無い）
+  // 写しは capture-scripts v0.12.0（log が在り、report は data だけを取る。変数は defineParams で読み、__bh.vars は型に無い）
   assert.equal(types.body.sha256.slice(0, 12), "5a69495ec243");
   assert.equal(types.body.bytes, 3575);
   assert.match(types.body.source, /warn\(message: string, data\?: object\): void;/);
