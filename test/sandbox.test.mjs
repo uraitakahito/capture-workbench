@@ -212,8 +212,9 @@ test("runsSeconds を過ぎると完走になり、次を受ける", () => {
 test("読めない起点・空の起点・seeds の無い body は、台帳と同じ文で 400", () => {
   const rows = [];
   const say = (body) => submitCrawl(rows, body, NOW, RUNS, versions);
-  assert.deepEqual(say({}), { status: 400, body: { error: "provide exactly one of seeds or fromTargets" } });
-  assert.deepEqual(say({ seeds: [] }), { status: 400, body: { error: "seeds must not be empty" } });
+  assert.deepEqual(say({}), { status: 400, body: { error: "seeds is required" } });
+  assert.equal(say({ seeds: [] }).body.message, "body/seeds must NOT have fewer than 1 items");
+  assert.equal(say({ fromTargets: {} }).status, 400);
   for (const seed of ["ftp://site.test/", "not a url", "site.test"]) {
     assert.deepEqual(say({ seeds: ["https://site.test/", seed] }), {
       status: 400,
