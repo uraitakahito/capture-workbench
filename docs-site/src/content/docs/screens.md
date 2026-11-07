@@ -459,7 +459,7 @@ next to one opens it in the right column.
 
 ![The list on the left of the script collection view: autoscroll (open) runs by default, the site script egov-law-search with its chip laws.e-gov.go.jp, autofetch under 既定では走らない, and host.d.ts under 書くための型](../../assets/screens/scripts.webp)
 
-On the right is the TypeScript as it was written, with line numbers.
+On the right is the TypeScript the ledger keeps, before it becomes JavaScript, with line numbers.
 
 ![The right of the script collection view: autoscroll v2 with its version chips, the line with its size and sha256, 写す and 下敷きにする, and the coloured source](../../assets/screens/script-read.webp)
 
