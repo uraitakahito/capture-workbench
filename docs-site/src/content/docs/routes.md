@@ -1,16 +1,16 @@
 ---
 title: Routes
-description: What the dashboard's server answers — /healthz, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
+description: What capture-workbench's server answers — /healthz, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
 ---
 
-The dashboard's server only relays. The dashboard's logic lives in the browser (`public/`); all the
-server does is provide a way to the ledger and the daemon, and serve the dashboard's files. The
+capture-workbench's server only relays. The workbench's logic lives in the browser (`public/`); all the
+server does is provide a way to the ledger and the daemon, and serve the workbench's files. The
 moment logic lived on the server, there would be a copy of what the ledger knows, so it does
 not.
 
 | Route | Answered by |
 | --- | --- |
-| `GET /healthz` | the server itself (liveness, and the settings the dashboard needs) |
+| `GET /healthz` | the server itself (liveness, and the settings the workbench needs) |
 | `POST /api/crawls` | the ledger (writes: starts a crawl) |
 | `POST /api/crawls/:id/inline/:name/fix` | the ledger (writes: asks how to fix an inline script's type errors) |
 | `POST /api/scripts/check` | the ledger (asks what an inline script declares; writes nothing, and goes through the same checks because the source travels in the body) |
@@ -22,12 +22,12 @@ The routing is in `src/server.mjs`; parsing and rewriting the `/wacz/` routes is
 `src/wacz.mjs`.
 
 Every route refuses with a 403 unless the request's `Host` is `127.0.0.1:<port>` or
-`localhost:<port>`. That stops a page from another site from reading the dashboard as if it were
+`localhost:<port>`. That stops a page from another site from reading the workbench as if it were
 its own origin, by pointing its domain name at 127.0.0.1 (DNS rebinding).
 
 ## /healthz
 
-Returns liveness and the settings the dashboard needs.
+Returns liveness and the settings the workbench needs.
 
 ```json
 {
@@ -41,7 +41,7 @@ Returns liveness and the settings the dashboard needs.
 }
 ```
 
-The dashboard reads it when it opens, to learn who it is looking as and where the deep links go.
+The workbench reads it when it opens, to learn who it is looking as and where the deep links go.
 `writeLimit` is the largest body, in bytes, the route that writes accepts; the new crawl view stops
 before sending a bigger one.
 It does not live under `/api/`: that is where the ledger is passed through, and mixing this
@@ -62,7 +62,7 @@ cannot call it directly, the server relays it to make it same-origin.
   A 401 says both "expired" and "the keys changed" in the same way.
 - The ledger's status, `content-type` and body are returned as they are.
 
-Which ledger routes are read is decided by the dashboard (`public/app.js`); the server does not
+Which ledger routes are read is decided by the workbench (`public/app.js`); the server does not
 choose. It keeps no list of allowed routes. So the ledger's `GET /api/crawl-rules/check` (the new
 crawl view checking its rules as you write them), `GET /api/crawls/:id/decisions` (what an
 opened crawl's rules decided), `GET /api/crawls/:id/pages` (an opened crawl's pages table) and
@@ -73,16 +73,16 @@ since the relay returns only the status, `content-type` and body, and drops the 
 
 ## POST /api/crawls — the route that starts a crawl
 
-This is one of the routes of the dashboard's server that write. The form on the crawls view
+This is one of the routes of the workbench's server that write. The form on the crawls view
 ([Screens](/screens/)) uses it. The server does not check the contents: it hands the body that
 passed the checks below to the ledger's `POST /api/crawls` as it is, and returns the answer as
 it is. The ledger is the one that checks and decides the seed URLs, the policy (depth, page
 limit, which scripts run), the `userAgent` and the per-crawl variables (`variables`: the spelling and number of the
 names, the length and shape of the values, and whether a script that runs declared each name). Whether a
-declared secret exists in Windmill is also the ledger's check; the dashboard never touches a
+declared secret exists in Windmill is also the ledger's check; the workbench never touches a
 secret's value (it lives in a Windmill variable, and is neither in the form nor in the body).
 
-- **Only JSON from the dashboard's own page gets through.** If the `Origin` is not the dashboard it
+- **Only JSON from the workbench's own page gets through.** If the `Origin` is not the workbench it
   is a 403, if the `content-type` is not JSON it is a 415, and a body over 1 MiB (seed URLs and any
   script written in the form, together; the same limit as the ledger's `POST /api/crawls`) is a 413. This
   stops a page from another site from making your browser send the POST (CSRF). It does not
@@ -104,7 +104,7 @@ The checks are `writeRefusal` in `src/lib.mjs`, which the tests call directly.
 The new crawl view calls this once the box has stopped changing for 800 ms, with one request at a
 time, and draws a field for each variable declared by `defineParams` ([Screens](/screens/)). The body
 is `{ source, phase }`. The ledger creates no row: it asks ts-compile-service and returns
-`{ params, diagnostics }`. The dashboard's server passes the body and the answer through.
+`{ params, diagnostics }`. The workbench's server passes the body and the answer through.
 
 - It writes nothing, but it goes through the same checks as `POST /api/crawls` (`Origin`, JSON, 1 MiB) and
   gets the same token: the source travels in the body, and a page from another site must not be able to put
@@ -122,7 +122,7 @@ is `{ source, phase }`. The ledger creates no row: it asks ts-compile-service an
 This is also a route that writes. 直し方を訊く (ask for a fix), on an opened crawl that failed the type
 check, uses it for an inline script with type errors ([Screens](/screens/)). The body is `{}`. The ledger asks
 Claude, and returns **only a fix that passes the same type check** the crawl failed, with the reasons,
-the replaced lines, the rounds and the cost; the dashboard only draws the answer.
+the replaced lines, the rounds and the cost; the workbench only draws the answer.
 
 - The same checks as `POST /api/crawls` (`Origin`, JSON, 1 MiB), and the same token.
 - **Only this exact shape is relayed:** the id is hex digits and hyphens, the name lowercase letters,
@@ -145,7 +145,7 @@ These routes validate a WACZ (the archive format that packs captured pages into 
 read inside it. The WARC files in it (which record the captured requests and responses in order)
 and its indexes are read one window at a time.
 
-| The dashboard calls | Sent to the daemon | Returns |
+| The workbench calls | Sent to the daemon | Returns |
 | --- | --- | --- |
 | `POST /wacz/:id/validate` | `POST /validate` | the validation report |
 | `GET /wacz/:id/lines?path=&from=&count=` | `POST /lines` | a window of lines |
@@ -160,8 +160,8 @@ change `OPS`, `paramsFor` and this table.
 - **Every route takes the same two steps.** Get a signature from the ledger's
   `POST /api/archives/:id/url`, then hand that URL to the daemon (why in that order is in
   [Inspecting a WACZ](/wacz/)).
-- **The dashboard calls GET; the daemon gets POST.** `<img src>` is a GET too, so the image itself
-  can be fetched with a GET. Only validation is a POST from the dashboard as well (it runs only when
+- **The workbench calls GET; the daemon gets POST.** `<img src>` is a GET too, so the image itself
+  can be fetched with a GET. Only validation is a POST from the workbench as well (it runs only when
   you press it).
 - The body sent to the daemon is `{ "source": { "kind": "uri", "uri": "<signed URL>" }, …arguments }`.
   Validation's only argument is `locale`.
@@ -170,7 +170,7 @@ change `OPS`, `paramsFor` and this table.
 
 Which headers of the upstream answer (the ledger's or the daemon's) pass through is an
 allowlist, `PASS_HEADERS` in `src/server.mjs`. The daemon's `date` and `connection` are not mixed
-into the dashboard's response. The image itself passes as bytes, together with the marks the daemon
+into the workbench's response. The image itself passes as bytes, together with the marks the daemon
 put on it (`nosniff`, `sandbox`, `no-store`).
 
 ## What failures look like
@@ -180,7 +180,7 @@ A failure says what is missing. "You may not see it" and "it is not running" are
 | Status | When | Body |
 | --- | --- | --- |
 | 400 | an argument of a `/wacz/` route is missing or not a number; the ledger is not asked | `{"error":"from is required"}` |
-| 403 | the `Host` is not the dashboard's (any route); on the route that writes, also when the `Origin` is not the dashboard | `{"error":"dashboard の Host ではない"}` and so on |
+| 403 | the `Host` is not the workbench's (any route); on the route that writes, also when the `Origin` is not the workbench | `{"error":"workbench の Host ではない"}` and so on |
 | 405 | wrong method: on a `/wacz/` route (validation is POST, the rest GET), or on `/api/*` (GET only, except the route that writes) | `POST だけ`, `GET だけ` and so on, with an `Allow` header |
 | 413 | the body sent to the route that writes is over 1 MiB | `{"error":"本文が 1048576 バイトを超えた"}` |
 | 415 | the `content-type` sent to the route that writes is not JSON | `{"error":"JSON だけを受ける"}` |

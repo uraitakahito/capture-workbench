@@ -4,7 +4,7 @@
  * 撮り直しても緑にならない（または、古いのに緑になる）。
  *
  *   - `COLUMN`: 読ませる絵の幅の上限
- *   - `shotsSource`: 絵が古くなったか。絵の中身を決めるファイル（dashboard の `public/`・代役の `sandbox/`・
+ *   - `shotsSource`: 絵が古くなったか。絵の中身を決めるファイル（workbench の `public/`・代役の `sandbox/`・
  *     撮る道具）の、git が追跡する物だけを path の順に読む（作業中の、追跡していないファイルは数えない）
  */
 import { execFileSync } from "node:child_process";

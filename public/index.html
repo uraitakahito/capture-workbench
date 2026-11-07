@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Web Capture — dashboard</title>
+    <title>Web Capture — workbench</title>
     <link rel="stylesheet" href="/app.css" />
   </head>
   <body>
@@ -74,7 +74,7 @@
             </fieldset>
             <!--
               クロールごとの値。チェックしたスクリプトが宣言した変数（capture-scripts の catalog.json の params）と、その場の TS が
-              defineParams で宣言した変数の欄と、使うシークレットの名前。宣言が 1 つも無ければ出ない（app.js の drawValues）。値は文字列で、dashboard は
+              defineParams で宣言した変数の欄と、使うシークレットの名前。宣言が 1 つも無ければ出ない（app.js の drawValues）。値は文字列で、workbench は
               検査しない（名前の綴り・64 字・32 個・4,096 字は台帳の決まり。違えば台帳が 400 で言う）。
               シークレットの値は欄に無い —— Windmill の変数 f/waggle_secrets/<名前> に人が置き、クロールのたびに向こうで解かれる
             -->
@@ -90,7 +90,7 @@
               <p class="start-hint">チェックしたスクリプトとその場の TS が宣言した変数が並びます。値は文字列です。任意の欄は空なら送らず、スクリプトは <code>undefined</code> を読みます。必須の欄が空なら、台帳が 400 で名指します。</p>
             </fieldset>
             <!--
-              クロールごとの User-Agent。空なら送らず、browser の字のまま撮る。dashboard は字を検査しない（形は
+              クロールごとの User-Agent。空なら送らず、browser の字のまま撮る。workbench は字を検査しない（形は
               台帳の決まりで、違えば台帳が 400 で言う）。{chrome} を解くのは BrowserHive で、解いた字は WACZ の settings.userAgent に残る
             -->
             <fieldset class="start-run" id="start-ua">
@@ -110,7 +110,7 @@
             <p id="start-answer" class="start-answer" hidden></p>
             <!--
               書き方の注意は左に置く。右の列の高さは、全部 TS の箱に渡す。スクリプトの名前の綴りは台帳の決まりの写し
-              （capture-ledger の POST /api/crawls・inline.name）で、dashboard は検査しない（違えば台帳が 400 で言う）
+              （capture-ledger の POST /api/crawls・inline.name）で、workbench は検査しない（違えば台帳が 400 で言う）
             -->
             <p class="start-hint">
               strict の TypeScript として型を検査します（最初の段の compile）。IIFE で包み、要素には型を付けて

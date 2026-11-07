@@ -106,5 +106,5 @@ test("引けなかったときの文: 503 は OpenSearch を、404 は検索の�
     searchFailure(400, { error: "Bad Request", message: "querystring/q must NOT have fewer than 1 characters" }),
     "400 — querystring/q must NOT have fewer than 1 characters",
   );
-  assert.equal(searchFailure(0, { message: "Failed to fetch" }), "dashboard 自身に届きません（Failed to fetch）");
+  assert.equal(searchFailure(0, { message: "Failed to fetch" }), "workbench 自身に届きません（Failed to fetch）");
 });

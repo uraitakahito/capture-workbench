@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * dashboard の画面（`public/`）を配り、台帳の API を中継する。
+ * workbench の画面（`public/`）を配り、台帳の API を中継する。
  *
  *   npm run dev         # http://127.0.0.1:7080/
  *
@@ -12,20 +12,20 @@
  * **漏れる物が無いので、漏らさない工夫も要らない。**
  *
  * **そのぶん、これは境界ではない。** 開発用 issuer は頼まれれば誰の名前でも
- * トークンを出すので、ここの「名乗り」は便利さであって、守りではない。dashboard は
+ * トークンを出すので、ここの「名乗り」は便利さであって、守りではない。workbench は
  * それを隠さずに書く（capture-ledger の picker が同じ理由で同じことをしている）。
  *
  * ## なぜ中継するのか
  *
  * 台帳は CORS を返さない（`OPTIONS /api/archives` は 404。実測）。ブラウザから
- * 直に叩く道は塞がっているので、同一オリジンにするために通す。**ここに dashboard の
+ * 直に叩く道は塞がっているので、同一オリジンにするために通す。**ここに workbench の
  * ロジックは置かない** —— 置いた瞬間に「台帳が知っていることの写し」が生まれる。
  *
  * ## 書く口
  *
  * 書くのは `POST /api/crawls`（クロールを始める）と、`POST /api/crawls/:id/inline/:name/fix`（型で落ちた
  * その場の TS の直し方を訊く）だけで、中身は検査せずに台帳へ渡す。起点の URL も方針も、直しが検査に通るかも、
- * 決めるのは台帳。代わりに門を通す —— 全部の口で Host を見て（DNS rebinding）、書く口では dashboard の
+ * 決めるのは台帳。代わりに門を通す —— 全部の口で Host を見て（DNS rebinding）、書く口では workbench の
  * ページからの JSON だけを受ける（CSRF）。書く口の形と門の判定は `lib.mjs` に在り、試験から直接呼べる。
  *
  * ## 7080 であって 7000 ではない
@@ -40,7 +40,7 @@
  *
  * https のページから `127.0.0.1` を叩くと Chrome の Private Network Access が
  * 止める（実測。seaweedfs の filer は preflight に `Access-Control-Allow-Private-Network`
- * を返さなかった）。だから dashboard 自身を loopback の http で配る。外に出さない。
+ * を返さなかった）。だから workbench 自身を loopback の http で配る。外に出さない。
  */
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
@@ -66,20 +66,20 @@ import { BadRequest, paramsFor, parseWaczRoute, viaSignedUrl } from "./wacz.mjs"
 
 const PUBLIC = fileURLToPath(new URL("../public", import.meta.url));
 
-const PORT = Number(optional("DASHBOARD_PORT", "7080"));
-const LEDGER = optional("DASHBOARD_LEDGER_URL", "http://127.0.0.1:7070");
-const ISSUER = optional("DASHBOARD_ISSUER_URL", "http://127.0.0.1:9099");
-const SUBJECT = optional("DASHBOARD_SUBJECT", userInfo().username);
+const PORT = Number(optional("WORKBENCH_PORT", "7080"));
+const LEDGER = optional("WORKBENCH_LEDGER_URL", "http://127.0.0.1:7070");
+const ISSUER = optional("WORKBENCH_ISSUER_URL", "http://127.0.0.1:9099");
+const SUBJECT = optional("WORKBENCH_SUBJECT", userInfo().username);
 /**
- * 深いリンクの行き先。**dashboard はこれを組み立てない** —— 台帳が返すのは `objectKey`・クロールの合本の鍵
+ * 深いリンクの行き先。**workbench はこれを組み立てない** —— 台帳が返すのは `objectKey`・クロールの合本の鍵
  * （`replayBundle.key`）・`lastJob.id` だけで、どこで開くかは配備の事実。1 か所で決めて `/healthz` で配る。
  */
-const REPLAY = optional("DASHBOARD_REPLAY_URL", "http://127.0.0.1:8899");
-const WINDMILL = optional("DASHBOARD_WINDMILL_URL", "http://127.0.0.1:8000");
-const WORKSPACE = optional("DASHBOARD_WINDMILL_WORKSPACE", "crawler");
+const REPLAY = optional("WORKBENCH_REPLAY_URL", "http://127.0.0.1:8899");
+const WINDMILL = optional("WORKBENCH_WINDMILL_URL", "http://127.0.0.1:8000");
+const WORKSPACE = optional("WORKBENCH_WINDMILL_WORKSPACE", "crawler");
 /** WACZ を検証する daemon。**鍵を持たない** —— 台帳が署名した URL だけを読む。 */
-const VALIDATOR = optional("DASHBOARD_VALIDATOR_URL", "http://127.0.0.1:7180");
-const ORGANIZATIONS = optional("DASHBOARD_ORGANIZATIONS", "acme")
+const VALIDATOR = optional("WORKBENCH_VALIDATOR_URL", "http://127.0.0.1:7180");
+const ORGANIZATIONS = optional("WORKBENCH_ORGANIZATIONS", "acme")
   .split(",")
   .map((org) => org.trim())
   .filter((org) => org !== "");
@@ -169,7 +169,7 @@ const toDaemon = async (path, body) => {
 
 /**
  * 上流の答えを流す。通すヘッダは allowlist —— daemon の `date` や `connection` を
- * dashboard の応答に混ぜない。画像の実体（`/record/body`）は bytes のまま、印
+ * workbench の応答に混ぜない。画像の実体（`/record/body`）は bytes のまま、印
  * （`nosniff` · `sandbox` · `no-store`）ごと通す。
  */
 const PASS_HEADERS = ["content-type", "content-length", "x-content-type-options", "content-security-policy", "cache-control"];
@@ -216,14 +216,14 @@ const failed = (reply, err) => {
 const server = createServer((request, reply) => {
   const url = request.url ?? "/";
 
-  // **どの口も、dashboard の Host でなければ答えない**（DNS rebinding。`lib.mjs` の注）。
+  // **どの口も、workbench の Host でなければ答えない**（DNS rebinding。`lib.mjs` の注）。
   // dev:up の準備の確かめは `http://127.0.0.1:<口>/healthz` を引くので、ここを通る。
   if (!hostAllowed(request.headers.host, PORT)) {
-    sendJson(reply, 403, { error: "dashboard の Host ではない" });
+    sendJson(reply, 403, { error: "workbench の Host ではない" });
     return;
   }
 
-  // 生存と、dashboard が要る設定。**`/api/` の下には置かない** —— あちらは台帳へ素通しする
+  // 生存と、workbench が要る設定。**`/api/` の下には置かない** —— あちらは台帳へ素通しする
   // 場所で、こちらの答えを混ぜると「どちらが答えたのか」が読めなくなる。
   if (url === "/healthz") {
     reply.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -235,7 +235,7 @@ const server = createServer((request, reply) => {
         replayOrigin: REPLAY,
         windmillOrigin: WINDMILL,
         windmillWorkspace: WORKSPACE,
-        // 書く口の上限。dashboard は欄の下に本文の大きさを出し、超えたら送る前に止める
+        // 書く口の上限。workbench は欄の下に本文の大きさを出し、超えたら送る前に止める
         writeLimit: WRITE_LIMIT,
       }),
     );
@@ -247,7 +247,7 @@ const server = createServer((request, reply) => {
    *
    * **署名付き URL をここから外に出さない。** 応答にもログにも載せない ——
    * 載せると認可で閉じた意味が消える（期限内なら、URL を持つ者は誰でも読める）。
-   * 署名は範囲ごとに取り直す（1 本 7 ms・実測）。取っておくと、dashboard が
+   * 署名は範囲ごとに取り直す（1 本 7 ms・実測）。取っておくと、workbench が
    * 300 秒有効な鍵を持つことになる。
    *
    * 順番に意味がある: 先に台帳へ訊くので、**見てよい archive でなければ
@@ -340,9 +340,9 @@ const run = (cmd, args) => {
  * 港が塞がっていたら、**誰が握っているかを言ってから**終わる。
  *
  * 素の `EADDRINUSE` は node の stack trace で出るだけで、`dev:up` が起こした
- * dashboard 自身が握っているのか、無関係なものなのかを言わない —— 実際に
+ * workbench 自身が握っているのか、無関係なものなのかを言わない —— 実際に
  * 2026-09-21 にそれで止まった（`container-compose down` はホストのプロセスを
- * 消さないので、スタックを落とした後も dashboard だけが残る）。
+ * 消さないので、スタックを落とした後も workbench だけが残る）。
  *
  * **自分と同じものが握っているなら、それは失敗ではない。** 開けばよい。
  */
@@ -359,9 +359,9 @@ const portTaken = () => {
 
   process.stderr.write(
     mine
-      ? `127.0.0.1:${String(PORT)} は、既に動いている dashboard です (pid ${pid})。\n` +
+      ? `127.0.0.1:${String(PORT)} は、既に動いている workbench です (pid ${pid})。\n` +
           `  開くだけ: open http://127.0.0.1:${String(PORT)}/\n` +
-          "  起こし直すなら: cd ../capture-ledger && pnpm run dev:up --from dashboard\n"
+          "  起こし直すなら: cd ../capture-ledger && pnpm run dev:up --from workbench\n"
       : `127.0.0.1:${String(PORT)} は別のものが握っています${pid === "" ? "" : ` (pid ${pid})`}。\n` +
           (command === "" ? "" : `  ${command}\n`) +
           "  何が立っているか: cd ../capture-ledger && pnpm run dev:status\n" +
@@ -375,11 +375,11 @@ server.on("error", (err) => {
   throw err;
 });
 
-// **loopback にだけ bind する。** dashboard は台帳のトークンを持つので、
+// **loopback にだけ bind する。** workbench は台帳のトークンを持つので、
 // 届く相手はこの機械の中だけでよい。
 server.listen(PORT, "127.0.0.1", () => {
   process.stdout.write(
-    `dashboard http://127.0.0.1:${String(PORT)}/  ` +
+    `workbench http://127.0.0.1:${String(PORT)}/  ` +
       `台帳: ${LEDGER}  名乗り: ${SUBJECT} (${ORGANIZATIONS.join(", ")})\n` +
       "開発用の名乗りです —— issuer は頼まれれば誰の名前でもトークンを出します。\n",
   );

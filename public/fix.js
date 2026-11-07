@@ -50,7 +50,7 @@ export const diagnosisOf = (status, body) => {
     }));
     return { kind: "errors", typescript, rows };
   }
-  if (status === 0) return { kind: "trouble", text: `dashboard 自身に届きません（${saidOf(body)}）` };
+  if (status === 0) return { kind: "trouble", text: `workbench 自身に届きません（${saidOf(body)}）` };
   if (routeMissing(status, body)) {
     return {
       kind: "trouble",
@@ -94,7 +94,7 @@ export const fixAnswer = (status, body) => {
         : `TypeScript ${String(compiled.typescript)}・受け皿の型 ${String(compiled.hostTypes)} の検査`;
     return { kind: "ok", text: `${by}に通った直し${spentOf(body)}` };
   }
-  if (status === 0) return { kind: "bad", text: `dashboard 自身に届きません（${saidOf(body)}）` };
+  if (status === 0) return { kind: "bad", text: `workbench 自身に届きません（${saidOf(body)}）` };
   if (routeMissing(status, body)) {
     return {
       kind: "bad",

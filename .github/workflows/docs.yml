@@ -2,8 +2,8 @@ name: docs
 
 # docs-site/ を GitHub Pages に出す。
 #
-#   /dashboard/      → English
-#   /dashboard/ja/   → 日本語
+#   /capture-workbench/      → English
+#   /capture-workbench/ja/   → 日本語
 #
 # **リリースのタグ (v*) を push したときだけ走らせる。** 公開する docs は、出した版の docs にする。
 # main への push では走らせない —— main には、まだ出していない変更も入る。

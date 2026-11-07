@@ -1,16 +1,16 @@
 ---
 title: Screens
-description: What each view shows — crawls, start, archives, search, script collection and WACZ — how a crawl's state is worded, and how often the dashboard polls
+description: What each view shows — crawls, start, archives, search, script collection and WACZ — how a crawl's state is worded, and how often capture-workbench polls
 ---
 
-The dashboard is a set of views you switch with the tabs at the top, and the `#` in the URL decides
+capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
 which view is shown (`#crawls`, `#start`, `#archives`, `#search`, `#scripts`; in the search view it also
 names the words searched, and in the script collection view what you are reading). The WACZ tab only appears once you
-enter it with 開く (open) on an archive row. The dashboard itself is in Japanese; the tab names are
+enter it with 開く (open) on an archive row. The workbench itself is in Japanese; the tab names are
 クロール, 新しいクロール, アーカイブ, 検索, スクリプト集 and WACZ.
 
 The pictures on this page are taken against the stand-in ledger (the
-[sandbox](/development/#opening-the-dashboard-in-the-sandbox)). Its scripts are copies from capture-scripts,
+[sandbox](/development/#opening-the-workbench-in-the-sandbox)). Its scripts are copies from capture-scripts,
 the same ones a real ledger lists; only autoscroll v2 is the stand-in's own version, there to show version chips.
 
 ![The tabs at the top: クロール, 新しいクロール, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
@@ -30,7 +30,7 @@ footer shows how many rows are listed and how often the lists are fetched again.
 ## The lists are one page of the ledger
 
 The crawls and archives views list only the first page the ledger returns (newest first). The
-dashboard does not fetch further pages. For archives, the ledger returns only the ones in that page
+workbench does not fetch further pages. For archives, the ledger returns only the ones in that page
 that your identity may view, so there can be fewer rows than a page holds. The counts in the
 footer are the rows on screen, not everything the ledger has.
 
@@ -95,7 +95,7 @@ the crawl's bundle.
 ⑤ Windmill で調べる (inspect in Windmill), the link to inspect_crawl
 
 - **Click a row to see why it failed, what ran in the page, which values it was given, and the
-  URLs that could not be fetched.** Only then does the dashboard fetch `/api/crawls/:id`. The ledger's
+  URLs that could not be fetched.** Only then does the workbench fetch `/api/crawls/:id`. The ledger's
   `error` comes first, in its own words: a crawl that failed at the compile step captured nothing, so
   its list of failed pages is empty and would otherwise read like a success. Next is what ran, in the
   order it ran: registered scripts with their version and a 読む (read) link to the
@@ -112,7 +112,7 @@ the crawl's bundle.
   are the pages that failed, the latest 5 that the ledger returns (the state column gives the total); if none did, it says so and lists the seed
   URLs.
 - **A crawl that failed the type check shows all of its type errors, and can ask for a fix.** When the
-  ledger's `error` says the compile step failed with a 422, the dashboard also fetches
+  ledger's `error` says the compile step failed with a 422, the workbench also fetches
   `/api/crawls/:id/diagnostics`: the ledger sends the crawl's scripts to ts-compile-service again, and
   the table lists every error with its script, line and column, code and message (the `error` is cut
   at the ledger's limit and names only the first few). The table does not call Claude. An inline
@@ -157,7 +157,7 @@ the crawl's bundle.
   counts the ledger has
   not read shows "—", which is not the same as 0. The table holds one batch from the ledger, with
   続きを読む (read on) when there is more. A ledger without the pages route gets a one-line note.
-- **ログ (log) shows the log lines of that page.** The dashboard fetches the ledger's
+- **ログ (log) shows the log lines of that page.** The workbench fetches the ledger's
   `/api/crawls/:id/pages/:page/log` once, when you press it (closing and opening again fetches
   again). The lines come in the order they arrived: the milliseconds since the capture started, the
   source (`script` and the script's id for a script's lines, `page` for the captured page's console
@@ -176,7 +176,7 @@ the crawl's bundle.
   lines sealed in the WACZ (`logs/capture.jsonl`) in the WACZ view. A WACZ line is the answer's line
   with `profile` added, and the signature covers it. A WACZ BrowserHive took before WACZ Profile
   1.19.0 has no such entry.
-- **An opened row stays open.** The table is rebuilt on every fetch, so the dashboard remembers the
+- **An opened row stays open.** The table is rebuilt on every fetch, so the workbench remembers the
   open rows by id and opens them again from the last answer. It fetches a row again only while the
   crawl is running or when its state has changed. Opened logs are remembered by page id too, and
   their boxes are moved rather than rebuilt, so they keep their scroll position and filter. They are
@@ -185,7 +185,7 @@ the crawl's bundle.
 ### The state is worded together with stopReason
 
 `state` alone is not enough. `succeeded` mixes crawls that followed everything to the end with
-crawls that were cut at the depth or page limit. The dashboard words them apart using `stopReason`
+crawls that were cut at the depth or page limit. The workbench words them apart using `stopReason`
 (完走 for completed, 打ち切り for cut at a limit), and shows an unknown `stopReason` as it
 is, in parentheses. A depth-0 crawl asked not to follow links, so it is not cut even if links are
 left over: it reads このページだけ (the ledger's `maxDepth` on the list). If some pages could not be fetched it adds the count (the ledger's
@@ -227,7 +227,7 @@ follow).
   sends no `scripts`, and the ledger picks the same set in the same order from the seeds. A ledger with no scripts is still a
   400, and so, with its own message, is one in which no script fits the seeds. Otherwise it
   sends `scripts` in the order of the numbers (a script of your own set to 遷移の前 goes first);
-  unticking all of them sends `[]`, which runs nothing. The dashboard checks neither the URLs
+  unticking all of them sends `[]`, which runs nothing. The workbench checks neither the URLs
   nor the script's name; the ledger says what is wrong with a 400, naming the ids it refused.
 - **The numbers show the order the scripts run in, and ↑↓ change it.** The ticked rows are numbered
   and run in that order. They start in the order of `catalog.json` in
@@ -256,8 +256,8 @@ follow).
   `failed: http_error: HTTP 404: Not Found`: nothing is captured and no replay ↗ appears. Fill in
   `{chrome} BrowserHive` with the button and it is captured and opens with replay ↗ (checked on 2026-11-07; what a
   site answers can change). Whether to include the word `BrowserHive` is up to whoever types: with it, a site can tell that BrowserHive took the page and
-  robots.txt is read under that name; without it, only the `*` rules are read. The dashboard does not check the text:
-  the ledger refuses text of the wrong form (printable ASCII, at most 512 characters) with a 400, and the dashboard
+  robots.txt is read under that name; without it, only the `*` rules are read. The workbench does not check the text:
+  the ledger refuses text of the wrong form (printable ASCII, at most 512 characters) with a 400, and the workbench
   shows its sentence as it is. The text stays in the box after starting, like the variables and the
   script. The opened row of the crawls view shows the text as typed; the value actually sent is in the WACZ's
   `settings.userAgent`.
@@ -274,7 +274,7 @@ follow).
   (no `.optional()`) is marked 必須 (required). Only the fields with a value are sent, as `variables`;
   an empty optional field is not sent and the script reads `undefined`.
   The values are remembered: after a 202, and when unticking a script removes its rows, they stay,
-  and come back when the script is ticked again. The dashboard does not check them: the spelling of a
+  and come back when the script is ticked again. The workbench does not check them: the spelling of a
   name (a lowercase letter, then lowercase letters, digits and `_`, up to 64 characters), at most 32
   per crawl, values up to 4,096 characters and the shape the script declared are the ledger's rules. When a
   required field is empty, a name no script declared is sent or a value does not fit, the ledger answers
@@ -287,7 +287,7 @@ follow).
   listed under 使うシークレット (secrets used) by name only, with no field: its value is put by a
   person into the Windmill variable `f/waggle_secrets/<name>`, the ledger checks that it exists
   (otherwise a 400 naming it with its path), and Windmill resolves it for the script on every crawl.
-  The value never reaches the dashboard, the ledger or the WACZ. No bundled script declares a secret,
+  The value never reaches the workbench, the ledger or the WACZ. No bundled script declares a secret,
   so this view passes variables only; your own script can declare a secret (`inline.params`) only when
   calling the ledger's API directly.
 - **A script left out of the default is listed unticked.** It reads 既定では走らない (does not run
@@ -519,8 +519,8 @@ ledger that starts crawls and records what came back).
 
 While at least one crawl is running, the lists are fetched every 2 seconds; otherwise every 30
 seconds. A crawl that has just finished keeps the 2-second pace until its last bundle version shows
-up, for at most a minute. Without keeping a copy, the dashboard still looks live while something runs, and stays
+up, for at most a minute. Without keeping a copy, the workbench still looks live while something runs, and stays
 quiet when nothing does. The search view does not poll; it fetches only when you search.
 
-When a fetch fails, the dashboard keeps the last tables it could draw and shows the reason at the
+When a fetch fails, the workbench keeps the last tables it could draw and shows the reason at the
 top (see "Fix it from the message" in the [Quickstart](/quickstart/)).

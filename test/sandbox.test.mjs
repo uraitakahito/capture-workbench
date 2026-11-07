@@ -267,7 +267,7 @@ test("同梱の台本の crawlId は、画面が出す頭の 8 字で見分け�
   assert.equal(new Set(heads).size, heads.length, heads.join(" "));
 });
 
-test("クロール 1 本は、dashboard が読む seeds・error・scripts・failures を返す", () => {
+test("クロール 1 本は、workbench が読む seeds・error・scripts・failures を返す", () => {
   const failed = scenario.crawls.find((c) => c.state === "failed" && c.failures?.length > 0);
   const detail = crawlDetail(failed);
   assert.deepEqual(detail.seeds, failed.seeds);
@@ -434,8 +434,8 @@ test("既定は最新版を選んでから対象サイトで絞る —— 対象
 });
 
 test("代役の既定と、新しいクロールの画面の既定（public/start.js）は、同じ起点に同じ顔ぶれを出す", () => {
-  // 決まりの正は台帳。2 つの写しが食い違えば、dashboard が「省いても同じ」と送った頼みで別の物が走る。
-  // dashboard が持つのは一覧の口の答え（pickable）だけ —— 版ごとに無効にした台帳でも、それで同じ顔ぶれになる
+  // 決まりの正は台帳。2 つの写しが食い違えば、workbench が「省いても同じ」と送った頼みで別の物が走る。
+  // workbench が持つのは一覧の口の答え（pickable）だけ —— 版ごとに無効にした台帳でも、それで同じ顔ぶれになる
   const off = versions.map((v) => (v.id === "autoscroll" && v.version === 2 ? { ...v, enabled: false } : v));
   const allOff = versions.map((v) => (v.id === "autoscroll" ? { ...v, enabled: false } : v));
   // 版が離れて並び、先に現れた版が無効でも、id の順は最初に現れた所（台帳の順は id に 1 つ）
@@ -596,7 +596,7 @@ test("知らないスクリプトの id・重ね・形の誤り・scriptIds は�
     error: "duplicate script ids",
     ids: ["inline-a"],
   });
-  // 文は台帳 v0.58.0 が Fastify の schema で返す物（dashboard は message を出す）
+  // 文は台帳 v0.58.0 が Fastify の schema で返す物（workbench は message を出す）
   assert.equal(
     post({ scripts: [inline("Probe")] }).body.message,
     'body/scripts/0/inline/name must match pattern "^[a-z][a-z0-9-]*$"',

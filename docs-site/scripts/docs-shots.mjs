@@ -26,9 +26,9 @@
  *
  * ## 毎回同じ絵に
  *
- *   - dashboard の時計を止める。代役の時刻の基準は代役が起きた時刻なので、走行中の行の startedAt ＋ 100 秒に
+ *   - workbench の時計を止める。代役の時刻の基準は代役が起きた時刻なので、走行中の行の startedAt ＋ 100 秒に
  *     止めれば、「かかった」はいつ撮っても 1m 40s（止めないと、撮るたびに絵が変わった）
- *   - 引き直しを止める。dashboard の setTimeout は、引き直し（2 秒・30 秒）と「写しました」の戻し（1.5 秒）
+ *   - 引き直しを止める。workbench の setTimeout は、引き直し（2 秒・30 秒）と「写しました」の戻し（1.5 秒）
  *     だけなので、2 秒以上の物を落とす（引き直しは表を作り直し、検証の答えを消す）
  *   - 明るい色・ja-JP・Asia/Tokyo（撮った時刻は toLocaleString）・字のカーソルと動きを消す・
  *     スクロールバーを隠す
@@ -60,8 +60,8 @@ const CHROME_BUILD = "152.0.7977.54";
 const CACHE = join(homedir(), ".cache", "puppeteer");
 const DPR = 1;
 /**
- * 撮る窓の幅。絵は全部この幅で撮る（どの絵も同じ縮尺の dashboard）。スクリプト集の画面の読む所
- * （窓 − 一覧 300 − 間 24 − 余白 40）が、ちょうど COLUMN になる。dashboard の組み方が変われば、幅の見張りが言う
+ * 撮る窓の幅。絵は全部この幅で撮る（どの絵も同じ縮尺の workbench）。スクリプト集の画面の読む所
+ * （窓 − 一覧 300 − 間 24 − 余白 40）が、ちょうど COLUMN になる。workbench の組み方が変われば、幅の見張りが言う
  */
 const WINDOW = 996;
 /** 新しいクロールの欄に入れる TS。placeholder と同じ物を、本当に書いた状態で写す */
@@ -69,7 +69,7 @@ const INLINE = '(() => {\n  document.querySelector<HTMLButtonElement>("#accept")
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
-/** 欄に書いて input を出す（dashboard は input で、起点のチェックや大きさの行を合わせる）。 */
+/** 欄に書いて input を出す（workbench は input で、起点のチェックや大きさの行を合わせる）。 */
 const fill = (page, id, value) =>
   page.evaluate(
     (i, v) => {
@@ -352,7 +352,7 @@ const SHOTS = [
 ];
 
 /**
- * dashboard の時計と引き直しを止める（どのスクリプトよりも先に走る）。Date は引数の無い new Date() と
+ * workbench の時計と引き直しを止める（どのスクリプトよりも先に走る）。Date は引数の無い new Date() と
  * Date.now() だけを止め、日付を組む new Date(x) はそのまま。setTimeout は 2 秒以上の物だけを落とす。
  */
 const freeze = (now) => {
@@ -411,7 +411,7 @@ const placeMarks = (marks, clip) => {
 
 /**
  * 見えている字の矩形（ページの座標）。字の node の行ごとの矩形を、overflow で切る祖先の箱で削る —— 読む所の
- * 長い行や省略（…）は dashboard が自分で隠した所で、切り口で切れた字ではない。欄（input・textarea）の中の
+ * 長い行や省略（…）は workbench が自分で隠した所で、切り口で切れた字ではない。欄（input・textarea）の中の
  * 字は node でないので見えない。丸を置く前に読む。
  */
 const visibleText = () => {

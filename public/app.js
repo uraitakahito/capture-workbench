@@ -1,5 +1,5 @@
 /**
- * dashboard。**素の JS**（bundler も framework も通さない）。
+ * workbench。**素の JS**（bundler も framework も通さない）。
  *
  * 読むのは台帳の口と、WACZ の中身へ行く `/wacz/` の口だけ。ここで畳むのは「どの画面を
  * 出すか」と「どう描くか」で、何が起きたかは全部向こうが知っている。
@@ -150,7 +150,7 @@ const tag = (name, text, className) => {
 
 const cell = (text, className) => tag("td", text, className);
 
-/** dashboard の外への行き先。新しいタブで開く。 */
+/** workbench の外への行き先。新しいタブで開く。 */
 const link = (href, text) => {
   const a = document.createElement("a");
   a.href = href;
@@ -176,7 +176,7 @@ const bundleLink = (href, text, crawl) => {
   return a;
 };
 
-/** dashboard の中の行き先（hash）。新しいタブで開かない。 */
+/** workbench の中の行き先（hash）。新しいタブで開かない。 */
 const hashCell = (href, text) => {
   const td = document.createElement("td");
   const a = document.createElement("a");
@@ -1511,7 +1511,7 @@ $("start-inline-file").addEventListener("change", () => void readFileIntoForm())
 /**
  * 1 本の報告を描く。**文は 1 つも持たない** —— message も日本語も spec の節も、
  * daemon が解決して返したものをそのまま出す (`renderJson(report, locale)`)。
- * ここで言い換えると、検証器が言い始めたことと dashboard がずれていく。
+ * ここで言い換えると、検証器が言い始めたことと workbench がずれていく。
  */
 const drawReport = (td, report) => {
   td.replaceChildren();
@@ -1538,7 +1538,7 @@ const drawReport = (td, report) => {
       tag("span", issue.rule, "mono"),
       tag("span", issue.message),
     );
-    // **spec へのリンクも daemon が持っている。** dashboard が URL を組み立てない。
+    // **spec へのリンクも daemon が持っている。** workbench が URL を組み立てない。
     if (issue.specUrl) {
       const a = document.createElement("a");
       a.href = issue.specUrl;
@@ -2336,7 +2336,7 @@ IN_START.lines.addEventListener("click", (event) => {
 /**
  * wacz-validator の tui（`render/tree.ts`）と同じ入力から同じ木を組む（検証の報告の `entries`）。中身は `/wacz/` の口に
  * **窓で**頼む —— 行の窓（200 行ずつ）、1 行を丸ごと（fields は daemon が割る）、
- * レコードの一覧（200 件ずつ）、1 レコード。窓の位置は dashboard が持つ。一覧の上の warcinfo の枠は
+ * レコードの一覧（200 件ずつ）、1 レコード。窓の位置は workbench が持つ。一覧の上の warcinfo の枠は
  * 窓で頼まない —— 検証の報告の `warcinfo` に、欄と語彙まで載っている。
  */
 const WINDOW = 200;
@@ -2783,7 +2783,7 @@ const start = async () => {
       `${settings.subject} (${settings.organizations.join(", ")}) として見ています` +
       " —— 開発用の名乗りです";
   } catch {
-    $("who").textContent = "dashboard 自身に届きません";
+    $("who").textContent = "workbench 自身に届きません";
   }
   drawRules();
   syncStart(); // 上限を知ってから、欄の下の行を出す

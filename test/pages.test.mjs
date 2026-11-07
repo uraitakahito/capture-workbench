@@ -47,7 +47,7 @@ const ledger = (ids, size) => {
   const asked = [];
   const read = async (path) => {
     asked.push(path);
-    const after = new URL(path, "http://dashboard.test").searchParams.get("after");
+    const after = new URL(path, "http://capture-workbench.test").searchParams.get("after");
     const rest = after === null ? ids : ids.filter((id) => Number(id) > Number(after));
     const pages = rest.slice(0, size).map((id) => page(id));
     return { pages, next: rest.length > size ? pages.at(-1).id : null };

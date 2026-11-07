@@ -1,28 +1,28 @@
 /**
- * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 10 個。
+ * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 11 個。
  *
  * ## なぜ要るのか
  *
  * - **「名乗り」を、物（トークン）の意味で書かない。** 「名乗り」は誰として見るか
- *   （`DASHBOARD_SUBJECT` と組織）を指す。issuer がそれに署名して返す物はアクセストークン
+ *   （`WORKBENCH_SUBJECT` と組織）を指す。issuer がそれに署名して返す物はアクセストークン
  *   （応答の欄は `access_token`）。2026-10 に、2 つを混ぜた書き方を docs・コメント・設定から除いた
  * - **クロールの seed は「起点」と書く。** Web Capture では 2026-10 に「種」から「起点」へ揃えた
  *   （capture-ledger と capture-scheduler が同じ規則で見張っている）。画面の見出しに
  *   「種」が残っていたのを、新しいクロールの画面（「起点の URL」）を足したときに直した
  * - **クロールは「始める」と書く。** 2026-10 に「起こす」から「始める」へ揃えた（タブは「新しいクロール」、
  *   ボタンは「始める」）。目的語の無い「起こす」は「目を覚まさせる」に読め、タブで 1 つだけ動詞だった。
- *   dashboard の `public/` は「起こ」そのものを書かない —— worker は「起動」、hashchange は「発火」と書く。
- *   ほかのファイルでは、クロールを始める意味の形だけを見る。プロセスの「起こす」（`dev:up` が dashboard を
+ *   workbench の `public/` は「起こ」そのものを書かない —— worker は「起動」、hashchange は「発火」と書く。
+ *   ほかのファイルでは、クロールを始める意味の形だけを見る。プロセスの「起こす」（`dev:up` が workbench を
  *   起こす、など）は別の意味で、見ない（capture-ledger と capture-scheduler も同じ形で見張っている）
- * - **タブで切り替える画面の 1 つは「〇〇の画面」、全体は dashboard と書く。** 2026-10 に、タブの画面の 1 つを
+ * - **タブで切り替える画面の 1 つは「〇〇の画面」、全体は workbench と書く。** 2026-10 に、タブの画面の 1 つを
  *   「面」（コードの face の訳）、全体を「画面」と呼ぶ二段をやめた。「面」は単独では表面・側面に読め、
- *   「画面」は全体といま見ている所の 2 つを指していた。全体の「画面」を先に dashboard へ移してから、
+ *   「画面」は全体といま見ている所の 2 つを指していた。全体の「画面」を先に Web アプリの名前へ移してから、
  *   「面」を「画面」に充てた。いま見ている所の意味（画面の上・画面に出る・画面の地）は「画面」のまま
  * - **ページで走らせる物は「スクリプト」、置き場は「台帳」と書く。** 2026-10 に「目録」「台本」から
  *   そろえた（タブ「スクリプト」（2026-11 から「スクリプト集」）・「台帳 v1」・「台帳にスクリプトがありません」
  *   ほか画面の字 15）。「目録」は
  *   browserhive と wacz-validator では WACZ の中の storage の目録を指し、「台本」は代役の台本
- *   （sandbox/scenario.json）とスクリプト 1 本の両方を指していた。dashboard は storage の目録を持たないので、
+ *   （sandbox/scenario.json）とスクリプト 1 本の両方を指していた。workbench は storage の目録を持たないので、
  *   「目録」は全部見る。「台本」は、代役を説明するファイル（SCENARIO）の外では全部、中では
  *   スクリプト 1 本の意味の形（TAIHON）だけを見る（capture-ledger と capture-scheduler も見張っている）
  * - **network は「通信」と書く。** 2026-11 に「網」（network の 1 字の直訳）から「通信」へそろえた（この repo では
@@ -35,11 +35,11 @@
  *   話や Jira で画面を名指せなかった。物のスクリプト（ページで走らせる JS。新しいクロールの欄の見出し
  *   `<legend>スクリプト</legend>` も）と、ふつうの言葉の中身（WACZ の中身・版の中身）はそのままなので、画面の名前
  *   だった形だけを見る。コードの名前（`#scripts`・`#wacz`・`face-*`）も替えていない。capture-ledger と
- *   capture-scheduler には dashboard の画面を名指す文が無いので、そちらには足していない
+ *   capture-scheduler には workbench の画面を名指す文が無いので、そちらには足していない
  * - **箱に書く物は「その場の TS」「スクリプトの名前」「TS の箱」と書く。** 2026-11 に（Jira CAPTURE-83）、
  *   「その場の JS」「JS の名前」「JS の箱」から替えた。箱の中身は compile の段で strict の TypeScript として検査される
  *   のに、JS と名乗っていた（TypeScript を書けると気づけず、素の JS を書くと TS7006 で落ちて理由が読めない）。
- *   JS になるのは変換の後なので、走った JS（`behaviors/custom.jsonl`）・`jsSha256`・束ねた JS・dashboard 自身の
+ *   JS になるのは変換の後なので、走った JS（`behaviors/custom.jsonl`）・`jsSha256`・束ねた JS・workbench 自身の
  *   素の JS はそのまま。だから形の並びだけを見る。コードの名前（`start-tab-js`・`.start-js`）も替えていない。
  *   capture-ledger と capture-scheduler も同じ形で見張っている
  * - **スクリプトの `sites` は「対象サイト」、版を選ぶ小さなボタンは「版のリンク」と書く。** 2026-11 に「札」から
@@ -50,6 +50,9 @@
  *   パスだけ）。crawler は、ふつうの名詞（a crawler that follows nothing）とも、動いている識別子（`crawler-storage`・
  *   Windmill の workspace の `crawler`・`Symbol.for("crawler.no-dns")`）とも同じ字で、読み手に区別が付かなかった。
  *   識別子とふつうの名詞は残すので、一式の意味だった形の並びだけを見る
+ * - **7080 の Web アプリは capture-workbench、文で短く書くときは workbench と書く。** 2026-11 に dashboard から替えた
+ *   （repo の名前・URL・環境変数の `WORKBENCH_*` も）。この repo に、Grafana の dashboard のような別の意味は無いので、
+ *   語を全部見る（大文字小文字を問わない）。許す形は無い
  *
  * 書き手（人と Claude）は長くこの形で書いてきたので、見張らなければ戻ってくる。
  *
@@ -98,10 +101,10 @@ const VENDOR = "public/vendor/";
  */
 const OKOSU =
   /クロールを起こ|クロールは起こ|取り込みを起こ|取り込みの実行を起こ|起こしたクロール|起こせ(ます|ません|る|ない|れば|ば|て)|起こす(面|欄|口)|起こした(人|本人|行)|起こしました|起こしてよ|下敷きにして起こ|「起こす」|"起こす"/u;
-/** 「面」を、タブの画面の 1 つの意味に取れない熟語。dashboard に在るのは「画面」だけ（2026-10）。 */
+/** 「面」を、タブの画面の 1 つの意味に取れない熟語。workbench に在るのは「画面」だけ（2026-10）。 */
 const NOT_VIEW = /画面|場面|表面|当面|全面|一面|側面|正面|方面|面倒|面積|面白/gu;
 /**
- * 全体を「画面」と呼ぶ形。全体は dashboard と書く。「この画面」は入れない —— タブの画面の 1 つの意味
+ * 全体を「画面」と呼ぶ形。全体は workbench と書く。「この画面」は入れない —— タブの画面の 1 つの意味
  * （「この画面に残る」）でも使う。足すときは、いま見ている所の意味（画面の上・画面に出る）に当たらないことを確かめる。
  */
 const WHOLE =
@@ -150,16 +153,16 @@ const RULES = [
       file.startsWith(SCREEN) && !file.startsWith(VENDOR) ? line.includes("起こ") : OKOSU.test(line),
     say:
       "「起こす」が残っています。クロールは「始める」と書きます（タブは「新しいクロール」）。" +
-      "dashboard の public/ では、プロセスの意味でも「起動」と書きます。",
+      "workbench の public/ では、プロセスの意味でも「起動」と書きます。",
   },
   {
     find: (line) => line.replace(NOT_VIEW, "").includes("面") || WHOLE.test(line),
     say:
       "「面」か、全体の意味の「画面」が残っています。タブで切り替える画面の 1 つは「〇〇の画面」、" +
-      "全体は dashboard と書きます（画面の上・画面に出る、のような、いま見ている所の意味はそのまま）。",
+      "全体は workbench と書きます（画面の上・画面に出る、のような、いま見ている所の意味はそのまま）。",
   },
   {
-    // dashboard は storage の目録（browserhive・wacz-validator の意味）を使わないので、「目録」は全部赤
+    // workbench は storage の目録（browserhive・wacz-validator の意味）を使わないので、「目録」は全部赤
     find: (line, file) =>
       line.includes("目録") || (SCENARIO.test(file) ? TAIHON.test(line) : line.includes("台本")),
     say:
@@ -193,6 +196,12 @@ const RULES = [
     say:
       "一式の古い呼び名が残っています。repo の一式は Web Capture と書きます（`crawler-storage`・Windmill の workspace の " +
       "`crawler`・ふつうの名詞の crawler はそのまま）。",
+  },
+  {
+    find: (line) => /dashboard/iu.test(line),
+    say:
+      "語 dashboard が残っています。7080 の Web アプリは capture-workbench（文で短く書くときは workbench）、" +
+      "環境変数は WORKBENCH_* と書きます。",
   },
 ];
 
