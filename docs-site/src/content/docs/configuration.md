@@ -71,7 +71,7 @@ it).
 ## Empty means unset
 
 `NAME=` with no value falls back to the default (the same side as POSIX `${VAR:-word}`), which
-matches the other crawler repositories. If you do not want to set a value, comment the whole line
+matches the other [Web Capture](https://uraitakahito.github.io/capture-ledger/#web-capture) repositories. If you do not want to set a value, comment the whole line
 out.
 
 ## 7080, not 7000

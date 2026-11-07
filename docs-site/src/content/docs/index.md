@@ -1,15 +1,18 @@
 ---
 title: dashboard
-description: The crawler's development web app — one row per crawl. It holds no secrets and no npm dependencies, and only relays the ledger's API
+description: The web app you open locally while developing Web Capture — one row per crawl. It holds no secrets and no npm dependencies, and only relays the ledger's API
 ---
 
-dashboard is the crawler's development web app. **It shows one crawl as one row.**
+dashboard is the web app you open locally while developing
+[Web Capture](https://uraitakahito.github.io/capture-ledger/#web-capture) (the set of repositories
+that captures web pages into archives you can check later). **It shows one crawl as one row.** You
+can also start a new crawl and read the contents of a captured WACZ.
 
 A crawl is started by [capture-ledger](https://github.com/uraitakahito/capture-ledger) (the ledger
 that decides which URLs get captured and records what came back), run by
 [capture-scheduler](https://github.com/uraitakahito/capture-scheduler) (which drives crawls with
 Windmill flows), stored in [seaweedfs](https://github.com/uraitakahito/seaweedfs) (the
-S3-compatible store the crawler shares) and opened with
+S3-compatible store Web Capture shares) and opened with
 [replay](https://github.com/uraitakahito/replay) (which plays a WACZ back in the browser). A WACZ
 (Web Archive Collection Zipped) is the archive format that packs the captured pages into a single
 ZIP.

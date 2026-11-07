@@ -66,7 +66,7 @@ replay は合本の WACZ とページの一覧を、自分と同じ origin の p
 ## 空は「無い」と同じ
 
 `NAME=` と値を書かずに置くと、既定値になります（POSIX の `${VAR:-word}` と同じ側）。
-crawler の他の repo と同じ意味に揃えてあります。
+[Web Capture](https://uraitakahito.github.io/capture-ledger/ja/#web-capture) の他の repo と同じ意味に揃えてあります。
 値を書かないなら、行ごとコメントにしてください。
 
 ## 7080 であって 7000 ではない

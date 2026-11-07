@@ -1,12 +1,12 @@
 /**
- * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 9 つ。
+ * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 10 個。
  *
  * ## なぜ要るのか
  *
  * - **「名乗り」を、物（トークン）の意味で書かない。** 「名乗り」は誰として見るか
  *   （`DASHBOARD_SUBJECT` と組織）を指す。issuer がそれに署名して返す物はアクセストークン
  *   （応答の欄は `access_token`）。2026-10 に、2 つを混ぜた書き方を docs・コメント・設定から除いた
- * - **クロールの seed は「起点」と書く。** crawler では 2026-10 に「種」から「起点」へ揃えた
+ * - **クロールの seed は「起点」と書く。** Web Capture では 2026-10 に「種」から「起点」へ揃えた
  *   （capture-ledger と capture-scheduler が同じ規則で見張っている）。画面の見出しに
  *   「種」が残っていたのを、新しいクロールの画面（「起点の URL」）を足したときに直した
  * - **クロールは「始める」と書く。** 2026-10 に「起こす」から「始める」へ揃えた（タブは「新しいクロール」、
@@ -46,6 +46,10 @@
  *   そろえた（画面の字・docs・コメント・代役・試験の名前で 70 行あまり）。「札」は tag を 1 字で写した書き手の癖で、
  *   読み手に通じない。コードの名前（`chipsOf`・`.rchips`・`siteChip`）も、en の docs の version chips も替えていない
  *   （browserhive・capture-ledger・capture-scheduler も見張っている）
+ * - **repo の一式は Web Capture と書く。** 2026-11 に crawler から替えた（文の中は 2 語。`web-capture` はフォルダの
+ *   パスだけ）。crawler は、ふつうの名詞（a crawler that follows nothing）とも、動いている識別子（`crawler-storage`・
+ *   Windmill の workspace の `crawler`・`Symbol.for("crawler.no-dns")`）とも同じ字で、読み手に区別が付かなかった。
+ *   識別子とふつうの名詞は残すので、一式の意味だった形の並びだけを見る
  *
  * 書き手（人と Claude）は長くこの形で書いてきたので、見張らなければ戻ってくる。
  *
@@ -63,7 +67,7 @@
  *     （読む所の行と下敷きの行を、代役で実物どおりに見るため）
  *   - 「名乗り」を誰として見るかの意味で使っているか、「起点」を seed の意味で使っているか、
  *     「起こす」がクロールの意味か、「スクリプト」「中身」が画面の名前か。語の意味は機械には見えないので、3 つ目と、
- *     4 つ目の全体の「画面」と、5 つ目の代役のファイルの中の「台本」と、7 つ目の古い画面の名前と、8 つ目の箱の古い呼び名は形の並びで見る
+ *     4 つ目の全体の「画面」と、5 つ目の代役のファイルの中の「台本」と、7 つ目の古い画面の名前と、8 つ目の箱の古い呼び名と、10 個目の一式の古い呼び名は形の並びで見る
  *     （並びに無い言い回しは止まらない）
  *
  * 形は capture-ledger の src/tools/check-terms.ts に揃えてある。
@@ -122,6 +126,13 @@ const OLD_VIEW =
  */
 const OLD_INLINE =
   /その場の JS|その場で書いた JS|JS の名前|JS の箱|書きかけの JS|この JS の id|その JS の id|\binline JS\b/u;
+/**
+ * 一式の意味の crawler の形（2026-11 まで）。足すときは、動いている識別子（`crawler-storage`・`/w/crawler/`・
+ * `workspace=crawler`・`crawler.no-dns`）と、ふつうの名詞（a crawler that…・The crawler honoured…・Browsertrix Crawler）に
+ * 当たらないことを確かめる。カタカナのクローラは見ない。
+ */
+const OLD_SUITE =
+  /(?<![-/.=`\w])crawler ?(?:の|で|が|を|は|に|と|全体|—)|<h1>crawler<\/h1>|\bcrawler repos(?:itories)?\b|\ball of crawler\b|\b[Tt]he crawler's development\b|\b[Tt]he crawler (?:shares|produces)\b/u;
 
 const RULES = [
   {
@@ -176,6 +187,12 @@ const RULES = [
   {
     find: (line) => line.includes("札"),
     say: "「札」が残っています。スクリプトの `sites` は「対象サイト」、版を選ぶ小さなボタンは「版のリンク」と書きます。",
+  },
+  {
+    find: (line) => OLD_SUITE.test(line),
+    say:
+      "一式の古い呼び名が残っています。repo の一式は Web Capture と書きます（`crawler-storage`・Windmill の workspace の " +
+      "`crawler`・ふつうの名詞の crawler はそのまま）。",
   },
 ];
 
