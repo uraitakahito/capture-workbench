@@ -12,6 +12,7 @@
       <nav id="tabs">
         <button type="button" id="tab-crawls" class="on" data-face="crawls">クロール</button>
         <button type="button" id="tab-start" data-face="start">新しいクロール</button>
+        <button type="button" id="tab-schedules" data-face="schedules">定期実行<span id="tab-schedules-count" class="tab-count" hidden></span></button>
         <button type="button" id="tab-archives" data-face="archives">アーカイブ</button>
         <button type="button" id="tab-search" data-face="search">検索</button>
         <button type="button" id="tab-scripts" data-face="scripts">スクリプト集</button>
@@ -25,6 +26,11 @@
       台帳が落ちていれば、そう言ったまま最後の表を残す。
     -->
     <p id="trouble" class="trouble" hidden></p>
+    <!--
+      定期実行の帯。#trouble は引き直しが成功すると消えるので、同じ所に書かない。全部のタブで見え、手で閉じない ——
+      原因が直ると消える。読み取りは一覧の引き直しと別の輪（app.js の refreshSchedules）。
+    -->
+    <p id="schedule-band" class="schedule-band" hidden><span id="schedule-band-text"></span> <a href="#schedules">定期実行を開く</a></p>
 
     <main>
       <section id="face-crawls">
@@ -108,6 +114,23 @@
               <button type="submit" id="start-go" disabled>始める</button>
             </div>
             <p id="start-answer" class="start-answer" hidden></p>
+            <!--
+              いまの欄の中身で予定を作る。本文は「始める」と同じ startBody で、台帳は同じ確かめを通す。撮り方は作ったときに
+              固定され、新しい版が出ても変わらない（上げるのは定期実行の画面の「固定し直す」）。
+            -->
+            <fieldset class="start-run start-schedule">
+              <legend>定期にする</legend>
+              <div class="start-row">
+                <label>名前 <input type="text" id="schedule-name" autocomplete="off" spellcheck="false" placeholder="例: 毎朝の 5 サイト" /></label>
+                <label>いつ（cron の 5 欄） <input type="text" id="schedule-cron" class="mono" autocomplete="off" spellcheck="false" value="0 4 * * *" /></label>
+                <span id="schedule-presets" class="schedule-presets"></span>
+              </div>
+              <div class="start-row">
+                <button type="button" id="schedule-go" disabled>定期にする</button>
+              </div>
+              <p class="start-hint">いまの欄の中身で予定を作ります。時刻は Asia/Tokyo で読みます。結果は「定期実行」の画面に出ます。</p>
+              <p id="schedule-answer" class="start-answer" hidden></p>
+            </fieldset>
             <!--
               書き方の注意は左に置く。右の列の高さは、全部 TS の箱に渡す。スクリプトの名前の綴りは台帳の決まりの写し
               （capture-ledger の POST /api/crawls・inline.name）で、workbench は検査しない（違えば台帳が 400 で言う）
@@ -235,6 +258,15 @@
         落とさないため）。当たりはアーカイブの 1 時点（写しの行がある WACZ は写しの時点、写しの無い取り込みは文書）で、
         見せてよいアーカイブの物だけが返る。撮った中身は他人が書いたもの —— 題・文字・当たった所は textContent で。
       -->
+      <!--
+        定期実行（CAPTURE-174）。予定は台帳の資源で、周回は台帳の中で回る。ここは状態を読んで操作を頼むだけ。
+      -->
+      <section id="face-schedules" hidden>
+        <p id="schedules-answer" class="start-answer" hidden></p>
+        <p id="schedules-empty" class="empty" hidden>予定はまだありません。「新しいクロール」の画面で撮り方を決めて「定期にする」を押すと作れます。</p>
+        <div id="schedules"></div>
+      </section>
+
       <section id="face-search" hidden>
         <form id="search" class="search" autocomplete="off">
           <label for="search-words">探す語</label>

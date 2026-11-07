@@ -10,6 +10,8 @@
     "searchPages: 検索の口 (GET /api/search) が引く、アーカイブごとのページ一覧の行 (WACZ の pages/pages.jsonl の形)。",
     "        stage の無い行が文書の行、stage の在る行が写しの行。台帳と同じく、写しの行が在るアーカイブでは文書の行を引かず、",
     "        hidden のアーカイブは答えに出さない (見てよくない)。url を省いた行は、文書は sourceUrl、写しは urn にする。",
+    "schedules: 定期実行の予定 (GET /api/schedules)。状態の語 (health) の判定は台帳の物なので語を書く。時刻は絶対の時刻で書く",
+    "        (画面の絵が撮るたびに変わらないように)。操作の結果は代役が起きている間だけ覚える。周回は無いので回は増えない。",
     "emptyCatalog: true にすると、台帳にスクリプトが無いときの赤い文が出る（読む所には受け皿の型だけが残る）。",
     "submit: workbench の欄から始めた行は runsSeconds 秒走ってから完走する。走っている間にもう 1 度始めると 409。",
     "        受けた行は代役が起きている間だけ在り、台本の走行中の行は「走行中 1 本」に数えない。",
@@ -148,6 +150,9 @@
     },
     {
       "crawlId": "5b0c0007-6a1e-4000-8000-000000000007",
+      "schedule": { "id": "5c0d0a01-6a1e-4000-8000-000000000a01", "name": "毎朝の 5 サイト" },
+      "scheduledSecondsAgo": 660,
+      "scheduleMissed": 2,
       "state": "succeeded",
       "stopReason": "completed",
       "seeds": ["https://sandbox.test/news"],
@@ -346,6 +351,136 @@
           "reason": "robots"
         }
       ]
+    }
+  ],
+  "schedules": [
+    {
+      "id": "5c0d0a01-6a1e-4000-8000-000000000a01",
+      "name": "毎朝の 5 サイト",
+      "cron": "0 4 * * *",
+      "health": "failing",
+      "blockedBy": null,
+      "nextRunAt": "2026-11-07T19:00:00.000Z",
+      "seeds": [
+        "https://sandbox.test/",
+        "https://sandbox.test/shop"
+      ],
+      "maxDepth": 0,
+      "scripts": [
+        {
+          "id": "autoscroll",
+          "version": 1,
+          "latest": 2
+        }
+      ],
+      "outdated": true,
+      "recentRuns": [
+        {
+          "crawlId": "5c0d0001-6a1e-4000-8000-000000000001",
+          "state": "failed",
+          "scheduledFor": "2026-11-06T19:00:00.000Z",
+          "startedAt": "2026-11-06T19:00:21.000Z",
+          "finishedAt": "2026-11-06T19:00:22.000Z",
+          "scheduleMissed": 0,
+          "pagesCaptured": 0,
+          "pagesFailed": 0,
+          "error": "POST /api/crawls: ConnectionRefused (http://192.168.65.1:7070)"
+        },
+        {
+          "crawlId": "5c0d0002-6a1e-4000-8000-000000000002",
+          "state": "failed",
+          "scheduledFor": "2026-11-05T19:00:00.000Z",
+          "startedAt": "2026-11-05T19:00:18.000Z",
+          "finishedAt": "2026-11-05T19:00:19.000Z",
+          "scheduleMissed": 0,
+          "pagesCaptured": 0,
+          "pagesFailed": 0,
+          "error": "POST /api/crawls: ConnectionRefused (http://192.168.65.1:7070)"
+        },
+        {
+          "crawlId": "5c0d0003-6a1e-4000-8000-000000000003",
+          "state": "failed",
+          "scheduledFor": "2026-11-04T19:00:00.000Z",
+          "startedAt": "2026-11-04T19:00:25.000Z",
+          "finishedAt": "2026-11-04T19:00:26.000Z",
+          "scheduleMissed": 0,
+          "pagesCaptured": 0,
+          "pagesFailed": 0,
+          "error": "windmill unreachable"
+        },
+        {
+          "crawlId": "5c0d0004-6a1e-4000-8000-000000000004",
+          "state": "failed",
+          "scheduledFor": "2026-11-03T19:00:00.000Z",
+          "startedAt": "2026-11-03T19:00:12.000Z",
+          "finishedAt": "2026-11-03T19:00:13.000Z",
+          "scheduleMissed": 0,
+          "pagesCaptured": 0,
+          "pagesFailed": 0,
+          "error": "windmill unreachable"
+        },
+        {
+          "crawlId": "5c0d0005-6a1e-4000-8000-000000000005",
+          "state": "succeeded",
+          "scheduledFor": "2026-11-02T19:00:00.000Z",
+          "startedAt": "2026-11-02T19:14:03.000Z",
+          "finishedAt": "2026-11-02T19:15:40.000Z",
+          "scheduleMissed": 2,
+          "pagesCaptured": 4,
+          "pagesFailed": 1,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "5c0d0a02-6a1e-4000-8000-000000000a02",
+      "name": "毎時の確認",
+      "cron": "0 * * * *",
+      "health": "blocked",
+      "blockedBy": {
+        "crawlId": "5b0c0001-6a1e-4000-8000-000000000001",
+        "startedAt": "2026-11-07T04:58:20.000Z"
+      },
+      "nextRunAt": "2026-11-07T05:00:00.000Z",
+      "seeds": [
+        "https://sandbox.test/news"
+      ],
+      "maxDepth": 1,
+      "scripts": [
+        {
+          "id": "autoscroll",
+          "version": 2,
+          "latest": 2
+        }
+      ],
+      "recentRuns": [
+        {
+          "crawlId": "5c0d0006-6a1e-4000-8000-000000000006",
+          "state": "succeeded",
+          "scheduledFor": "2026-11-07T04:00:00.000Z",
+          "startedAt": "2026-11-07T04:00:20.000Z",
+          "finishedAt": "2026-11-07T04:01:00.000Z",
+          "scheduleMissed": 0,
+          "pagesCaptured": 3,
+          "pagesFailed": 0,
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "5c0d0a03-6a1e-4000-8000-000000000a03",
+      "name": "週に 1 度の棚卸し",
+      "cron": "0 4 * * 1",
+      "enabled": false,
+      "health": "paused",
+      "blockedBy": null,
+      "nextRunAt": "2026-11-08T19:00:00.000Z",
+      "seeds": [
+        "https://sandbox.test/shop"
+      ],
+      "maxDepth": 2,
+      "scripts": [],
+      "recentRuns": []
     }
   ],
   "archives": {

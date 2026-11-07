@@ -42,6 +42,26 @@ import {
   withNocheck,
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
+import {
+  actionAnswer,
+  bandOf,
+  closableCrawl,
+  createAnswer,
+  createBody,
+  CRON_PRESETS,
+  cronWords,
+  healthOf,
+  markOf,
+  pollMs,
+  runDelay,
+  runMissed,
+  runResult,
+  runWhen,
+  SCHEDULES_PATH,
+  scriptsText,
+  shortTime,
+  troubleCount,
+} from "/schedules.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "/fix.js";
 import {
   awaitsFinalBundle,
@@ -808,7 +828,14 @@ const drawCrawls = () => {
     row.className = crawl.crawlId === spotlight ? "head spot" : "head";
     row.append(cell(state.text, `state ${state.kind}`));
     row.append(cell(crawl.crawlId.slice(0, 8), "mono"));
-    row.append(cell(`${crawl.requestedBy} / ${crawl.orgId}`));
+    const who = cell(`${crawl.requestedBy} / ${crawl.orgId}`);
+    const mark = markOf(crawl);
+    if (mark !== undefined) {
+      const badge = tag("span", mark.text, "schedule-mark");
+      badge.title = mark.title;
+      who.append(" ", badge);
+    }
+    row.append(who);
     row.append(cell(crawl.seeds[0] ?? "", "wide"));
     // **2 つの数を 1 つの欄に混ぜない。** リンクの数は撮れた数の分母ではない（`linksOf`）
     row.append(cell(String(crawl.pagesCaptured), "num mono"));
@@ -1039,6 +1066,10 @@ const declaredNow = (kind) => {
 /** 送る変数（`start.js` の `variablesOf`）。宣言された名前のうち、欄に値の在る物。 */
 const variablesNow = () => variablesOf(declaredNow("variable"), values);
 
+/** いまの欄から台帳へ送る本文。「始める」と「定期にする」と、大きさの行が同じ物を見る。 */
+const startBodyNow = () =>
+  startBody($("start-seeds").value, followOf(), runOf(), variablesNow(), $("start-ua-text").value);
+
 /** 最後に描いた宣言の形。同じなら描き直さない —— 打っている欄を手の下で作り直さない。 */
 let valuesKey;
 
@@ -1181,7 +1212,7 @@ const drawGutter = () => {
 const syncStart = () => {
   drawRunOrder();
   const follow = followOf();
-  const body = startBody($("start-seeds").value, follow, runOf(), variablesNow(), $("start-ua-text").value);
+  const body = startBodyNow();
   const limit = settings.writeLimit ?? Infinity;
   const size = sizeOf($("start-inline-source").value, bodyBytes(body), limit);
   const line = $("start-size");
@@ -1195,6 +1226,8 @@ const syncStart = () => {
   const answer = currentCheck();
   const rulesBad = follow !== null && (follow.rows.length === 0 || (answer !== undefined && !answer.ok));
   $("start-go").disabled = body.seeds.length === 0 || size.over || rulesBad;
+  $("schedule-go").disabled =
+    $("start-go").disabled || $("schedule-name").value.trim() === "" || $("schedule-cron").value.trim() === "";
 };
 
 // ── 辿り方（規則の表）───────────────────────────────────────────────
@@ -1439,7 +1472,7 @@ const drawSource = () => {
  */
 const startCrawl = async (event) => {
   event.preventDefault();
-  const body = startBody($("start-seeds").value, followOf(), runOf(), variablesNow(), $("start-ua-text").value);
+  const body = startBodyNow();
   if (body.seeds.length === 0) return;
   $("start-go").disabled = true;
   let status = 0;
@@ -1499,6 +1532,63 @@ $("start-nocheck").addEventListener("change", (event) => {
   syncStart();
 });
 $("start").addEventListener("submit", (event) => void startCrawl(event));
+
+// ── 定期にする ─────────────────────────────────────────────────────
+/** 書く口に JSON を送る。門は content-type を見るので、本文が無い操作も `{}` を送る。 */
+const postJson = async (path, body = {}) => {
+  let status = 0;
+  let answer = {};
+  try {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    status = res.status;
+    answer = await res.json().catch(() => ({}));
+  } catch (err) {
+    answer = { error: failedText(err) };
+  }
+  return { status, answer };
+};
+
+/** いまの欄の中身で予定を作る。**送る前に検査しない** —— cron も頼みの中身も台帳が見て、文で答える。 */
+const makeSchedule = async () => {
+  const request = startBodyNow();
+  if (request.seeds.length === 0) return;
+  $("schedule-go").disabled = true;
+  const { status, answer } = await postJson(
+    SCHEDULES_PATH,
+    createBody($("schedule-name").value, $("schedule-cron").value, request),
+  );
+  const said = createAnswer(status, answer);
+  const line = $("schedule-answer");
+  line.hidden = false;
+  line.className = `start-answer state ${said.kind}`;
+  line.textContent = said.text;
+  if (status === 201) {
+    $("schedule-name").value = "";
+    await refreshSchedules();
+  }
+  syncStart();
+};
+$("schedule-go").onclick = () => void makeSchedule();
+// 名前と式の欄で Enter を押しても、クロールを始めない（form の submit は「始める」）
+for (const id of ["schedule-name", "schedule-cron"]) {
+  $(id).addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (!$("schedule-go").disabled) void makeSchedule();
+  });
+}
+$("schedule-presets").append(
+  ...CRON_PRESETS.map((preset) =>
+    button(preset.label, () => {
+      $("schedule-cron").value = preset.cron;
+      syncStart();
+    }),
+  ),
+);
 // 型を入れるだけ。欄の input と同じ道を通すので、本文の大きさも一緒に数え直す
 $("start-ua-compatible").addEventListener("click", () => {
   const box = $("start-ua-text");
@@ -2684,8 +2774,148 @@ const openRecord = async (path, offset, length) => {
   panel.scrollIntoView({ block: "nearest" });
 };
 
+// ── 定期実行 ───────────────────────────────────────────────────────
+/**
+ * 最後に読めた予定。**一覧の引き直しと別の輪で読む** —— `refresh` の `Promise.all` は 1 つ落ちると描画を全部飛ばすので、
+ * ここが落ちてクロールの表まで止まらないように。読めなければ帯で言う（読めないことを正常と取り違えない）。
+ */
+let schedules = [];
+let schedulesError;
+let schedulesTimer;
+/** `api()` と違って時間を切る。答えない台帳を待ち続けると、帯も出ない。 */
+const SCHEDULES_TIMEOUT_MS = 15_000;
+
+const drawBand = () => {
+  const said = bandOf(schedules, schedulesError);
+  $("schedule-band").hidden = said === undefined;
+  if (said !== undefined) $("schedule-band-text").textContent = said;
+  const trouble = troubleCount(schedules);
+  $("tab-schedules-count").hidden = trouble === 0;
+  $("tab-schedules-count").textContent = String(trouble);
+};
+
+/** 操作を頼み、答えを 1 行で出して、引き直す。走る物が変わるので、クロールの表も引き直す。 */
+const scheduleAction = async (action, path, { ask, body } = {}) => {
+  if (ask !== undefined && !window.confirm(ask)) return;
+  const { status, answer } = await postJson(path, body);
+  const said = actionAnswer(action, status, answer);
+  const line = $("schedules-answer");
+  line.hidden = false;
+  line.className = `start-answer state ${said.kind}`;
+  line.textContent = said.text;
+  await Promise.all([refreshSchedules(), refresh()]);
+};
+
+const scheduleButtons = (schedule) => {
+  const path = (action) => `${SCHEDULES_PATH}/${schedule.id}/${action}`;
+  const box = document.createElement("div");
+  box.className = "schedule-actions";
+  box.append(button("いま撮る", () => void scheduleAction("run", path("run"))));
+  box.append(
+    schedule.enabled
+      ? button("止める", () => void scheduleAction("pause", path("pause")))
+      : button("再開", () => void scheduleAction("resume", path("resume"))),
+  );
+  box.append(button("固定し直す", () => void scheduleAction("repin", path("repin"))));
+  box.append(
+    button("消す", () =>
+      void scheduleAction("delete", path("delete"), {
+        ask: `予定「${schedule.name}」を消します。撮った回の行は残ります。`,
+      }),
+    ),
+  );
+  const crawlId = closableCrawl(schedule);
+  if (crawlId !== undefined) {
+    box.append(
+      button(`走ったままの行 ${crawlId.slice(0, 8)} を締める`, () =>
+        void scheduleAction("close", `/api/crawls/${crawlId}/failed`, {
+          ask: `クロール ${crawlId.slice(0, 8)} を失敗として締めます。本当に走っている場合、撮った分は残り、続きの報告は捨てられます。`,
+          body: { reason: "定期実行の画面から締めた" },
+        }),
+      ),
+    );
+  }
+  return box;
+};
+
+/** 回の 1 行。id はクロールの画面へ（印を付けて開く）。 */
+const scheduleRunRow = (run, timeZone) => {
+  const row = document.createElement("tr");
+  const said = runResult(run);
+  row.append(cell(said.text, `state ${said.kind}`));
+  row.append(cell(runWhen(run, timeZone), "mono"));
+  row.append(cell(shortTime(run.startedAt, timeZone), "mono"));
+  row.append(cell(runDelay(run)));
+  row.append(cell(runMissed(run)));
+  row.append(cell(run.error ?? "", "wide"));
+  const id = hashCell("#crawls", run.crawlId.slice(0, 8));
+  id.className = "mono";
+  id.querySelector("a").onclick = () => {
+    spotlight = run.crawlId;
+    drawCrawls();
+  };
+  row.append(id);
+  return row;
+};
+
+const drawSchedules = () => {
+  const box = $("schedules");
+  box.replaceChildren();
+  $("schedules-empty").hidden = schedules.length > 0 || schedulesError !== undefined;
+  for (const schedule of schedules) {
+    const card = document.createElement("article");
+    card.className = "schedule";
+    const head = document.createElement("h2");
+    head.append(tag("span", schedule.name));
+    const health = healthOf(schedule);
+    head.append(tag("span", health.text, `state ${health.kind}`));
+    card.append(head);
+    card.append(
+      tag(
+        "p",
+        `${cronWords(schedule.cron)}（${schedule.timezone}） ・ 次の回 ${shortTime(schedule.nextRunAt, schedule.timezone)} ・ ` +
+          `起点 ${String(schedule.seeds.length)} ・ 深さ ${String(schedule.maxDepth)} ・ ${scriptsText(schedule)}`,
+        "schedule-meta",
+      ),
+    );
+    card.append(scheduleButtons(schedule));
+    if (schedule.recentRuns.length > 0) {
+      const table = document.createElement("table");
+      const titles = document.createElement("tr");
+      for (const title of ["結果", "本来の時刻", "始まった", "遅れ", "欠け", "理由", "id"]) {
+        titles.append(tag("th", title));
+      }
+      const thead = document.createElement("thead");
+      thead.append(titles);
+      const tbody = document.createElement("tbody");
+      for (const run of schedule.recentRuns) tbody.append(scheduleRunRow(run, schedule.timezone));
+      table.append(thead, tbody);
+      card.append(table);
+    } else {
+      card.append(tag("p", "まだ回がありません。", "empty"));
+    }
+    box.append(card);
+  }
+};
+
+const refreshSchedules = async () => {
+  clearTimeout(schedulesTimer);
+  try {
+    const res = await fetch(SCHEDULES_PATH, { signal: AbortSignal.timeout(SCHEDULES_TIMEOUT_MS) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error ?? body.message ?? `${SCHEDULES_PATH} → ${String(res.status)}`);
+    schedules = body.schedules;
+    schedulesError = undefined;
+  } catch (err) {
+    schedulesError = failedText(err);
+  }
+  drawSchedules();
+  drawBand();
+  schedulesTimer = setTimeout(() => void refreshSchedules(), pollMs(schedules));
+};
+
 // ── 画面の切り替え ───────────────────────────────────────────────────
-const FACES = ["crawls", "start", "archives", "search", "scripts", "wacz"];
+const FACES = ["crawls", "start", "schedules", "archives", "search", "scripts", "wacz"];
 
 const show = (face) => {
   for (const b of document.querySelectorAll("#tabs button")) {
@@ -2787,6 +3017,7 @@ const start = async () => {
   }
   drawRules();
   syncStart(); // 上限を知ってから、欄の下の行を出す
+  void refreshSchedules(); // 別の輪。クロールの表を待たせない
   await refresh();
   route();
 };

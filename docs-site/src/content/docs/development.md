@@ -109,6 +109,7 @@ in `sandbox/samples/SOURCE.md`.
 | try the search view | Type words in the search view (the bundled scenario gives two hits for ランプ). The stand-in answers from the scenario's `searchPages` (each archive's page-list lines; a line without `stage` is the document's) by the ledger's rule: for an archive with snapshot lines only the snapshots are searched, and `hidden` archives are left out. **The stand-in has no OpenSearch**: it picks the lines whose title or text contains the words, with no scoring or word splitting. A missing or empty `q`, or any other parameter, is a 400 with the ledger's schema message |
 | see a crawl's bundle | Open crawl `5b0c0009` in the scenario: its row has replay ↗ next to run ↗, and in its pages table the captured pages have replay ↗ after their outcome (the crawl's `replayBundle` is at r2, and the pages' `bundledRev` are 1 and 2); the page that timed out and the one robots.txt kept out have none. `5b0c0003` could not write the version after r2 (its row still opens r2, and the opened row says why), and `5b0c0002` never wrote one (no replay ↗; the opened row says why). Give a crawl in the scenario `replayBundle` (`rev`, `pages`, `builtAt` and `error`; leave out `rev` for a crawl whose bundle only failed) and its pages `capturedAt` and `bundledRev`. The stand-in builds the key the way the ledger does (`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`). **The stand-in writes no bundle**: replay ↗ leads to nothing |
 | ask for a fix | Open crawl `5b0c0008` (failed the type check). The stand-in answers `/api/crawls/:id/diagnostics` from the crawl's `diagnosed` in the scenario (the ledger's answer as it is; a crawl without it type-checks), and `POST /api/crawls/:id/inline/:name/fix` from its `fixes` (`{ status, body }` per inline script's name). **The stand-in never calls Claude**: a name not in `fixes` is a 404. `5b0c0008` carries one TS7006 and a fix that passed the check (lines 2–3; the fixed source type-checks under TypeScript 6.0.3 strict). To see another answer, give `fixes` a `status` such as 429 or 422 with the ledger's body |
+| schedules | The 定期実行 tab: a schedule whose runs failed (with the band on every view), one queued, one paused. Actions are remembered while the stand-in runs; there is no tick, so run now only sets the request. |
 
 There are things the stand-in does not do:
 
@@ -180,7 +181,7 @@ npm run docs:shots -- start crawls   # only the named ones
   the pictures would stay stale.
 - **Taking named pictures leaves the stamp alone.** Only a run that takes all of them brings it up
   to date.
-- **The pictures are lossless WebP, at most 32 KB each and 226 KB in all,** because every re-take
+- **The pictures are lossless WebP, at most 32 KB each and 260 KB in all,** because every re-take
   piles up in git. Going over makes `site:check` fail; then make the cropped box smaller, or lower
   its height limit (`maxHeight`), in `SHOTS` in `docs-shots.mjs`.
 - **A picture meant to be read fits the docs' column.** The docs show a picture at its pixel size,

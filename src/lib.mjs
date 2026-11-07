@@ -82,6 +82,9 @@ const WRITE_ROUTES = [
   /^\/api\/crawls$/,
   /^\/api\/crawls\/[0-9a-f-]+\/inline\/[a-z0-9-]+\/fix$/,
   /^\/api\/scripts\/check$/,
+  /^\/api\/schedules$/,
+  /^\/api\/schedules\/[0-9a-f-]+\/(?:pause|resume|run|repin|delete)$/,
+  /^\/api\/crawls\/[0-9a-f-]+\/failed$/,
 ];
 
 export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url));

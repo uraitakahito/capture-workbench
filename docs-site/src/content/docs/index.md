@@ -37,8 +37,8 @@ flowchart LR
 ```
 
 The browser only ever talks to the workbench (same origin). The workbench gets an access token from the
-development issuer and passes `/api/*` straight through to the ledger with it. The only write is
-`POST /api/crawls`, sent the same way when you start a crawl from the form on the crawls view. For
+development issuer and passes `/api/*` straight through to the ledger with it. The writes are
+`POST /api/crawls`, when you start a crawl from the form, and the routes for schedules ([Routes](/routes/)), sent the same way. For
 validating a WACZ and reading its contents, it asks the ledger to sign a URL and hands that URL to
 the daemon, which reads the archive itself. replayweb-server and Windmill are only linked to from the rows.
 

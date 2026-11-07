@@ -27,6 +27,8 @@ import {
   catalogOf,
   crawlDetail,
   crawlRow,
+  createSchedule,
+  scheduleRow,
   crawlRulesCheck,
   decisionsOf,
   defaultSet,
@@ -79,6 +81,9 @@ const LEDGER_CRAWL_KEYS = [
   "waczCount",
   "lastJob",
   "replayBundle",
+  "schedule",
+  "scheduledFor",
+  "scheduleMissed",
 ].sort();
 /** 行と詳しい所の `replayBundle` の欄（null でなければ。CAPTURE-56 の src/api/crawls.ts の replayBundleOf）。 */
 const LEDGER_BUNDLE_KEYS = ["key", "rev", "pages", "builtAt", "error"].sort();
@@ -93,6 +98,65 @@ const LEDGER_ARCHIVE_KEYS = [
   "capturedAt",
   "objectKey",
 ].sort();
+
+/** capture-ledger の src/api/schedules.ts が /api/schedules の 1 行に返す欄 (CAPTURE-173)。 */
+const LEDGER_SCHEDULE_KEYS = [
+  "id",
+  "name",
+  "orgId",
+  "cron",
+  "timezone",
+  "enabled",
+  "health",
+  "blockedBy",
+  "nextRunAt",
+  "runRequestedAt",
+  "seeds",
+  "maxDepth",
+  "maxPages",
+  "scripts",
+  "outdated",
+  "pinnedAt",
+  "createdBy",
+  "createdAt",
+  "recentRuns",
+].sort();
+const LEDGER_SCHEDULE_RUN_KEYS = [
+  "crawlId",
+  "state",
+  "scheduledFor",
+  "startedAt",
+  "finishedAt",
+  "scheduleMissed",
+  "pagesCaptured",
+  "pagesFailed",
+  "error",
+].sort();
+
+test("予定の 1 行は、台帳の /api/schedules と同じ欄を持つ", () => {
+  for (const c of scenario.schedules) {
+    const row = scheduleRow(c);
+    assert.deepEqual(Object.keys(row).sort(), LEDGER_SCHEDULE_KEYS, c.id);
+    for (const run of row.recentRuns) {
+      assert.deepEqual(Object.keys(run).sort(), LEDGER_SCHEDULE_RUN_KEYS, run.crawlId);
+    }
+  }
+});
+
+test("同梱の台本は、定期実行の見本を 3 つ出す（失敗・順番待ち・止めた予定）", () => {
+  assert.deepEqual(scenario.schedules.map((c) => c.health), ["failing", "blocked", "paused"]);
+});
+
+test("予定を作る口は、台帳と同じ文で断る", () => {
+  assert.equal(createSchedule([], { name: " ", cron: "0 4 * * *" }).body.error, "name must not be blank");
+  assert.equal(createSchedule([], { name: "a", cron: "0 0 4 * * *" }).body.error, "invalid cron");
+  assert.equal(createSchedule([], { name: "a", cron: "*/5 * * * *" }).body.error, "cron runs too often");
+  assert.equal(createSchedule([{ name: "a" }], { name: "a", cron: "0 4 * * *" }).status, 409);
+  const made = createSchedule([], { name: " a ", cron: "0 4 * * *", request: { seeds: ["https://site.test/"] } });
+  assert.equal(made.status, 201);
+  assert.equal(made.row.name, "a");
+  assert.deepEqual(made.row.seeds, ["https://site.test/"]);
+});
 
 test("クロールの 1 行は、台帳の /api/crawls と同じ欄を持つ", () => {
   for (const c of scenario.crawls) {

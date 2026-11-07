@@ -124,6 +124,10 @@ export const crawlRow = (c, now) => ({
   waczCount: c.waczCount ?? 0,
   lastJob: c.lastJobId === undefined ? null : { id: c.lastJobId, depth: c.lastJobDepth ?? 0 },
   replayBundle: replayBundleOf(scenarioAt(c, now)),
+  // 定期の回の欄 (台帳 CAPTURE-173)。手で始めた行は null と 0
+  schedule: c.schedule ?? null,
+  scheduledFor: c.scheduledSecondsAgo === undefined ? null : new Date(now - c.scheduledSecondsAgo * 1000).toISOString(),
+  scheduleMissed: c.scheduleMissed ?? 0,
 });
 
 /**
@@ -1134,6 +1138,9 @@ export const submittedRow = (row, now) => {
     lastJob: null,
     // 受けた行は WACZ を持たないので、合本も無い
     replayBundle: null,
+    schedule: null,
+    scheduledFor: null,
+    scheduleMissed: 0,
   };
 };
 
@@ -1180,6 +1187,75 @@ export const readingLastGood = (read, graceMs, now = Date.now) => {
   };
 };
 
+/**
+ * /api/schedules の 1 行。欄は capture-ledger の src/api/schedules.ts と同じ。状態の語 (`health`) の判定は台帳の物なので、
+ * 台本に語を書く。時刻は絶対の時刻のまま (画面の絵が撮るたびに変わらないように)。
+ */
+export const scheduleRow = (c) => ({
+  id: c.id,
+  name: c.name,
+  orgId: c.orgId ?? "acme",
+  cron: c.cron,
+  timezone: c.timezone ?? "Asia/Tokyo",
+  enabled: c.enabled ?? true,
+  health: c.health ?? "ok",
+  blockedBy: c.blockedBy ?? null,
+  nextRunAt: c.nextRunAt,
+  runRequestedAt: c.runRequestedAt ?? null,
+  seeds: c.seeds ?? [],
+  maxDepth: c.maxDepth ?? 0,
+  maxPages: c.maxPages ?? 30,
+  scripts: c.scripts ?? [],
+  outdated: c.outdated ?? false,
+  pinnedAt: c.pinnedAt ?? "2026-11-01T00:00:00.000Z",
+  createdBy: c.createdBy ?? "sandbox",
+  createdAt: c.createdAt ?? "2026-11-01T00:00:00.000Z",
+  recentRuns: c.recentRuns ?? [],
+});
+
+/**
+ * 予定の操作。台本は読むだけなので、画面から頼んだ変化は代役が起きている間だけ覚える (id → 上書きする欄)。
+ * 作った予定も同じ所に置く。周回は無いので、「いま撮る」は頼みが立つだけで回は増えない。
+ */
+const scheduleEdits = new Map();
+const createdSchedules = [];
+const deletedSchedules = new Set();
+
+const schedulesIn = (s) =>
+  [...(s.schedules ?? []), ...createdSchedules]
+    .filter((row) => !deletedSchedules.has(row.id))
+    .map((row) => ({ ...row, ...scheduleEdits.get(row.id) }));
+
+/** `POST /api/schedules`。cron の確かめは台帳の決まりの写しで、欄の数と周期の下限だけを見る。 */
+export const createSchedule = (rows, body, now = Date.now()) => {
+  if (typeof body?.name !== "string" || body.name.trim() === "") {
+    return { status: 400, body: { error: "name must not be blank" } };
+  }
+  const cron = String(body.cron ?? "").trim();
+  if (cron.split(/\s+/).length !== 5) {
+    return { status: 400, body: { error: "invalid cron", hint: "cron must have 5 fields" } };
+  }
+  if (cron.startsWith("*/")) {
+    return { status: 400, body: { error: "cron runs too often", gapMinutes: 5, minIntervalMinutes: 60 } };
+  }
+  if (rows.some((row) => row.name === body.name.trim())) {
+    return { status: 409, body: { error: "a schedule with this name already exists" } };
+  }
+  const row = {
+    id: randomUUID(),
+    name: body.name.trim(),
+    cron,
+    seeds: body.request?.seeds ?? [],
+    maxDepth: body.request?.maxDepth ?? 2,
+    scripts: [],
+    nextRunAt: new Date(now + 3_600_000).toISOString(),
+    recentRuns: [],
+    createdAt: new Date(now).toISOString(),
+    pinnedAt: new Date(now).toISOString(),
+  };
+  return { status: 201, row };
+};
+
 /** 台本は要求のたびに読む。書き換えると、代役を起こし直さずに画面に出る。 */
 const scenario = readingLastGood(() => JSON.parse(readFileSync(SCENARIO, "utf8")), 3000);
 
@@ -1213,6 +1289,54 @@ const handle = (req, res, raw) => {
     }
     const answer = submitCrawl(submitted, body, Date.now(), s.submit?.runsSeconds ?? 15, versionsIn(s), windmillOf(s));
     send(res, answer.status, answer.body);
+    return;
+  }
+  if (req.method === "GET" && pathname === "/api/schedules") {
+    send(res, 200, { schedules: schedulesIn(s).map(scheduleRow) });
+    return;
+  }
+  if (req.method === "POST" && pathname === "/api/schedules") {
+    let body;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      send(res, 400, { error: "body is not valid JSON" });
+      return;
+    }
+    const answer = createSchedule(schedulesIn(s), body);
+    if (answer.row === undefined) {
+      send(res, answer.status, answer.body);
+      return;
+    }
+    createdSchedules.push(answer.row);
+    send(res, answer.status, scheduleRow(answer.row));
+    return;
+  }
+  const acted = /^\/api\/schedules\/([^/]+)\/(pause|resume|run|repin|delete)$/.exec(pathname);
+  if (req.method === "POST" && acted !== null) {
+    const row = schedulesIn(s).find((one) => one.id === acted[1]);
+    if (row === undefined) {
+      send(res, 404, { error: "not found" });
+      return;
+    }
+    if (acted[2] === "delete") {
+      deletedSchedules.add(row.id);
+      send(res, 200, { deleted: true });
+      return;
+    }
+    const edit = {
+      pause: { enabled: false, health: "paused" },
+      resume: { enabled: true, health: "ok", nextRunAt: new Date(Date.now() + 3_600_000).toISOString() },
+      run: { runRequestedAt: new Date().toISOString(), health: "blocked" },
+      repin: { outdated: false, scripts: row.scripts?.map((script) => ({ ...script, version: script.latest ?? script.version })) },
+    }[acted[2]];
+    scheduleEdits.set(row.id, { ...scheduleEdits.get(row.id), ...edit });
+    send(res, acted[2] === "run" ? 202 : 200, scheduleRow({ ...row, ...edit }));
+    return;
+  }
+  // 走ったままの行を締める (台帳の /failed と同じ本文)。代役の台本の行は書き換えないので、閉じたとだけ答える
+  if (req.method === "POST" && /^\/api\/crawls\/[^/]+\/failed$/.test(pathname)) {
+    send(res, 200, { closed: true });
     return;
   }
   if (req.method === "POST" && pathname === "/api/scripts/check") {

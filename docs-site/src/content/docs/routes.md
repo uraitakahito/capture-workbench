@@ -13,6 +13,9 @@ not.
 | `GET /healthz` | the server itself (liveness, and the settings the workbench needs) |
 | `POST /api/crawls` | the ledger (writes: starts a crawl) |
 | `POST /api/crawls/:id/inline/:name/fix` | the ledger (writes: asks how to fix an inline script's type errors) |
+| `POST /api/schedules` | the ledger (writes: makes a schedule) |
+| `POST /api/schedules/:id/<action>` | the ledger (writes: `pause`, `resume`, `run`, `repin`, `delete`) |
+| `POST /api/crawls/:id/failed` | the ledger (writes: closes a crawl left running) |
 | `POST /api/scripts/check` | the ledger (asks what an inline script declares; writes nothing, and goes through the same checks because the source travels in the body) |
 | `/api/*` (the rest) | passed through to the ledger (GET only) |
 | `/wacz/:id/…` | signed by the ledger, then answered by the daemon |
@@ -116,6 +119,20 @@ is `{ source, phase }`. The ledger creates no row: it asks ts-compile-service an
 | 400 | the body has another shape (Fastify's `message`) |
 | 404 | the identity may not start crawls (`{"error":"not found"}`), or the ledger has no ts-compile-service configured and does not serve the route at all |
 | 503 `{"error": "ts-compile unreachable"}` | ts-compile-service did not answer |
+
+## POST /api/schedules — the routes for schedules
+
+The schedules view ([Screens](/screens/)) and 定期にする on the new crawl view use these. There are
+three shapes: `POST /api/schedules` makes a schedule, `POST /api/schedules/:id/<action>` acts on one,
+and `POST /api/crawls/:id/failed` closes a crawl left running. Reading is `GET /api/schedules`, passed
+through like any other read.
+
+- The checks and the access token are the same as `POST /api/crawls` (`Origin`, JSON, 1 MiB). An action
+  with no body still sends `{}`.
+- **Only exactly these shapes are relayed.** The actions are `pause`, `resume`, `run`, `repin` and
+  `delete`, and the id is hex digits and hyphens. The shapes are in `isWriteRoute` in `src/lib.mjs`.
+- **Deleting is a POST too.** The relay only writes with POST, so the ledger's route has that shape.
+- The ledger decides. For the cron expression and the request alike, the refusal is the ledger's words.
 
 ## POST /api/crawls/:id/inline/:name/fix — asking how to fix an inline script
 

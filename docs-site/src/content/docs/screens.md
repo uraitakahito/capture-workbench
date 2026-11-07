@@ -1,24 +1,25 @@
 ---
 title: Screens
-description: What each view shows — crawls, start, archives, search, script collection and WACZ — how a crawl's state is worded, and how often capture-workbench polls
+description: What each view shows — crawls, start, schedules, archives, search, script collection and WACZ — how a crawl's state is worded, and how often capture-workbench polls
 ---
 
 capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
-which view is shown (`#crawls`, `#start`, `#archives`, `#search`, `#scripts`; in the search view it also
+which view is shown (`#crawls`, `#start`, `#schedules`, `#archives`, `#search`, `#scripts`; in the search view it also
 names the words searched, and in the script collection view what you are reading). The WACZ tab only appears once you
 enter it with 開く (open) on an archive row. The workbench itself is in Japanese; the tab names are
-クロール, 新しいクロール, アーカイブ, 検索, スクリプト集 and WACZ.
+クロール, 新しいクロール, 定期実行, アーカイブ, 検索, スクリプト集 and WACZ.
 
 The pictures on this page are taken against the stand-in ledger (the
 [sandbox](/development/#opening-the-workbench-in-the-sandbox)). Its scripts are copies from capture-scripts,
 the same ones a real ledger lists; only autoscroll v2 is the stand-in's own version, there to show version chips.
 
-![The tabs at the top: クロール, 新しいクロール, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
+![The tabs at the top: クロール, 新しいクロール, 定期実行, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
 
 | View | What it lists |
 | --- | --- |
 | Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replayweb-server (the whole crawl as one archive) |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
+| Schedules | schedules and their runs; pause, resume, run now, repin and delete a schedule. A run that did not capture shows on a band on every view |
 | Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser) |
 | Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replayweb-server |
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
@@ -400,6 +401,38 @@ follow).
 
 It is sent through `POST /api/crawls` in [Routes](/routes/).
 
+## Schedules
+
+The schedules and their runs (`#schedules`). The clock lives in
+[capture-ledger](https://github.com/uraitakahito/capture-ledger); this view reads the state and asks
+for actions.
+
+![The schedules view. A red band at the top says the latest run of the schedule 毎朝の 5 サイト failed. Below it the runs are listed newest first, with the reason for each failure](../../assets/screens/schedules.webp)
+
+- **A run that did not capture shows on a band on every view.** The band appears for three things —
+  the latest run failed, the next run is an hour or more late, a run has been running for an hour or
+  more — and when the state cannot be read. It cannot be dismissed; it goes away when the cause is
+  fixed. The tab also carries the number of schedules on the band.
+- **Queueing does not show on the band.** Only one crawl runs at a time, so a due schedule waits for
+  a running crawl, and for 10 minutes (quiet) after the ledger starts and after the latest crawl. The
+  due time does not move while it waits, and the run starts afterwards.
+- **Runs missed while the ledger was down merge into one.** It captures once when it comes back, and
+  the merged count shows as 欠け.
+- **A run where only some pages failed says 一部失敗.** It stays off the band: a site that fails every
+  day would keep the band up, and nobody would read it.
+- **いま撮る (run now) does not wait for quiet.** It queues behind a running crawl, and works on a
+  paused schedule.
+- **How to capture is pinned when the schedule is made.** A new script version does not change what a
+  run does (it shows as `autoscroll@1（新しい版 2）`). 固定し直す (repin) moves it up.
+- **A row left running is not closed for you,** so that a run that really is running does not get
+  closed. If it blocks the next run, 締める (close) appears, and closes that crawl as failed.
+- **Schedules are made on the new crawl view.** Fill in the form, write a name and a cron expression
+  (5 fields, Asia/Tokyo), and press 定期にする. The checks are the same as 始める, with the same words
+  when refused. The ledger sets the minimum gap between runs (60 minutes by default). There is no
+  editing: delete and make it again.
+
+Rows on the crawls view carry a 定期 mark, and 定期・欠け 2 when runs were merged.
+
 ## Archives
 
 The WACZ files you can see, newest capture first.
@@ -520,7 +553,9 @@ ledger that starts crawls and records what came back).
 While at least one crawl is running, the lists are fetched every 2 seconds; otherwise every 30
 seconds. A crawl that has just finished keeps the 2-second pace until its last bundle version shows
 up, for at most a minute. Without keeping a copy, the workbench still looks live while something runs, and stays
-quiet when nothing does. The search view does not poll; it fetches only when you search.
+quiet when nothing does. The search view does not poll; it fetches only when you search. Schedules
+are fetched on a separate loop, every 30 seconds, and every 5 seconds while one is queued or running.
+It is separate so that being unable to read schedules does not stop the crawl table too.
 
 When a fetch fails, the workbench keeps the last tables it could draw and shows the reason at the
 top (see "Fix it from the message" in the [Quickstart](/quickstart/)).

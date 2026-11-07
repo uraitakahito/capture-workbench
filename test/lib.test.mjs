@@ -102,6 +102,28 @@ test("書く口は、ほかのオリジン・Origin の無い要求・JSON で�
   assert.equal(writeRefusal({ ...fromThisPage, host: "evil.test:7080", origin: "http://evil.test:7080" }, 7080)?.status, 403);
 });
 
+test("書く口は、定期実行の予定を作る口と操作の口と、行を締める口も通す", () => {
+  const id = "5b0c0008-6a1e-4000-8000-000000000008";
+  assert.equal(isWriteRoute("/api/schedules"), true);
+  for (const action of ["pause", "resume", "run", "repin", "delete"]) {
+    assert.equal(isWriteRoute(`/api/schedules/${id}/${action}`), true, action);
+  }
+  assert.equal(isWriteRoute(`/api/crawls/${id}/failed`), true);
+  // 知らない操作・末尾の足し・query・ほかの段
+  assert.equal(isWriteRoute(`/api/schedules/${id}`), false);
+  assert.equal(isWriteRoute(`/api/schedules/${id}/nope`), false);
+  assert.equal(isWriteRoute(`/api/schedules/${id}/run/`), false);
+  assert.equal(isWriteRoute(`/api/schedules/${id}/run?x=1`), false);
+  assert.equal(isWriteRoute("/api/schedules/"), false);
+  assert.equal(isWriteRoute("/api/schedules?x=1"), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/failed/`), false);
+  // fetch が .. を畳むので、台帳のほかの口へ回り込む形を断る
+  assert.equal(isWriteRoute(`/api/schedules/${id}/../../crawls`), false);
+  assert.equal(isWriteRoute("/api/schedules/../crawls"), false);
+  assert.equal(isWriteRoute(`/api/schedules/${id}%2F/run`), false);
+  assert.equal(isWriteRoute("/api/crawls/../failed"), false);
+});
+
 test("書く口は、クロールを始める口と、その場の TS の直し方を訊く口と、宣言を訊く口の 3 つの形だけ", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   assert.equal(isWriteRoute("/api/crawls"), true);
