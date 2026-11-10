@@ -79,6 +79,22 @@ export const verdict = (summary) => {
 };
 
 /**
+ * 覚えた検証の答えから、「仕様どおりか」の欄の結論を作る。まだ検証していなければ undefined（欄は空）。
+ * 検証できなかった（Error）は「問題なし」と区別して言う。
+ */
+export const checkVerdict = (answer) => {
+  if (answer === undefined) return undefined;
+  if (answer instanceof Error) return { text: "検証できず", kind: "bad" };
+  return verdict(answer.summary);
+};
+
+/** 一覧に無い id を `map` から忘れる（引き直しで消えたアーカイブの答えを持ち続けない）。 */
+export const forgetMissing = (map, ids) => {
+  const keep = new Set(ids);
+  for (const id of map.keys()) if (!keep.has(id)) map.delete(id);
+};
+
+/**
  * 報告がどの条件で作られたか —— どの build の検証器が、どの profile で見たか。
  *
  * **版は workbench が決めない。** daemon が報告に書いた `validatorVersion` をそのまま出す

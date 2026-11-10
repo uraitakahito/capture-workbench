@@ -9,7 +9,7 @@
  * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
  * `outerHTML` のようなほかの API は見ない。
  */
-import { count, judgedUnder, linksOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
+import { checkVerdict, count, forgetMissing, judgedUnder, linksOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
   addRow,
@@ -1658,30 +1658,81 @@ const drawReport = (td, report) => {
 };
 
 /**
+ * 検証の答え（アーカイブの id → `{ answer, open }`）。**id で覚え、描き直しのたびに付け直す** —— 表は引くたびに
+ * 作り直す（走行中のクロールが在れば 2 秒ごと）ので、DOM に置いただけの答えは次の引きで消える。
+ *
+ *   answer  報告のデータ。まだ検証していなければ undefined、検証できなければ Error
+ *   asking  検証している間 true（押し直す間も、前の結論は欄に残す）
+ *   open    報告の行を開いているか。もう 1 度押すと閉じるが、answer（結論）は残る
+ *
+ * 忘れるのは、アーカイブが一覧から消えた時とページを読み直した時（クロールの `opened` と同じ型）。
+ */
+const checks = new Map();
+
+/** 「仕様どおりか」の欄。結論はここに残る（報告を閉じても、引き直しをまたいでも）。 */
+const verdictCellOf = (id) => {
+  const td = document.createElement("td");
+  const v = checkVerdict(checks.get(id)?.answer);
+  if (v !== undefined) td.append(tag("span", v.text, `state ${v.kind}`));
+  return td;
+};
+
+/** 開いた報告の行。最後の答えで描く。 */
+const checkRow = (id) => {
+  const row = document.createElement("tr");
+  row.className = "detail";
+  row.dataset.archive = id;
+  const td = document.createElement("td");
+  td.colSpan = 8;
+  const { answer, asking } = checks.get(id) ?? {};
+  if (asking || answer === undefined) td.textContent = "検証しています…";
+  else if (answer instanceof Error) td.textContent = failedText(answer);
+  else drawReport(td, answer);
+  row.append(td);
+  return row;
+};
+
+/** 1 本の行（結論の欄と報告の行）だけを、覚えた答えで描き直す。 */
+const redrawCheck = (id) => {
+  const body = $("archives");
+  const row = [...body.querySelectorAll("tr[data-archive]:not(.detail)")].find(
+    (tr) => tr.dataset.archive === id,
+  );
+  if (row === undefined) return;
+  row.children[4].replaceWith(verdictCellOf(id));
+  const next = row.nextElementSibling;
+  if (next?.classList.contains("detail")) next.remove();
+  if (checks.get(id)?.open) row.after(checkRow(id));
+};
+
+/**
  * 押されたら 1 本検証する。**押すまで走らせない** —— 一覧を開くだけで走らせない。
+ * 開いている報告をもう 1 度押すと閉じる（結論は残る）。
  *
  * 結果は行にも残す。閉じたあとに「この 1 本はどうだったか」が消えると、
  * 何本か見たときに**もう一度押さないと思い出せない**。
  */
-const validate = async (archive, after, verdictCell) => {
-  const row = document.createElement("tr");
-  row.className = "detail";
-  const td = document.createElement("td");
-  td.colSpan = 8;
-  td.textContent = "検証しています…";
-  row.append(td);
-  after.after(row);
-  try {
-    const body = await post(`/wacz/${enc(archive.id)}/validate`);
-    drawReport(td, body);
-    if (verdictCell) {
-      const v = verdict(body.summary);
-      verdictCell.replaceChildren(tag("span", v.text, `state ${v.kind}`));
-    }
-  } catch (err) {
-    td.textContent = failedText(err);
-    if (verdictCell) verdictCell.replaceChildren(tag("span", "検証できず", "state bad"));
+const toggleCheck = async (id) => {
+  const entry = checks.get(id);
+  if (entry?.open) {
+    entry.open = false;
+    redrawCheck(id);
+    return;
   }
+  // 結論は押し直す間も残す（新しい答えが来るまで古い答えを出す）
+  checks.set(id, { answer: entry?.answer, asking: true, open: true });
+  redrawCheck(id);
+  let answer;
+  try {
+    answer = await post(`/wacz/${enc(id)}/validate`);
+  } catch (err) {
+    answer = asError(err);
+  }
+  const now = checks.get(id);
+  if (now === undefined) return; // 待っている間に一覧から消えた
+  now.answer = answer;
+  now.asking = false;
+  redrawCheck(id);
 };
 
 // ── アーカイブ ─────────────────────────────────────────────────────
@@ -1693,6 +1744,7 @@ const drawArchives = () => {
   $("archives-empty").hidden = archives.length > 0;
   for (const archive of archives) {
     const row = document.createElement("tr");
+    row.dataset.archive = archive.id;
     row.append(cell(archive.sourceUrl, "wide"));
     row.append(cell(archive.labels.join(" ")));
     row.append(cell(new Date(archive.capturedAt).toLocaleString("ja-JP"), "mono"));
@@ -1701,23 +1753,15 @@ const drawArchives = () => {
       cell(archive.waczComplete === null ? "—" : archive.waczComplete ? "完全" : "欠けあり"),
     );
     const check = document.createElement("td");
-    const verdictCell = document.createElement("td");
-    let open = false;
-    check.append(
-      button("検証", () => {
-        const next = row.nextElementSibling;
-        if (open && next?.classList.contains("detail")) next.remove();
-        else void validate(archive, row, verdictCell);
-        open = !open;
-      }),
-    );
-    row.append(verdictCell);
+    check.append(button("検証", () => void toggleCheck(archive.id)));
+    row.append(verdictCellOf(archive.id));
     row.append(check);
     row.append(hashCell(waczHash(archive.id), "開く"));
     row.append(
       linkCell(replaywebHref(settings.replaywebServerOrigin, archive), "replay ↗"),
     );
     body.append(row);
+    if (checks.get(archive.id)?.open) body.append(checkRow(archive.id));
   }
 };
 
@@ -2829,7 +2873,7 @@ const scheduleButtons = (schedule) => {
     box.append(
       button(`走ったままの行 ${crawlId.slice(0, 8)} を締める`, () =>
         void scheduleAction("close", `/api/crawls/${crawlId}/failed`, {
-          ask: `クロール ${crawlId.slice(0, 8)} を失敗として締めます。本当に走っている場合、撮った分は残り、続きの報告は捨てられます。`,
+          ask: `クロール ${crawlId.slice(0, 8)} を失敗として締めます。本当に走っている場合、Windmill の run は止まらず、撮り続けて次の段も投げます。止めるなら先に Windmill で run を取り消してください。`,
           body: { reason: "定期実行の画面から締めた" },
         }),
       ),
@@ -2990,6 +3034,7 @@ const refresh = async () => {
     archives = a.archives;
     drawCrawls();
     refreshOpened();
+    forgetMissing(checks, archives.map((x) => x.id));
     drawArchives();
     reading.latest = s.scripts;
     drawReadingList();

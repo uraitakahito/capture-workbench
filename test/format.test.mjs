@@ -7,7 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { linksOf, stateOf, took } from "../public/format.js";
+import { checkVerdict, forgetMissing, linksOf, stateOf, took } from "../public/format.js";
 
 const crawl = (state, stopReason, pagesFailed = 0) => ({ state, stopReason, pagesFailed });
 
@@ -135,4 +135,17 @@ test("stats の無い報告でも、行を落とさない", async () => {
     ["WARC 3 レコード", "a.test, b.test"],
   );
   assert.deepEqual(statsOf({ stats: { warcRecordCount: 0 } }), ["WARC 0 レコード"]);
+});
+
+test("検証の結論は、未検証は空・失敗は「検証できず」・報告は合格と区別して言う", () => {
+  assert.equal(checkVerdict(undefined), undefined);
+  assert.deepEqual(checkVerdict(new Error("x")), { text: "検証できず", kind: "bad" });
+  assert.deepEqual(checkVerdict({ summary: { failed: 1, warnings: 0 } }), { text: "失敗 1", kind: "bad" });
+  assert.deepEqual(checkVerdict({ summary: { failed: 0, warnings: 0 } }), { text: "問題なし", kind: "ok" });
+});
+
+test("一覧から消えた id だけを、覚えた答えから忘れる", () => {
+  const map = new Map([["a", 1], ["b", 2], ["c", 3]]);
+  forgetMissing(map, ["a", "c", "z"]);
+  assert.deepEqual([...map.keys()], ["a", "c"]);
 });
