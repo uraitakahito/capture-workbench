@@ -443,7 +443,7 @@ The WACZ files you can see, newest capture first.
   that row, which is not the same as 欠けあり (incomplete).
 - **検証 (validate) only runs when you press it.** Opening the list does not run it. The result
   also stays in the row's 仕様どおりか (conforms?) cell, so after looking at several archives you
-  can tell how each one did without pressing again. What the report shows is in
+  can tell how each one did without pressing again. Reloading the page clears them. What the report shows is in
   [Inspecting a WACZ](/wacz/).
 - **開く (open) enters the WACZ view** (`#wacz/<archiveId>`).
 - **"replay ↗" opens the captured URL in replay.** The link is built from the replay origin the

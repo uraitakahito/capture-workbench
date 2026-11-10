@@ -60,7 +60,7 @@ Pressing 検証 on an archive row opens that archive's report under the row.
 - One finding per rule: severity, rule name, message, and a link to the spec (仕様 ↗).
 - The entries of the ZIP. An entry that should be there but is not is marked 無い (missing).
 
-The verdict also stays in the row's 仕様どおりか (conforms?) cell.
+The verdict also stays in the row's 仕様どおりか (conforms?) cell, until you reload the page.
 
 **The workbench owns no wording.** Messages, their Japanese text and the spec links all come back
 from the daemon already resolved, and are shown as they are. If the workbench rephrased a rule, it
