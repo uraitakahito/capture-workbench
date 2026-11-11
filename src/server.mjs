@@ -21,12 +21,12 @@
  * 直に叩く道は塞がっているので、同一オリジンにするために通す。**ここに workbench の
  * ロジックは置かない** —— 置いた瞬間に「台帳が知っていることの写し」が生まれる。
  *
- * ## 書く口
+ * ## 書き込みのエンドポイント
  *
  * 書くのは `POST /api/crawls`（クロールを始める）と、`POST /api/crawls/:id/inline/:name/fix`（型で落ちた
  * その場の TS の直し方を訊く）だけで、中身は検査せずに台帳へ渡す。起点の URL も方針も、直しが検査に通るかも、
- * 決めるのは台帳。代わりに門を通す —— 全部の口で Host を見て（DNS rebinding）、書く口では workbench の
- * ページからの JSON だけを受ける（CSRF）。書く口の形と門の判定は `lib.mjs` に在り、試験から直接呼べる。
+ * 決めるのは台帳。代わりに門を通す —— 全部のエンドポイントで Host を見て（DNS rebinding）、書き込みのエンドポイントでは workbench の
+ * ページからの JSON だけを受ける（CSRF）。書き込みのエンドポイントの形と門の判定は `lib.mjs` に在り、試験から直接呼べる。
  *
  * ## 7080 であって 7000 ではない
  *
@@ -223,8 +223,8 @@ const failed = (reply, err) => {
 const server = createServer((request, reply) => {
   const url = request.url ?? "/";
 
-  // **どの口も、workbench の Host でなければ答えない**（DNS rebinding。`lib.mjs` の注）。
-  // dev:up の準備の確かめは `http://127.0.0.1:<口>/healthz` を引くので、ここを通る。
+  // **どのエンドポイントも、workbench の Host でなければ答えない**（DNS rebinding。`lib.mjs` の注）。
+  // dev:up の準備の確かめは `http://127.0.0.1:<ポート>/healthz` を引くので、ここを通る。
   if (!hostAllowed(request.headers.host, PORT)) {
     sendJson(reply, 403, { error: "workbench の Host ではない" });
     return;
@@ -242,7 +242,7 @@ const server = createServer((request, reply) => {
         replaywebServerOrigin: REPLAYWEB_SERVER,
         windmillOrigin: WINDMILL,
         windmillWorkspace: WORKSPACE,
-        // 書く口の上限。workbench は欄の下に本文の大きさを出し、超えたら送る前に止める
+        // 書き込みのエンドポイントの上限。workbench は欄の下に本文の大きさを出し、超えたら送る前に止める
         writeLimit: WRITE_LIMIT,
       }),
     );
@@ -250,7 +250,7 @@ const server = createServer((request, reply) => {
   }
 
   /**
-   * WACZ の中身へ行く口（検証・行の窓・1 行・レコードの一覧・1 レコード・画像の実体）。
+   * WACZ の中身を読むエンドポイント（検証・行の窓・1 行・レコードの一覧・1 レコード・画像の実体）。
    *
    * **署名付き URL をここから外に出さない。** 応答にもログにも載せない ——
    * 載せると認可で閉じた意味が消える（期限内なら、URL を持つ者は誰でも読める）。
@@ -285,7 +285,7 @@ const server = createServer((request, reply) => {
   }
 
   /**
-   * 書く口（`lib.mjs` の `isWriteRoute`）。**中身は検査しない** —— クロールを始める頼みも、直し方を訊く頼みも、宣言を訊く頼みも
+   * 書き込みのエンドポイント（`lib.mjs` の `isWriteRoute`）。**中身は検査しない** —— クロールを始める頼みも、直し方を訊く頼みも、宣言を訊く頼みも
    * 台帳が検査して決め、答えをそのまま返す。門だけはここで見る。
    */
   if (isWriteRoute(url) && request.method === "POST") {
@@ -304,10 +304,10 @@ const server = createServer((request, reply) => {
   }
 
   if (url.startsWith("/api/")) {
-    // 読む口は GET だけ。ほかの method を GET として通すと、書けたように見えてしまう。
+    // 読み取りのエンドポイントは GET だけ。ほかの method を GET として通すと、書けたように見えてしまう。
     if (request.method !== "GET") {
       reply.writeHead(405, { allow: "GET", "content-type": "text/plain; charset=utf-8" });
-      reply.end("GET だけ（書く口は POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/crawls/:id/failed・POST /api/scripts/check・POST /api/schedules・POST /api/schedules/:id/<操作>）\n");
+      reply.end("GET だけ（書き込みのエンドポイントは POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/crawls/:id/failed・POST /api/scripts/check・POST /api/schedules・POST /api/schedules/:id/<操作>）\n");
       return;
     }
     void toLedger(url)

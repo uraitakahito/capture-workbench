@@ -234,7 +234,7 @@ test("作った答えの 1 行", () => {
     createAnswer(400, { error: "cron runs too often", gapMinutes: 5, minIntervalMinutes: 60 }).text,
     "間隔が短すぎます（5 分。下限は 60 分です）",
   );
-  // 頼みの中身の断りは始める口と同じ文
+  // 頼みの中身の断りは始めるエンドポイントと同じ文
   assert.match(createAnswer(400, { error: "every seed must be an http(s) URL" }).text, /every seed/);
 });
 

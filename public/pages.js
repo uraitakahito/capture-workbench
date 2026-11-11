@@ -6,17 +6,17 @@
  */
 import { count } from "./format.js";
 
-/** ページの一覧の口。`after` は前の答えの `next`（省けば頭から）。件数は台帳の既定に任せる。 */
+/** ページの一覧のエンドポイント。`after` は前の答えの `next`（省けば頭から）。件数は台帳の既定に任せる。 */
 export const pagesPath = (crawlId, after) =>
   `/api/crawls/${encodeURIComponent(crawlId)}/pages` +
   (after === undefined || after === null ? "" : `?after=${encodeURIComponent(after)}`);
 
-/** 1 ページのログの口。ページはクロールとの組で引く（ほかのクロールのページなら、台帳は 404）。 */
+/** 1 ページのログのエンドポイント。ページはクロールとの組で引く（ほかのクロールのページなら、台帳は 404）。 */
 export const logPath = (crawlId, pageId) =>
   `/api/crawls/${encodeURIComponent(crawlId)}/pages/${encodeURIComponent(pageId)}/log`;
 
 /**
- * ページの一覧を、頭から少なくとも `want` 件を覆うまで引く（`read` は口を 1 回引いて答えを返す関数）。
+ * ページの一覧を、頭から少なくとも `want` 件を覆うまで引く（`read` はエンドポイントを 1 回引いて答えを返す関数）。
  * **workbench は自分では続きを取りに行かない** —— `want` は「続きを読む」を押したときだけ増え、0 なら台帳の
  * 1 回分だけを引く。引き直し（走行中は 2 秒ごと）でも、押して読んだ所までは覆い直す。空の答えが来たら、
  * そこで終わりにする（進まない `next` で回り続けない）。
@@ -144,7 +144,7 @@ export const reasonText = (reason) => REASONS.get(reason) ?? "ログを読めま
  * —— 表は引くたびに作り直す（走行中のクロールが在れば 2 秒ごと）ので、DOM に置いただけの物は次の引きで消える。
  *
  *   want  「続きを読む」で覆う件数（0 は台帳の 1 回分）
- *   logs  開いているログ（ページの id → 箱の状態 `{ answer, filter, scrollTop, box }`）。answer は口の答え
+ *   logs  開いているログ（ページの id → 箱の状態 `{ answer, filter, scrollTop, box }`）。answer はエンドポイントの答え
  *         （引いている間は undefined、引けなければ Error）。box は app.js が作る DOM の箱で、作り直さずに移す
  *
  * 忘れるのは、行を閉じた時と、クロールが一覧から消えた時（開いた行の `opened` と同じ所）。

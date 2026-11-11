@@ -1,14 +1,14 @@
 /**
  * サーバが使う、外と話さない部分。**ここだけは試験から直接呼べる。**
  *
- * http の口（`server.mjs`）に混ぜないのは、混ぜた部分が「動かしてみないと
+ * http の側（`server.mjs`）に混ぜないのは、混ぜた部分が「動かしてみないと
  * 分からない」側に入ってしまうため。path の組み立てと content-type と門の判定は、
  * 動かさずに確かめられる。
  */
 import { normalize, resolve, sep } from "node:path";
 
 /**
- * 環境変数の読み口。**空文字は「無い」と同じに扱う**（POSIX の `${VAR:-word}` 側）。
+ * 環境変数を読む関数。**空文字は「無い」と同じに扱う**（POSIX の `${VAR:-word}` 側）。
  *
  * Web Capture の他の repo と同じ意味に揃えてある —— `??` は未設定のときしか既定値に
  * しないので、`NAME=` と書いた人が、名前の出ないエラーを遠くで踏む。
@@ -59,15 +59,15 @@ export const safePath = (root, url) => {
 };
 
 /**
- * Host が、workbench の口か。**全部の口で見る** —— DNS rebinding（よそのドメインの名前を
+ * Host が、workbench の host:port か。**全部のエンドポイントで見る** —— DNS rebinding（よそのドメインの名前を
  * 127.0.0.1 に向け直す手）で、別のサイトのページが workbench を自分のオリジンとして読むのを
- * 止める。書く口だけを守っても、読む口から一覧が漏れる。
+ * 止める。書き込みのエンドポイントだけを守っても、読み取りのエンドポイントから一覧が漏れる。
  */
 export const hostAllowed = (host, port) =>
   host === `127.0.0.1:${String(port)}` || host === `localhost:${String(port)}`;
 
 /**
- * 書く口。**台帳へそのまま渡す POST は、この形だけ**:
+ * 書き込みのエンドポイント。**台帳へそのまま渡す POST は、この形だけ**:
  *
  * - `/api/crawls` —— クロールを始める
  * - `/api/crawls/<id>/inline/<name>/fix` —— 型で落ちたクロールの、その場の TS の直し方を Claude に訊く
@@ -76,7 +76,7 @@ export const hostAllowed = (host, port) =>
  *   POST で、JSON だけを通す門も要る（よそのページから叩かれると、ts-compile-service を働かせられる）
  *
  * **端を固めて照らす** —— 末尾の足し・query・`%`（`%2F` も `%2e%2e` も）・`.` を通さない。id と名前の字まで絞るのは、
- * fetch が URL の `..` を畳み、台帳のほかの口に届かせないため。判断は台帳がする —— ここは中継する形を絞るだけ。
+ * fetch が URL の `..` を畳み、台帳のほかのエンドポイントに届かせないため。判断は台帳がする —— ここは中継する形を絞るだけ。
  */
 const WRITE_ROUTES = [
   /^\/api\/crawls$/,
@@ -90,7 +90,7 @@ const WRITE_ROUTES = [
 export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url));
 
 /**
- * 書く口の門。workbench のページからの JSON だけを通す。断るなら `{ status, error }` を返す。
+ * 書き込みのエンドポイントの門。workbench のページからの JSON だけを通す。断るなら `{ status, error }` を返す。
  *
  * Origin を見るのは CSRF（別のサイトのページに、利用者のブラウザから POST させる手）のため。
  * JSON に限るのは、form が preflight なしで送れる形（text/plain など）を締め出すため。
@@ -107,7 +107,7 @@ export const writeRefusal = (headers, port) => {
 };
 
 /**
- * 書く口が受ける本文の上限。起点の URL と、その場で書いた TS が入る。**capture-ledger の
+ * 書き込みのエンドポイントが受ける本文の上限。起点の URL と、その場で書いた TS が入る。**capture-ledger の
  * `POST /api/crawls` の上限（`src/api/crawls.ts` の `CRAWL_BODY_LIMIT`）と同じ 1 MiB** —— 片方だけを
  * 変えると、workbench が通すのに台帳が 413、の形になる。workbench は `/healthz` の `writeLimit` で知り、
  * 送る前に止める。超えたら 413（台帳まで行かない）。

@@ -3,12 +3,12 @@
  *
  * 欄の集合を台帳の応答と揃えておくことと、同梱の台本が画面の状態を全部出せることを固定する。
  * 台帳の欄は capture-ledger v0.57.4 から写した —— 台帳が欄を足したら、ここと代役を直す。
- * スクリプトを読む口（版の一覧・1 版・受け皿の型）は v0.60.0 から、対象サイト（`sites`）と起点で選ぶ既定は v0.61.0 から。
- * 規則の並び（`rules`・400 の 3 つ・確かめの口・判断の口）は v0.62.0 から。既定に入らないスクリプト（一覧の
+ * スクリプトを読むエンドポイント（版の一覧・1 版・受け皿の型）は v0.60.0 から、対象サイト（`sites`）と起点で選ぶ既定は v0.61.0 から。
+ * 規則の並び（`rules`・400 の 3 つ・確かめと判断のエンドポイント）は v0.62.0 から。既定に入らないスクリプト（一覧の
  * `enabled`・名指しは有効かどうかを見ない）は v0.64.0 から。クロールごとの値（版の `params`・頼みの `variables`・
  * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。シークレットの宣言の `archive`（行の `secrets` の
- * `archive`・食い違いの `conflicting params`・隠せない形式の 400）は v0.90.0 から。ページの口（`GET /api/crawls/:id/pages` と
- * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で台帳が足す形から（台帳の版は、口が出たら書く）。
+ * `archive`・食い違いの `conflicting params`・隠せない形式の 400）は v0.90.0 から。ページのエンドポイント（`GET /api/crawls/:id/pages` と
+ * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で台帳が足す形から（台帳の版は、エンドポイントが出たら書く）。
  * 型の誤りの取り直し（`GET /api/crawls/:id/diagnostics`）と直し方（`POST …/inline/:name/fix`）は CAPTURE-49 の形から。
  * 合本の欄（行と詳しい所の `replayBundle`・ページの行の `capturedAt` と `bundledRev`）は、CAPTURE-56 で台帳が足す形から
  * （台帳の版は、出たら書く）。
@@ -148,7 +148,7 @@ test("同梱の台本は、定期実行の見本を 3 つ出す（失敗・順�
   assert.deepEqual(scenario.schedules.map((c) => c.health), ["failing", "blocked", "paused"]);
 });
 
-test("予定を作る口は、台帳と同じ文で断る", () => {
+test("予定を作るエンドポイントは、台帳と同じ文で断る", () => {
   assert.equal(createSchedule([], { name: " ", cron: "0 4 * * *" }).body.error, "name must not be blank");
   assert.equal(createSchedule([], { name: "a", cron: "0 0 4 * * *" }).body.error, "invalid cron");
   assert.equal(createSchedule([], { name: "a", cron: "*/5 * * * *" }).body.error, "cron runs too often");
@@ -165,7 +165,7 @@ test("クロールの 1 行は、台帳の /api/crawls と同じ欄を持つ", (
   }
 });
 
-// ── 始める口（POST /api/crawls）。文は capture-ledger v0.57.5 の src/api/crawls.ts から写した ──
+// ── 始めるエンドポイント（POST /api/crawls）。文は capture-ledger v0.57.5 の src/api/crawls.ts から写した ──
 
 const RUNS = 15;
 
@@ -355,7 +355,7 @@ test("同梱の台本に、その場の TS で完走した行と、compile の�
   assert.equal("inline" in broken.scripts[1], false);
 });
 
-test("scripts を受けると、その場の TS は inline- の id・版 1 で写り、詳しい所には名前・口・バイト数だけが出る", () => {
+test("scripts を受けると、その場の TS は inline- の id・版 1 で写り、詳しい所には名前・phase・バイト数だけが出る", () => {
   const rows = [];
   const inline = { name: "close-banner", phase: "preload", source: "x;" };
   const answer = submitCrawl(
@@ -382,7 +382,7 @@ test("scripts を受けると、その場の TS は inline- の id・版 1 で�
   assert.equal("scripts" in submittedRow(rows[0], NOW), false);
 });
 
-test("名前の口は、受けた行と台本の行の両方で、その場の TS を source ごと返す", () => {
+test("名前で引くエンドポイントは、受けた行と台本の行の両方で、その場の TS を source ごと返す", () => {
   const rows = [];
   const inline = { name: "close-banner", phase: "preload", source: "x;" };
   submitCrawl(
@@ -406,7 +406,7 @@ test("名前の口は、受けた行と台本の行の両方で、その場の T
   assert.match(theirs.body.source, /close/);
 });
 
-test("名前の口は、台帳のスクリプト・知らない名前・知らない行には 404（台帳と同じ文）", () => {
+test("名前で引くエンドポイントは、台帳のスクリプト・知らない名前・知らない行には 404（台帳と同じ文）", () => {
   const rows = [];
   submitCrawl(
     rows,
@@ -459,10 +459,10 @@ test("scripts を省くと、起点で選んだ既定を走らせたものとし
   );
 });
 
-/** 版を `id@版:enabled` で並べる（一覧の口の 1 行が既定に入るかまで比べる）。 */
+/** 版を `id@版:enabled` で並べる（一覧のエンドポイントの 1 行が既定に入るかまで比べる）。 */
 const atOn = (list) => list.map((v) => `${v.id}@${String(v.version)}:${String(v.enabled)}`);
 
-test("一覧の口は各 id に 1 行で、カタログの順 —— 有効な版の中の最新、無ければ最新版を enabled: false で。サイト用も対象サイトつきで", () => {
+test("一覧のエンドポイントは各 id に 1 行で、カタログの順 —— 有効な版の中の最新、無ければ最新版を enabled: false で。サイト用も対象サイトつきで", () => {
   assert.deepEqual(atOn(pickable(versions)), ["autoscroll@2:true", "egov-law-search@1:true", "autofetch@1:false"]);
   assert.deepEqual(pickable(versions)[1].sites, ["laws.e-gov.go.jp"]);
   // 新しい版だけを無効にすると、有効な古い版が出る（版ごとの巻き戻し）
@@ -501,7 +501,7 @@ test("既定は最新版を選んでから対象サイトで絞る —— 対象
 
 test("代役の既定と、新しいクロールの画面の既定（public/start.js）は、同じ起点に同じ顔ぶれを出す", () => {
   // 決まりの正は台帳。2 つの写しが食い違えば、workbench が「省いても同じ」と送った頼みで別の物が走る。
-  // workbench が持つのは一覧の口の答え（pickable）だけ —— 版ごとに無効にした台帳でも、それで同じ顔ぶれになる
+  // workbench が持つのは一覧のエンドポイントの答え（pickable）だけ —— 版ごとに無効にした台帳でも、それで同じ顔ぶれになる
   const off = versions.map((v) => (v.id === "autoscroll" && v.version === 2 ? { ...v, enabled: false } : v));
   const allOff = versions.map((v) => (v.id === "autoscroll" ? { ...v, enabled: false } : v));
   // 版が離れて並び、先に現れた版が無効でも、id の順は最初に現れた所（台帳の順は id に 1 つ）
@@ -691,13 +691,13 @@ const declaring = (name, fields) => ({
   inline: { name, phase: "behavior", source: `import { z } from "zod";\nconst v = defineParams(z.object({ ${fields} }));\n` },
 });
 
-test("一覧の口と 1 版の口は宣言（params）を運ぶ —— egov-law-search は必須の変数 query を宣言し、ほかは空", () => {
+test("一覧と 1 版のエンドポイントは宣言（params）を運ぶ —— egov-law-search は必須の変数 query を宣言し、ほかは空", () => {
   const list = scriptRows(versions);
   assert.deepEqual(list.find((v) => v.id === "egov-law-search").params, [
     { name: "query", kind: "variable", required: true, summary: "法令名の検索語", schema: { type: "string", minLength: 1 } },
   ]);
   assert.deepEqual(list.find((v) => v.id === "autoscroll").params, []);
-  // 一覧の行の欄は、身元と対象サイトと enabled と宣言だけ（source・options・bytes は 1 版の口）
+  // 一覧の行の欄は、身元と対象サイトと enabled と宣言だけ（source・options・bytes は 1 版のエンドポイント）
   for (const row of list) {
     assert.deepEqual(Object.keys(row).sort(), ["enabled", "id", "params", "phase", "sha256", "sites", "version"]);
   }
@@ -1039,7 +1039,7 @@ const LEDGER_HIT_KEYS = [
 const SEARCH_NAMES = ["datapackage-bad-hash.wacz", "good.wacz"];
 const ask = (params, s = scenario, names = SEARCH_NAMES) => searchOf(names, s, new URLSearchParams(params));
 
-test("検索の口は、写しの行が在るアーカイブでは写しの行だけ、無いアーカイブは文書の行を返し、見えないアーカイブは出さない", () => {
+test("検索のエンドポイントは、写しの行が在るアーカイブでは写しの行だけ、無いアーカイブは文書の行を返し、見えないアーカイブは出さない", () => {
   const answer = ask({ q: "ランプ" });
   assert.equal(answer.status, 200);
   assert.deepEqual(
@@ -1072,7 +1072,7 @@ test("検索は題か本文に、大小を問わず語を含む行に当たり�
   assert.equal(ask({ q: "nothing-here" }, s, ["x.wacz"]).body.total, 0);
 });
 
-test("検索の口は、q の無い・空の・ほかの欄のある問いを 400 で断る（台帳の schema と同じ）", () => {
+test("検索のエンドポイントは、q の無い・空の・ほかの欄のある問いを 400 で断る（台帳の schema と同じ）", () => {
   assert.equal(ask({}).status, 400);
   assert.equal(ask({ q: "" }).status, 400);
   assert.equal(ask({ q: "ランプ", size: "10" }).status, 400);
@@ -1157,7 +1157,7 @@ test("代役の same-site は、ホスト名の最後の 2 ラベルで近似す
   assert.deepEqual(answer.body, { error: "rules that can never match", rules: [{ rule: 2, coveredBy: 1 }] });
 });
 
-test("確かめの口は、行ごとの読めた種類と覆い、起点ごとのサイトと辿るかを、台帳と同じ形で返す", () => {
+test("確かめのエンドポイントは、行ごとの読めた種類と覆い、起点ごとのサイトと辿るかを、台帳と同じ形で返す", () => {
   const answer = crawlRulesCheck(
     ["https://www.site.test/", "not a url"],
     ["follow:same-site", "skip:ads.site.test", "skip:HTTPS://WWW.Site.test:443/a", "capture:*.x"],
@@ -1179,7 +1179,7 @@ test("確かめの口は、行ごとの読めた種類と覆い、起点ごと�
   assert.equal(crawlRulesCheck([], ["crawl:any"]).status, 400);
 });
 
-test("判断の口は、台本の行の規則・判断・robots を返す（受けた行は空）", () => {
+test("判断のエンドポイントは、台本の行の規則・判断・robots を返す（受けた行は空）", () => {
   const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0007"));
   const answer = decisionsOf(c);
   assert.deepEqual(Object.keys(answer), ["crawlId", "rules", "decisions", "robots"]);
@@ -1190,7 +1190,7 @@ test("判断の口は、台本の行の規則・判断・robots を返す（受�
   assert.deepEqual(decisionsOf({ crawlId: "x" }), { crawlId: "x", rules: [{ follow: "same-origin" }], decisions: [], robots: [] });
 });
 
-// ── ページの口（CAPTURE-18 で台帳が足す GET /api/crawls/:id/pages と …/pages/:page/log の形）────────
+// ── ページのエンドポイント（CAPTURE-18 で台帳が足す GET /api/crawls/:id/pages と …/pages/:page/log の形）────────
 
 /** ページの 1 行の欄（一覧の pages[i] と、ログの答えの page）。 */
 const LEDGER_PAGE_KEYS = [

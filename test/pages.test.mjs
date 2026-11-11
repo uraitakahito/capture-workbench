@@ -42,7 +42,7 @@ const page = (id, extra = {}) => ({
   ...extra,
 });
 
-/** 台帳の代わり。id の昇順に並べたページを、after の後から size 件ずつ返し、引かれた口を覚える。 */
+/** 台帳の代わり。id の昇順に並べたページを、after の後から size 件ずつ返し、引かれたエンドポイントを覚える。 */
 const ledger = (ids, size) => {
   const asked = [];
   const read = async (path) => {
@@ -55,7 +55,7 @@ const ledger = (ids, size) => {
   return { read, asked };
 };
 
-test("口: ページの一覧は after を前の答えの next で、ログはクロールとページの組で引く（どちらも % で包む）", () => {
+test("エンドポイント: ページの一覧は after を前の答えの next で、ログはクロールとページの組で引く（どちらも % で包む）", () => {
   assert.equal(pagesPath(CRAWL), `/api/crawls/${CRAWL}/pages`);
   assert.equal(pagesPath(CRAWL, null), `/api/crawls/${CRAWL}/pages`);
   assert.equal(pagesPath(CRAWL, "1300"), `/api/crawls/${CRAWL}/pages?after=1300`);

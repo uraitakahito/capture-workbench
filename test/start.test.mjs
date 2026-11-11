@@ -1,7 +1,7 @@
 /**
  * 新しいクロールの画面の部品（`public/start.js`）。送る body と、答えの言い方。
  *
- * 送る道（`POST /api/crawls` の中継）と門は http の口に在り、門の判定は `lib.test.mjs` が見る。
+ * 送る道（`POST /api/crawls` の中継）と門は http の側（`server.mjs`）に在り、門の判定は `lib.test.mjs` が見る。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -430,7 +430,7 @@ test("宣言の答えは、欄の宣言と、欄が出ない理由の 1 行に�
     params: [],
     note: "宣言を確かめられません（503 —— ts-compile unreachable）",
   });
-  // 口を出していない台帳（Fastify の文）。本文の形が違う 200 も、読めたことにしない
+  // エンドポイントを出していない台帳（Fastify の文）。本文の形が違う 200 も、読めたことにしない
   assert.equal(
     inlineDeclared(404, { error: "Not Found", message: "Route POST:/api/scripts/check not found" }).note,
     "宣言を確かめられません（404 —— Route POST:/api/scripts/check not found）",
@@ -712,7 +712,7 @@ test("確かめの query は、起点の空行を落とし、規則を「動き:
   assert.deepEqual(params.getAll("rule"), ["skip:https://www.site.test/search?q=1", "follow:same-site"]);
 });
 
-/** 台帳の確かめの口の答え（capture-ledger v0.62.0 の形）。 */
+/** 台帳の確かめのエンドポイントの答え（capture-ledger v0.62.0 の形）。 */
 const ANSWER = {
   seeds: [{ url: "https://www.site.test/", valid: true, site: "site.test", followed: true }],
   rules: [

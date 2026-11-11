@@ -2,7 +2,7 @@
  * 外と話さない部分の試験。
  *
  * **ここで見るのは「配ってよい path か」「知っている形式か」「門が通すか」だけ。** 中継も
- * 名乗りも http の口に在り、あれは動かさないと確かめられない（反証は手で当てる）。
+ * 名乗りも http の側（`server.mjs`）に在り、あれは動かさないと確かめられない（反証は手で当てる）。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -64,7 +64,7 @@ test("知らない拡張子は配らない —— 拡張子が無いものも", 
   assert.equal(contentType("/x/Makefile"), undefined);
 });
 
-test("Host は workbench の口だけを通す（127.0.0.1 と localhost）", () => {
+test("Host は workbench の host:port だけを通す（127.0.0.1 と localhost）", () => {
   assert.equal(hostAllowed("127.0.0.1:7080", 7080), true);
   assert.equal(hostAllowed("localhost:7080", 7080), true);
   // DNS rebinding: よその名前が 127.0.0.1 を指していても、Host には名前のほうが載る
@@ -81,7 +81,7 @@ const fromThisPage = {
   "content-type": "application/json",
 };
 
-test("書く口は、workbench のページからの JSON を通す", () => {
+test("書き込みのエンドポイントは、workbench のページからの JSON を通す", () => {
   assert.equal(writeRefusal(fromThisPage, 7080), undefined);
   assert.equal(writeRefusal({ ...fromThisPage, "content-type": "application/json; charset=utf-8" }, 7080), undefined);
   assert.equal(
@@ -90,11 +90,11 @@ test("書く口は、workbench のページからの JSON を通す", () => {
   );
 });
 
-test("書く口は、ほかのオリジン・Origin の無い要求・JSON でない本文を断る", () => {
+test("書き込みのエンドポイントは、ほかのオリジン・Origin の無い要求・JSON でない本文を断る", () => {
   assert.equal(writeRefusal({ ...fromThisPage, origin: "https://evil.test" }, 7080)?.status, 403);
-  // curl や別の道具は Origin を付けない。書く口は workbench のページのためだけに在る
+  // curl や別の道具は Origin を付けない。書き込みのエンドポイントは workbench のページのためだけに在る
   assert.equal(writeRefusal({ host: fromThisPage.host, "content-type": "application/json" }, 7080)?.status, 403);
-  // 同じ 127.0.0.1 でも、口が違えば別のオリジン
+  // 同じ 127.0.0.1 でも、ポートが違えば別のオリジン
   assert.equal(writeRefusal({ ...fromThisPage, origin: "http://127.0.0.1:7081" }, 7080)?.status, 403);
   // form が preflight なしで送れる形。JSON らしい中身でも、content-type で断る
   assert.equal(writeRefusal({ ...fromThisPage, "content-type": "text/plain" }, 7080)?.status, 415);
@@ -102,7 +102,7 @@ test("書く口は、ほかのオリジン・Origin の無い要求・JSON で�
   assert.equal(writeRefusal({ ...fromThisPage, host: "evil.test:7080", origin: "http://evil.test:7080" }, 7080)?.status, 403);
 });
 
-test("書く口は、定期実行の予定を作る口と操作の口と、行を締める口も通す", () => {
+test("書き込みのエンドポイントは、定期実行の予定を作る・操作する・行を締める POST も通す", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   assert.equal(isWriteRoute("/api/schedules"), true);
   for (const action of ["pause", "resume", "run", "repin", "delete"]) {
@@ -117,14 +117,14 @@ test("書く口は、定期実行の予定を作る口と操作の口と、行�
   assert.equal(isWriteRoute("/api/schedules/"), false);
   assert.equal(isWriteRoute("/api/schedules?x=1"), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}/failed/`), false);
-  // fetch が .. を畳むので、台帳のほかの口へ回り込む形を断る
+  // fetch が .. を畳むので、台帳のほかのエンドポイントへ回り込む形を断る
   assert.equal(isWriteRoute(`/api/schedules/${id}/../../crawls`), false);
   assert.equal(isWriteRoute("/api/schedules/../crawls"), false);
   assert.equal(isWriteRoute(`/api/schedules/${id}%2F/run`), false);
   assert.equal(isWriteRoute("/api/crawls/../failed"), false);
 });
 
-test("書く口は、クロールを始める口と、その場の TS の直し方を訊く口と、宣言を訊く口の 3 つの形だけ", () => {
+test("書き込みのエンドポイントは、クロールを始めるエンドポイントと、その場の TS の直し方を訊くエンドポイントと、宣言を訊くエンドポイントの 3 つの形だけ", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   assert.equal(isWriteRoute("/api/crawls"), true);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner/fix`), true);
@@ -145,9 +145,9 @@ test("書く口は、クロールを始める口と、その場の TS の直し�
   assert.equal(isWriteRoute("/xapi/scripts/check"), false);
 });
 
-test("書く口は、% と . で台帳のほかの口へ回り込む形を断る", () => {
+test("書き込みのエンドポイントは、% と . で台帳のほかのエンドポイントへ回り込む形を断る", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
-  // fetch は URL の .. を畳む（%2e%2e も）。/api/crawls/../… は台帳の別の口に届いてしまう
+  // fetch は URL の .. を畳む（%2e%2e も）。/api/crawls/../… は台帳の別のエンドポイントに届いてしまう
   assert.equal(isWriteRoute("/api/crawls/../inline/x/fix"), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/../fix`), false);
   assert.equal(isWriteRoute("/api/crawls/%2e%2e/inline/x/fix"), false);
@@ -159,14 +159,14 @@ test("書く口は、% と . で台帳のほかの口へ回り込む形を断る
   assert.equal(isWriteRoute("/api/scripts/check%2F"), false);
 });
 
-test("書く口の本文は、上限ちょうどまで受け、1 バイト超えたら断る", async () => {
+test("書き込みのエンドポイントの本文は、上限ちょうどまで受け、1 バイト超えたら断る", async () => {
   // 読み切ってから断る —— 途中で切ると、413 を書く相手が居なくなる
   const body = (n) => Readable.from([Buffer.alloc(n, 0x61)]);
   assert.equal((await readBody(body(1024), 1024)).length, 1024);
   await assert.rejects(readBody(body(1025), 1024), TooLarge);
 });
 
-test("書く口の上限は、台帳の POST /api/crawls と同じ 1 MiB", () => {
+test("書き込みのエンドポイントの上限は、台帳の POST /api/crawls と同じ 1 MiB", () => {
   // 片方だけを変えると、workbench が通すのに台帳が 413 になる（capture-ledger の CRAWL_BODY_LIMIT）
   assert.equal(WRITE_LIMIT, 1024 * 1024);
 });

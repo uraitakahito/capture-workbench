@@ -1,10 +1,10 @@
 /**
- * WACZ の中身へ行く口。`/wacz/<archiveId>/<op>` を読み、台帳に署名をもらい、daemon に渡す。
+ * WACZ の中身を読むエンドポイント。`/wacz/<archiveId>/<op>` を読み、台帳に署名をもらい、daemon に渡す。
  *
  * 6 本とも同じ 2 段 —— **台帳に署名をもらう → daemon に渡す** —— で、署名はこの
  * ファイルの外に出ない。workbench が呼ぶのは GET（`<img src>` も GET）で、daemon へは
  * POST に組み替える。`/api/` は台帳の素通しだけに戻した（server.mjs 自身が
- * 「こちらの答えを混ぜない」と書いているので、daemon 行きの口はここに集める）。
+ * 「こちらの答えを混ぜない」と書いているので、daemon 行きのエンドポイントはここに集める）。
  *
  *   POST /wacz/<id>/validate                              → POST /validate
  *   GET  /wacz/<id>/lines?path=&from=&count=              → POST /lines
@@ -25,8 +25,8 @@ export class BadRequest extends Error {
 }
 
 /**
- * daemon へ行く口の名前。**docs の「中継の口」の表は、これと突き合わされる**
- * (scripts/check-doc-refs.mjs)。口を足すときは、ここと paramsFor と docs の表の 3 か所。
+ * daemon へ行くエンドポイントの名前。**docs の「エンドポイント」の表は、これと突き合わされる**
+ * (scripts/check-doc-refs.mjs)。エンドポイントを足すときは、ここと paramsFor と docs の表の 3 か所。
  */
 export const OPS = Object.freeze(["validate", "lines", "line", "records", "record", "record/body"]);
 
