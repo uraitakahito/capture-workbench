@@ -22,7 +22,8 @@ ZIP.
 ```mermaid
 flowchart LR
   B["Browser"] -->|"screen · /api/* · /wacz/*"| D["workbench"]
-  D -->|"gets an access token<br/>POST /token"| I["development issuer"]
+  B -.->|"sign-in page"| I["IdP: Floci<br/>(capture-ledger's compose, idp)"]
+  D -->|"turns the code into<br/>an access token"| I
   D -->|"passes /api/* through"| L["capture-ledger API"]
   D -->|"hands over one signed URL"| V["wacz-validator daemon"]
   V -->|"reads with Range"| S[("seaweedfs store")]
@@ -30,20 +31,24 @@ flowchart LR
   B -.->|"link to the run"| W["Windmill"]
 ```
 
-The browser only ever talks to the workbench (same origin). The workbench gets an access token from the
-development issuer and passes `/api/*` straight through to the ledger with it. The writes are
+The browser talks to the workbench (same origin), and to the IdP (identity provider) only for its
+sign-in page. Locally the IdP is [Floci](https://github.com/floci-io/floci) (a Cognito emulator),
+which capture-ledger's compose runs as the service `idp`; in production it is Amazon Cognito. The
+workbench turns the code that comes back from the sign-in into an access token (authorization code
+with PKCE, Proof Key for Code Exchange) and passes `/api/*` straight through to the ledger with it. The writes are
 `POST /api/crawls`, when you start a crawl from the form, and the routes for schedules ([Routes](/routes/)), sent the same way. For
 validating a WACZ and reading its contents, it asks the ledger to sign a URL and hands that URL to
 the daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a WACZ rule by rule), which reads the archive itself. replayweb-server and Windmill are only linked to from the rows.
 
 ## Promises
 
-- **It holds no secrets.** The access token it presents to the ledger is fetched from the
-  development issuer's `POST /token` when needed. `.env` only says who you look as and where to
-  look; there is nowhere to put a key or a token.
-- **So it is not a boundary.** The development issuer hands out a token for any name it is asked
-  for. The identity here is a convenience, not a protection, and the workbench says so in its
-  header.
+- **It holds no secrets.** Its app client at the IdP is public, with no secret. The tokens from
+  your sign-in live only in the server's memory, and the browser holds only a session cookie.
+  `.env` only says which IdP and where to look; there is nowhere to put a key or a token.
+- **Locally, the sign-in is not a boundary.** Floci's admin API accepts its default key, so
+  anything that reaches it can make a user and sign in as that user. The sign-in here is a
+  convenience, not a protection, and the workbench stays on loopback
+  ([Configuration](/configuration/#signing-in)).
 - **It has no npm dependencies.** The workbench is built from the Node standard library and plain
   JavaScript that runs as-is in the browser, plus one committed file that colors the scripts
   (`public/vendor/shiki.js`). What has dependencies is the source of this site (`docs-site/`) and
@@ -63,7 +68,7 @@ Pages is this documentation only.
 
 ## Where to go next
 
-- **[Quickstart](/quickstart/)** — bring the workbench up, grant your identity access, fix things
+- **[Quickstart](/quickstart/)** — bring the workbench up, sign in and grant your user access, fix things
   from the message you see.
 - **[Screens](/screens/)** — what each view shows, how states are worded, how often it polls.
 - **[Inspecting a WACZ](/wacz/)** — the two steps of validation, the report, the WACZ view.

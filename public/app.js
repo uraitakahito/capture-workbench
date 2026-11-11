@@ -137,9 +137,18 @@ const $ = (id) => document.getElementById(id);
 /** `/healthz` が配る、この配備の事実。深いリンクの行き先はここから来る。 */
 let settings = {};
 
+/**
+ * サインインが切れていたら（workbench が 401 と `login` を返す）、サインインの画面へ回る。
+ * workbench を起動し直すとセッションは消えるので、開いたままの画面はここを通る。
+ */
+const signInAgain = (res, body) => {
+  if (res.status === 401 && typeof body.login === "string") location.assign(body.login);
+};
+
 const api = async (path) => {
   const res = await fetch(path);
   const body = await res.json();
+  signInAgain(res, body);
   if (!res.ok) throw new Error(body.error ?? body.message ?? `${path} → ${String(res.status)}`);
   return body;
 };
@@ -147,6 +156,7 @@ const api = async (path) => {
 const post = async (path) => {
   const res = await fetch(path, { method: "POST" });
   const body = await res.json();
+  signInAgain(res, body);
   if (!res.ok) throw new Error(body.error ?? body.message ?? `${path} → ${String(res.status)}`);
   return body;
 };
@@ -3073,9 +3083,11 @@ const refresh = async () => {
 const start = async () => {
   try {
     settings = await (await fetch("/healthz")).json();
+    const who = settings.signedIn;
     $("who").textContent =
-      `${settings.subject} (${settings.organizations.join(", ")}) として見ています` +
-      " —— 開発用の名乗りです";
+      who === null || who === undefined
+        ? "サインインしていません"
+        : `${who.user} (${who.groups.join(", ") || "組織なし"}) としてサインインしています`;
   } catch {
     $("who").textContent = "workbench 自身に届きません";
   }

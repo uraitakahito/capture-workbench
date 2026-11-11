@@ -1,21 +1,26 @@
 ---
 title: 設定
-description: .env は要らない。変えるのは「誰として見るか」と「どこを見るか」だけ —— 環境変数の表と、読む順
+description: capture-ledger の dev:up の下なら .env は要らない。変えるのは「どの IdP でサインインするか」と「どこを見るか」だけ —— 環境変数の表と、読む順
 ---
 
-## .env は要らない
+## dev:up の下なら .env は要らない
 
-既定値だけで動きます。
-`.env.example` の行は全部コメントで、生きた行が 1 つもありません。
-写すのは、「誰として見るか」か「どこを見るか」を変えるときだけです。
+capture-ledger の `pnpm run dev:up` が workbench を起こすときは、サインインの 2 行（`WORKBENCH_OIDC_ISSUER` と `WORKBENCH_OIDC_CLIENT_ID`）を `dev:up` が渡し、残りは既定値で動きます。
+`.env.example` の行は全部コメントです。
+写すのは、手で起こすときか、「どこを見るか」を変えるときだけです。
 
 ```sh
 cp -n .env.example .env    # 要る行のコメントを外す
 ```
 
-[capture-ledger](https://github.com/uraitakahito/capture-ledger)（クロールを始め、撮れたものを記録する台帳）と違うのは、ここには既定値を持てない値が 1 つも無いからです。
-capture-ledger は、OpenFGA（認可のサービス）の id のように「走らせてみないと決まらない値」を必須で持つので、`.env` が要ります。
-こちらが持つのは名乗り（誰として見るか）と宛先だけで、アクセストークンは要るときに issuer から取得し、宛先は loopback の決め打ちで足ります。
+[capture-ledger](https://github.com/uraitakahito/capture-ledger)（クロールを始め、撮れたものを記録する台帳）は、OpenFGA（認可のサービス）の id のように「走らせてみないと決まらない値」を必須で持ちます。
+workbench にも、そういう値が 2 つあります。
+IdP（Identity Provider。サインインするサービス）の issuer と、そこでの workbench の app client の ID です。
+手元の IdP は [Floci](https://github.com/floci-io/floci)（Cognito を真似るもの）で、プールの ID が issuer に入り、プールを作り直すたびに替わります。
+だからどちらにも既定値がありません。
+`dev:up` は capture-ledger の `.dev/idp.env`（`IDP_ISSUER` と `IDP_WORKBENCH_CLIENT_ID`）から読んで渡します。
+手で起こすなら、その 2 つの値を `.env` に写します。
+ほかの宛先は loopback の決め打ちで足ります。
 秘密は 1 つもありません。
 
 ## 環境変数
@@ -24,9 +29,8 @@ capture-ledger は、OpenFGA（認可のサービス）の id のように「走
 | --- | --- | --- |
 | `WORKBENCH_PORT` | `7080` | capture-workbench の待受。loopback（`127.0.0.1`）にだけ bind する |
 | `WORKBENCH_LEDGER_URL` | `http://127.0.0.1:7070` | 台帳の API |
-| `WORKBENCH_ISSUER_URL` | `http://127.0.0.1:9099` | 開発用 issuer。capture-ledger の `pnpm run oidc:issuer` が立てるもの |
-| `WORKBENCH_SUBJECT` | この機械のユーザー名 | 誰として見るか。この名前に許可が要る（[クイックスタート](/quickstart/)） |
-| `WORKBENCH_ORGANIZATIONS` | `acme` | 名乗る組織（カンマ区切り） |
+| `WORKBENCH_OIDC_ISSUER` | 無い | IdP の issuer（`iss`）。手元は capture-ledger の `.dev/idp.env` の `IDP_ISSUER` |
+| `WORKBENCH_OIDC_CLIENT_ID` | 無い | IdP での workbench の app client の ID。手元は同じファイルの `IDP_WORKBENCH_CLIENT_ID` |
 | `WORKBENCH_REPLAYWEB_SERVER_URL` | `http://127.0.0.1:8899` | 「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
 | `WORKBENCH_WINDMILL_URL` | `http://127.0.0.1:8000` | クロールの行の「run ↗」の行き先 |
 | `WORKBENCH_WINDMILL_WORKSPACE` | `crawler` | 「run ↗」が開く Windmill の workspace |
@@ -35,12 +39,25 @@ capture-ledger は、OpenFGA（認可のサービス）の id のように「走
 この表は、`src/server.mjs` と `.env.example` と突き合わされます（`npm run site:check`）。
 変数を足すときは、3 か所とも直します。
 
-### 名乗りは便利さで、守りではない
+### サインイン
 
-workbench は `WORKBENCH_SUBJECT` と `WORKBENCH_ORGANIZATIONS` の名前で、開発用 issuer の `POST /token` からアクセストークンを取得します。
-開発用 issuer は、頼まれれば誰の名前でも出します。
-ここで名前を変えれば、その名前として見えるものが見えます。
-だから workbench は境界ではなく、loopback の外に出しません。
+人は IdP のサインインの画面を通り、workbench は戻ってきた code をアクセストークンに替えます（authorization code と PKCE。PKCE は Proof Key for Code Exchange）。
+本番の IdP は Amazon Cognito で、手元は capture-ledger の compose のサービス `idp` の Floci です。
+Floci の準備は capture-ledger の `pnpm run idp:bootstrap` がします。
+エンドポイントは[エンドポイント](/routes/)に在ります。
+
+- **app client は public。**
+  secret を持ちません。
+  よそに code を拾われても、PKCE がトークンに替えさせません。
+- **トークンは、サーバのメモリにだけ在る。**
+  ブラウザが受け取るのは、セッションの ID を入れた HttpOnly の cookie（`workbench_session`）だけです。
+  workbench を起こし直すとセッションは全部消え、次の要求でサインインの画面へ回ります。
+- **戻り先は、IdP に登録した物と一字一句同じでなければならない。**
+  戻り先は `http://127.0.0.1:<WORKBENCH_PORT>/callback` です。
+  `idp:bootstrap` が登録するのは 7080 の物なので、ほかのポートでは Floci のサインインから戻ってきません。
+- **手元のサインインは便利さで、守りではない。**
+  Floci の管理の API は既定の鍵を通すので、Floci に届くものは利用者を作り、その利用者としてサインインできます（capture-ledger の[開発環境](https://uraitakahito.github.io/capture-ledger/ja/development-environment/)）。
+  workbench を loopback の外に出さない理由の 1 つです。
 
 ### 行き先は、workbench が組み立てない
 

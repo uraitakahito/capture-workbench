@@ -18,7 +18,8 @@ WACZ（Web Archive Collection Zipped）は、撮ったページを 1 つの ZIP 
 ```mermaid
 flowchart LR
   B["ブラウザ"] -->|"画面・/api/*・/wacz/*"| D["workbench"]
-  D -->|"アクセストークンを取得<br/>POST /token"| I["開発用の issuer"]
+  B -.->|"サインインの画面"| I["IdP: Floci<br/>（capture-ledger の compose の idp）"]
+  D -->|"code を<br/>アクセストークンに替える"| I
   D -->|"/api/* を素通し"| L["capture-ledger の API"]
   D -->|"署名付き URL を<br/>1 本だけ渡す"| V["wacz-validator の daemon"]
   V -->|"Range で読む"| S[("seaweedfs の store")]
@@ -26,8 +27,10 @@ flowchart LR
   B -.->|"run のリンク"| W["Windmill"]
 ```
 
-ブラウザが話す相手は workbench だけです（同一オリジン）。
-workbench は開発用の issuer からアクセストークンを取得し、それを付けて `/api/*` をそのまま台帳へ通します。
+ブラウザが話す相手は workbench（同一オリジン）と、サインインの画面のときだけの IdP（Identity Provider。サインインするサービス）です。
+手元の IdP は [Floci](https://github.com/floci-io/floci)（Cognito を真似るもの）で、capture-ledger の compose がサービス `idp` として動かします。
+本番は Amazon Cognito です。
+workbench はサインインから戻ってきた code をアクセストークンに替え（authorization code と PKCE。PKCE は Proof Key for Code Exchange）、それを付けて `/api/*` をそのまま台帳へ通します。
 書くのは、新しいクロールの画面から始めるときの `POST /api/crawls` と、定期実行の予定を作って操作するエンドポイント（HTTP の method と path の組。[エンドポイントの一覧](/routes/)）で、同じ道で台帳へ通します。
 WACZ の検証と中身は、台帳に署名してもらった URL を [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon に渡して読ませます。
 replayweb-server と Windmill へは、画面の行からリンクで飛ぶだけです。
@@ -35,11 +38,12 @@ replayweb-server と Windmill へは、画面の行からリンクで飛ぶだ�
 ## 約束
 
 - **秘密を持たない。**
-  台帳に示すアクセストークンは、開発用 issuer の `POST /token` から要るときに取得します。
-  `.env` に書くのは「誰として見るか」と「どこを見るか」だけで、鍵にもトークンにも置き場がありません。
-- **そのぶん、境界ではない。**
-  開発用 issuer は、頼まれれば誰の名前でもトークンを出します。
-  ここの名乗りは便利さであって守りではなく、workbench もそう書いています（「開発用の名乗りです」）。
+  IdP での app client は public で、secret を持ちません。
+  サインインで得たトークンはサーバのメモリにだけ置き、ブラウザが持つのはセッションの cookie だけです。
+  `.env` に書くのは「どの IdP か」と「どこを見るか」だけで、鍵にもトークンにも置き場がありません。
+- **手元のサインインは、境界ではない。**
+  Floci の管理の API は既定の鍵を通すので、Floci に届くものは利用者を作り、その利用者としてサインインできます。
+  ここのサインインは便利さであって守りではなく、workbench は loopback の外に出しません（[設定](/configuration/#サインイン)）。
 - **npm の依存を持たない。**
   workbench は node の標準ライブラリと、ブラウザで素のまま走る JS、それにスクリプトに色を付ける commit 済みの 1 ファイル（`public/vendor/shiki.js`）で建っています。
   依存が在るのは、このサイトの原稿（`docs-site/`）と、その 1 ファイルを作る元（`highlighter/`）です（[開発](/development/)）。
@@ -59,7 +63,7 @@ Pages に置いてあるのは、この説明だけです。
 
 ## 次に読むもの
 
-- **[クイックスタート](/quickstart/)** —— workbench を起こす、名乗りに許可を付ける、出た文から直す。
+- **[クイックスタート](/quickstart/)** —— workbench を起こす、サインインして許可を付ける、出た文から直す。
 - **[画面](/screens/)** —— 画面ごとに何が並ぶか、状態の言い方、引く間隔。
 - **[WACZ を見る](/wacz/)** —— 検証の 2 段と報告、WACZ の画面。
 - **[設定](/configuration/)** —— 環境変数の表と、読む順。

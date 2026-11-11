@@ -1,6 +1,6 @@
 ---
 title: エンドポイント
-description: capture-workbench のサーバが答えるエンドポイント —— /healthz、台帳への素通し、書き込みのエンドポイント（クロールを始める・その場の TS の直し方を訊く）、その場の TS の宣言を訊くエンドポイント、WACZ の中身を読む /wacz/ のエンドポイント。Host の門、通すヘッダと、失敗の形
+description: capture-workbench のサーバが答えるエンドポイント —— /healthz、サインイン、台帳への素通し、書き込みのエンドポイント（クロールを始める・その場の TS の直し方を訊く）、その場の TS の宣言を訊くエンドポイント、WACZ の中身を読む /wacz/ のエンドポイント。Host の門、通すヘッダと、失敗の形
 ---
 
 capture-workbench のサーバは中継しかしません。
@@ -10,6 +10,7 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 | エンドポイント | 答えるもの |
 | --- | --- |
 | `GET /healthz` | サーバ自身（生存と、workbench が要る設定） |
+| `GET /login`・`GET /callback`・`GET /logout` | サーバ自身（IdP でのサインインと、サインアウト） |
 | `POST /api/crawls` | 台帳へ（書き込み。クロールを始める） |
 | `POST /api/crawls/:id/inline/:name/fix` | 台帳へ（書き込み。その場の TS の型の誤りの直し方を訊く） |
 | `POST /api/scripts/check` | 台帳へ（その場の TS の宣言を訊く。何も書かないが、本文で source を送るので書き込みのエンドポイントと同じ門を通す） |
@@ -32,8 +33,7 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 ```json
 {
   "ok": true,
-  "subject": "alice",
-  "organizations": ["acme"],
+  "signedIn": { "user": "alice", "groups": ["acme"] },
   "replaywebServerOrigin": "http://127.0.0.1:8899",
   "windmillOrigin": "http://127.0.0.1:8000",
   "windmillWorkspace": "crawler",
@@ -41,10 +41,31 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 }
 ```
 
-workbench は開いたときにこれを読み、誰として見ているかと、深いリンクの行き先を知ります。
+workbench は開いたときにこれを読み、誰としてサインインしているかと、深いリンクの行き先を知ります。
+`signedIn` は、アクセストークンの `username` と `cognito:groups` を、署名を確かめずに読んだ物です（確かめるのは台帳）。
+セッションが無ければ `null` です。
 `writeLimit` は書き込みのエンドポイントが受ける本文の上限（バイト）で、新しいクロールの画面はこれを超える本文を送る前に止めます。
 `/api/` の下には置きません。
 あちらは台帳へ素通しする場所で、こちらの答えを混ぜると、どちらが答えたのかが読めなくなります。
+
+## /login・/callback・/logout —— サインイン
+
+人は IdP（Identity Provider。本番は Amazon Cognito、手元は capture-ledger の compose のサービス `idp` の [Floci](https://github.com/floci-io/floci)）でサインインします。
+流れは authorization code と PKCE（Proof Key for Code Exchange）です。
+コードは `src/auth.mjs` に在ります。
+
+- `GET /login` は、IdP の discovery（`<WORKBENCH_OIDC_ISSUER>/.well-known/openid-configuration`）を 1 度だけ読み、新しい `state` と PKCE の verifier を覚えて、IdP のサインインの画面へ回します。
+  `WORKBENCH_OIDC_ISSUER` と `WORKBENCH_OIDC_CLIENT_ID` が無ければ、その 2 つを名指す 503 を返します。
+- `GET /callback` は、IdP が戻す先です。
+  **`state` を照らし、1 つの `state` は 1 度だけ通す。**
+  よそのページが作った戻り・時間が掛かりすぎた戻り・2 度目は 400 です。
+  code を IdP の token endpoint でトークンに替え、メモリのセッションに持ち、cookie `workbench_session`（HttpOnly・SameSite=Lax）を付けて `/` へ回します。
+- `GET /logout` は、セッションと cookie を消して `/` へ回します。
+- セッションの無い `/` は、`/login` へ回します（サインインの設定が在るとき）。
+
+戻り先は `http://127.0.0.1:<WORKBENCH_PORT>/callback` で、IdP に登録した物と一字一句同じでなければなりません。
+IdP から戻る道は GET のリダイレクトなので、これらは GET で、書き込みのエンドポイントの門（`Origin`・JSON）は掛けません。
+代わりに `state` と PKCE が、よそのページが作った戻りを断ります。
 
 ## /api/* —— 台帳へ素通し
 
@@ -53,12 +74,13 @@ workbench は開いたときにこれを読み、誰として見ているかと�
 
 - path と query はそのままで、台帳へは GET で通します。
   GET 以外は 405 です（書き込みのエンドポイントは下の `POST` の物だけ）。
-- アクセストークンを `Authorization: Bearer` で付けます。
-  まだ持っていなければ、先に開発用 issuer から取得します。
-- **401 を受けたら、取得し直して 1 度だけやり直す。**
+- そのセッションのアクセストークンを `Authorization: Bearer` で付けます。
+  セッションが無ければ 401 `{"error":"サインインしていません","login":"/login"}` を返し、ページは `/login` へ移ります。
+- **台帳から 401 を受けたら、refresh token で取得し直して 1 度だけやり直す。**
   寿命は数えません。
-  issuer を起こし直すと鍵ごと変わるので、「まだ有効なはず」の時計は当てになりません。
+  IdP のプールを作り直すと鍵ごと変わるので、「まだ有効なはず」の時計は当てになりません。
   401 は、期限切れも鍵替わりも同じ形で言います。
+  refresh token でも取れなければセッションを消し、401（`サインインが切れました`）でサインインし直してもらいます。
 - 台帳の答えは、状態と `content-type` と本文をそのまま返します。
 
 どのエンドポイントを読むかは workbench（`public/app.js`）が決め、サーバは選びません。
@@ -181,12 +203,15 @@ daemon の `date` や `connection` は、workbench の応答に混ぜません�
 | 状態 | いつ | 本文 |
 | --- | --- | --- |
 | 400 | `/wacz/` のエンドポイントの引数が足りない、または数でない。台帳へは行かない | `{"error":"from is required"}` |
+| 400 | `/callback` の `state` を知らない・もう使った、または IdP が code をトークンに替えない | `サインインできませんでした: …`（text） |
+| 401 | セッションの無い `/api/*` と `/wacz/` のエンドポイント、または台帳がトークンを断り、refresh token でも取れなかった | `{"error":"サインインしていません","login":"/login"}` か `サインインが切れました`。ページは `/login` へ移る |
 | 403 | `Host` が workbench の host:port でない（どのエンドポイントも）。書き込みのエンドポイントでは、`Origin` が workbench でないときも | `{"error":"workbench の Host ではない"}` など |
 | 405 | method が違う。`/wacz/` のエンドポイント（検証は POST、他は GET）と、`/api/*`（GET だけ。書き込みのエンドポイントを除く） | `POST だけ`・`GET だけ` など（`Allow` ヘッダつき） |
 | 413 | 書き込みのエンドポイントの本文が 1 MiB を超えた | `{"error":"本文が 1048576 バイトを超えた"}` |
 | 415 | 書き込みのエンドポイントの `content-type` が JSON でない | `{"error":"JSON だけを受ける"}` |
 | 台帳のまま | 台帳が断った（見てよくない archive の 404 など） | 台帳の本文 |
-| 502 | issuer・台帳・daemon に届かない、または issuer が名乗りを断った | `{"error":"… に届かない (…)。…"}`。直し方の 1 文つき |
+| 502 | IdP・台帳・daemon に届かない、または IdP の discovery が失敗した | `{"error":"… に届かない (…)。…"}`。直し方の 1 文つき |
+| 503 | `WORKBENCH_OIDC_ISSUER` と `WORKBENCH_OIDC_CLIENT_ID` の無い `/login` | `サインインの設定が無い —— …`（text） |
 | 404 | `public/` に無いファイル、または配らない拡張子 | `not found` |
 
 答えを流している途中で上流が切れたら、頭はもう書けないので、接続を閉じます。
