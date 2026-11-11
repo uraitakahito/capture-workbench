@@ -62,6 +62,18 @@ import {
   shortTime,
   troubleCount,
 } from "/schedules.js";
+import {
+  CHANGES_PATH,
+  changeBandLines,
+  changeDetailPath,
+  changeOf,
+  changesError,
+  hunkLines,
+  parseChangesHash,
+  SIGNIFICANCE_TEXT,
+  summaryLine,
+  versionNote,
+} from "/changes.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "/fix.js";
 import {
   awaitsFinalBundle,
@@ -2859,7 +2871,8 @@ let schedulesTimer;
 const SCHEDULES_TIMEOUT_MS = 15_000;
 
 const drawBand = () => {
-  const said = bandOf(schedules, schedulesError);
+  const lines = [bandOf(schedules, schedulesError), ...changeBandLines(schedules)].filter((line) => line !== undefined);
+  const said = lines.length === 0 ? undefined : lines.join(" ／ ");
   $("schedule-band").hidden = said === undefined;
   if (said !== undefined) $("schedule-band-text").textContent = said;
   const trouble = troubleCount(schedules);
@@ -2921,6 +2934,16 @@ const scheduleRunRow = (run, timeZone) => {
   row.append(cell(runDelay(run)));
   row.append(cell(runMissed(run)));
   row.append(cell(run.error ?? "", "wide"));
+  // 前回からの変化（CAPTURE-167）。比べた回はタブ「変化」のその回へ
+  const change = changeOf(run.change);
+  if (run.change === null || run.change === undefined) {
+    row.append(cell(change.text, "muted"));
+  } else {
+    const changed = hashCell(`#changes/${run.crawlId}`, change.text);
+    changed.className = `state ${change.kind}`;
+    if (run.change.headline) changed.title = run.change.headline;
+    row.append(changed);
+  }
   const id = hashCell("#crawls", run.crawlId.slice(0, 8));
   id.className = "mono";
   id.querySelector("a").onclick = () => {
@@ -2955,7 +2978,7 @@ const drawSchedules = () => {
     if (schedule.recentRuns.length > 0) {
       const table = document.createElement("table");
       const titles = document.createElement("tr");
-      for (const title of ["結果", "本来の時刻", "始まった", "遅れ", "欠け", "理由", "id"]) {
+      for (const title of ["結果", "本来の時刻", "始まった", "遅れ", "欠け", "理由", "前回からの変化", "id"]) {
         titles.append(tag("th", title));
       }
       const thead = document.createElement("thead");
@@ -2987,8 +3010,124 @@ const refreshSchedules = async () => {
   schedulesTimer = setTimeout(() => void refreshSchedules(), pollMs(schedules));
 };
 
+// ── 前回からの変化（CAPTURE-167） ───────────────────────────────────────
+/** いま開いている回（`#changes/<id>`）。一覧だけなら undefined。 */
+let changesFor;
+
+/** 差分の箱。**DOM で組む**（public/ では HTML を差し込まない）。文脈の行は薄く、消した行と足した行に印。 */
+const changeDiffOf = (hunks) => {
+  const box = document.createElement("div");
+  box.className = "diff change-diff";
+  for (const hunk of hunks) {
+    const lines = document.createElement("table");
+    lines.className = "difflines";
+    for (const line of hunkLines(hunk)) {
+      const row = document.createElement("tr");
+      row.className = line.sign === "-" ? "del" : line.sign === "+" ? "add" : "context";
+      row.append(cell(line.sign, "mono"), cell(line.text, "mono code"));
+      lines.append(row);
+    }
+    box.append(lines);
+  }
+  return box;
+};
+
+const drawChangeList = (runs) => {
+  const tbody = $("changes-rows");
+  tbody.replaceChildren();
+  $("changes-empty").hidden = runs.length > 0;
+  $("changes-table").hidden = runs.length === 0;
+  for (const run of runs) {
+    const row = document.createElement("tr");
+    row.append(cell(run.scheduleName ?? run.scheduleId.slice(0, 8)));
+    row.append(cell(shortTime(run.scheduledFor ?? run.startedAt), "mono"));
+    const said = changeOf(run);
+    const changed = hashCell(`#changes/${run.crawlId}`, said.text);
+    changed.className = `state ${said.kind}`;
+    row.append(changed);
+    row.append(cell(run.restricted ? "（見てよくない WACZ を含む回）" : (run.headline ?? ""), "wide"));
+    tbody.append(row);
+  }
+};
+
+const drawChangeDetail = (detail) => {
+  const box = $("change-detail");
+  box.replaceChildren();
+  box.hidden = false;
+  const head = document.createElement("h2");
+  head.append(tag("span", `${detail.scheduleName ?? "予定"} ・ ${shortTime(detail.scheduledFor ?? detail.startedAt)} の回`));
+  const said = changeOf(detail);
+  head.append(tag("span", said.text, `state ${said.kind}`));
+  box.append(head);
+  box.append(tag("p", summaryLine(detail.summary), "muted"));
+  if (detail.headline) box.append(tag("p", detail.headline, "change-headline"));
+  if (detail.error) box.append(tag("p", detail.error, "state bad"));
+  if (detail.restricted) box.append(tag("p", "見てよくない WACZ を含むページは出していません。", "muted"));
+  for (const page of detail.pages) {
+    const article = document.createElement("article");
+    article.className = "change-page";
+    const title = document.createElement("h3");
+    title.append(tag("span", page.url, "mono"));
+    if (page.significance !== null) {
+      title.append(tag("span", SIGNIFICANCE_TEXT[page.significance] ?? page.significance, "state"));
+    }
+    article.append(title);
+    const meta = document.createElement("p");
+    meta.className = "muted";
+    meta.append(`足した行 ${String(page.added)} ・ 消した行 ${String(page.removed)}`);
+    const note = versionNote(page);
+    if (note !== "") meta.append(` ・ ${note}`);
+    for (const [label, ref] of [["replay ↗ 前", page.before], ["replay ↗ 今", page.after]]) {
+      if (ref === null) continue;
+      meta.append(" ・ ", link(replaywebHref(settings.replaywebServerOrigin, ref), label));
+    }
+    article.append(meta);
+    if (page.headline !== null) article.append(tag("p", `Claude: ${page.headline}`));
+    for (const quote of page.quotes) {
+      article.append(tag("p", `引用「${quote.text}」${quote.verified ? "" : "（差分に無い）"}`, quote.verified ? "muted" : "state bad"));
+    }
+    if (page.state === "prev_missing") {
+      article.append(tag("p", "前の回の WACZ が保管庫に無く、差分を作れませんでした。", "state bad"));
+    } else {
+      article.append(changeDiffOf(page.hunks));
+    }
+    box.append(article);
+  }
+};
+
+const changesAnswer = (text) => {
+  const line = $("changes-answer");
+  line.hidden = text === undefined;
+  if (text !== undefined) {
+    line.className = "start-answer state bad";
+    line.textContent = text;
+  }
+};
+
+/** タブ「変化」を開いたときに引く（一覧の引き直しの輪には入れない。毎朝 1 回しか変わらない）。 */
+const openChanges = async (crawlId) => {
+  changesFor = crawlId;
+  $("change-detail").hidden = true;
+  try {
+    const res = await fetch(CHANGES_PATH);
+    const body = await res.json();
+    signInAgain(res, body);
+    if (!res.ok) throw new Error(changesError(res.status, body));
+    drawChangeList(body.runs);
+    if (crawlId !== undefined && changesFor === crawlId) {
+      const one = await fetch(changeDetailPath(crawlId));
+      const detail = await one.json();
+      if (!one.ok) throw new Error(changesError(one.status, detail));
+      drawChangeDetail(detail);
+    }
+    changesAnswer(undefined);
+  } catch (err) {
+    changesAnswer(failedText(err));
+  }
+};
+
 // ── 画面の切り替え ───────────────────────────────────────────────────
-const FACES = ["crawls", "start", "schedules", "archives", "search", "scripts", "wacz"];
+const FACES = ["crawls", "start", "schedules", "changes", "archives", "search", "scripts", "wacz"];
 
 const show = (face) => {
   for (const b of document.querySelectorAll("#tabs button")) {
@@ -3013,6 +3152,12 @@ const route = () => {
     show("search");
     searching.hash = location.hash;
     if (words !== searching.words) void runSearch(words);
+    return;
+  }
+  const changes = parseChangesHash(location.hash);
+  if (changes !== undefined) {
+    show("changes");
+    void openChanges(changes.crawlId);
     return;
   }
   const asked = parseReading(location.hash);

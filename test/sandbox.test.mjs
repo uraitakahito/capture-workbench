@@ -30,6 +30,8 @@ import {
   crawlRow,
   createSchedule,
   scheduleRow,
+  changeDetail,
+  changeRuns,
   crawlRulesCheck,
   decisionsOf,
   defaultSet,
@@ -132,6 +134,7 @@ const LEDGER_SCHEDULE_RUN_KEYS = [
   "pagesCaptured",
   "pagesFailed",
   "error",
+  "change",
 ].sort();
 
 test("予定の 1 行は、capture-ledger の /api/schedules と同じ欄を持つ", () => {
@@ -142,6 +145,47 @@ test("予定の 1 行は、capture-ledger の /api/schedules と同じ欄を持�
       assert.deepEqual(Object.keys(run).sort(), LEDGER_SCHEDULE_RUN_KEYS, run.crawlId);
     }
   }
+});
+
+/** capture-ledger の src/api/changes.ts の一覧の 1 行と、1 本の答え・ページの欄 (v0.93.0・CAPTURE-167)。 */
+const LEDGER_CHANGE_RUN_KEYS = [
+  "crawlId",
+  "scheduleId",
+  "scheduleName",
+  "startedAt",
+  "scheduledFor",
+  "prevCrawlId",
+  "state",
+  "pagesCompared",
+  "pagesChanged",
+  "significance",
+  "headline",
+  "error",
+  "restricted",
+].sort();
+const LEDGER_CHANGE_PAGE_KEYS = [
+  "url",
+  "stage",
+  "state",
+  "added",
+  "removed",
+  "hunks",
+  "significance",
+  "headline",
+  "quotes",
+  "before",
+  "after",
+].sort();
+
+test("前回からの変化の答えは、capture-ledger の /api/changes・/api/crawls/:id/changes と同じ欄を持つ", () => {
+  const runs = changeRuns(scenario);
+  assert.ok(runs.length > 0);
+  for (const run of runs) assert.deepEqual(Object.keys(run).sort(), LEDGER_CHANGE_RUN_KEYS, run.crawlId);
+  const detail = changeDetail(scenario, runs[0].crawlId);
+  assert.deepEqual(Object.keys(detail).sort(), [...LEDGER_CHANGE_RUN_KEYS, "summary", "pages"].sort());
+  assert.equal(detail.summary.evidence, false);
+  for (const page of detail.pages) assert.deepEqual(Object.keys(page).sort(), LEDGER_CHANGE_PAGE_KEYS, page.url);
+  assert.equal(changeDetail(scenario, "5c0d0000-0000-4000-8000-000000000000"), undefined);
 });
 
 test("同梱の台本は、定期実行の見本を 3 つ出す（失敗・順番待ち・止めた予定）", () => {

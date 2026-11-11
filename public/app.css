@@ -1799,3 +1799,77 @@ body[data-face="scripts"] main {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* 前回からの変化の画面（CAPTURE-167）。差分は直し案の差分（tr.detail .difflines）と同じ色で、文脈の行は薄く */
+#change-detail {
+  margin: 18px 0 24px;
+}
+
+#change-detail h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+#change-detail h2 .state,
+.change-page h3 .state {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.change-headline {
+  margin: 4px 0 12px;
+}
+
+.change-page {
+  margin: 14px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.change-page h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.change-page p {
+  margin: 2px 0;
+}
+
+.change-diff .difflines {
+  width: auto;
+  min-width: 0;
+  border-collapse: collapse;
+  margin: 6px 0;
+}
+
+.change-diff .difflines td {
+  padding: 0 8px 0 0;
+  border: 0;
+}
+
+.change-diff .difflines td.code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-right: 4px;
+}
+
+.change-diff .difflines tr.context td {
+  color: var(--muted);
+}
+
+.change-diff .difflines tr.del td {
+  background: color-mix(in srgb, var(--bad) 14%, transparent);
+}
+
+.change-diff .difflines tr.add td {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}

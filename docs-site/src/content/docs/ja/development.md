@@ -101,6 +101,7 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | クロールの合本を見る | 台本のクロール `5b0c0009` を開く。行の run ↗ の隣に replay ↗ が出て、ページの表では撮れたページの結末の後ろに replay ↗ が付く（行の `replayBundle` は r2、ページの `bundledRev` は 1 と 2）。時間切れのページと robots.txt で撮らなかったページには付かない。`5b0c0003` は r2 の次の版を書けなかった行（replay ↗ は r2 を開き、開いた行が理由を言う）、`5b0c0002` は 1 度も書けなかった行（replay ↗ が出ず、開いた行が理由を言う）。台本の行に `replayBundle`（`rev`・`pages`・`builtAt`・`error`。失敗だけの行は `rev` を省く）を、ページに `capturedAt` と `bundledRev` を書く。鍵は代役が capture-ledger と同じ形（`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`）に組む。**代役は合本を書かない** —— replay ↗ の先には何も無い |
 | 直し方を訊く | クロール `5b0c0008`（型の検査で落ちた行）を開く。代役は `/api/crawls/:id/diagnostics` に台本の行の `diagnosed`（capture-ledger の答えそのまま。無い行は型を通る答え）で、`POST /api/crawls/:id/inline/:name/fix` に `fixes`（その場の TS の名前ごとの `{ status, body }`）で答える。**代役は Claude を呼ばない** —— `fixes` に無い名前は 404。`5b0c0008` は TS7006 の 1 件と、検査に通った直し（2〜3 行目。直した版は TypeScript 6.0.3 の strict で通る）を持つ。ほかの答えを見るなら、`fixes` に 429 や 422 の `status` と capture-ledger の本文を書く |
 | 定期実行 | タブ「定期実行」。回が失敗した予定（全部の画面に帯が出る）・順番待ちの予定・止めた予定が並ぶ。操作の結果は代役が起きている間だけ覚える。周回は無いので、「いま撮る」は頼みが立つだけ |
+| 前回からの変化 | タブ「変化」。台本の `changes`（`runs` が一覧、`details` がクロールの id ごとの 1 本）を、capture-ledger と同じ形のまま返す。予定「毎時の確認」の直近の回の `change` から、その回を開ける。**代役は比べも要約もしない** |
 
 代役にできないこともあります。
 
@@ -172,7 +173,7 @@ npm run docs:shots -- start crawls   # 名指した絵だけ
   控えを手で写して緑にしないこと —— 絵が古いまま残ります。
 - **名指して撮っても、控えは変わらない。**
   控えを今に合わせるのは、全部を撮ったときだけです。
-- **絵は lossless の WebP で、1 枚 35 KB・全部で 268 KB まで。**
+- **絵は lossless の WebP で、1 枚 35 KB・全部で 298 KB まで。**
   撮り直すたびに git に積もるからです。
   超えると `site:check` が落ちます。
   そのときは `docs-shots.mjs` の `SHOTS` で、写す箱を小さくするか、高さの上限（`maxHeight`）を下げます。

@@ -1248,6 +1248,12 @@ export const readingLastGood = (read, graceMs, now = Date.now) => {
   };
 };
 
+/** /api/changes の回のまとめ (CAPTURE-167)。台本の `changes.runs` をそのまま (新しい順に書いておく)。 */
+export const changeRuns = (s) => s.changes?.runs ?? [];
+
+/** /api/crawls/:id/changes (CAPTURE-167)。台本の `changes.details` のその id。無ければ undefined (404)。 */
+export const changeDetail = (s, crawlId) => s.changes?.details?.[crawlId];
+
 /**
  * /api/schedules の 1 行。欄は capture-ledger の src/api/schedules.ts と同じ。状態の語 (`health`) の判定は capture-ledger の物なので、
  * 台本に語を書く。時刻は絶対の時刻のまま (画面の絵が撮るたびに変わらないように)。
@@ -1271,7 +1277,8 @@ export const scheduleRow = (c) => ({
   pinnedAt: c.pinnedAt ?? "2026-11-01T00:00:00.000Z",
   createdBy: c.createdBy ?? "sandbox",
   createdAt: c.createdAt ?? "2026-11-01T00:00:00.000Z",
-  recentRuns: c.recentRuns ?? [],
+  // capture-ledger は、まだ比べていない回にも change を null で返す (v0.93.0・CAPTURE-167)
+  recentRuns: (c.recentRuns ?? []).map((run) => ({ ...run, change: run.change ?? null })),
 });
 
 /**
@@ -1463,6 +1470,18 @@ const handle = (req, res, raw) => {
     const scripts = mine?.scripts ?? s.crawls.find((x) => x.crawlId === back[1])?.scripts;
     const answer = inlineSource(scripts, decodeURIComponent(back[2]));
     send(res, answer.status, answer.body);
+    return;
+  }
+  // 前回からの変化 (CAPTURE-167)。台本の changes を、capture-ledger の src/api/changes.ts と同じ形のまま返す
+  if (req.method === "GET" && pathname === "/api/changes") {
+    send(res, 200, { runs: changeRuns(s) });
+    return;
+  }
+  const changed = /^\/api\/crawls\/([^/]+)\/changes$/.exec(pathname);
+  if (req.method === "GET" && changed !== null) {
+    const detail = changeDetail(s, changed[1]);
+    if (detail === undefined) send(res, 404, { error: "not found" });
+    else send(res, 200, detail);
     return;
   }
   // 型の誤りの取り直しと直し方 (CAPTURE-49)。受けた行は型で落ちていないので、取り直しは型を通る答え、直し方は 404

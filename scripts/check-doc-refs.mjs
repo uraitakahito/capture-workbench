@@ -181,7 +181,9 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // 開いた行の絵は ④⑤ の印まで切ってあり、詰めれば本文が指す所が消える）
 // 2026-11-12 に全部の枠を 264 → 268 KB（CAPTURE-186 の言い換えで、capture-ledger・登録済みのと字が伸びた 6 枚で
 // 264.1 KB になったとき。利用者の判断）。
-const BUDGET = { one: 35 * 1024, all: 268 * 1024 };
+// 2026-11-12 に全部の枠を 268 → 298 KB（CAPTURE-167 でタブ「変化」の絵 33.6 KB を足し、タブと定期実行の絵が少し増えて
+// 297.4 KB になったとき。計画で決めた上げ方。1 枚の枠は上げず、絵を開いた回だけに切って 35 KB に収めた）。
+const BUDGET = { one: 35 * 1024, all: 298 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);

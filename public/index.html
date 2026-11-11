@@ -13,6 +13,7 @@
         <button type="button" id="tab-crawls" class="on" data-face="crawls">クロール</button>
         <button type="button" id="tab-start" data-face="start">新しいクロール</button>
         <button type="button" id="tab-schedules" data-face="schedules">定期実行<span id="tab-schedules-count" class="tab-count" hidden></span></button>
+        <button type="button" id="tab-changes" data-face="changes">変化</button>
         <button type="button" id="tab-archives" data-face="archives">アーカイブ</button>
         <button type="button" id="tab-search" data-face="search">検索</button>
         <button type="button" id="tab-scripts" data-face="scripts">スクリプト集</button>
@@ -266,6 +267,27 @@
         <p id="schedules-answer" class="start-answer" hidden></p>
         <p id="schedules-empty" class="empty" hidden>予定はまだありません。「新しいクロール」の画面で撮り方を決めて「定期にする」を押すと作れます。</p>
         <div id="schedules"></div>
+      </section>
+
+      <!--
+        前回からの変化（CAPTURE-167）。予定の回を前の回と比べた結果。一覧は回のまとめ、開くとページごとの差分と要約。
+        **要約は証拠ではない** —— 差分は capture-ledger が 2 本の WACZ から Claude なしで作った物で、要約はそれを読みやすくしただけ。
+      -->
+      <section id="face-changes" hidden>
+        <p id="changes-answer" class="start-answer" hidden></p>
+        <p id="changes-empty" class="empty" hidden>まだ比べた回がありません。定期実行の回が 2 回撮れると、ここに前回からの変化が出ます。</p>
+        <table id="changes-table" hidden>
+          <thead>
+            <tr>
+              <th>予定</th>
+              <th>回</th>
+              <th>変化</th>
+              <th class="wide">Claude の 1 行（証拠ではない）</th>
+            </tr>
+          </thead>
+          <tbody id="changes-rows"></tbody>
+        </table>
+        <div id="change-detail" hidden></div>
       </section>
 
       <section id="face-search" hidden>
