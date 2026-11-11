@@ -1,22 +1,27 @@
 ---
 title: Configuration
-description: No .env is needed. All you can change is who you look as and where to look — the environment variables and the order they are read in
+description: Under capture-ledger's dev:up no .env is needed. What you can change is which IdP you sign in with and where to look — the environment variables and the order they are read in
 ---
 
-## No .env needed
+## No .env needed under dev:up
 
-The defaults are enough. Every line in `.env.example` is a comment; there is not a single live
-line. Copy it only when you want to change who you look as, or where to look.
+When capture-ledger's `pnpm run dev:up` starts the workbench, it passes the two sign-in lines
+(`WORKBENCH_OIDC_ISSUER` and `WORKBENCH_OIDC_CLIENT_ID`), and everything else has a default. Every
+line in `.env.example` is a comment. Copy it only when you start the workbench by hand, or want to
+change where to look.
 
 ```sh
 cp -n .env.example .env    # then uncomment the lines you need
 ```
 
-The difference from [capture-ledger](https://github.com/uraitakahito/capture-ledger) (the ledger
-that starts crawls and records what came back) is that nothing here lacks a sensible default.
-capture-ledger requires values that are only known after something has run, such as the ids of
-OpenFGA (the authorization service), so it needs a `.env`. capture-workbench only has an identity and
-destinations: the access token for that identity is fetched from the issuer when needed, and the
+[capture-ledger](https://github.com/uraitakahito/capture-ledger) (the ledger that starts crawls and
+records what came back) requires values that are only known after something has run, such as the
+ids of OpenFGA (the authorization service). The workbench has two such values: the issuer of the
+IdP (identity provider, the service you sign in with) and the workbench's app client ID there.
+Locally the IdP is [Floci](https://github.com/floci-io/floci) (a Cognito emulator), and its pool ID
+is part of the issuer, which changes whenever the pool is made again. So neither has a default:
+`dev:up` reads them from capture-ledger's `.dev/idp.env` (`IDP_ISSUER` and
+`IDP_WORKBENCH_CLIENT_ID`). Starting by hand, copy those two values into `.env`. The other
 destinations are fixed loopback addresses. There are no secrets.
 
 ## Environment variables
@@ -25,9 +30,8 @@ destinations are fixed loopback addresses. There are no secrets.
 | --- | --- | --- |
 | `WORKBENCH_PORT` | `7080` | The workbench's port. It binds to loopback (`127.0.0.1`) only |
 | `WORKBENCH_LEDGER_URL` | `http://127.0.0.1:7070` | The ledger's API |
-| `WORKBENCH_ISSUER_URL` | `http://127.0.0.1:9099` | The development issuer, the one capture-ledger's `pnpm run oidc:issuer` starts |
-| `WORKBENCH_SUBJECT` | this machine's user name | Who you look as. This name needs permission (see the [Quickstart](/quickstart/)) |
-| `WORKBENCH_ORGANIZATIONS` | `acme` | The organizations to claim, comma-separated |
+| `WORKBENCH_OIDC_ISSUER` | none | The IdP's issuer (`iss`). Locally, `IDP_ISSUER` in capture-ledger's `.dev/idp.env` |
+| `WORKBENCH_OIDC_CLIENT_ID` | none | The workbench's app client ID at the IdP. Locally, `IDP_WORKBENCH_CLIENT_ID` in the same file |
 | `WORKBENCH_REPLAYWEB_SERVER_URL` | `http://127.0.0.1:8899` | Where "replay ↗" goes: one WACZ from an archive row or a search hit, and the crawl's bundle from a crawl row or a page row |
 | `WORKBENCH_WINDMILL_URL` | `http://127.0.0.1:8000` | Where "run ↗" on a crawl row goes |
 | `WORKBENCH_WINDMILL_WORKSPACE` | `crawler` | The Windmill workspace "run ↗" opens |
@@ -36,12 +40,25 @@ destinations are fixed loopback addresses. There are no secrets.
 This table is checked against `src/server.mjs` and `.env.example` (`npm run site:check`). When
 you add a variable, change all three.
 
-### The identity is a convenience, not a protection
+### Signing in
 
-The workbench gets its access token from the development issuer's `POST /token`, using the names in
-`WORKBENCH_SUBJECT` and `WORKBENCH_ORGANIZATIONS`. The development issuer hands out a token for
-any name it is asked for. Change the name here and you see what that name may see. That is why
-the workbench is not a boundary, and why it never leaves loopback.
+You sign in on the IdP's sign-in page, and the workbench turns the code that comes back into an
+access token (authorization code with PKCE, Proof Key for Code Exchange). In production the IdP is
+Amazon Cognito; locally it is Floci, the compose service `idp` of capture-ledger, which
+capture-ledger's `pnpm run idp:bootstrap` sets up. The routes are in [Routes](/routes/).
+
+- **The app client is public.** It has no secret; PKCE keeps a code that someone else catches from
+  being turned into a token.
+- **Tokens live only in the server's memory.** The browser gets an HttpOnly cookie
+  (`workbench_session`) that holds a session ID. Restarting the workbench drops every session, and
+  the next request goes to sign in again.
+- **The callback must match the IdP's registration exactly.** It is
+  `http://127.0.0.1:<WORKBENCH_PORT>/callback`. `idp:bootstrap` registers the one on 7080, so on
+  another port the sign-in against Floci does not come back.
+- **Locally, the sign-in is a convenience, not a protection.** Floci's admin API accepts its
+  default key, so anything that reaches it can make a user and sign in as that user (capture-ledger's
+  [development environment](https://uraitakahito.github.io/capture-ledger/development-environment/)).
+  That is one reason the workbench never leaves loopback.
 
 ### The workbench does not build destinations
 

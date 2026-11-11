@@ -25,8 +25,8 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
 | WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
 
-The top of the screen says who you are looking as, and that it is a development identity. The
-footer shows how many rows are listed and how often the lists are fetched again.
+The top of the screen says who you are signed in as (`<user> (<groups>) としてサインインしています`),
+with a サインアウト (sign out) link. The footer shows how many rows are listed and how often the lists are fetched again.
 
 ## The lists are one page of the ledger
 

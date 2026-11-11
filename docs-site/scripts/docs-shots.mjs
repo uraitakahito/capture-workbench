@@ -549,7 +549,27 @@ if (health?.ok !== true) {
   console.error(`代役（${BASE}）が答えない。先に npm run sandbox で起こす`);
   process.exit(1);
 }
-const running = (await (await fetch(`${BASE}/api/crawls`)).json()).crawls.find((c) => c.state === "running");
+/**
+ * workbench はサインインしないと台帳の答えを返さない（CAPTURE-185）。代役の IdP は画面を出さずにすぐ戻すので、
+ * リダイレクトを手で辿れば cookie が取れる。絵を撮るページのほうは、Chrome がリダイレクトを辿って自分でサインインする。
+ */
+const signIn = async () => {
+  let url = `${BASE}/login`;
+  for (let hop = 0; hop < 5; hop++) {
+    const res = await fetch(url, { redirect: "manual" });
+    const cookie = res.headers.get("set-cookie");
+    if (cookie !== null) return cookie.split(";")[0];
+    const next = res.headers.get("location");
+    if (next === null) break;
+    url = new URL(next, url).href;
+  }
+  console.error(`代役（${BASE}）にサインインできない。sandbox/sandbox.env の WORKBENCH_OIDC_* を見る`);
+  process.exit(1);
+};
+const cookie = await signIn();
+const running = (await (await fetch(`${BASE}/api/crawls`, { headers: { cookie } })).json()).crawls.find(
+  (c) => c.state === "running",
+);
 if (running === undefined) {
   console.error("台本に走行中のクロールが無い（時計を止める基準にする）。sandbox/scenario.json を見る");
   process.exit(1);

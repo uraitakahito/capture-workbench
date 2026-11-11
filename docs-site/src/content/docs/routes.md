@@ -1,6 +1,6 @@
 ---
 title: Routes
-description: What capture-workbench's server answers — /healthz, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
+description: What capture-workbench's server answers — /healthz, signing in, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
 ---
 
 capture-workbench's server only relays. The workbench's logic lives in the browser (`public/`); all the
@@ -11,6 +11,7 @@ not.
 | Route | Answered by |
 | --- | --- |
 | `GET /healthz` | the server itself (liveness, and the settings the workbench needs) |
+| `GET /login`, `GET /callback`, `GET /logout` | the server itself (signing in on the IdP, and signing out) |
 | `POST /api/crawls` | the ledger (writes: starts a crawl) |
 | `POST /api/crawls/:id/inline/:name/fix` | the ledger (writes: asks how to fix an inline script's type errors) |
 | `POST /api/schedules` | the ledger (writes: makes a schedule) |
@@ -35,8 +36,7 @@ Returns liveness and the settings the workbench needs.
 ```json
 {
   "ok": true,
-  "subject": "alice",
-  "organizations": ["acme"],
+  "signedIn": { "user": "alice", "groups": ["acme"] },
   "replaywebServerOrigin": "http://127.0.0.1:8899",
   "windmillOrigin": "http://127.0.0.1:8000",
   "windmillWorkspace": "crawler",
@@ -44,11 +44,34 @@ Returns liveness and the settings the workbench needs.
 }
 ```
 
-The workbench reads it when it opens, to learn who it is looking as and where the deep links go.
+The workbench reads it when it opens, to learn who is signed in and where the deep links go.
+`signedIn` comes from the access token's `username` and `cognito:groups`, read without checking the
+signature (the ledger is the one that checks it). It is `null` without a session.
 `writeLimit` is the largest body, in bytes, the route that writes accepts; the new crawl view stops
 before sending a bigger one.
 It does not live under `/api/`: that is where the ledger is passed through, and mixing this
 server's answers in would make it unclear who answered.
+
+## /login, /callback, /logout — signing in
+
+You sign in on the IdP (identity provider: Amazon Cognito in production, locally
+[Floci](https://github.com/floci-io/floci), the compose service `idp` of capture-ledger). The flow is
+authorization code with PKCE (Proof Key for Code Exchange). The code is in `src/auth.mjs`.
+
+- `GET /login` reads the IdP's discovery (`<WORKBENCH_OIDC_ISSUER>/.well-known/openid-configuration`)
+  once, remembers a fresh `state` and PKCE verifier, and redirects to the IdP's sign-in page. Without
+  `WORKBENCH_OIDC_ISSUER` and `WORKBENCH_OIDC_CLIENT_ID` it answers a 503 that names them.
+- `GET /callback` is where the IdP sends you back. **It checks the `state`**, and each one works
+  once: a callback another page made, one that took too long, or a second use is a 400. It turns the
+  code into tokens at the IdP's token endpoint, keeps them in a session in memory, sets the cookie
+  `workbench_session` (HttpOnly, SameSite=Lax) and redirects to `/`.
+- `GET /logout` drops the session and the cookie, and redirects to `/`.
+- `/` without a session redirects to `/login` (when the sign-in is configured).
+
+The callback is `http://127.0.0.1:<WORKBENCH_PORT>/callback`, and it must match what the IdP has
+registered exactly. These routes are GET, because the way back from the IdP is a GET redirect, so
+the checks of the routes that write (`Origin`, JSON) do not apply; the `state` and PKCE refuse a way
+back that another page made.
 
 ## /api/* — passed through to the ledger
 
@@ -58,11 +81,13 @@ cannot call it directly, the server relays it to make it same-origin.
 
 - The path and query go through unchanged, as a GET. Any other method is a 405 (the routes that
   write are the `POST` routes below).
-- The access token is attached as `Authorization: Bearer`. If the server does not have one yet, it
-  first gets one from the development issuer.
-- **On a 401 it gets a new token and retries once.** It does not track the token's lifetime:
-  restarting the issuer changes its keys, so a clock that says "still valid" cannot be trusted.
-  A 401 says both "expired" and "the keys changed" in the same way.
+- Your session's access token is attached as `Authorization: Bearer`. Without a session it
+  answers 401 `{"error":"サインインしていません","login":"/login"}`, and the page goes to `/login`.
+- **On a 401 from the ledger it gets a new token with the refresh token and retries once.** It does
+  not track the token's lifetime: when the IdP's pool is made again its keys change, so a clock
+  that says "still valid" cannot be trusted. A 401 says both "expired" and "the keys changed" in
+  the same way. If the refresh token gets nothing, the session is dropped and the answer is a 401
+  (`サインインが切れました`) that sends you to sign in again.
 - The ledger's status, `content-type` and body are returned as they are.
 
 Which ledger routes are read is decided by the workbench (`public/app.js`); the server does not
@@ -197,12 +222,15 @@ A failure says what is missing. "You may not see it" and "it is not running" are
 | Status | When | Body |
 | --- | --- | --- |
 | 400 | an argument of a `/wacz/` route is missing or not a number; the ledger is not asked | `{"error":"from is required"}` |
+| 400 | `/callback` with an unknown or used `state`, or a code the IdP would not turn into tokens | `サインインできませんでした: …` (text) |
+| 401 | `/api/*` or a `/wacz/` route without a session, or the ledger refused the token and the refresh token got nothing | `{"error":"サインインしていません","login":"/login"}` or `サインインが切れました`; the page goes to `/login` |
 | 403 | the `Host` is not the workbench's (any route); on the route that writes, also when the `Origin` is not the workbench | `{"error":"workbench の Host ではない"}` and so on |
 | 405 | wrong method: on a `/wacz/` route (validation is POST, the rest GET), or on `/api/*` (GET only, except the route that writes) | `POST だけ`, `GET だけ` and so on, with an `Allow` header |
 | 413 | the body sent to the route that writes is over 1 MiB | `{"error":"本文が 1048576 バイトを超えた"}` |
 | 415 | the `content-type` sent to the route that writes is not JSON | `{"error":"JSON だけを受ける"}` |
 | as the ledger said | the ledger refused (such as a 404 for an archive you may not view) | the ledger's body |
-| 502 | the issuer, the ledger or the daemon cannot be reached, or the issuer refused the identity | `{"error":"… に届かない (…)。…"}`, with one sentence on how to fix it |
+| 502 | the IdP, the ledger or the daemon cannot be reached, or the IdP's discovery failed | `{"error":"… に届かない (…)。…"}`, with one sentence on how to fix it |
+| 503 | `/login` without `WORKBENCH_OIDC_ISSUER` and `WORKBENCH_OIDC_CLIENT_ID` | `サインインの設定が無い —— …` (text) |
 | 404 | a file that is not in `public/`, or an extension that is not served | `not found` |
 
 If the upstream breaks off while the answer is being streamed, the headers have already been

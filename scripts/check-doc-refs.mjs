@@ -137,7 +137,8 @@ for (const name of names) {
     if (!side.vars.has(name)) problems.push(`${side.rel}: ${name} が無い (他の側には在る)`);
   }
   const fallback = code.vars.get(name);
-  if (fallback === undefined) continue;
+  // 空文字は「既定値が無い」(WORKBENCH_OIDC_* は dev:up が渡す)。表では「無い」と書くので比べない。
+  if (fallback === undefined || fallback === "") continue;
   for (const side of sides.slice(1)) {
     const value = side.vars.get(name);
     if (side.vars.has(name) && value !== fallback) {

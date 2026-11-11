@@ -64,8 +64,10 @@ worded, and so on. Those parts are split out into files such as `src/wacz.mjs` a
 `public/format.js` so that the tests can call them directly. The ones under `public/` are the
 same files the browser reads, so there is no copy to rot.
 
-**Relaying and identity are not checked in CI.** They cannot be confirmed without the ledger and
-the issuer running, so the evidence is gathered by hand and pasted into the PR.
+**Relaying and signing in on the real IdP are not checked in CI.** The steps of signing in (the
+`state`, PKCE, the session) are tested against a fake IdP (`test/auth.test.mjs`), but the round trip
+cannot be confirmed without the ledger and Floci running, so the evidence is gathered by hand and
+pasted into the PR.
 
 ## Opening the workbench in the sandbox
 
@@ -115,6 +117,10 @@ There are things the stand-in does not do:
 
 - **It does not imitate authorization.** Any identity gets through, so the screens for a missing
   permission do not appear here.
+- **It does not imitate the IdP's sign-in.** The stand-in also plays the IdP
+  (`http://127.0.0.1:17070/sandbox-pool`, set in `sandbox/sandbox.env`): its sign-in sends you
+  straight back without a page, and its token is an unsigned sample for the user `sandbox` in the
+  group `acme`.
 - **replay ↗ and run ↗ lead outside the sandbox.** The stand-in's rows, and their bundles, do not
   exist over there.
 - The validation report says `wacz-validator unknown` (the image is built without `.git`).
@@ -154,7 +160,7 @@ npm run site:check          # before pushing
   write those as `/capture-workbench/…`.
 - **In Japanese, break lines after punctuation.** A line break in the middle of a sentence shows
   up as a space between characters.
-- **In the Japanese pages, 名乗り means only who you look as.** What the issuer returns is an access
+- **In the Japanese pages, 名乗り means only who you look as.** What the IdP returns is an access
   token (アクセストークン). The forms that mixed the two up are watched by
   `scripts/check-terms.mjs`, which `npm run check` runs.
 
