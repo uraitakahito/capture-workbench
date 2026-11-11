@@ -97,7 +97,7 @@ for (const { rel, text } of tablePage("routes.md")) {
 
 // ─── 5. 環境変数の表 ⇔ src/server.mjs ⇔ .env.example ──────────────────────
 // server.mjs は import しない (読み込んだ時点で待ち受けが始まる)。名前と既定値を文字から読む。
-// 既定値は「文字列の literal で書いてある物」だけを比べる (WORKBENCH_SUBJECT は OS のユーザー名)
+// 既定値は「文字列の literal で書いてある物」だけを比べる
 const sides = [
   {
     rel: "src/server.mjs",

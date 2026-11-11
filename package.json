@@ -11,7 +11,7 @@
   "//vendor": "vendor は highlighter/ の lockfile から public/vendor/ (shiki.js と、束ねた package の license の一覧) を作り直す。走らせるのは Shiki の版を上げたとき (Dependabot の PR の上でも)。**public/vendor/ を手で直さない** —— vendor:check が作り直して git diff で比べ、1 バイトでも違えば赤 (CI では .github/workflows/vendor.yml)。",
   "//sandbox": "台帳のスタックなしで workbench を開く (docs の「開発」の「サンドボックスで開く」)。相手 (台帳の代役と検証の daemon) はコンテナ、workbench は host。daemon の image は隣の ../wacz-validator の daemon の段から sandbox:build が建て、sandbox は無いときだけ建てる (container-compose 1.2.0 は build.target を無視するので、compose には建てさせない。docker-compose.yml の頭)。workbench は sandbox/sandbox.env だけを読み、.env は読まない。",
   "//site": "check に site:check を入れない —— check が install なしで走ることも、workbench の性質の一部。docs は npm ci --prefix docs-site の後に site:check (CI では .github/workflows/site.yml)。",
-  "//secrets": "**この repo は秘密を持たない。** 台帳に示すアクセストークンは開発用 issuer の POST /token からその場で取得する (pnpm run oidc:token が中でやっているのと同じこと)。.env に書くのは「誰として見るか」だけで、鍵の置き場が無い。",
+  "//secrets": "**この repo は秘密を持たない。** 人は IdP (手元は capture-ledger の Floci) のサインインを通り、workbench は code をアクセストークンに替えてメモリのセッションに持つ (src/auth.mjs)。app client は public で secret を持たない。.env に書くのは IdP の iss と client の ID だけで、鍵の置き場が無い。",
   "type": "module",
   "engines": {
     "node": ">=26"

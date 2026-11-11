@@ -6,14 +6,11 @@
  *
  * ## この repo は秘密を持たない
  *
- * 台帳に示すアクセストークンは、開発用 issuer の `POST /token` からその場で取得する
- * （capture-ledger の `pnpm run oidc:token` が中でやっているのと同じこと）。
- * `.env` に書くのは「誰として見るか」だけで、鍵もトークンも置き場が無い ——
+ * 人は IdP（本番は Amazon Cognito、手元は capture-ledger の compose の Floci）のサインインの画面を
+ * 通り、workbench は戻ってきた code を access token に替えてメモリのセッションに持つ（`auth.mjs`）。
+ * app client は public（secret を持たない）で、code の横取りは PKCE が防ぐ。`.env` に書くのは
+ * IdP の `iss` と app client の ID だけで、鍵もトークンも置き場が無い ——
  * **漏れる物が無いので、漏らさない工夫も要らない。**
- *
- * **そのぶん、これは境界ではない。** 開発用 issuer は頼まれれば誰の名前でも
- * トークンを出すので、ここの「名乗り」は便利さであって、守りではない。workbench は
- * それを隠さずに書く（capture-ledger の picker が同じ理由で同じことをしている）。
  *
  * ## なぜ中継するのか
  *
@@ -49,7 +46,8 @@ import { resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
-import { userInfo } from "node:os";
+
+import { cookieValue, createAuth, SESSION_COOKIE, sessionCookie, whoOf } from "./auth.mjs";
 
 import {
   contentType,
@@ -68,8 +66,14 @@ const PUBLIC = fileURLToPath(new URL("../public", import.meta.url));
 
 const PORT = Number(optional("WORKBENCH_PORT", "7080"));
 const LEDGER = optional("WORKBENCH_LEDGER_URL", "http://127.0.0.1:7070");
-const ISSUER = optional("WORKBENCH_ISSUER_URL", "http://127.0.0.1:9099");
-const SUBJECT = optional("WORKBENCH_SUBJECT", userInfo().username);
+/**
+ * 人の名乗りの IdP。手元は capture-ledger の Floci で、プールの ID が `iss` に入る（作り直すたびに替わる）ので
+ * 既定値を持たない —— capture-ledger の `dev:up` が `idp:bootstrap` の引き渡しから読んで渡す。
+ */
+const OIDC_ISSUER = optional("WORKBENCH_OIDC_ISSUER", "");
+const OIDC_CLIENT_ID = optional("WORKBENCH_OIDC_CLIENT_ID", "");
+/** IdP に登録した戻り先と一字一句同じでなければならない（capture-ledger の idp:bootstrap が登録する）。 */
+const REDIRECT_URI = `http://127.0.0.1:${String(PORT)}/callback`;
 /**
  * 深いリンクの行き先。**workbench はこれを組み立てない** —— 台帳が返すのは `objectKey`・クロールの合本の鍵
  * （`replayBundle.key`）・`lastJob.id` だけで、どこで開くかは配備の事実。1 か所で決めて `/healthz` で配る。
@@ -79,61 +83,27 @@ const WINDMILL = optional("WORKBENCH_WINDMILL_URL", "http://127.0.0.1:8000");
 const WORKSPACE = optional("WORKBENCH_WINDMILL_WORKSPACE", "crawler");
 /** WACZ を検証する daemon。**鍵を持たない** —— 台帳が署名した URL だけを読む。 */
 const VALIDATOR = optional("WORKBENCH_VALIDATOR_URL", "http://127.0.0.1:7180");
-const ORGANIZATIONS = optional("WORKBENCH_ORGANIZATIONS", "acme")
-  .split(",")
-  .map((org) => org.trim())
-  .filter((org) => org !== "");
+const auth = createAuth({ issuer: OIDC_ISSUER, clientId: OIDC_CLIENT_ID, redirectUri: REDIRECT_URI });
 
-/** アクセストークン。取得できたら覚えておくが、**寿命は数えない**（下の理由）。 */
-let token;
-
-const HOW_TO_START_ISSUER = "capture-ledger で pnpm run oidc:issuer は動いているか?";
-
-const mint = async () => {
-  let res;
-  try {
-    res = await fetch(`${ISSUER}/token`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ subject: SUBJECT, organizations: ORGANIZATIONS }),
-    });
-  } catch (err) {
-    // **届かないのと、断られたのは別。** 素の `fetch failed` はどちらも同じ顔で出る
-    // ので、立っていないほうを名指しする（反証で実際にこの顔を踏んだ）。
-    throw new Error(
-      `${ISSUER} に届かない (${err instanceof Error ? err.message : String(err)})。` +
-        HOW_TO_START_ISSUER,
-    );
-  }
-  if (!res.ok) {
-    // **断ったのは、動いている相手。** 起こし方を言っても直らない。開発用 issuer が断るのは
-    // subject が空白だけのときの 400 だけなので、答えを添える。ほかの答えなら、宛先で別のものが
-    // 答えている。issuer は要求ごとのログを書かないので、手がかりはこの文にしか無い。
-    const answer = (await res.text()).slice(0, 200);
-    throw new Error(
-      `${ISSUER} が名乗りを断った (${String(res.status)} ${answer})。` +
-        "WORKBENCH_SUBJECT が空白だけでないか、WORKBENCH_ISSUER_URL の先が開発用 issuer か?",
-    );
-  }
-  token = (await res.json()).access_token;
-};
+/** サインインしていない（セッションが無い・取り直せない）。画面はこれを見てサインインへ回る。 */
+class NotSignedIn extends Error {}
 
 /**
- * 台帳へ中継する。
+ * 台帳へ中継する。トークンはその人のセッションの物。
  *
- * **時計で測らず、401 で取得し直す。** 寿命（既定 1 時間）を数える形にすると、
- * issuer を起こし直した日に落ちる —— 起動のたびに鍵が変わるので、まだ有効なはずの
- * トークンが静かに通らなくなる。401 は、その両方（期限切れ・鍵替わり）を同じ形で言う。
+ * **時計で測らず、401 で取得し直す。** 寿命を数える形にすると、IdP のプールを作り直した日に落ちる ——
+ * 鍵が変わり、まだ有効なはずのトークンが静かに通らなくなる。401 は、その両方（期限切れ・鍵替わり）を
+ * 同じ形で言う。取り直しは refresh token で、それも通らなければサインインからやり直してもらう。
  */
-const toLedger = async (path, method = "GET", body = undefined) => {
-  if (token === undefined) await mint();
+const toLedger = async (path, method = "GET", body = undefined, session = undefined) => {
+  if (auth.tokenOf(session) === undefined) throw new NotSignedIn("サインインしていません");
   const send = async () => {
     try {
       // 401 で取得し直したときも、同じ body を送り直す（文字列なので何度でも読める）
       return await fetch(LEDGER + path, {
         method,
         headers: {
-          authorization: `Bearer ${token}`,
+          authorization: `Bearer ${auth.tokenOf(session)?.accessToken ?? ""}`,
           ...(body !== undefined && { "content-type": "application/json" }),
         },
         ...(body !== undefined && { body }),
@@ -149,7 +119,7 @@ const toLedger = async (path, method = "GET", body = undefined) => {
   };
   let res = await send();
   if (res.status === 401) {
-    await mint();
+    if (!(await auth.refresh(session))) throw new NotSignedIn("サインインが切れました");
     res = await send();
   }
   return res;
@@ -216,12 +186,24 @@ const failed = (reply, err) => {
     reply.destroy();
     return;
   }
+  if (err instanceof NotSignedIn) {
+    // 画面 (`public/app.js` の `api`) は `login` を見てサインインへ回る。
+    sendJson(reply, 401, { error: err.message, login: "/login" });
+    return;
+  }
   const status = err instanceof BadRequest ? 400 : err instanceof TooLarge ? 413 : 502;
   sendJson(reply, status, { error: err instanceof Error ? err.message : String(err) });
 };
 
+/** 302 で回す。 */
+const redirect = (reply, location, headers = {}) => {
+  reply.writeHead(302, { location, ...headers });
+  reply.end();
+};
+
 const server = createServer((request, reply) => {
   const url = request.url ?? "/";
+  const session = cookieValue(request.headers.cookie, SESSION_COOKIE);
 
   // **どのエンドポイントも、workbench の Host でなければ答えない**（DNS rebinding。`lib.mjs` の注）。
   // dev:up の準備の確かめは `http://127.0.0.1:<ポート>/healthz` を引くので、ここを通る。
@@ -233,12 +215,13 @@ const server = createServer((request, reply) => {
   // 生存と、workbench が要る設定。**`/api/` の下には置かない** —— あちらは台帳へ素通しする
   // 場所で、こちらの答えを混ぜると「どちらが答えたのか」が読めなくなる。
   if (url === "/healthz") {
+    const held = auth.tokenOf(session);
     reply.writeHead(200, { "content-type": "application/json; charset=utf-8" });
     reply.end(
       JSON.stringify({
         ok: true,
-        subject: SUBJECT,
-        organizations: ORGANIZATIONS,
+        // 誰としてサインインしているか (画面の上に出す)。サインインしていなければ null。
+        signedIn: held === undefined ? null : whoOf(held.accessToken),
         replaywebServerOrigin: REPLAYWEB_SERVER,
         windmillOrigin: WINDMILL,
         windmillWorkspace: WORKSPACE,
@@ -246,6 +229,54 @@ const server = createServer((request, reply) => {
         writeLimit: WRITE_LIMIT,
       }),
     );
+    return;
+  }
+
+  /**
+   * サインイン。IdP のサインインの画面へ回し、戻り先 (`/callback`) で code をトークンに替える。
+   * **どれも GET。** IdP から戻る道は GET のリダイレクトなので、書き込みの門 (JSON だけ) は掛けない ——
+   * 代わりに state と PKCE が、よそのページが作った戻りを断る。
+   */
+  const [pathname, query = ""] = url.split("?");
+  if (pathname === "/login" && request.method === "GET") {
+    if (!auth.configured) {
+      reply.writeHead(503, { "content-type": "text/plain; charset=utf-8" });
+      reply.end(
+        "サインインの設定が無い —— WORKBENCH_OIDC_ISSUER と WORKBENCH_OIDC_CLIENT_ID を書く " +
+          "(capture-ledger の pnpm run dev:up が渡す。値は capture-ledger の .dev/idp.env)\n",
+      );
+      return;
+    }
+    void auth
+      .beginLogin()
+      .then((location) => {
+        redirect(reply, location);
+      })
+      .catch((err) => {
+        failed(reply, err);
+      });
+    return;
+  }
+  if (pathname === "/callback" && request.method === "GET") {
+    const params = new URLSearchParams(query);
+    void auth
+      .finishLogin(params.get("code") ?? undefined, params.get("state") ?? undefined)
+      .then((done) => {
+        if ("error" in done) {
+          reply.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+          reply.end(`サインインできませんでした: ${done.error}\n`);
+          return;
+        }
+        redirect(reply, "/", { "set-cookie": sessionCookie(done.session) });
+      })
+      .catch((err) => {
+        failed(reply, err);
+      });
+    return;
+  }
+  if (pathname === "/logout" && request.method === "GET") {
+    auth.logout(session);
+    redirect(reply, "/", { "set-cookie": sessionCookie("", 0) });
     return;
   }
 
@@ -272,7 +303,7 @@ const server = createServer((request, reply) => {
       const params = paramsFor(route.op, route.params); // 壊れた引数は署名をもらう前に 400
       const upstream = await viaSignedUrl(
         {
-          toLedger,
+          toLedger: (path, method, body) => toLedger(path, method, body, session),
           call: (href) => toDaemon(`/${route.op}`, { source: { kind: "uri", uri: href }, ...params }),
         },
         route.archiveId,
@@ -295,7 +326,7 @@ const server = createServer((request, reply) => {
       return;
     }
     void readBody(request, WRITE_LIMIT)
-      .then((body) => toLedger(url, "POST", body))
+      .then((body) => toLedger(url, "POST", body, session))
       .then((res) => relay(reply, res))
       .catch((err) => {
         failed(reply, err);
@@ -310,11 +341,21 @@ const server = createServer((request, reply) => {
       reply.end("GET だけ（書き込みのエンドポイントは POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/crawls/:id/failed・POST /api/scripts/check・POST /api/schedules・POST /api/schedules/:id/<操作>）\n");
       return;
     }
-    void toLedger(url)
+    void toLedger(url, "GET", undefined, session)
       .then((res) => relay(reply, res))
       .catch((err) => {
         failed(reply, err);
       });
+    return;
+  }
+
+  // 画面そのものも、サインインしてから配る。IdP の設定が無ければ配る (API の 401 が理由を言う)。
+  if (
+    (pathname === "/" || pathname === "/index.html") &&
+    auth.configured &&
+    auth.tokenOf(session) === undefined
+  ) {
+    redirect(reply, "/login");
     return;
   }
 
@@ -386,8 +427,9 @@ server.on("error", (err) => {
 // 届く相手はこの機械の中だけでよい。
 server.listen(PORT, "127.0.0.1", () => {
   process.stdout.write(
-    `workbench http://127.0.0.1:${String(PORT)}/  ` +
-      `台帳: ${LEDGER}  名乗り: ${SUBJECT} (${ORGANIZATIONS.join(", ")})\n` +
-      "開発用の名乗りです —— issuer は頼まれれば誰の名前でもトークンを出します。\n",
+    `workbench http://127.0.0.1:${String(PORT)}/  台帳: ${LEDGER}  ` +
+      (auth.configured
+        ? `名乗り: ${OIDC_ISSUER} のサインイン (client ${OIDC_CLIENT_ID})\n`
+        : "名乗りの設定が無い —— WORKBENCH_OIDC_ISSUER と WORKBENCH_OIDC_CLIENT_ID を書く\n"),
   );
 });

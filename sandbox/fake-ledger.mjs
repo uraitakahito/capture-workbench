@@ -1,9 +1,10 @@
 /**
  * 台帳の代役。workbench のサンドボックス (docker-compose.yml の sandbox-ledger) の中で動く。
  *
- * workbench が台帳に訊くエンドポイントと、開発用 issuer の `POST /token` に、台本 (scenario.json) と
+ * workbench が台帳に訊くエンドポイントと、IdP (手元は capture-ledger の Floci) のサインインに、台本 (scenario.json) と
  * WACZ の置き場から答える。応答の欄は capture-ledger の応答に合わせてある (出どころは
- * 各関数の注記)。認可は真似ない —— 名乗りは何でも通す。
+ * 各関数の注記)。認可は真似ない —— 名乗りは何でも通す。サインインは画面を出さずにすぐ戻す
+ * (`/sandbox-pool/authorize`)。トークンは署名の無い見本で、名乗りの欄 (`username`・`cognito:groups`) だけを持つ。
  *
  * 署名付き URL の代わりに、置き場の `file://` の URL を返す。検証の daemon
  * (sandbox-validator) も同じ置き場を同じ path に mount しているので、それを読める。
@@ -1203,6 +1204,15 @@ export const signedUrlOf = (id, names) => {
     : { url: pathToFileURL(resolve(SAMPLES, name)).href, expiresIn: 300 };
 };
 
+/** IdP の代役のプール。workbench の `sandbox/sandbox.env` の WORKBENCH_OIDC_ISSUER と同じ。 */
+const SANDBOX_POOL = "/sandbox-pool";
+/** ホストから見た代役の在り処 (docker-compose.yml が 127.0.0.1:17070 に出す)。 */
+const SANDBOX_ORIGIN = "http://127.0.0.1:17070";
+/** 見本のトークン。署名は無い —— 名乗りの欄だけを workbench の上の行に出すため。 */
+const SANDBOX_TOKEN = `sandbox.${Buffer.from(
+  JSON.stringify({ username: "sandbox", "cognito:groups": ["acme"], token_use: "access" }),
+).toString("base64url")}.unsigned`;
+
 const send = (res, status, body) => {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
@@ -1326,8 +1336,37 @@ const windmillOf = (s) => ({
 const handle = (req, res, raw) => {
   const { pathname } = new URL(req.url ?? "/", "http://sandbox");
   const s = scenario();
-  if (req.method === "POST" && pathname === "/token") {
-    send(res, 200, { access_token: "sandbox", token_type: "Bearer" });
+  // IdP の代役。discovery・サインイン (画面を出さずにすぐ戻す)・token endpoint。
+  if (req.method === "GET" && pathname === `${SANDBOX_POOL}/.well-known/openid-configuration`) {
+    const issuer = `${SANDBOX_ORIGIN}${SANDBOX_POOL}`;
+    send(res, 200, {
+      issuer,
+      authorization_endpoint: `${issuer}/authorize`,
+      token_endpoint: `${issuer}/token`,
+    });
+    return;
+  }
+  if (req.method === "GET" && pathname === `${SANDBOX_POOL}/authorize`) {
+    const query = new URL(req.url ?? "/", "http://sandbox").searchParams;
+    const back = query.get("redirect_uri") ?? "";
+    // 戻すのは loopback の workbench にだけ。代役でも、よそへ code を渡す形にはしない。
+    if (!back.startsWith("http://127.0.0.1:")) {
+      send(res, 400, { error: "redirect_uri は http://127.0.0.1:<ポート>/callback だけ" });
+      return;
+    }
+    const to = new URL(back);
+    to.searchParams.set("code", "sandbox-code");
+    to.searchParams.set("state", query.get("state") ?? "");
+    res.writeHead(302, { location: to.href });
+    res.end();
+    return;
+  }
+  if (req.method === "POST" && pathname === `${SANDBOX_POOL}/token`) {
+    send(res, 200, {
+      access_token: SANDBOX_TOKEN,
+      refresh_token: "sandbox-refresh",
+      token_type: "Bearer",
+    });
     return;
   }
   if (req.method === "POST" && pathname === "/api/crawls") {
