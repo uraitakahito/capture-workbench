@@ -129,9 +129,11 @@ const SHOTS = [
   {
     name: "tabs",
     hash: "#start",
-    // タブが増えて、題と並べると本文の幅を超えた。タブだけを撮る
+    // タブが増えて、題と並べると本文の幅を超えた。タブだけを撮る。タブ「変化」（CAPTURE-167）でタブだけでも本文の幅を超えたので、
+    // 表と同じく縮めて載せる（字は 1 割ほど縮むだけで読める）
     box: "#tabs",
     pad: 10,
+    wide: true,
     ready: () => document.getElementById("tab-start").classList.contains("on"),
   },
   {
@@ -164,6 +166,17 @@ const SHOTS = [
     ready: () =>
       document.querySelector("#schedules article h2")?.textContent.includes("毎朝の 5 サイト") === true &&
       document.getElementById("schedule-band")?.hidden === false,
+  },
+  {
+    // 前回からの変化（CAPTURE-167）。開いた回（台本の「毎時の確認」の直近の回）。差分・Claude の 1 行・引用・replay ↗ 2 本
+    name: "changes",
+    hash: "#changes/5c0d0006-6a1e-4000-8000-000000000006",
+    // 開いた回だけ（一覧の表は広く、1 枚の枠 35 KB に収まらない。一覧は定期実行の画面の絵と同じ形）
+    box: "#change-detail",
+    maxWidth: COLUMN,
+    ready: () =>
+      document.querySelector("#change-detail .change-page") !== null &&
+      document.getElementById("changes-table")?.hidden === false,
   },
   {
     name: "crawl-detail",

@@ -1,10 +1,10 @@
 ---
 title: Screens
-description: What each view shows — crawls, start, schedules, archives, search, script collection and WACZ — how a crawl's state is worded, and how often capture-workbench polls
+description: What each view shows — crawls, start, schedules, changes, archives, search, script collection and WACZ — how a crawl's state is worded, and how often capture-workbench polls
 ---
 
 capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
-which view is shown (`#crawls`, `#start`, `#schedules`, `#archives`, `#search`, `#scripts`; in the search view it also
+which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`; in the search view it also
 names the words searched, and in the script collection view what you are reading). The WACZ tab only appears once you
 enter it with 開く (open) on an archive row. The workbench itself is in Japanese; the tab names are
 クロール, 新しいクロール, 定期実行, アーカイブ, 検索, スクリプト集 and WACZ.
@@ -13,13 +13,14 @@ The pictures on this page are taken against the stand-in ledger (the
 [sandbox](/development/#opening-the-workbench-in-the-sandbox)). Its scripts are copies from capture-scripts,
 the same ones a real ledger lists; only autoscroll v2 is the stand-in's own version, there to show version chips.
 
-![The tabs at the top: クロール, 新しいクロール, 定期実行, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
+![The tabs at the top: クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
 
 | View | What it lists |
 | --- | --- |
 | Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replayweb-server (the whole crawl as one archive) |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
 | Schedules | schedules and their runs; pause, resume, run now, repin and delete a schedule. A run that did not capture shows on a band on every view |
+| Changes | how a scheduled run differs from the previous one — one line per run, and per page the diff, Claude's summary (not evidence) and replay ↗ for before and after |
 | Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser) |
 | Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replayweb-server |
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
@@ -452,6 +453,26 @@ for actions.
 
 Rows on the crawls view carry a 定期 mark, and 定期・欠け 2 when runs were merged.
 
+## Changes
+
+How a scheduled run differs from the previous run of the same schedule with the same recipe
+(`#changes`, `#changes/<crawl id>`). Comparing and summarizing happen in
+[capture-ledger](https://github.com/uraitakahito/capture-ledger); this view only reads.
+
+![A run opened in the changes view. Under the note that Claude's summary is not evidence, each page shows the lines added and removed, Claude's line and quotes (a quote not in the diff in red), and replay ↗ for before and after](../../assets/screens/changes.webp)
+
+- **The diff comes from the evidence; the summary only makes it easier to read.** capture-ledger
+  builds the diff from the two WACZ files without Claude. Claude's line always carries
+  「Claude の要約（証拠ではない）」 (Claude's summary, not evidence) with the model, the prompt version and
+  the cost. To check, open both with 「replay ↗ 前」 and 「replay ↗ 今」.
+- **Three weights:** nothing that matters (only a time moved), a small change (a promotion swapped),
+  and a change of content (an article or a fact). Claude decides and can be wrong; the diff stays.
+- **Quotes that are not in the diff are marked** in red with （差分に無い）.
+- **A stalled summary shows on the band** — when the latest run's summary hits the monthly limit, or
+  failed three times. A change of content itself never raises the band.
+- **Pages with a WACZ you may not view are left out.**
+- **It is fetched when opened**, not polled: runs change a few times a day.
+
 ## Archives
 
 The WACZ files you can see, newest capture first.
@@ -572,7 +593,7 @@ ledger that starts crawls and records what came back).
 While at least one crawl is running, the lists are fetched every 2 seconds; otherwise every 30
 seconds. A crawl that has just finished keeps the 2-second pace until its last bundle version shows
 up, for at most a minute. Without keeping a copy, the workbench still looks live while something runs, and stays
-quiet when nothing does. The search view does not poll; it fetches only when you search. Schedules
+quiet when nothing does. The search and changes views do not poll; they fetch only when you search or open them. Schedules
 are fetched on a separate loop, every 30 seconds, and every 5 seconds while one is queued or running.
 It is separate so that being unable to read schedules does not stop the crawl table too.
 
