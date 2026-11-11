@@ -33,7 +33,7 @@ const SNAPSHOT = {
 };
 const hashOf = (href) => new URLSearchParams(new URL(href).hash.slice(1));
 
-test("検索の口は語を q に符号化して運ぶ（空白・& ・日本語も）", () => {
+test("検索のエンドポイントは語を q に符号化して運ぶ（空白・& ・日本語も）", () => {
   assert.equal(searchPath("ランプ & 机"), "/api/search?q=%E3%83%A9%E3%83%B3%E3%83%97+%26+%E6%9C%BA");
   assert.equal(new URLSearchParams(searchPath("a b&c").split("?")[1]).get("q"), "a b&c");
 });
@@ -96,7 +96,7 @@ test("時刻が読めない当たりは、replay のページ一覧を開く形�
   assert.equal(hitReplaywebHref(ORIGIN, { ...SNAPSHOT, capturedAt: "" }), `${ORIGIN}/?source=%2Fwacz%2Ftask-a_corr-b.wacz`);
 });
 
-test("引けなかったときの文: 503 は OpenSearch を、404 は検索の口の無い台帳を名指し、台帳の message を先に出す", () => {
+test("引けなかったときの文: 503 は OpenSearch を、404 は検索のエンドポイントの無い台帳を名指し、台帳の message を先に出す", () => {
   assert.match(
     searchFailure(503, { error: "search unavailable", message: "OpenSearch did not answer" }),
     /OpenSearch。台帳の CAPTURE_LEDGER_OPENSEARCH_URL の先）: OpenSearch did not answer$/,

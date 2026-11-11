@@ -1,7 +1,7 @@
 /**
  * 台帳の代役。workbench のサンドボックス (docker-compose.yml の sandbox-ledger) の中で動く。
  *
- * workbench が台帳に訊く口と、開発用 issuer の `POST /token` に、台本 (scenario.json) と
+ * workbench が台帳に訊くエンドポイントと、開発用 issuer の `POST /token` に、台本 (scenario.json) と
  * WACZ の置き場から答える。応答の欄は capture-ledger の応答に合わせてある (出どころは
  * 各関数の注記)。認可は真似ない —— 名乗りは何でも通す。
  *
@@ -12,24 +12,24 @@
  * 台本の `submit.runsSeconds` 秒走ってから完走になる (台本の行とは別に持つ)。走らせるもの
  * (`scripts`。台帳のスクリプトの名指しとその場の TS) も台帳と同じ形で受け、1 本の詳しい所に返す。
  *
- * 台帳のスクリプト (台本の `catalog`) は版の並びで、source は sandbox/catalog の写しから読む。スクリプトを読む口
+ * 台帳のスクリプト (台本の `catalog`) は版の並びで、source は sandbox/catalog の写しから読む。スクリプトを読むエンドポイント
  * (版の一覧・1 版・受け皿の型) にも答える。対象サイト (`sites`) のある版はサイト用のスクリプトで、台帳と同じく
  * 起点のホストで選び、合わない名指しは 400 で断る。
  *
- * クロールごとの値 (台帳 v0.67.0) も受ける。版の `params` (宣言) を一覧と 1 版の口に出し、頼みの `variables` を
+ * クロールごとの値 (台帳 v0.67.0) も受ける。版の `params` (宣言) を一覧と 1 版のエンドポイントに出し、頼みの `variables` を
  * 宣言に照らして台帳と同じ文で 400 を言う。宣言したシークレットは、台本の `windmillSecrets` (在る secret 変数の名前)
  * と `windmillVariables` (在るが secret でない変数の名前) を Windmill の代わりにして確かめ、受けた行に名前と path を持つ
  * (値はどこにも無い —— 台帳と同じ)。シークレットの宣言の `archive` (値を WARC に残すなら `"keep"`。台帳 v0.90.0) も
  * 台帳と同じく読み、行に写す。隠すシークレットを送るのに配備の形式 (台本の `captureFormats`) が値を置き換えられない物を
  * 頼むなら、台帳と同じ文で 400。
  *
- * ページの口 (CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
+ * ページのエンドポイント (CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
  * 答える。ログは台本のページの `log` (BrowserHive の答えの log の形) で、無ければ読めない理由を返す。
  *
  * 型で落ちた行の、型の誤りの取り直し (`GET /api/crawls/:id/diagnostics`) と直し方 (`POST …/inline/:name/fix`。
  * CAPTURE-49) にも、台本の行の `diagnosed` と `fixes` から答える。**代役は Claude を呼ばない。**
  *
- * 検索の口 (`GET /api/search`。CAPTURE-53) にも、台本の `searchPages` から答える。**代役は OpenSearch を持たない** ——
+ * 検索のエンドポイント (`GET /api/search`。CAPTURE-53) にも、台本の `searchPages` から答える。**代役は OpenSearch を持たない** ——
  * 語を含む行を拾うだけで、点数も分かち書きも無い。
  *
  * クロールの合本 (CAPTURE-54。台帳が段ごとに保管庫へ書く replay.json と pages.json) の欄も返す —— 行と詳しい所の
@@ -134,7 +134,7 @@ export const crawlRow = (c, now) => ({
 
 /**
  * /api/crawls/:id の、走らせたもの 1 本。欄は capture-ledger v0.61.0 の src/api/crawls.ts と同じ ——
- * 台帳のスクリプトは身元と対象サイトだけ、その場の物にだけ `inline` が付く。**source は載せない**（名前・口・バイト数）。
+ * 台帳のスクリプトは身元と対象サイトだけ、その場の物にだけ `inline` が付く。**source は載せない**（名前・phase・バイト数）。
  */
 const detailScript = (s) => ({
   id: s.id,
@@ -257,7 +257,7 @@ const byId = (a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : BigInt(a.id) > BigInt
 /**
  * /api/crawls/:id/pages。台本の行 `c` の `pages` を id の昇順で、`after` の後から `limit` 件 (既定 100・最大 500)。
  * `next` は続きが在れば返した最後の id、無ければ null。limit が整数でない・範囲の外、after が数字だけでなければ、
- * 行を探す前に 400 (Fastify の schema の形。台帳の実物の文は、口が出たら写す)。行が無ければ 404。
+ * 行を探す前に 400 (Fastify の schema の形。台帳の実物の文は、エンドポイントが出たら写す)。行が無ければ 404。
  */
 export const pageList = (c, query) => {
   const after = query.get("after");
@@ -320,7 +320,7 @@ const fragmentOf = (text, q) => {
 };
 
 /**
- * 検索の口（GET /api/search）の答え。欄は capture-ledger の src/api/search.ts（CAPTURE-53 の後）と同じ:
+ * 検索のエンドポイント（GET /api/search）の答え。欄は capture-ledger の src/api/search.ts（CAPTURE-53 の後）と同じ:
  * `{ hits, total }` で、total は返した当たりの数。台本の `searchPages` を、台帳と同じ決まりで引く ——
  * 写しの行が在るアーカイブでは写しの行だけ（文書の行は引かない。CAPTURE-48）、見えない行（`hidden`）は
  * 答えに出さない（台帳は OpenFGA の can_view で落とす）。当たりは題か本文に、大小を問わず語を含む行。
@@ -490,7 +490,7 @@ const rulesRefusal = (rules) => {
 };
 
 /**
- * 始める口の規則の 400 (台帳 v0.62.0 と同じ順と文)。通れば、読んだ形で固定する規則を返す。
+ * 始めるエンドポイントの規則の 400 (台帳 v0.62.0 と同じ順と文)。通れば、読んだ形で固定する規則を返す。
  */
 const resolveRules = (rules, seeds) => {
   // 形は submitCrawl が先に見ている (schema の 400 は handler より前)
@@ -508,7 +508,7 @@ const resolveRules = (rules, seeds) => {
 };
 
 /**
- * 確かめの口 (`GET /api/crawl-rules/check`)。答えの形は台帳 v0.62.0 と同じ。規則は「動き:当てる物」で、
+ * 確かめのエンドポイント (`GET /api/crawl-rules/check`)。答えの形は台帳 v0.62.0 と同じ。規則は「動き:当てる物」で、
  * 動きの名前が違えば schema の 400。
  */
 export const crawlRulesCheck = (seedTexts, ruleTexts) => {
@@ -972,7 +972,7 @@ const emptyDefault = (versions) => {
 /**
  * 台本のスクリプト（版の並び）に source を読み込む。source は sandbox/catalog の写し（capture-scripts のファイル）で、
  * sha256 と bytes は台帳と同じく source から数える（手で書いた sha256 は、本物の
- * 中身と結び付かない）。欄は capture-ledger v0.61.0 の 1 版の口（`GET /api/scripts/:id/versions/:version`）と同じ。
+ * 中身と結び付かない）。欄は capture-ledger v0.61.0 の 1 版のエンドポイント（`GET /api/scripts/:id/versions/:version`）と同じ。
  */
 export const catalogOf = (s, read = readBeside) =>
   (s.catalog ?? []).map((v) => {
@@ -988,7 +988,7 @@ export const catalogOf = (s, read = readBeside) =>
       createdAt: v.createdAt,
       source,
       options: v.options ?? {},
-      // 宣言 (catalog.json の params)。台帳 v0.67.0 は版ごとに持ち、一覧と 1 版の口に出す。無ければ空
+      // 宣言 (catalog.json の params)。台帳 v0.67.0 は版ごとに持ち、一覧と 1 版のエンドポイントに出す。無ければ空
       params: v.params ?? [],
     };
   });
@@ -1004,12 +1004,12 @@ export const latestOf = (versions) =>
 
 /**
  * 有効な各 id の最新版を同じ順で。サイト用のスクリプトも入る（台帳の enabledLatest。既定の顔ぶれの元）。順は
- * 無効な版も数えて決める —— 台帳の順は id に 1 つなので、一覧の口と既定の順はずれない。
+ * 無効な版も数えて決める —— 台帳の順は id に 1 つなので、一覧のエンドポイントと既定の順はずれない。
  */
 export const latestEnabled = (versions) => pickable(versions).filter((v) => v.enabled);
 
 /**
- * 一覧の口（`GET /api/scripts`）の顔ぶれ。各 id に 1 行で、既定で走る版（有効な版の中の最新）があればそれ、
+ * 一覧のエンドポイント（`GET /api/scripts`）の顔ぶれ。各 id に 1 行で、既定で走る版（有効な版の中の最新）があればそれ、
  * 無ければ最新版を `enabled: false` で（台帳 v0.64.0 の pickable）。既定に入らないスクリプトも、名指せば
  * 走るので載せる。
  */
@@ -1417,7 +1417,7 @@ const handle = (req, res, raw) => {
     });
     return;
   }
-  // その場の TS 1 本（「欄に戻す」の口）。受けた行と台本の行のどちらからでも引く
+  // その場の TS 1 本（「欄に戻す」のエンドポイント）。受けた行と台本の行のどちらからでも引く
   const back = /^\/api\/crawls\/([^/]+)\/inline\/([^/]+)$/.exec(pathname);
   if (req.method === "GET" && back !== null) {
     const mine = submitted.find((row) => row.crawlId === back[1]);
@@ -1499,7 +1499,7 @@ const handle = (req, res, raw) => {
     send(res, 200, { scripts: scriptRows(versionsIn(s)) });
     return;
   }
-  // スクリプトを読む口（台帳 v0.60.0）。id は % を解いてから引く
+  // スクリプトを読むエンドポイント（台帳 v0.60.0）。id は % を解いてから引く
   const versions = /^\/api\/scripts\/([^/]+)\/versions(?:\/([^/]+))?$/.exec(pathname);
   if (req.method === "GET" && versions !== null) {
     const id = decodeURIComponent(versions[1]);
@@ -1526,10 +1526,10 @@ const handle = (req, res, raw) => {
 
 if (import.meta.main) {
   const port = Number(process.env.SANDBOX_PORT ?? "7070");
-  // コンテナの中では外向きに待つ。host への口は compose が 127.0.0.1 にだけ出す
+  // コンテナの中では外向きに待つ。host へのポートは compose が 127.0.0.1 にだけ出す
   const host = process.env.SANDBOX_HOST ?? "0.0.0.0";
   createServer((req, res) => {
-    // 本文を読み切ってから答える (始める口だけが使う。workbench の欄が送る本文は小さい)
+    // 本文を読み切ってから答える (始めるエンドポイントだけが使う。workbench の欄が送る本文は小さい)
     const chunks = [];
     req.on("data", (chunk) => chunks.push(chunk));
     req.on("end", () => {

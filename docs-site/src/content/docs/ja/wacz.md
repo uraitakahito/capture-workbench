@@ -16,7 +16,7 @@ sequenceDiagram
   participant D as workbench
   participant L as 台帳
   participant V as daemon
-  B->>D: /wacz/:id/ の口
+  B->>D: /wacz/:id/ のエンドポイント
   Note over D: 引数を検める（足りなければ 400。台帳へは行かない）
   D->>L: POST /api/archives/:id/url
   alt 見てよくない archive
@@ -30,8 +30,8 @@ sequenceDiagram
   end
 ```
 
-どの口も同じ 2 段です。
-台帳に署名をもらい、その URL を daemon に渡します（口の一覧は[中継の口](/routes/)）。
+どのエンドポイント（HTTP の method と path の組）も同じ 2 段です。
+台帳に署名をもらい、その URL を daemon に渡します（一覧は[エンドポイント](/routes/)のページ）。
 
 - **鍵はどこにも増えない。**
   渡すのは台帳が署名した URL 1 本で、daemon は store の資格情報を持ちません。
@@ -42,7 +42,7 @@ sequenceDiagram
   応答にも、ログにも、失敗の文にも載せません（daemon が URL 入りの例外を投げても、`(署名付き URL)` に伏せます）。
   載せると、認可で閉じた意味が消えます。期限の内なら、URL を持つ者は誰でも読めるからです。
   報告に載る `source` は daemon が query を落とした identity なので、そのまま返してよいものです。
-- **署名は、口を呼ぶたびに取り直す。**
+- **署名は、エンドポイントを呼ぶたびに取り直す。**
   取っておくと、workbench が有効な鍵を持ち続けることになります。
 
 ## 検証の報告
@@ -70,7 +70,7 @@ workbench が渡すのは `locale` だけです。
 workbench は profile を渡さないので、daemon は既定の `spec` で検証します。
 撮影のサーバ（BrowserHive）に限った rule は、workbench には出ません。
 報告の行に `profile spec` と出るので、どの profile で見たかは画面で分かります。
-BrowserHive の規定で見たいなら、workbench から profile を渡す口が要ります（いまは無い）。
+BrowserHive の規定で見たいなら、workbench から profile を渡す手段が要ります（いまは無い）。
 
 ### daemon は自分では建て直らない
 

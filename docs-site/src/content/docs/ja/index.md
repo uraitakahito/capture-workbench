@@ -28,7 +28,7 @@ flowchart LR
 
 ブラウザが話す相手は workbench だけです（同一オリジン）。
 workbench は開発用の issuer からアクセストークンを取得し、それを付けて `/api/*` をそのまま台帳へ通します。
-書くのは、新しいクロールの画面から始めるときの `POST /api/crawls` と、定期実行の予定を作って操作する口（[口の一覧](/routes/)）で、同じ道で台帳へ通します。
+書くのは、新しいクロールの画面から始めるときの `POST /api/crawls` と、定期実行の予定を作って操作するエンドポイント（HTTP の method と path の組。[エンドポイントの一覧](/routes/)）で、同じ道で台帳へ通します。
 WACZ の検証と中身は、台帳に署名してもらった URL を [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon に渡して読ませます。
 replayweb-server と Windmill へは、画面の行からリンクで飛ぶだけです。
 
@@ -63,5 +63,5 @@ Pages に置いてあるのは、この説明だけです。
 - **[画面](/screens/)** —— 画面ごとに何が並ぶか、状態の言い方、引く間隔。
 - **[WACZ を見る](/wacz/)** —— 検証の 2 段と報告、WACZ の画面。
 - **[設定](/configuration/)** —— 環境変数の表と、読む順。
-- **[中継の口](/routes/)** —— サーバが答える口、通すヘッダ、失敗の形。
+- **[エンドポイント](/routes/)** —— サーバが答えるエンドポイント、通すヘッダ、失敗の形。
 - **[開発](/development/)** —— 依存の線、試験が見ないもの、docs を直す、リリース。

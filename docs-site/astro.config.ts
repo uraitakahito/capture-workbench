@@ -20,7 +20,7 @@ export default defineConfig({
     mermaid({ theme: "neutral" }),
     starlight({
       title: "capture-workbench Docs",
-      // 表の中の code (口・環境変数の名前) を折り返さない
+      // 表の中の code (エンドポイント・環境変数の名前) を折り返さない
       customCss: ["./src/styles/tables.css", "./src/styles/screens.css"],
       // 英語が根 (接頭辞無し)、日本語は /ja/ の下。Web Capture の他の repo と同じ形
       defaultLocale: "root",
@@ -43,7 +43,7 @@ export default defineConfig({
         { label: "Screens", translations: { ja: "画面" }, slug: "screens" },
         { label: "Inspecting a WACZ", translations: { ja: "WACZ を見る" }, slug: "wacz" },
         { label: "Configuration", translations: { ja: "設定" }, slug: "configuration" },
-        { label: "Routes", translations: { ja: "中継の口" }, slug: "routes" },
+        { label: "Routes", translations: { ja: "エンドポイント" }, slug: "routes" },
         { label: "Development", translations: { ja: "開発" }, slug: "development" },
       ],
     }),

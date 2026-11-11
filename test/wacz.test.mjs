@@ -1,12 +1,12 @@
 /**
- * `/wacz/` の口の純粋な部分。経路の読み、引数の組み替え、そして**署名が外に出ないこと**。
+ * `/wacz/` のエンドポイントの純粋な部分。経路の読み、引数の組み替え、そして**署名が外に出ないこと**。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { BadRequest, OPS, paramsFor, parseWaczRoute, viaSignedUrl } from "../src/wacz.mjs";
 
-test("6 本の口を読み、それ以外は読まない", () => {
+test("6 本のエンドポイントを読み、それ以外は読まない", () => {
   const ops = ["validate", "lines", "line", "records", "record", "record/body"];
   // OPS は docs の表と突き合わされる名前。OPS から作ると恒真になるので、この写しと比べる
   assert.deepEqual([...OPS].sort(), [...ops].sort());

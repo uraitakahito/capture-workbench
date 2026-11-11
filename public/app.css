@@ -646,7 +646,7 @@ body[data-face="start"] main {
   display: none;
 }
 
-/* その場の TS: 名前・口・ファイル・型の行、箱（残りの高さを全部）、大きさの行 */
+/* その場の TS: 名前・phase・ファイル・型の行、箱（残りの高さを全部）、大きさの行 */
 .start-js {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -922,7 +922,7 @@ body[data-face="start"] main {
   cursor: pointer;
 }
 
-/* 走らせるもの: スクリプトのチェックと、その場の TS（名前・口・コード・ファイルを読む） */
+/* 走らせるもの: スクリプトのチェックと、その場の TS（名前・phase・コード・ファイルを読む） */
 .start-run {
   display: flex;
   flex-direction: column;

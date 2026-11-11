@@ -1,5 +1,5 @@
 /**
- * 型の誤りと直し方の読み方（`public/fix.js`・CAPTURE-49）。描くのは app.js で、書く口の形は `lib.test.mjs` が見る。
+ * 型の誤りと直し方の読み方（`public/fix.js`・CAPTURE-49）。描くのは app.js で、書き込みのエンドポイントの形は `lib.test.mjs` が見る。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -13,7 +13,7 @@ const FAILED =
 test("型の検査で落ちた失敗の文だけを、誤りを取り直す相手と読む", () => {
   assert.equal(failedOnTypes(FAILED), true);
   assert.equal(failedOnTypes("compile 422 CompileFailed: 型の誤り 708 件。"), true);
-  // 検査の口に届かなかった・取り込みで落ちた・失敗の文が無い
+  // 検査のエンドポイントに届かなかった・取り込みで落ちた・失敗の文が無い
   assert.equal(failedOnTypes("[compile] compile 503 Unavailable: ts-compile-service に届かない"), false);
   assert.equal(failedOnTypes("timeout: Task processing (45000ms)"), false);
   assert.equal(failedOnTypes(null), false);
@@ -38,7 +38,7 @@ test("取り直した誤りを、スクリプト・どこ・code・文の行に�
   ]);
 });
 
-test("誤りが無ければ通ると言い、口の無い 404 と行の無い 404 を言い分け、ほかは台帳の文のまま", () => {
+test("誤りが無ければ通ると言い、エンドポイントの無い 404 と行の無い 404 を言い分け、ほかは台帳の文のまま", () => {
   assert.deepEqual(diagnosisOf(200, { typescript: "6.0.3", hostTypes: "v0.6.0", diagnostics: [] }), {
     kind: "clean",
     typescript: "6.0.3",
@@ -64,7 +64,7 @@ test("直し方を訊けるのは、誤りの在るスクリプトだけ", () =>
   assert.equal(hasErrorsIn(undefined, "inline-close-banner"), false);
 });
 
-test("必須の変数が足りない行では、どのスクリプトにも直し方を訊かない —— 台帳の口が Claude を呼ばず 422 で断るので", () => {
+test("必須の変数が足りない行では、どのスクリプトにも直し方を訊かない —— 台帳のエンドポイントが Claude を呼ばず 422 で断るので", () => {
   const said = diagnosisOf(200, {
     typescript: "6.0.3",
     diagnostics: [
@@ -109,7 +109,7 @@ test("429 は、この月に使った額と上限を添える。ほかは台帳�
     text: "409 —— scripts compile",
   });
   assert.deepEqual(fixAnswer(503, { error: "ts-compile unreachable" }), { kind: "bad", text: "503 —— ts-compile unreachable" });
-  // 鍵の無い台帳は口ごと出さない（Fastify の 404）。行やその場の TS が無い 404 とは言い分ける
+  // 鍵の無い台帳はエンドポイントごと出さない（Fastify の 404）。行やその場の TS が無い 404 とは言い分ける
   const noRoute = fixAnswer(404, { message: "Route POST:/api/crawls/x/inline/y/fix not found", error: "Not Found" });
   assert.match(noRoute.text, /CAPTURE_LEDGER_ANTHROPIC_API_KEY/);
   assert.deepEqual(fixAnswer(404, { error: "not found" }), { kind: "bad", text: "404 —— not found" });

@@ -301,7 +301,7 @@ export const startBody = (text, follow, run = NOTHING_CHOSEN, variables = {}, us
 };
 
 /**
- * 台帳の確かめの口（`GET /api/crawl-rules/check`）の query。起点は空行を落とし、規則は「動き:当てる物」で
+ * 台帳の確かめのエンドポイント（`GET /api/crawl-rules/check`）の query。起点は空行を落とし、規則は「動き:当てる物」で
  * 並べる（当てる物の `:` は、台帳が最初の 1 つで切るので構わない）。
  */
 export const checkQuery = (text, rows) =>

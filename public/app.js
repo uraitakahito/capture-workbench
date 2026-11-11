@@ -1,7 +1,7 @@
 /**
  * workbench。**素の JS**（bundler も framework も通さない）。
  *
- * 読むのは台帳の口と、WACZ の中身へ行く `/wacz/` の口だけ。ここで畳むのは「どの画面を
+ * 読むのは台帳のエンドポイントと、WACZ の中身を読む `/wacz/` のエンドポイントだけ。ここで畳むのは「どの画面を
  * 出すか」と「どう描くか」で、何が起きたかは全部向こうが知っている。
  *
  * **撮った中身は他人が書いたもの。** 文字は `textContent`、画像は raster だけを
@@ -316,7 +316,7 @@ const fixOf = (crawlId, script) => {
 };
 
 /**
- * 直し方を訊く。本文は `{}` の JSON —— 書く口の門は JSON だけを受ける（`post()` は content-type を付けないので
+ * 直し方を訊く。本文は `{}` の JSON —— 書き込みのエンドポイントの門は JSON だけを受ける（`post()` は content-type を付けないので
  * 使わない。`startCrawl` と同じ fetch の形）。答えは `fixes` に覚え、その行だけを描き直す。
  */
 const askFix = async (crawlId, name) => {
@@ -359,7 +359,7 @@ const ranOf = (one) => {
     if (script.sites.length > 0) item.append(siteChip(script.sites));
     item.append(tag("span", where, "muted"));
     // その場の TS は、直して撮り直せるように欄へ戻せる（台帳のスクリプトは台帳に在る）。source は詳しい所に
-    // 無いので、押したときに名前の口から取る
+    // 無いので、押したときに名前で引くエンドポイントから取る
     if (script.inline !== undefined) {
       item.append(button("欄に戻す", () => void putBack(one.crawlId, script.inline.name)));
       // 型の誤りの在るその場の TS には、直し方を訊く道も（押したときだけ Claude を呼ぶ）
@@ -458,7 +458,7 @@ const ACTION_LABEL = Object.fromEntries(ACTIONS);
  * 規則が何を決めたか（台帳の `GET /api/crawls/:id/decisions`）。規則ごとの数（段を跨いで足し、0 回の規則に
  * 印）と、落とした物（規則・どれにも当たらない・robots.txt、ホスト名ごと）、その下に Windmill で調べる 1 行。
  * **決めたリンクが 1 本も無ければ数を並べない** —— リンクの無いページでも全部の規則に「当たって
- * いません」が付き、読み違える。読めなければ 1 行で言う（台帳が古ければ口が無い）。
+ * いません」が付き、読み違える。読めなければ 1 行で言う（台帳が古ければエンドポイントが無い）。
  */
 const decisionsOf = (one) => {
   const box = document.createElement("div");
@@ -628,7 +628,7 @@ const restoreScroll = () => {
  * ページ（台帳の `GET /api/crawls/:id/pages`。詳しい所と一緒に引く）。台帳に入った順に、URL・結末・warn と
  * error の数・ログの button。並べるのは台帳の 1 回分で、続きは「続きを読む」を押したときだけ引く。ログは押した
  * ときに引き、その行の下の箱に出す。**開いた箱は id で覚え、作り直さずに移す** —— 表は引くたびに作り直すので、
- * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（台帳が古ければ口が無い）。
+ * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（台帳が古ければエンドポイントが無い）。
  *
  * 結末の後ろの「replay ↗」は、そのページをクロールの合本の中で開く。合本は詳しい所（`/api/crawls/:id`。ページと
  * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/replayweb.js` の `replayBundleHref`。
@@ -1166,7 +1166,7 @@ const drawValues = () => {
 
 /**
  * その場の TS を欄に戻し、新しいクロールの画面へ移る。直して撮り直すため。**起点とスクリプトの選びは触らない。**
- * source は詳しい所に無い（capture-ledger v0.59.0）ので、名前の口から取る。
+ * source は詳しい所に無い（capture-ledger v0.59.0）ので、名前で引くエンドポイントから取る。
  */
 const putBack = async (crawlId, name) => {
   let back;
@@ -1255,7 +1255,7 @@ let ruleRows = PRESETS.host.map((row) => ({ ...row }));
 
 /**
  * 台帳の確かめ。`key` は問うた query で、答えは表と起点がその形のときにだけ使う —— 遅れて届いた前の
- * 答えで印を描かない。`answer` が undefined なら、台帳に確かめられなかった（届かない・口が無い）。
+ * 答えで印を描かない。`answer` が undefined なら、台帳に確かめられなかった（届かない・エンドポイントが無い）。
  */
 const rulesCheck = { key: undefined, answer: undefined, timer: undefined };
 
@@ -1553,7 +1553,7 @@ $("start-nocheck").addEventListener("change", (event) => {
 $("start").addEventListener("submit", (event) => void startCrawl(event));
 
 // ── 定期にする ─────────────────────────────────────────────────────
-/** 書く口に JSON を送る。門は content-type を見るので、本文が無い操作も `{}` を送る。 */
+/** 書き込みのエンドポイントに JSON を送る。門は content-type を見るので、本文が無い操作も `{}` を送る。 */
 const postJson = async (path, body = {}) => {
   let status = 0;
   let answer = {};
@@ -2487,7 +2487,7 @@ IN_START.lines.addEventListener("click", (event) => {
 
 // ── WACZ（1 本の中）────────────────────────────────────────────────
 /**
- * wacz-validator の tui（`render/tree.ts`）と同じ入力から同じ木を組む（検証の報告の `entries`）。中身は `/wacz/` の口に
+ * wacz-validator の tui（`render/tree.ts`）と同じ入力から同じ木を組む（検証の報告の `entries`）。中身は `/wacz/` のエンドポイントに
  * **窓で**頼む —— 行の窓（200 行ずつ）、1 行を丸ごと（fields は daemon が割る）、
  * レコードの一覧（200 件ずつ）、1 レコード。窓の位置は workbench が持つ。一覧の上の warcinfo の枠は
  * 窓で頼まない —— 検証の報告の `warcinfo` に、欄と語彙まで載っている。

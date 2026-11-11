@@ -45,7 +45,7 @@ workbench は `WORKBENCH_SUBJECT` と `WORKBENCH_ORGANIZATIONS` の名前で、�
 ### 行き先は、workbench が組み立てない
 
 replayweb-server と Windmill の行き先は、配備の事実です。
-台帳が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[中継の口](/routes/)）。
+台帳が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[エンドポイント](/routes/)）。
 
 どの「replay ↗」も、保管庫の URL ではなく、replay と同じ origin の path を渡します。
 `?source=` の値は `/wacz/` と鍵で、鍵は `/` で区切って区切りごとに百分率の符号にし、その path をもう 1 度 query の値として符号にします。

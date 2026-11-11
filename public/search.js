@@ -9,7 +9,7 @@
  */
 import { replaywebHref, replaywebSourceHref, replaywebTs } from "./replayweb.js";
 
-/** 検索の口。語はそのまま `q` に（台帳は空を 400 で断る）。 */
+/** 検索のエンドポイント。語はそのまま `q` に（台帳は空を 400 で断る）。 */
 export const searchPath = (words) => `/api/search?${new URLSearchParams({ q: words })}`;
 
 /** 検索の画面の URL。`#search/<語>`（語が空なら `#search`）。 */
@@ -71,7 +71,7 @@ export const hitReplaywebHref = (origin, hit) => {
 
 /**
  * 引けなかったときの文。台帳の文は `message` を先に（Fastify の 400 は `error` が「Bad Request」で、中身は
- * `message` に在る）。503 は OpenSearch が答えない、404 は台帳に検索の口が無い（設定の無い古い台帳）。
+ * `message` に在る）。503 は OpenSearch が答えない、404 は台帳に検索のエンドポイントが無い（設定の無い古い台帳）。
  */
 export const searchFailure = (status, body) => {
   const said = body?.message ?? body?.error ?? "答えに文がありません";
@@ -79,6 +79,6 @@ export const searchFailure = (status, body) => {
   if (status === 503) {
     return `台帳の全文検索が答えません（OpenSearch。台帳の CAPTURE_LEDGER_OPENSEARCH_URL の先）: ${said}`;
   }
-  if (status === 404) return `台帳に検索の口がありません（CAPTURE_LEDGER_OPENSEARCH_URL の無い台帳）: ${said}`;
+  if (status === 404) return `台帳に検索のエンドポイントがありません（CAPTURE_LEDGER_OPENSEARCH_URL の無い台帳）: ${said}`;
   return `${String(status)} — ${said}`;
 };

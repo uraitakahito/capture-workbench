@@ -8,7 +8,7 @@
  *      同じ見出しを強制すると日本語が悪くなる)
  *   2. 本文の [x](/page/) が、同じ locale に在るページを指す
  *   3. 本文が code span で名指しする repo の path (`src/…` `public/…` `scripts/…` …) が実在する
- *   4. routes.md の「中継の口」の表が src/wacz.mjs の `OPS` と一致する (**両方向**: 表に無い口も、
+ *   4. routes.md の「エンドポイント」の表が src/wacz.mjs の `OPS` と一致する (**両方向**: 表に無いエンドポイントも、
  *      OPS に無い行も赤)
  *   5. configuration.md の環境変数の表・src/server.mjs の `optional()`・.env.example の 3 者で、
  *      名前の集合と既定値が一致する
@@ -19,8 +19,8 @@
  *      wide (本文に縮めて載せる表) でない絵は、本文の幅 (`COLUMN`) 以内。絵の元 (`public/`・`sandbox/`・
  *      撮る道具) が、撮ったときから変わっていない
  *
- * 4 と 5 が要るのは、表が手で写した物だから。口や変数を足しても、表は誰かが直すまで古いまま ——
- * README に表があった頃、workbench が読まなくなった口が書かれたまま残っていた。それをこの検査が PR で止める。
+ * 4 と 5 が要るのは、表が手で写した物だから。エンドポイントや変数を足しても、表は誰かが直すまで古いまま ——
+ * README に表があった頃、workbench が読まなくなったエンドポイントが書かれたまま残っていた。それをこの検査が PR で止める。
  *
  * 効いているのを見るには: ja のページを 1 枚 `.ja.md` に改名する → 赤。本文に `src/nope.mjs` → 赤。
  * routes.md から 1 行消す → 赤。.env.example の既定値を 1 つ変える → 赤。README の URL を綴り違える → 赤。
@@ -80,7 +80,7 @@ const tablePage = (name) =>
     return [];
   });
 
-// ─── 4. 中継の口の表 ⇔ src/wacz.mjs の OPS ─────────────────────────────────
+// ─── 4. エンドポイントの表 ⇔ src/wacz.mjs の OPS ─────────────────────────────────
 // wacz.mjs は副作用が無いので import してよい。行の形は | `GET /wacz/:id/lines?path=…` | …
 const { OPS } = await import("../src/wacz.mjs");
 for (const { rel, text } of tablePage("routes.md")) {
@@ -88,10 +88,10 @@ for (const { rel, text } of tablePage("routes.md")) {
     [...text.matchAll(/^\|\s*`(?:GET|POST) \/wacz\/:id\/([a-z/]+)[`?]/gm)].map((m) => m[1]),
   );
   for (const op of OPS) {
-    if (!documented.has(op)) problems.push(`${rel}: 口 ${op} の行が無い (src/wacz.mjs の OPS には在る)`);
+    if (!documented.has(op)) problems.push(`${rel}: エンドポイント ${op} の行が無い (src/wacz.mjs の OPS には在る)`);
   }
   for (const op of documented) {
-    if (!OPS.includes(op)) problems.push(`${rel}: src/wacz.mjs の OPS に無い口 ${op} が表に在る`);
+    if (!OPS.includes(op)) problems.push(`${rel}: src/wacz.mjs の OPS に無いエンドポイント ${op} が表に在る`);
   }
 }
 
@@ -241,5 +241,5 @@ if (problems.length > 0) {
   process.exit(1);
 }
 console.log(
-  `✓ docs と repo は揃っている (${en.length} ページ × 2 locale、口 ${OPS.length}、環境変数 ${names.size}、絵 ${Object.keys(manifest.shots).length} 枚で ${kb(shotBytes)})`,
+  `✓ docs と repo は揃っている (${en.length} ページ × 2 locale、エンドポイント ${OPS.length}、環境変数 ${names.size}、絵 ${Object.keys(manifest.shots).length} 枚で ${kb(shotBytes)})`,
 );

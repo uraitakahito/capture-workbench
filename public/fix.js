@@ -2,10 +2,10 @@
  * 型で落ちたクロールの、型の誤りと直し方（CAPTURE-49）。**描くのは `app.js`** で、ここは答えの読み方と言い方だけ
  * （DOM に触らないので、`node --test` から直に呼べる）。
  *
- * 台帳の口は 2 つ:
+ * 台帳のエンドポイントは 2 つ:
  *
  * - `GET /api/crawls/:id/diagnostics` —— 行に固定した組み合わせを ts-compile-service に送り直した型の誤り。
- *   Claude は呼ばない。台帳が ts-compile の宛先を持たない配備には、口ごと無い（Fastify の 404）
+ *   Claude は呼ばない。台帳が ts-compile の宛先を持たない配備には、エンドポイントごと無い（Fastify の 404）
  * - `POST /api/crawls/:id/inline/:name/fix` —— その場の TS の直し方を Claude に訊く。**検査に通った案だけ**が
  *   200 で返り、Claude を呼んだ答えには回数と費用が載る
  *
@@ -19,8 +19,8 @@ export const failedOnTypes = (error) => typeof error === "string" && /(?:^|\]\s*
 const saidOf = (body) => body?.error ?? body?.message ?? "答えに文がありません";
 
 /**
- * 口が無い 404 か（Fastify の既定の文は "Route GET:… not found"）。行が無い・見えない 404 は "not found" で、
- * こちらは台帳がその口を出していない —— どちらの口も、台帳の設定が無ければ口ごと出さない。
+ * エンドポイントが無い 404 か（Fastify の既定の文は "Route GET:… not found"）。行が無い・見えない 404 は "not found" で、
+ * こちらは台帳がそのエンドポイントを出していない —— どちらのエンドポイントも、台帳の設定が無ければエンドポイントごと出さない。
  */
 const routeMissing = (status, body) =>
   status === 404 && typeof body?.message === "string" && body.message.startsWith("Route ");
@@ -54,7 +54,7 @@ export const diagnosisOf = (status, body) => {
   if (routeMissing(status, body)) {
     return {
       kind: "trouble",
-      text: "404 —— 台帳がこの口を出していません（CAPTURE_LEDGER_TS_COMPILE_URL の無い配備）",
+      text: "404 —— 台帳にこのエンドポイントがありません（CAPTURE_LEDGER_TS_COMPILE_URL の無い配備）",
     };
   }
   return { kind: "trouble", text: `${String(status)} —— ${saidOf(body)}` };
@@ -66,7 +66,7 @@ export const lacksValues = (diagnosis) =>
 
 /**
  * そのスクリプトに型の誤りがあるか（「直し方を訊く」を出すか）。**足りない変数が 1 つでも在れば出さない** —— 台帳の
- * 直し方の口は、クロールのどこかに `BH0001` があれば Claude を呼ばず 422 で断る（通る案は必須を任意にする形だけになるため）。
+ * 直し方のエンドポイントは、クロールのどこかに `BH0001` があれば Claude を呼ばず 422 で断る（通る案は必須を任意にする形だけになるため）。
  */
 export const hasErrorsIn = (diagnosis, scriptId) =>
   diagnosis?.kind === "errors" && !lacksValues(diagnosis) && diagnosis.rows.some((row) => row.script === scriptId);
@@ -98,7 +98,7 @@ export const fixAnswer = (status, body) => {
   if (routeMissing(status, body)) {
     return {
       kind: "bad",
-      text: "404 —— 台帳がこの口を出していません（CAPTURE_LEDGER_ANTHROPIC_API_KEY の無い配備）。Claude は呼んでいません",
+      text: "404 —— 台帳にこのエンドポイントがありません（CAPTURE_LEDGER_ANTHROPIC_API_KEY の無い配備）。Claude は呼んでいません",
     };
   }
   if (status === 429 && typeof body?.spentUsd === "number" && typeof body?.budgetUsd === "number") {

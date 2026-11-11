@@ -182,7 +182,7 @@ export const markOf = (crawl) => {
 /** 予定を作る本文。`request` は始める欄の本文（`startBody`）そのもの。 */
 export const createBody = (name, cron, request) => ({ name: name.trim(), cron: cron.trim(), request });
 
-/** 作った答えの 1 行。頼みの中身の断りは、始める口と同じ文にする（`startAnswer`）。 */
+/** 作った答えの 1 行。頼みの中身の断りは、始めるエンドポイントと同じ文にする（`startAnswer`）。 */
 export const createAnswer = (status, answer) => {
   if (status === 201) {
     return { kind: "ok", text: `予定を作りました。次の回は ${shortTime(answer.nextRunAt, answer.timezone)} です。` };
