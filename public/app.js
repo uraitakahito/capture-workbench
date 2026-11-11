@@ -9,7 +9,7 @@
  * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
  * `outerHTML` のようなほかの API は見ない。
  */
-import { checkVerdict, count, forgetMissing, judgedUnder, linksOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
+import { checkVerdict, count, forgetMissing, judgedUnder, linksOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
   addRow,
@@ -384,9 +384,23 @@ const whenOf = (iso) => {
 };
 
 /**
+ * シークレットの値を WARC に残すかの印（`format.js` の `secretArchiveOf`）。開いた行と新しいクロールの画面が同じ物を
+ * 出す。台帳が言わなければ undefined。
+ */
+const archiveTag = (archive) => {
+  const said = secretArchiveOf(archive);
+  if (said === undefined) return undefined;
+  const span = tag("span", said.text, said.kind === "muted" ? "muted" : `state ${said.kind}`);
+  if (said.title !== undefined) span.title = said.title;
+  return span;
+};
+
+/**
  * 渡した値（台帳の `variables`。始めるときに行へ固定された名前と値）と、使ったシークレット（`secrets`。名前と
- * Windmill の変数の path と、台帳が確かめたときの edited_at。途中で替わっていれば、どの段からか）。**値を持つのは
- * 変数だけ** —— シークレットの値は台帳も WACZ も持たない。どちらも持たない台帳（v0.66 まで）の行は何も出さない。
+ * Windmill の変数の path と、台帳が確かめたときの edited_at。途中で替わっていれば、どの段からか。WARC に残すか）。
+ * **値を持つのは変数だけ** —— シークレットの値は台帳に無く、写し・ページの文字・ログからも消える。WARC では、隠す
+ * シークレットの値は `***` に置き換わり、`keep` と宣言した物は値のまま残る（`format.js` の `secretArchiveOf`）。
+ * どちらも持たない台帳（v0.66 まで）の行は何も出さない。
  */
 const valuesOf = (one) => {
   const box = document.createElement("div");
@@ -416,7 +430,7 @@ const valuesOf = (one) => {
     box.append(table);
   }
   if (secrets.length > 0) {
-    box.append(tag("p", "使ったシークレット（名前と Windmill の変数。値は記録に無い）"));
+    box.append(tag("p", "使ったシークレット（名前と Windmill の変数。値は台帳・写し・ページの文字・ログに無い）"));
     const list = document.createElement("ul");
     list.className = "secrets";
     for (const secret of secrets) {
@@ -428,6 +442,8 @@ const valuesOf = (one) => {
           tag("span", `段 ${String(secret.rotated.depth)} から替わった（${whenOf(secret.rotated.editedAt)}）`, "state warn"),
         );
       }
+      const archive = archiveTag(secret.archive);
+      if (archive !== undefined) item.append(archive);
       list.append(item);
     }
     box.append(list);
@@ -1100,7 +1116,8 @@ const valueField = (v) => {
 
 /**
  * クロールごとの値の欄。選んだスクリプトとその場の TS（`declaredNow`）が宣言した変数を 1 行ずつ（名前・説明・値の欄。必須に印）、
- * シークレットを名前の列に（値の欄は無い —— 値は Windmill の変数に人が置く）。宣言が 1 つも無ければ fieldset ごと隠す。
+ * シークレットを名前の列に（値の欄は無い —— 値は Windmill の変数に人が置く。必須の印と、WARC に残すかの印が付く）。
+ * 宣言が 1 つも無ければ fieldset ごと隠す。
  * 打った値は `values` に持ち、欄を作り直しても戻す。描き直すのはチェックの change と、起点が変わったとき（`syncPicks`）と、
  * 箱の宣言の答えが来たとき（`declaredChanged`）。
  */
@@ -1139,6 +1156,8 @@ const drawValues = () => {
     if (i > 0) line.append("、");
     line.append(tag("span", s.name, "mono"));
     if (s.required) line.append(tag("span", "必須", "req"));
+    const archive = archiveTag(s.archive);
+    if (archive !== undefined) line.append(" ", archive);
   });
   line.append(
     tag("span", "。値はここには書きません。Windmill の変数 f/waggle_secrets/<名前> に人が置き、台帳が在るかを確かめます", "muted"),

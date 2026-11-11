@@ -19,7 +19,9 @@
  * クロールごとの値 (台帳 v0.67.0) も受ける。版の `params` (宣言) を一覧と 1 版の口に出し、頼みの `variables` を
  * 宣言に照らして台帳と同じ文で 400 を言う。宣言したシークレットは、台本の `windmillSecrets` (在る secret 変数の名前)
  * と `windmillVariables` (在るが secret でない変数の名前) を Windmill の代わりにして確かめ、受けた行に名前と path を持つ
- * (値はどこにも無い —— 台帳と同じ)。
+ * (値はどこにも無い —— 台帳と同じ)。シークレットの宣言の `archive` (値を WARC に残すなら `"keep"`。台帳 v0.90.0) も
+ * 台帳と同じく読み、行に写す。隠すシークレットを送るのに配備の形式 (台本の `captureFormats`) が値を置き換えられない物を
+ * 頼むなら、台帳と同じ文で 400。
  *
  * ページの口 (CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
  * 答える。ログは台本のページの `log` (BrowserHive の答えの log の形) で、無ければ読めない理由を返す。
@@ -191,7 +193,8 @@ const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [
  * error・scripts・replayBundle・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に
  * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ台帳の既定。
  * `replayBundle` は一覧の行と同じ形 (台帳も同じ関数で組む)。
- * `secrets` は台帳 v0.67.0 と同じく `{ name, path, editedAt, rotated }` の列で、値は無い。`failures` の要素は
+ * `secrets` は台帳 v0.90.0 と同じく `{ name, path, editedAt, rotated, archive }` の列で、値は無い (`archive` は宣言の
+ * 写しで、`"keep"` か null。台本の行も、この形で書く)。`failures` の要素は
  * `{ url, depth, reason, page }` (page はページの行の id。CAPTURE-18 で台帳が足す)。
  */
 export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEFAULT_RULES, values = valuesIn(c)) => ({
@@ -559,6 +562,13 @@ const SECRETS_FOLDER = "f/waggle_secrets/";
 const BODY_KEYS = ["userAgent", "seeds", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
 /** Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。試験が渡さなければ、何も置いていない Windmill。 */
 const NO_WINDMILL = { secrets: [], variables: [], editedAt: null };
+/**
+ * 配備の形式 (台帳の `CAPTURE_LEDGER_CAPTURE_FORMATS`) の代わり (台本の `captureFormats`。小文字の名前の並び)。
+ * 試験と台本が渡さなければ、台帳の既定と同じ `wacz` だけ。
+ */
+const DEFAULT_FORMATS = ["wacz"];
+/** 隠すシークレットの値を置き換えられない形式 (台帳 v0.90.0 の `FORMATS_WITHOUT_REPLACEMENT`。この順で名指す)。 */
+const FORMATS_WITHOUT_REPLACEMENT = ["png", "webp", "html", "mhtml"];
 
 /**
  * Fastify が schema の誤りで返す本文の形 (台帳の 400 と同じ。workbench は `message` を出す)。
@@ -597,8 +607,9 @@ const elementRefusal = (element, i) => {
 };
 
 /**
- * 宣言 (`params`) の形を見る (台帳 v0.67.0 の schema)。断るなら文を返す。名前は `^[a-z][a-z0-9_]*$` で 64 字まで、
- * kind は variable か secret、required は真偽値、summary は文字列 (その場の TS では省ける)、知らない鍵は断る。
+ * 宣言 (`params`) の形を見る (台帳 v0.90.0 の schema)。断るなら文を返す。名前は `^[a-z][a-z0-9_]*$` で 64 字まで、
+ * kind は variable か secret、required は真偽値、summary は文字列 (その場の TS では省ける)、archive は `"keep"` だけ
+ * (値を WARC に残す。省けば隠す)、知らない鍵は断る。
  * kind: variable と、同じ名前が 2 度ある宣言は schema では見ず、`paramsReading` が台帳の handler と同じ文で断る。
  */
 const paramsRefusal = (params, at) => {
@@ -611,7 +622,7 @@ const paramsRefusal = (params, at) => {
     for (const key of ["name", "kind"]) {
       if (!(key in p)) return `${here} must have required property '${key}'`;
     }
-    if (Object.keys(p).some((key) => !["name", "kind", "required", "summary"].includes(key))) {
+    if (Object.keys(p).some((key) => !["name", "kind", "required", "summary", "archive"].includes(key))) {
       return `${here} must NOT have additional properties`;
     }
     if (typeof p.name !== "string" || !VALUE_NAME.test(p.name) || p.name.length > 64) {
@@ -620,6 +631,9 @@ const paramsRefusal = (params, at) => {
     if (p.kind !== "variable" && p.kind !== "secret") return `${here}/kind must be equal to one of the allowed values`;
     if (p.required !== undefined && typeof p.required !== "boolean") return `${here}/required must be boolean`;
     if (p.summary !== undefined && typeof p.summary !== "string") return `${here}/summary must be string`;
+    // 台帳の Ajv は数・真偽・null を文字列に読み替えてから enum で断る。読み替えられないのは object だけ
+    if (typeof p.archive === "object" && p.archive !== null) return `${here}/archive must be string`;
+    if (p.archive !== undefined && p.archive !== "keep") return `${here}/archive must be equal to one of the allowed values`;
   }
   return undefined;
 };
@@ -627,7 +641,8 @@ const paramsRefusal = (params, at) => {
 /**
  * その場の TS の宣言を、台帳の handler (schema の後) と同じく読む。`params` に書けるのはシークレットだけで、変数なら 400、
  * 同じ名前が 2 度あれば 400 (どちらも `{ error: "invalid params", script, hint }`。文は台帳と同じ)。
- * 通れば、省いた required を false にした宣言。
+ * 通れば、省いた required を false にした宣言。`archive` は書いたときだけ写す (台帳の readParams。写し忘れると、
+ * 残すつもりの値が黙って隠れる)。
  */
 const paramsReading = (inline) => {
   if (inline.params === undefined) return { params: undefined };
@@ -649,7 +664,13 @@ const paramsReading = (inline) => {
         body: { error: "invalid params", script: `inline-${inline.name}`, hint: `params に ${p.name} が 2 度ある` },
       };
     }
-    out.push({ name: p.name, kind: p.kind, required: p.required ?? false, ...(p.summary === undefined ? {} : { summary: p.summary }) });
+    out.push({
+      name: p.name,
+      kind: p.kind,
+      required: p.required ?? false,
+      ...(p.summary === undefined ? {} : { summary: p.summary }),
+      ...(p.archive === undefined ? {} : { archive: "keep" }),
+    });
   }
   return { params: out };
 };
@@ -742,25 +763,36 @@ const shapeProblem = (name, value, schema) => {
 };
 
 /**
- * クロールごとの値を、台帳の route と `checkValues` と同じ順で解く: 必須の変数が無い (台帳は compile の答えの `BH0001` で
- * 断る。行も立たない) → 同じ名前を別の種類か別の形で宣言している → シークレットの名前を変数で渡している → 知らない変数 →
- * 値が宣言の形に合わない → シークレットが多すぎる → 宣言したシークレットが Windmill に在るか → 在るが secret でない。
+ * クロールごとの値を、台帳の route と `checkValues`・`resolveSecrets` と同じ順で解く: 必須の変数が無い (台帳は compile の
+ * 答えの `BH0001` で断る。行も立たない) → 同じ名前を別の種類か別の形で宣言している、WARC に残すかが食い違う → シークレットの
+ * 名前を変数で渡している → 知らない変数 → 値が宣言の形に合わない → シークレットが多すぎる → 宣言したシークレットが
+ * Windmill に在るか → 在るが secret でない → 隠すシークレットを送るのに、配備の形式 (`formats`) が値を置き換えられない
+ * 物を頼む (台帳 v0.90.0 の `formatsRefusal`)。
  * 宣言は走らせるものから集める。台帳のスクリプトは版の `params`、その場の TS は変数が source の `defineParams`
  * (`readDeclared`) でシークレットが `inline.params`。同じ名前の宣言は 1 つにまとめる (名前順)。required でないシークレットが
- * Windmill に無ければ、渡さないだけで断らない (スクリプトは undefined を読む)。通れば、行に固定する `variables` と `secrets`
- * (名前・path・確かめたときの edited_at・途中で替わったか) を返す。
+ * Windmill に無ければ、渡さないだけで断らない (スクリプトは undefined を読む)。形式の 400 が見るのも、Windmill に在って
+ * 送る物だけ。通れば、行に固定する `variables` と `secrets` (名前・path・確かめたときの edited_at・途中で替わったか・
+ * WARC に残すか) を返す。
  *
  * `BH0001` の誤りに行と列は無い (代役は構文木を読まない)。本物には在る。
  */
-const resolveValues = (variables = {}, run, windmill) => {
+const resolveValues = (variables = {}, run, windmill, formats = DEFAULT_FORMATS) => {
   const declared = new Map();
   const lacking = [];
   for (const s of run) {
     const params = s.inline === undefined ? (s.params ?? []) : [...readDeclared(s.inline.source), ...(s.inline.params ?? [])];
     for (const p of params) {
-      const entry = declared.get(p.name) ?? { kinds: new Set(), schemas: new Map(), required: false, declaredBy: [] };
+      const entry = declared.get(p.name) ?? {
+        kinds: new Set(),
+        schemas: new Map(),
+        archives: new Set(),
+        required: false,
+        declaredBy: [],
+      };
       entry.kinds.add(p.kind);
       if (p.schema !== undefined) entry.schemas.set(JSON.stringify(p.schema), p.schema);
+      // 省いた宣言は隠す。変数は archive を持てないので、いつも隠す側 (種類の違いは kinds が先に言う)
+      entry.archives.add(p.archive ?? "hide");
       entry.required = entry.required || p.required === true;
       entry.declaredBy.push(s.id);
       declared.set(p.name, entry);
@@ -778,7 +810,10 @@ const resolveValues = (variables = {}, run, windmill) => {
       diagnostics: lacking.map(({ file, code, message }) => ({ file, code, message })),
     });
   }
-  const conflicting = names.filter((name) => declared.get(name).kinds.size > 1 || declared.get(name).schemas.size > 1);
+  const conflicting = names.filter((name) => {
+    const { kinds, schemas, archives } = declared.get(name);
+    return kinds.size > 1 || schemas.size > 1 || archives.size > 1;
+  });
   if (conflicting.length > 0) return refuse({ error: "conflicting params", names: conflicting });
   const ofKind = (kind) => names.filter((name) => declared.get(name).kinds.has(kind));
   const given = Object.keys(variables).sort();
@@ -806,6 +841,7 @@ const resolveValues = (variables = {}, run, windmill) => {
     path: `${SECRETS_FOLDER}${name}`,
     required: declared.get(name).required,
     declaredBy: declared.get(name).declaredBy,
+    ...(declared.get(name).archives.has("keep") && { archive: "keep" }),
   }));
   const named = ({ name, path, declaredBy }) => ({ name, path, declaredBy });
   const absent = wanted.filter((s) => !windmill.secrets.includes(s.name));
@@ -821,7 +857,20 @@ const resolveValues = (variables = {}, run, windmill) => {
   if (plain.length > 0) return refuse({ error: "not a secret variable", secrets: plain.map(named) });
   const secrets = wanted
     .filter((s) => windmill.secrets.includes(s.name))
-    .map((s) => ({ name: s.name, path: s.path, editedAt: windmill.editedAt, rotated: null }));
+    .map((s) => ({ name: s.name, path: s.path, editedAt: windmill.editedAt, rotated: null, archive: s.archive ?? null }));
+  // 隠す物が在るのに、配備の形式が値を置き換えられない物を頼む。通すと BrowserHive が取り込みのたびに 400 で断る
+  const hidden = secrets.filter((s) => s.archive !== "keep").map((s) => s.name);
+  const asked = FORMATS_WITHOUT_REPLACEMENT.filter((format) => formats.includes(format));
+  if (hidden.length > 0 && asked.length > 0) {
+    return refuse({
+      error: "formats that cannot hide secrets",
+      formats: asked,
+      names: hidden,
+      hint:
+        `CAPTURE_LEDGER_CAPTURE_FORMATS の ${asked.join("・")} は値を置き換えられない (BrowserHive が断る)。` +
+        `形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く`,
+    });
+  }
   return { variables, secrets };
 };
 
@@ -1051,9 +1100,10 @@ export const hostTypesOf = (s, read = readBeside) => {
  *
  * `versions` はスクリプトの版の並び (`catalogOf`)。起点のホスト (台帳と同じく `hostname`。ポートは見ない) で
  * 既定を選び、名指しを照らす。走らせたものと値は受けた行の `scripts`・`variables`・`secrets` に持ち、一覧の行
- * (`submittedRow`) には出さない。`windmill` は Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。
+ * (`submittedRow`) には出さない。`windmill` は Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)、
+ * `formats` は配備の形式の代わり (台本の `captureFormats`)。
  */
-export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = NO_WINDMILL) => {
+export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = NO_WINDMILL, formats = DEFAULT_FORMATS) => {
   // 知らない鍵 (消した scriptIds・scope も) は、schema の 400 (台帳は additionalProperties: false)
   if (body !== null && typeof body === "object" && Object.keys(body).some((key) => !BODY_KEYS.includes(key))) {
     return schemaError("body must NOT have additional properties");
@@ -1086,8 +1136,9 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   const hosts = new Set(body.seeds.map((seed) => new URL(seed).hostname));
   const run = resolveRun(body.scripts, versions, hosts);
   if (run.status !== undefined) return run;
-  // 値の誤り (必須の変数が無い・知らない変数・形に合わない値・Windmill に無いシークレット) も、行を立てる前 —— 走行中でも 409 より先
-  const valued = resolveValues(body.variables, run.scripts, windmill);
+  // 値の誤り (必須の変数が無い・知らない変数・形に合わない値・Windmill に無いシークレット・隠せない形式) も、行を立てる前 ——
+  // 走行中でも 409 より先
+  const valued = resolveValues(body.variables, run.scripts, windmill, formats);
   if (valued.status !== undefined) return valued;
   const running = rows.find((row) => now < row.startedAt + row.runsSeconds * 1000);
   if (running !== undefined) {
@@ -1287,7 +1338,15 @@ const handle = (req, res, raw) => {
       send(res, 400, { error: "body is not valid JSON" });
       return;
     }
-    const answer = submitCrawl(submitted, body, Date.now(), s.submit?.runsSeconds ?? 15, versionsIn(s), windmillOf(s));
+    const answer = submitCrawl(
+      submitted,
+      body,
+      Date.now(),
+      s.submit?.runsSeconds ?? 15,
+      versionsIn(s),
+      windmillOf(s),
+      s.captureFormats ?? DEFAULT_FORMATS,
+    );
     send(res, answer.status, answer.body);
     return;
   }

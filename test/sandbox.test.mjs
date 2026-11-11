@@ -6,7 +6,8 @@
  * スクリプトを読む口（版の一覧・1 版・受け皿の型）は v0.60.0 から、対象サイト（`sites`）と起点で選ぶ既定は v0.61.0 から。
  * 規則の並び（`rules`・400 の 3 つ・確かめの口・判断の口）は v0.62.0 から。既定に入らないスクリプト（一覧の
  * `enabled`・名指しは有効かどうかを見ない）は v0.64.0 から。クロールごとの値（版の `params`・頼みの `variables`・
- * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。ページの口（`GET /api/crawls/:id/pages` と
+ * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。シークレットの宣言の `archive`（行の `secrets` の
+ * `archive`・食い違いの `conflicting params`・隠せない形式の 400）は v0.90.0 から。ページの口（`GET /api/crawls/:id/pages` と
  * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で台帳が足す形から（台帳の版は、口が出たら書く）。
  * 型の誤りの取り直し（`GET /api/crawls/:id/diagnostics`）と直し方（`POST …/inline/:name/fix`）は CAPTURE-49 の形から。
  * 合本の欄（行と詳しい所の `replayBundle`・ページの行の `capturedAt` と `bundledRev`）は、CAPTURE-56 で台帳が足す形から
@@ -590,7 +591,7 @@ test("版の一覧は新しい順で、どの版にも source が無い。知ら
   assert.deepEqual(versionsOf(versions, "nope"), { status: 404, body: { error: "not found" } });
 });
 
-test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.12.0）", () => {
+test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.13.0）", () => {
   const fetch1 = versionOf(versions, "autofetch", "1");
   assert.equal(fetch1.status, 200);
   assert.equal(fetch1.body.sha256.slice(0, 12), "f24100fd1c9b");
@@ -619,13 +620,16 @@ test("受け皿の型は台本の file の中身。台本に無ければ 404（�
   assert.equal(types.status, 200);
   assert.equal(types.body.version, 1);
   assert.equal(types.body.bytes, Buffer.byteLength(types.body.source, "utf8"));
-  // 写しは capture-scripts v0.12.0（log が在り、report は data だけを取る。変数は defineParams で読み、__bh.vars は型に無い）
-  assert.equal(types.body.sha256.slice(0, 12), "5a69495ec243");
-  assert.equal(types.body.bytes, 3575);
+  // 写しは capture-scripts v0.13.0（log が在り、report は data だけを取る。変数は defineParams で読み、__bh.vars は型に無い。
+  // secrets の注記は、WARC から既定で隠す動きと keep を言う）
+  assert.equal(types.body.sha256.slice(0, 12), "a7bc97e406c9");
+  assert.equal(types.body.bytes, 4235);
   assert.match(types.body.source, /warn\(message: string, data\?: object\): void;/);
   assert.match(types.body.source, /report\(data: object\): void;/);
   assert.match(types.body.source, /declare function defineParams</);
   assert.doesNotMatch(types.body.source, /^\s*vars:/m);
+  assert.match(types.body.source, /\*\*WARC からは既定で隠す\*\*/);
+  assert.match(types.body.source, /`archive: "keep"` と書いたシークレットだけは/);
   const { hostTypes: _hostTypes, ...without } = scenario;
   assert.deepEqual(hostTypesOf(without), { status: 404, body: { error: "not found" } });
 });
@@ -813,6 +817,22 @@ test("その場の TS の params に変数は書けない。宣言の形の誤�
   });
 });
 
+test("その場の TS のシークレットの宣言は archive: \"keep\" を持てる。ほかの値は台帳 v0.90.0 の schema と同じ文で 400", () => {
+  const post = (archive) =>
+    submitCrawl([], { seeds: ["https://site.test/"], scripts: [probe([{ name: "q", kind: "secret", archive }])] }, NOW, RUNS, versions, WINDMILL);
+  assert.equal(post("keep").status, 202);
+  // 文は台帳と同じ Fastify の設定（removeAdditional: false・既定の coerceTypes）で、台帳の schema に当てて写した（2026-11-11）。
+  // 数・真偽・null は文字列に読み替えられてから enum で断られ、読み替えられない object だけが型の文になる
+  for (const archive of ["drop", "", 1, true, null]) {
+    assert.equal(
+      post(archive).body.message,
+      "body/scripts/0/inline/params/0/archive must be equal to one of the allowed values",
+      JSON.stringify(archive),
+    );
+  }
+  assert.equal(post({}).body.message, "body/scripts/0/inline/params/0/archive must be string");
+});
+
 test("代役の読み手は、見本の形の defineParams を本物と同じ形の宣言にする", () => {
   // 本物の capture-scripts の egov-law-search と、台本の見本
   const egov = versionOf(versions, "egov-law-search", "1").body;
@@ -852,7 +872,7 @@ test("POST /api/scripts/check は宣言を返し、行を立てない。欄が�
   assert.equal(checkInline({ source: "x;", phase: "behavior", z: 1 }).body.message, "body must NOT have additional properties");
 });
 
-test("宣言したシークレットは Windmill の代わりに照らす —— 無い必須の物は path つきで 400、secret でなければ 400、在れば行に名前と path", () => {
+test("宣言したシークレットは Windmill の代わりに照らす —— 無い必須の物は path つきで 400、secret でなければ 400、在れば行に名前と path と WARC に残すか", () => {
   const rows = [];
   const secret = (name, required = true) => ({ name, kind: "secret", required, summary: "鍵" });
   const post = (params, now = NOW) =>
@@ -876,15 +896,58 @@ test("宣言したシークレットは Windmill の代わりに照らす ——
   assert.equal(post([secret("nope", false)]).status, 202);
   assert.deepEqual(rows[0].secrets, []);
   const done = NOW + RUNS * 1000;
-  assert.equal(post([secret("api_token")], done).status, 202);
+  assert.equal(post([secret("api_token"), { ...secret("login"), archive: "keep" }], done).status, 202);
   const detail = crawlDetail(submittedRow(rows[0], done), rows[0].scripts, rows[0].rules, {
     variables: rows[0].variables,
     secrets: rows[0].secrets,
   });
+  // archive は宣言の写し。省いた宣言は null（隠す）
   assert.deepEqual(detail.secrets, [
-    { name: "api_token", path: "f/waggle_secrets/api_token", editedAt: scenario.capturedAt, rotated: null },
+    { name: "api_token", path: "f/waggle_secrets/api_token", editedAt: scenario.capturedAt, rotated: null, archive: null },
+    { name: "login", path: "f/waggle_secrets/login", editedAt: scenario.capturedAt, rotated: null, archive: "keep" },
   ]);
   assert.deepEqual(detail.variables, {});
+});
+
+test("同じ名前のシークレットを、WARC に残す宣言と隠す宣言の両方ですると 400 conflicting params（台帳 v0.90.0 と同じ）", () => {
+  const post = (scripts) => submitCrawl([], { seeds: ["https://site.test/"], scripts }, NOW, RUNS, versions, WINDMILL);
+  const token = (name, archive) => ({ ...probe([{ name: "api_token", kind: "secret", ...(archive && { archive }) }]).inline, name });
+  assert.deepEqual(post([{ inline: token("a", "keep") }, { inline: token("b") }]), {
+    status: 400,
+    body: { error: "conflicting params", names: ["api_token"] },
+  });
+  // 揃っていれば 1 つのシークレット
+  assert.equal(post([{ inline: token("a", "keep") }, { inline: token("b", "keep") }]).status, 202);
+  assert.equal(post([{ inline: token("a") }, { inline: token("b") }]).status, 202);
+});
+
+test("隠すシークレットを送るのに配備の形式が値を置き換えられない物を頼むなら、台帳 v0.90.0 と同じ文で 400。行は立たない", () => {
+  const rows = [];
+  const post = (params, formats) =>
+    submitCrawl(rows, { seeds: ["https://site.test/"], scripts: [probe(params)] }, NOW, RUNS, versions, WINDMILL, formats);
+  const token = { name: "api_token", kind: "secret" };
+  const login = { name: "login", kind: "secret", archive: "keep" };
+  assert.deepEqual(post([token, login], ["wacz", "png", "mhtml", "links"]), {
+    status: 400,
+    body: {
+      error: "formats that cannot hide secrets",
+      formats: ["png", "mhtml"],
+      names: ["api_token"],
+      hint:
+        "CAPTURE_LEDGER_CAPTURE_FORMATS の png・mhtml は値を置き換えられない (BrowserHive が断る)。" +
+        '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く',
+    },
+  });
+  assert.equal(rows.length, 0, "断った頼みは行にしない");
+  // 残すシークレットだけなら、どの形式でも通る
+  assert.equal(post([login], ["wacz", "png", "webp", "html", "mhtml"]).status, 202);
+  rows.length = 0;
+  // 任意で Windmill に無いシークレットは送られないので、断る理由にならない
+  assert.equal(post([{ name: "nope", kind: "secret" }, login], ["wacz", "png"]).status, 202);
+  rows.length = 0;
+  // 形式を渡さなければ台帳の既定（wacz だけ）で、台本も同じ
+  assert.equal(post([token]).status, 202);
+  assert.deepEqual(scenario.captureFormats, ["wacz"]);
 });
 
 test("値の 400 は、走行中でも 409 より先（台帳と同じ順）", () => {
@@ -895,18 +958,36 @@ test("値の 400 は、走行中でも 409 より先（台帳と同じ順）", (
   assert.equal(submitCrawl(rows, { seeds: ["https://site.test/"] }, NOW + 1000, RUNS, versions, WINDMILL).status, 409);
 });
 
-test("行の詳しい所は variables と secrets を必ず持つ —— 台本の 5b0c0007 は変数 query とシークレット api_token、ほかの行は空", () => {
+test("行の詳しい所は variables と secrets を必ず持つ —— 台本の 5b0c0007 は変数 query と、隠すシークレット api_token・残すシークレット login、ほかの行は空", () => {
   const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0007"));
   const detail = crawlDetail(c);
   assert.deepEqual(detail.variables, { query: "個人情報" });
   assert.deepEqual(
-    detail.secrets.map((s) => [s.name, s.path, s.rotated]),
-    [["api_token", "f/waggle_secrets/api_token", null]],
+    detail.secrets.map((s) => [s.name, s.path, s.rotated, s.archive]),
+    [
+      ["api_token", "f/waggle_secrets/api_token", null, null],
+      ["login", "f/waggle_secrets/login", null, "keep"],
+    ],
   );
-  assert.ok(Date.parse(detail.secrets[0].editedAt) > 0);
-  // シークレットの宣言はその場の TS の params に在り、台本の Windmill に api_token が置いてある（同じ頼みを送れば通る形）
-  assert.deepEqual(c.scripts[0].inline.params.map((p) => [p.name, p.kind]), [["api_token", "secret"]]);
-  assert.ok(scenario.windmillSecrets.includes("api_token"));
+  // 欄は台帳 v0.90.0 の secretsOf と同じ（archive は宣言の写しで、"keep" か null）
+  for (const s of detail.secrets) {
+    assert.deepEqual(Object.keys(s).sort(), ["archive", "editedAt", "name", "path", "rotated"]);
+    assert.ok(Date.parse(s.editedAt) > 0);
+  }
+  // シークレットの宣言はその場の TS の params に在り、台本の Windmill に両方が置いてある（同じ頼みを送れば通る形）
+  assert.deepEqual(
+    c.scripts[0].inline.params.map((p) => [p.name, p.kind, p.archive]),
+    [
+      ["api_token", "secret", undefined],
+      ["login", "secret", "keep"],
+    ],
+  );
+  for (const name of ["api_token", "login"]) {
+    assert.ok(scenario.windmillSecrets.includes(name), name);
+    assert.match(c.scripts[0].inline.source, new RegExp(`__bh\\.secrets\\.${name}\\b`), name);
+  }
+  const resent = submitCrawl([], { seeds: c.seeds, scripts: [{ inline: c.scripts[0].inline }], variables: c.variables }, NOW, RUNS, versions, WINDMILL);
+  assert.equal(resent.status, 202);
   // 台本の sha256 は source の本物の値
   assert.equal(c.scripts[0].sha256, createHash("sha256").update(c.scripts[0].inline.source).digest("hex"));
   const other = crawlDetail(scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0002")));

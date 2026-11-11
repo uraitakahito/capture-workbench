@@ -341,7 +341,7 @@ test("宣言はチェックしたスクリプトの物だけを台帳の並び�
     { name: "query", required: true, summary: QUERY.summary, by: ["egov-law-search", "member-pages"] },
   ]);
   assert.deepEqual(declaredOf(DECLARING, ["member-pages"], "secret"), [
-    { name: "api_token", required: true, summary: TOKEN.summary, by: ["member-pages"] },
+    { name: "api_token", required: true, summary: TOKEN.summary, archive: null, by: ["member-pages"] },
   ]);
   // params を運ばない行と、チェックを外した物は何も宣言しない
   assert.deepEqual(declaredOf(DECLARING, ["autoscroll"], "variable"), []);
@@ -358,6 +358,24 @@ test("値の形（schema）は最初の宣言の物を運ぶ。schema の無い�
     { name: "level", required: true, summary: "", schema: LEVEL.schema, by: ["a", "b"] },
   ]);
   assert.equal("schema" in declaredOf(DECLARING, ["egov-law-search"], "variable")[0], false);
+});
+
+test("シークレットの宣言は WARC に残すか（archive）を運ぶ —— 省けば null（隠す）、keep はそのまま。最初の宣言の物で、変数には鍵が無い", () => {
+  const LOGIN = { name: "login", kind: "secret", required: false, summary: "ログイン名", archive: "keep" };
+  const scripts = [
+    { id: "a", sites: [], params: [TOKEN, LOGIN] },
+    // 同じ名前を、残すかどうかを違えて宣言している。ここでは断らない（台帳が 400 conflicting params で言う）
+    { id: "b", sites: [], params: [{ ...TOKEN, archive: "keep" }, { ...LOGIN, archive: undefined }, QUERY] },
+  ];
+  assert.deepEqual(declaredOf(scripts, ["a", "b"], "secret"), [
+    { name: "api_token", required: true, summary: TOKEN.summary, archive: null, by: ["a", "b"] },
+    { name: "login", required: false, summary: LOGIN.summary, archive: "keep", by: ["a", "b"] },
+  ]);
+  assert.deepEqual(declaredOf(scripts, ["b"], "secret").map((s) => [s.name, s.archive]), [
+    ["api_token", "keep"],
+    ["login", null],
+  ]);
+  assert.equal("archive" in declaredOf(scripts, ["b"], "variable")[0], false);
 });
 
 const typedInline = (source, phase = "behavior") => ({ name: "search", phase, source });
@@ -539,6 +557,29 @@ test("変数とシークレットの 400 は、台帳が名指した名前（シ
     "400 —— invalid params: inline-probe（同じ名前が 2 度: q）",
   );
   assert.equal(startAnswer(503, { error: "windmill unreachable" }).text, "503 —— windmill unreachable");
+});
+
+test("シークレットの 400（capture-ledger v0.90.0）: 残すかの食い違いは名前を、隠せない形式は名前と hint を添える —— 形式は hint の中", () => {
+  // 本文は台帳の src/crawl/values.ts の checkValues と formatsRefusal の形
+  assert.equal(
+    startAnswer(400, { error: "conflicting params", names: ["api_token"] }).text,
+    "400 —— conflicting params: api_token",
+  );
+  const refused = startAnswer(400, {
+    error: "formats that cannot hide secrets",
+    formats: ["png", "html"],
+    names: ["api_token", "session"],
+    hint:
+      "CAPTURE_LEDGER_CAPTURE_FORMATS の png・html は値を置き換えられない (BrowserHive が断る)。" +
+      '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く',
+  });
+  assert.equal(refused.kind, "bad");
+  assert.equal(
+    refused.text,
+    "400 —— formats that cannot hide secrets: api_token, session" +
+      "（CAPTURE_LEDGER_CAPTURE_FORMATS の png・html は値を置き換えられない (BrowserHive が断る)。" +
+      '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く）',
+  );
 });
 
 test("本文の大きさは、門と同じく UTF-8 のバイトで数える", () => {

@@ -95,7 +95,7 @@ secret's value (it lives in a Windmill variable, and is neither in the form nor 
 | The ledger's answer | When |
 | --- | --- |
 | 202 `{"crawlId": …}` | accepted (it does not wait for the crawl to finish) |
-| 400 `{"error": …}` | a seed URL that cannot be read, no registered scripts (with a `hint`), an unknown script id or the same id twice (with `ids`), a required variable missing or a variable no script declared (with `names`), a declared secret that is missing from Windmill or is not a secret there (with `secrets`: name and path), and so on |
+| 400 `{"error": …}` | a seed URL that cannot be read, no registered scripts (with a `hint`), an unknown script id or the same id twice (with `ids`), a required variable missing or a variable no script declared (with `names`), a declared secret that is missing from Windmill or is not a secret there (with `secrets`: name and path), a hidden secret sent while the deployment's formats cannot have its value replaced (with `names` and a `hint`), and so on |
 | 404 | the identity may not start crawls (`{"error":"not found"}`), or the ledger has nowhere to send crawls configured and does not serve the route at all |
 | 409 `{"error": …, "crawlId": …}` | a crawl is already running (one at a time, overall); `crawlId` is the one in the way |
 | 503 `{"error": "windmill unreachable"}` | the ledger could not ask Windmill whether a declared secret exists (the flow would not run either, so it does not start the crawl) |

@@ -121,8 +121,10 @@ export const scriptsOf = (run) => {
  * チェックしたスクリプトが宣言した、クロールごとの値（capture-scripts の `catalog.json` の `params`。台帳の
  * `GET /api/scripts` が版ごとに運ぶ）。`kind`（`variable` か `secret`）で選び、**同じ名前は 1 つにまとめる** ——
  * 名前の空間は 1 クロールに 1 つ（台帳の決まり）で、2 本のスクリプトが同じ名前を宣言すれば同じ値を読む。必須はどれかが
- * 必須なら必須、説明と値の形（`schema`）は最初の宣言の物、`by` は宣言したスクリプトの id。並びは台帳の並びに宣言の順。
- * 別の形で宣言していても、ここでは断らない（台帳が 400 `conflicting params` で言う）。
+ * 必須なら必須、説明と値の形（`schema`）と WARC に残すか（`archive`）は最初の宣言の物、`by` は宣言したスクリプトの id。
+ * 並びは台帳の並びに宣言の順。`archive` はシークレットだけが持ち、省いた宣言は `null`（隠す。capture-scripts/6 の決まり）に
+ * 揃える —— クロールの行の答え（capture-ledger v0.90.0）と同じ形で、`format.js` の `secretArchiveOf` が両方を読む。
+ * 別の形で宣言していても（残すかどうかが違っても）、ここでは断らない（台帳が 400 `conflicting params` で言う）。
  * `params` を運ばない台帳（v0.66 まで）の行は、何も宣言していないとして読む。
  */
 export const declaredOf = (scripts, picked, kind) => {
@@ -138,6 +140,7 @@ export const declaredOf = (scripts, picked, kind) => {
           required: param.required === true,
           summary: param.summary ?? "",
           ...(param.schema === undefined ? {} : { schema: param.schema }),
+          ...(kind === "secret" && { archive: param.archive ?? null }),
           by: [script.id],
         });
       } else {
@@ -410,8 +413,8 @@ export const startAnswer = (status, answer) => {
   }
   const said = answer.message ?? answer.error ?? "答えに文がありません";
   if (status === 0) return { kind: "bad", text: `workbench 自身に届きません（${said}）` };
-  // 台帳が名指した物（知らないスクリプトの id・重ね・辿らない起点・規則の行・変数の名前・シークレットの名前と
-  // Windmill の path）。文の後、hint の前に
+  // 台帳が名指した物（知らないスクリプトの id・重ね・辿らない起点・規則の行・変数やシークレットの名前・シークレットの
+  // 名前と Windmill の path）。文の後、hint の前に。隠すシークレットと組めない形式の 400 は、形式を hint の中で言う
   const named = Array.isArray(answer.ids)
     ? answer.ids
     : Array.isArray(answer.names)
