@@ -65,7 +65,7 @@ workbench はその 404 を受けて、一覧を描かずに止まります。
 | --- | --- | --- |
 | 画面の上（赤） | `not found` | 名乗りに許可が無い。上の `fga:grant` |
 | 画面の上（赤） | `… に届かない (…)。capture-ledger で pnpm run oidc:issuer は動いているか?` | 開発用 issuer が立っていない。`dev:up` で起こす |
-| 画面の上（赤） | `… が名乗りを断った (…)。…` | issuer が名乗りを断った。issuer の端末を見る |
+| 画面の上（赤） | `… が名乗りを断った (…)。…` | 括弧の中は issuer の答え。`subject is required` なら、`WORKBENCH_SUBJECT` が空白だけ（[設定](/configuration/)）。ほかの答えなら、`WORKBENCH_ISSUER_URL` の先で開発用 issuer ではないものが答えている。9099 を誰が握っているかは、capture-ledger の `pnpm run dev:status` で見る |
 | 画面の上（赤） | `… に届かない (…)。capture-ledger で pnpm run api は動いているか?` | 台帳の API が立っていない。`dev:up` で起こす |
 | 検証の欄・WACZ の画面 | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | daemon が立っていない。言われたとおりに打つ |
 | 名乗りの欄 | `workbench 自身に届きません` | workbench のサーバが止まっている。起こし直す |
