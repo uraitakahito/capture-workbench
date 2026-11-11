@@ -1,23 +1,23 @@
 /**
- * クロールの行を開いたときの「ページ」の表と、1 ページのログ。台帳の `GET /api/crawls/:id/pages` と
- * `GET /api/crawls/:id/pages/:page/log` の答えを描く形にするだけで、並べ替えも言い換えもしない（台帳も、
+ * クロールの行を開いたときの「ページ」の表と、1 ページのログ。capture-ledger の `GET /api/crawls/:id/pages` と
+ * `GET /api/crawls/:id/pages/:page/log` の答えを描く形にするだけで、並べ替えも言い換えもしない（capture-ledger も、
  * BrowserHive の行を届いた順のまま返す）。ここが決めるのは、数の見せ方・絞り込み・読めない理由の文・続きの
  * 引き方と、引き直しをまたいで覚える物。ブラウザは `/pages.js` として読み、試験は `node --test` から import する。
  */
 import { count } from "./format.js";
 
-/** ページの一覧のエンドポイント。`after` は前の答えの `next`（省けば頭から）。件数は台帳の既定に任せる。 */
+/** ページの一覧のエンドポイント。`after` は前の答えの `next`（省けば頭から）。件数は capture-ledger の既定に任せる。 */
 export const pagesPath = (crawlId, after) =>
   `/api/crawls/${encodeURIComponent(crawlId)}/pages` +
   (after === undefined || after === null ? "" : `?after=${encodeURIComponent(after)}`);
 
-/** 1 ページのログのエンドポイント。ページはクロールとの組で引く（ほかのクロールのページなら、台帳は 404）。 */
+/** 1 ページのログのエンドポイント。ページはクロールとの組で引く（ほかのクロールのページなら、capture-ledger は 404）。 */
 export const logPath = (crawlId, pageId) =>
   `/api/crawls/${encodeURIComponent(crawlId)}/pages/${encodeURIComponent(pageId)}/log`;
 
 /**
  * ページの一覧を、頭から少なくとも `want` 件を覆うまで引く（`read` はエンドポイントを 1 回引いて答えを返す関数）。
- * **workbench は自分では続きを取りに行かない** —— `want` は「続きを読む」を押したときだけ増え、0 なら台帳の
+ * **workbench は自分では続きを取りに行かない** —— `want` は「続きを読む」を押したときだけ増え、0 なら capture-ledger の
  * 1 回分だけを引く。引き直し（走行中は 2 秒ごと）でも、押して読んだ所までは覆い直す。空の答えが来たら、
  * そこで終わりにする（進まない `next` で回り続けない）。
  */
@@ -37,23 +37,23 @@ export const moreOf = (list) =>
     : { label: `続きを読む（${count(list.pages.length + 1)} 件目から）`, want: list.pages.length + 1 };
 
 /**
- * 結末: 台帳の state をそのまま、理由（skip_reason）があれば後ろに。**state は言い分けない** —— 決めるのは
- * 台帳で、増えても workbench を直さずに済む。
+ * 結末: capture-ledger の state をそのまま、理由（skip_reason）があれば後ろに。**state は言い分けない** —— 決めるのは
+ * capture-ledger で、増えても workbench を直さずに済む。
  */
 export const outcomeOf = (page, crawlState) => {
   const said =
     page.reason === null || page.reason === undefined
       ? String(page.state)
       : `${String(page.state)}: ${page.reason}`;
-  // 台帳は報告の来なかった頁を pending のまま残す（結末が分からない。台帳の POST /api/crawls/:id/failed の
-  // 注記）。終わったクロールでそのまま出すと、落ちたクロールの頁が「待っている」ように読める。台帳の語は残す
+  // capture-ledger は報告の来なかった頁を pending のまま残す（結末が分からない。capture-ledger の POST /api/crawls/:id/failed の
+  // 注記）。終わったクロールでそのまま出すと、落ちたクロールの頁が「待っている」ように読める。capture-ledger の語は残す
   return page.state === "pending" && crawlState !== undefined && crawlState !== "running"
     ? `${said}（報告なし —— クロールが先に終わった）`
     : said;
 };
 
 /**
- * ページの行の、level ごとの数（warn か error）。`logCounts` が null なのは「台帳が、その取り込みの
+ * ページの行の、level ごとの数（warn か error）。`logCounts` が null なのは「capture-ledger が、その取り込みの
  * `.result.json` から数を読んでいない」で、0 とは別のことなので「—」。0 より大きければ色を付ける。
  * kind は画面の色（bad・warn・muted）で、0 は色なし（undefined）。
  */
@@ -79,7 +79,7 @@ export const FILTERS = [
 ];
 
 /**
- * 絞り込んだ行（並びは台帳のまま）。**知らない level は隠さない** —— BrowserHive が level を足したとき、
+ * 絞り込んだ行（並びは capture-ledger のまま）。**知らない level は隠さない** —— BrowserHive が level を足したとき、
  * 絞り込みが黙って消すと、言い始めたことが画面に出ない（`severityKind` と同じ考え）。
  */
 export const linesAt = (lines, filter) =>
@@ -127,7 +127,7 @@ export const waczLogTarget = (page) =>
     ? { archiveId: page.archiveId, path: WACZ_LOG_PATH }
     : undefined;
 
-/** ログを読めない理由（台帳の `reason`）を短い文に。 */
+/** ログを読めない理由（capture-ledger の `reason`）を短い文に。 */
 const REASONS = new Map([
   ["not-captured", "取り込みの答えがありません（まだ撮っていない・撮らなかった・期限で切った・断られた）"],
   ["no-manifest", "取り込みの答えに、.result.json の場所がありません"],
@@ -143,7 +143,7 @@ export const reasonText = (reason) => REASONS.get(reason) ?? "ログを読めま
  * 開いた行の「ページ」の表で、引き直しをまたいで覚える物（クロールの id → `{ want, logs }`）。**id で覚える**
  * —— 表は引くたびに作り直す（走行中のクロールが在れば 2 秒ごと）ので、DOM に置いただけの物は次の引きで消える。
  *
- *   want  「続きを読む」で覆う件数（0 は台帳の 1 回分）
+ *   want  「続きを読む」で覆う件数（0 は capture-ledger の 1 回分）
  *   logs  開いているログ（ページの id → 箱の状態 `{ answer, filter, scrollTop, box }`）。answer はエンドポイントの答え
  *         （引いている間は undefined、引けなければ Error）。box は app.js が作る DOM の箱で、作り直さずに移す
  *

@@ -50,7 +50,7 @@ test("「このページだけ」は maxDepth: 0 だけを送り、規則は送�
   assert.deepEqual(startBody("https://site.test/", null), { seeds: ["https://site.test/"], maxDepth: 0 });
 });
 
-test("「リンクを辿る」は規則を必ず送り、深さと枚数は書いたときだけ送る（空なら台帳の既定）", () => {
+test("「リンクを辿る」は規則を必ず送り、深さと枚数は書いたときだけ送る（空なら capture-ledger の既定）", () => {
   const rows = [
     { action: "skip", pattern: " ads.site.test " },
     { action: "follow", pattern: "same-site" },
@@ -58,7 +58,7 @@ test("「リンクを辿る」は規則を必ず送り、深さと枚数は書�
   const blank = startBody("https://site.test/", { maxDepth: "", maxPages: " ", rows });
   assert.deepEqual(blank, {
     seeds: ["https://site.test/"],
-    // 当てる物は前後の空白だけ落とす。鍵が 1 つの object（台帳の形）
+    // 当てる物は前後の空白だけ落とす。鍵が 1 つの object（capture-ledger の形）
     rules: [{ skip: "ads.site.test" }, { follow: "same-site" }],
   });
   const filled = startBody("https://site.test/", { maxDepth: "3", maxPages: "200", rows });
@@ -66,7 +66,7 @@ test("「リンクを辿る」は規則を必ず送り、深さと枚数は書�
   assert.equal(filled.maxPages, 200);
 });
 
-test("URL は検査しない —— 読めない URL も、そのまま台帳へ送る", () => {
+test("URL は検査しない —— 読めない URL も、そのまま capture-ledger へ送る", () => {
   assert.deepEqual(startBody("ftp://site.test/\nnot a url", null).seeds, ["ftp://site.test/", "not a url"]);
 });
 
@@ -89,7 +89,7 @@ test("202 は始めた 1 本を、409 は塞いでいる 1 本を、決めた文
   assert.doesNotMatch(startAnswer(409, { error: "a crawl is already in progress" }).text, /（crawl /);
 });
 
-test("台帳の文は言い換えず、hint があれば添える", () => {
+test("capture-ledger の文は言い換えず、hint があれば添える", () => {
   const empty = startAnswer(400, {
     error: "no scripts are registered",
     hint: "pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])",
@@ -116,8 +116,8 @@ test("workbench のサーバに届かなければ、そう言う", () => {
 });
 
 /**
- * 走らせるものの欄。台帳のスクリプトは対象サイトの無い autoscroll・autofetch の 2 本（台帳の並び）で、
- * どちらも既定の顔ぶれとする（autofetch を既定から外した台帳は、下の `SCRIPTS`）。
+ * 走らせるものの欄。登録済みのスクリプトは対象サイトの無い autoscroll・autofetch の 2 本（capture-ledger の並び）で、
+ * どちらも既定の顔ぶれとする（autofetch を既定から外した capture-ledger は、下の `SCRIPTS`）。
  */
 const CATALOG = ["autoscroll", "autofetch"];
 const NO_INLINE = { name: "", phase: "behavior", source: "" };
@@ -130,9 +130,9 @@ const run = (picked, inline = NO_INLINE, order = [INLINE_ROW, ...CATALOG]) => ({
 });
 
 test("走らせるものが既定のまま（既定の顔ぶれを全部選び、順も動かさず、その場の TS が空）なら scripts を送らない", () => {
-  // 台帳の既定と、台帳にスクリプトが無いときの 400 を生かす
+  // capture-ledger の既定と、登録済みのスクリプトが無いときの 400 を生かす
   assert.equal("scripts" in startBody("https://site.test/", null, run(CATALOG)), false);
-  // 台帳にスクリプトが無く、その場の TS も無いときも送らない（台帳が「スクリプトが無い」と言う）
+  // 登録済みのスクリプトが無く、その場の TS も無いときも送らない（capture-ledger が「スクリプトが無い」と言う）
   assert.equal(scriptsOf({ order: [INLINE_ROW], picked: [], defaults: [], inline: NO_INLINE }), undefined);
 });
 
@@ -145,7 +145,7 @@ test("スクリプトを 1 つ外すと、選んだ物だけを走る順で送�
   ]);
 });
 
-test("顔ぶれが既定のままでも、順を動かしたら scripts を送る —— 省くと台帳が既定の順で走らせる", () => {
+test("顔ぶれが既定のままでも、順を動かしたら scripts を送る —— 省くと capture-ledger が既定の順で走らせる", () => {
   const swapped = [INLINE_ROW, "autofetch", "autoscroll"];
   assert.deepEqual(scriptsOf(run(CATALOG, NO_INLINE, swapped)), [{ catalog: "autofetch" }, { catalog: "autoscroll" }]);
 });
@@ -155,12 +155,12 @@ test("動かして元の順に戻したら、また省く", () => {
   assert.equal(scriptsOf(run(CATALOG, NO_INLINE, movedOrder(swapped, "autofetch", 1))), undefined);
 });
 
-test("動かす前の順は、その場の TS が先頭で台帳の並びのまま —— 台帳の順が変われば付いていく", () => {
+test("動かす前の順は、その場の TS が先頭で capture-ledger の並びのまま —— capture-ledger の順が変われば付いていく", () => {
   assert.deepEqual(orderOf(undefined, ["b", "a"]), [INLINE_ROW, "b", "a"]);
   assert.deepEqual(orderOf(undefined, ["a", "b"]), [INLINE_ROW, "a", "b"]);
 });
 
-test("動かした後の順は保つ —— 台帳に新しく現れた id は後ろへ足し、消えた id は落とす", () => {
+test("動かした後の順は保つ —— capture-ledger に新しく現れた id は後ろへ足し、消えた id は落とす", () => {
   const moved = ["b", INLINE_ROW, "a"];
   assert.deepEqual(orderOf(moved, ["a", "b"]), moved);
   assert.deepEqual(orderOf(moved, ["c", "a", "b"]), ["b", INLINE_ROW, "a", "c"]);
@@ -168,7 +168,7 @@ test("動かした後の順は保つ —— 台帳に新しく現れた id は�
 });
 
 test("その場の TS の印は、どのスクリプトの id にもならない", () => {
-  // 台帳の id は ^[a-z][a-z0-9-]*$（capture-ledger の POST /api/crawls）
+  // capture-ledger の id は ^[a-z][a-z0-9-]*$（capture-ledger の POST /api/crawls）
   assert.equal(/^[a-z][a-z0-9-]*$/.test(INLINE_ROW), false);
 });
 
@@ -201,17 +201,17 @@ test("その場の TS も番号の行と入れ替えられる", () => {
   assert.deepEqual(movedOrder(run(CATALOG, LATER), "autoscroll", -1), ["autoscroll", INLINE_ROW, "autofetch"]);
 });
 
-test("起点のホストは台帳と同じく hostname —— 小文字になり、IDN は punycode になる", () => {
+test("起点のホストは capture-ledger と同じく hostname —— 小文字になり、IDN は punycode になる", () => {
   assert.deepEqual([...seedHosts("HTTPS://WWW.Site.test/a\nhttps://日本.jp/")], ["www.site.test", "xn--wgv71a.jp"]);
 });
 
-test("読めない行と空行は、起点のホストに数えない（台帳が 400 で言う）", () => {
+test("読めない行と空行は、起点のホストに数えない（capture-ledger が 400 で言う）", () => {
   assert.deepEqual([...seedHosts(" \nnot a url\n\n https://site.test/ \n")], ["site.test"]);
   assert.equal(seedHosts("").size, 0);
 });
 
 /**
- * 台帳の `GET /api/scripts` の形（カタログの順）。対象サイトの無い 2 本のうち autofetch は既定に入らない（capture-scripts の
+ * capture-ledger の `GET /api/scripts` の形（カタログの順）。対象サイトの無い 2 本のうち autofetch は既定に入らない（capture-scripts の
  * カタログの `default: false`）。もう 1 本は laws.e-gov.go.jp 用。
  */
 const SITE = { id: "egov-law-search", sites: ["laws.e-gov.go.jp"], enabled: true };
@@ -255,16 +255,16 @@ test("起点に合わないサイト用のスクリプトは既定に数えな�
   assert.equal(scriptsOf({ order: ORDER, picked: defaults, defaults, inline: NO_INLINE }), undefined);
 });
 
-test("起点に合うサイト用のスクリプトを外したら scripts を送る —— 省くと台帳が既定で入れる", () => {
+test("起点に合うサイト用のスクリプトを外したら scripts を送る —— 省くと capture-ledger が既定で入れる", () => {
   const defaults = defaultIds(SCRIPTS, seedHosts("https://laws.e-gov.go.jp/"));
   assert.deepEqual(scriptsOf({ order: ORDER, picked: ["autoscroll"], defaults, inline: NO_INLINE }), [
     { catalog: "autoscroll" },
   ]);
-  // 付けたままなら省く（台帳が同じ 2 本を選ぶ）
+  // 付けたままなら省く（capture-ledger が同じ 2 本を選ぶ）
   assert.equal(scriptsOf({ order: ORDER, picked: ["autoscroll", "egov-law-search"], defaults, inline: NO_INLINE }), undefined);
 });
 
-test("既定に入らないスクリプトを付けたら scripts を送る —— 省くと台帳は入れない", () => {
+test("既定に入らないスクリプトを付けたら scripts を送る —— 省くと capture-ledger は入れない", () => {
   const defaults = defaultIds(SCRIPTS, seedHosts("https://other-site.test/"));
   assert.deepEqual(scriptsOf({ order: ORDER, picked: ["autofetch", "autoscroll"], defaults, inline: NO_INLINE }), [
     { catalog: "autoscroll" },
@@ -305,12 +305,12 @@ test("空白だけの TS は送らない", () => {
   assert.equal(scriptsOf(run(CATALOG, { name: "x", phase: "behavior", source: " \n\t" })), undefined);
 });
 
-test("名前の綴りは検査しない —— 読めない名前も、そのまま台帳へ送る", () => {
+test("名前の綴りは検査しない —— 読めない名前も、そのまま capture-ledger へ送る", () => {
   const body = startBody("https://site.test/", null, run(CATALOG, { name: "Close_Banner", phase: "behavior", source: "x;" }));
   assert.equal(body.scripts[0].inline.name, "Close_Banner");
 });
 
-test("台帳が名指した ids を、文の後に添える", () => {
+test("capture-ledger が名指した ids を、文の後に添える", () => {
   assert.equal(
     startAnswer(400, { error: "unknown script ids", ids: ["typo-scroll"] }).text,
     "400 —— unknown script ids: typo-scroll",
@@ -323,17 +323,17 @@ test("台帳が名指した ids を、文の後に添える", () => {
 
 // ── クロールごとの値（変数とシークレット。capture-ledger v0.67.0）────────────
 
-/** 台帳の `GET /api/scripts` の 1 行が運ぶ宣言（capture-scripts の catalog.json の `params`）。 */
+/** capture-ledger の `GET /api/scripts` の 1 行が運ぶ宣言（capture-scripts の catalog.json の `params`）。 */
 const QUERY = { name: "query", kind: "variable", required: false, summary: "法令名の検索語。省けばソースの既定" };
 const TOKEN = { name: "api_token", kind: "secret", required: true, summary: "会員 API のトークン" };
 const DECLARING = [
-  // 宣言を運ばない台帳（v0.66 まで）の行には params が無い
+  // 宣言を運ばない capture-ledger（v0.66 まで）の行には params が無い
   { id: "autoscroll", sites: [], enabled: true },
   { id: "egov-law-search", sites: ["laws.e-gov.go.jp"], enabled: true, params: [QUERY] },
   { id: "member-pages", sites: [], enabled: false, params: [TOKEN, { ...QUERY, required: true, summary: "別の説明" }] },
 ];
 
-test("宣言はチェックしたスクリプトの物だけを台帳の並びで集め、同じ名前は 1 つにまとめる（必須はどれかが必須なら必須）", () => {
+test("宣言はチェックしたスクリプトの物だけを capture-ledger の並びで集め、同じ名前は 1 つにまとめる（必須はどれかが必須なら必須）", () => {
   assert.deepEqual(declaredOf(DECLARING, ["egov-law-search"], "variable"), [
     { name: "query", required: false, summary: QUERY.summary, by: ["egov-law-search"] },
   ]);
@@ -364,7 +364,7 @@ test("シークレットの宣言は WARC に残すか（archive）を運ぶ —
   const LOGIN = { name: "login", kind: "secret", required: false, summary: "ログイン名", archive: "keep" };
   const scripts = [
     { id: "a", sites: [], params: [TOKEN, LOGIN] },
-    // 同じ名前を、残すかどうかを違えて宣言している。ここでは断らない（台帳が 400 conflicting params で言う）
+    // 同じ名前を、残すかどうかを違えて宣言している。ここでは断らない（capture-ledger が 400 conflicting params で言う）
     { id: "b", sites: [], params: [{ ...TOKEN, archive: "keep" }, { ...LOGIN, archive: undefined }, QUERY] },
   ];
   assert.deepEqual(declaredOf(scripts, ["a", "b"], "secret"), [
@@ -430,7 +430,7 @@ test("宣言の答えは、欄の宣言と、欄が出ない理由の 1 行に�
     params: [],
     note: "宣言を確かめられません（503 —— ts-compile unreachable）",
   });
-  // エンドポイントを出していない台帳（Fastify の文）。本文の形が違う 200 も、読めたことにしない
+  // エンドポイントを出していない capture-ledger（Fastify の文）。本文の形が違う 200 も、読めたことにしない
   assert.equal(
     inlineDeclared(404, { error: "Not Found", message: "Route POST:/api/scripts/check not found" }).note,
     "宣言を確かめられません（404 —— Route POST:/api/scripts/check not found）",
@@ -528,7 +528,7 @@ test("startBody は変数が 1 つでも在るときだけ variables を持つ",
   });
 });
 
-test("変数とシークレットの 400 は、台帳が名指した名前（シークレットは Windmill の path も）を文の後に添える", () => {
+test("変数とシークレットの 400 は、capture-ledger が名指した名前（シークレットは Windmill の path も）を文の後に添える", () => {
   assert.equal(startAnswer(400, { error: "missing variables", names: ["query"] }).text, "400 —— missing variables: query");
   assert.equal(
     startAnswer(400, { error: "unknown variables", names: ["qeury", "waitms"] }).text,
@@ -560,7 +560,7 @@ test("変数とシークレットの 400 は、台帳が名指した名前（シ
 });
 
 test("シークレットの 400（capture-ledger v0.90.0）: 残すかの食い違いは名前を、隠せない形式は名前と hint を添える —— 形式は hint の中", () => {
-  // 本文は台帳の src/crawl/values.ts の checkValues と formatsRefusal の形
+  // 本文は capture-ledger の src/crawl/values.ts の checkValues と formatsRefusal の形
   assert.equal(
     startAnswer(400, { error: "conflicting params", names: ["api_token"] }).text,
     "400 —— conflicting params: api_token",
@@ -672,7 +672,7 @@ test("「読む」を右の列で開くのは、ふつうに押したときだ�
 
 // ── 辿り方（規則の表）─────────────────────────────────────────────
 
-test("型はどれも「撮って辿る」を 1 本持つ —— 起点が当たらないと台帳が 400 で断る", () => {
+test("型はどれも「撮って辿る」を 1 本持つ —— 起点が当たらないと capture-ledger が 400 で断る", () => {
   for (const [name, rows] of Object.entries(PRESETS)) {
     assert.ok(rows.some((row) => row.action === "follow"), name);
   }
@@ -684,7 +684,7 @@ test("型はどれも「撮って辿る」を 1 本持つ —— 起点が当た
 
 test("落とす行はいちばん上に、ふつうの行はいちばん下に足す", () => {
   const rows = [{ action: "follow", pattern: "same-site" }];
-  // 広い「撮って辿る」の下に置くと覆われる（台帳が 400 で断る）ので、上に入れる
+  // 広い「撮って辿る」の下に置くと覆われる（capture-ledger が 400 で断る）ので、上に入れる
   assert.deepEqual(addSkipRow(rows), [{ action: "skip", pattern: "" }, ...rows]);
   assert.deepEqual(addRow(rows), [...rows, { action: "capture", pattern: "" }]);
   // 元の並びは変えない（表は答えが来るまで前の並びで描くことがある）
@@ -708,11 +708,11 @@ test("確かめの query は、起点の空行を落とし、規則を「動き:
   ]);
   const params = new URLSearchParams(query);
   assert.deepEqual(params.getAll("seed"), ["https://www.site.test/"]);
-  // 当てる物の : と ? と = は、台帳が最初の : で切るので崩れない
+  // 当てる物の : と ? と = は、capture-ledger が最初の : で切るので崩れない
   assert.deepEqual(params.getAll("rule"), ["skip:https://www.site.test/search?q=1", "follow:same-site"]);
 });
 
-/** 台帳の確かめのエンドポイントの答え（capture-ledger v0.62.0 の形）。 */
+/** capture-ledger の確かめのエンドポイントの答え（capture-ledger v0.62.0 の形）。 */
 const ANSWER = {
   seeds: [{ url: "https://www.site.test/", valid: true, site: "site.test", followed: true }],
   rules: [
@@ -760,7 +760,7 @@ test("確かめの文は、上の行から何をするかを言い、same-site �
   );
 });
 
-test("深さと枚数が空なら台帳の既定と言い、始められない理由を最後に並べる", () => {
+test("深さと枚数が空なら capture-ledger の既定と言い、始められない理由を最後に並べる", () => {
   const answer = {
     seeds: [
       { url: "https://ads.site.test/", valid: true, site: "site.test", followed: false },
@@ -775,7 +775,7 @@ test("深さと枚数が空なら台帳の既定と言い、始められない�
   };
   const said = summaryOf(answer, { maxDepth: "", maxPages: "", rows: [] });
   assert.equal(said.bad, true);
-  assert.match(said.text, /台帳の既定の深さ・台帳の既定の枚数まで。/);
+  assert.match(said.text, /既定の深さ・既定の枚数まで。/);
   assert.match(said.text, /2 行目は 1 行目に覆われて当たりません。/);
   assert.match(said.text, /3 行目の当てる物が読めません。/);
   assert.match(said.text, /起点 https:\/\/ads\.site\.test\/ は撮って辿る行に当たりません。/);

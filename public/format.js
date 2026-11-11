@@ -8,7 +8,7 @@
 /**
  * クロールの状態を、**言葉にする**。
  *
- * **`state` だけでは足りない。** `succeeded` は「1 枚以上撮れた」で（1 枚も撮れなければ台帳が `failed` で
+ * **`state` だけでは足りない。** `succeeded` は「1 枚以上撮れた」で（1 枚も撮れなければ capture-ledger が `failed` で
  * 締める。capture-ledger v0.77.0）、全部を辿った完走と、上限で切った打ち切りが混ざる。`max_depth`・`max_pages` が
  * 立つのは、まだ撮っていないリンクが残っていたときだけ（capture-ledger v0.83.0）。
  *
@@ -79,14 +79,14 @@ export const verdict = (summary) => {
 };
 
 /**
- * シークレットの値を WARC に残すか（宣言の `archive`）を、言葉にする。台帳はクロールの行の答えに、宣言の写しを
+ * シークレットの値を WARC に残すか（宣言の `archive`）を、言葉にする。capture-ledger はクロールの行の答えに、宣言の写しを
  * `"keep"`（残す）か `null`（隠す）で返す（capture-ledger v0.90.0）。新しいクロールの画面の宣言も、`start.js` の
- * `declaredOf` が同じ形に揃える（宣言は省けば隠す）。どちらでも、値は台帳・写し・ページの文字・ログには無い。
+ * `declaredOf` が同じ形に揃える（宣言は省けば隠す）。どちらでも、値は capture-ledger・写し・ページの文字・ログには無い。
  *
  * 字は短く、何が起きるかは `title` で言う —— 開いた行の 1 行は、docs の絵の幅（632px）に収まる長さでないと切れる。
  *
- * **隠すのは BrowserHive v29.0.0 から。** それより前の BrowserHive は、通信に載せた値を WARC に残す —— 台帳は
- * そのころの行にも `null` を返すので、`title` で添える。`archive` を返さない台帳（v0.89 まで）の行は undefined
+ * **隠すのは BrowserHive v29.0.0 から。** それより前の BrowserHive は、通信に載せた値を WARC に残す —— capture-ledger は
+ * そのころの行にも `null` を返すので、`title` で添える。`archive` を返さない capture-ledger（v0.89 まで）の行は undefined
  * （何も出さない）。知らない値は、隠す・残すのどちらにも倒さずにそのまま見せる（`severityKind` と同じ考え）。
  */
 export const secretArchiveOf = (archive) => {

@@ -150,7 +150,7 @@ test("cookie を読む・書く", () => {
   assert.match(sessionCookie("", 0), /Max-Age=0$/);
 });
 
-test("画面に出す名乗りは username と cognito:groups (検証はしない —— するのは台帳)", () => {
+test("画面に出す名乗りは username と cognito:groups (検証はしない —— するのは capture-ledger)", () => {
   assert.deepEqual(whoOf(jwt({ username: "alice", "cognito:groups": ["acme"] })), {
     user: "alice",
     groups: ["acme"],

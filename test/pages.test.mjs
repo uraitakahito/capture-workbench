@@ -1,6 +1,6 @@
 /**
- * クロールの行を開いたときの「ページ」の表と、1 ページのログ（`public/pages.js`）。台帳の
- * `GET /api/crawls/:id/pages` と `GET /api/crawls/:id/pages/:page/log` の答え（CAPTURE-18 で台帳が足す形）を
+ * クロールの行を開いたときの「ページ」の表と、1 ページのログ（`public/pages.js`）。capture-ledger の
+ * `GET /api/crawls/:id/pages` と `GET /api/crawls/:id/pages/:page/log` の答え（CAPTURE-18 で capture-ledger が足す形）を
  * 描く形にするだけ。
  */
 import { test } from "node:test";
@@ -42,7 +42,7 @@ const page = (id, extra = {}) => ({
   ...extra,
 });
 
-/** 台帳の代わり。id の昇順に並べたページを、after の後から size 件ずつ返し、引かれたエンドポイントを覚える。 */
+/** capture-ledger の代わり。id の昇順に並べたページを、after の後から size 件ずつ返し、引かれたエンドポイントを覚える。 */
 const ledger = (ids, size) => {
   const asked = [];
   const read = async (path) => {
@@ -63,7 +63,7 @@ test("エンドポイント: ページの一覧は after を前の答えの next
   assert.equal(logPath("a/b", "1 2"), "/api/crawls/a%2Fb/pages/1%202/log");
 });
 
-test("続き: 0 件を覆うなら台帳の 1 回分だけを引き、自分では続きを取りに行かない", async () => {
+test("続き: 0 件を覆うなら capture-ledger の 1 回分だけを引き、自分では続きを取りに行かない", async () => {
   const { read, asked } = ledger(["1", "2", "3", "4", "5"], 2);
   const list = await readPages(read, CRAWL, 0);
   assert.deepEqual(asked, [pagesPath(CRAWL)]);
@@ -108,7 +108,7 @@ test("続き: 空の答えが来たら、そこで終わりにする（進まな
   assert.equal(list.pages.length, 2);
 });
 
-test("結末は台帳の state をそのまま、理由があれば後ろに（state は言い分けない）", () => {
+test("結末は capture-ledger の state をそのまま、理由があれば後ろに（state は言い分けない）", () => {
   assert.equal(outcomeOf(page("1")), "captured");
   assert.equal(outcomeOf(page("2", { state: "failed", reason: "timeout: Timeout: Task processing (45000ms)" })), "failed: timeout: Timeout: Task processing (45000ms)");
   assert.equal(outcomeOf(page("3", { state: "someday", reason: undefined })), "someday");
@@ -119,7 +119,7 @@ test("結末: 終わったクロールの pending は、報告が来ないまま
   assert.equal(outcomeOf(pending, "failed"), "pending（報告なし —— クロールが先に終わった）");
   assert.equal(outcomeOf(pending, "succeeded"), "pending（報告なし —— クロールが先に終わった）");
   assert.equal(outcomeOf(pending, "running"), "pending");
-  // クロールの状態が分からないときは、台帳の語だけ
+  // クロールの状態が分からないときは、capture-ledger の語だけ
   assert.equal(outcomeOf(pending), "pending");
   // ほかの状態には添えない
   assert.equal(outcomeOf(page("5"), "failed"), "captured");
@@ -144,7 +144,7 @@ const LINES = [
   { ms: 50, source: "browserhive", level: "fatal", msg: "e" },
 ];
 
-test("絞り込み: 「すべて」が既定で、warn 以上・error だけ。並びは台帳のまま、知らない level は隠さない", () => {
+test("絞り込み: 「すべて」が既定で、warn 以上・error だけ。並びは capture-ledger のまま、知らない level は隠さない", () => {
   assert.equal(FILTERS[0][0], "all");
   const msgs = (filter) => linesAt(LINES, filter).map((line) => line.msg);
   assert.deepEqual(msgs("all"), ["a", "b", "c", "d", "e"]);
@@ -235,7 +235,7 @@ test("ログを閉じれば、その 1 つだけを忘れる。行を閉じた�
     rowsOf(views, CRAWL, list).map((row) => row.log),
     [undefined, undefined],
   );
-  assert.equal(viewOf(views, CRAWL).want, 0, "開き直せば台帳の 1 回分から");
+  assert.equal(viewOf(views, CRAWL).want, 0, "開き直せば capture-ledger の 1 回分から");
   assert.equal(rowsOf(views, "5b0c0007-6a1e-4000-8000-000000000007", list)[0].log, elsewhere, "ほかのクロールは残る");
 });
 

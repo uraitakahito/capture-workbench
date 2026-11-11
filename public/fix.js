@@ -2,25 +2,25 @@
  * 型で落ちたクロールの、型の誤りと直し方（CAPTURE-49）。**描くのは `app.js`** で、ここは答えの読み方と言い方だけ
  * （DOM に触らないので、`node --test` から直に呼べる）。
  *
- * 台帳のエンドポイントは 2 つ:
+ * capture-ledger のエンドポイントは 2 つ:
  *
  * - `GET /api/crawls/:id/diagnostics` —— 行に固定した組み合わせを ts-compile-service に送り直した型の誤り。
- *   Claude は呼ばない。台帳が ts-compile の宛先を持たない配備には、エンドポイントごと無い（Fastify の 404）
+ *   Claude は呼ばない。capture-ledger が ts-compile の宛先を持たない配備には、エンドポイントごと無い（Fastify の 404）
  * - `POST /api/crawls/:id/inline/:name/fix` —— その場の TS の直し方を Claude に訊く。**検査に通った案だけ**が
  *   200 で返り、Claude を呼んだ答えには回数と費用が載る
  *
- * 台帳の文（`error`）は言い換えない。状態の数と一緒に、そのまま出す。
+ * capture-ledger の文（`error`）は言い換えない。状態の数と一緒に、そのまま出す。
  */
 
 /** 失敗の文が、型の検査で落ちたことを言うか（capture-scheduler の compile の段の文 `compile 422 CompileFailed: …`）。 */
 export const failedOnTypes = (error) => typeof error === "string" && /(?:^|\]\s*)compile 422 /.test(error);
 
-/** 台帳の答えの文。無ければそう言う。 */
+/** capture-ledger の答えの文。無ければそう言う。 */
 const saidOf = (body) => body?.error ?? body?.message ?? "答えに文がありません";
 
 /**
  * エンドポイントが無い 404 か（Fastify の既定の文は "Route GET:… not found"）。行が無い・見えない 404 は "not found" で、
- * こちらは台帳がそのエンドポイントを出していない —— どちらのエンドポイントも、台帳の設定が無ければエンドポイントごと出さない。
+ * こちらは capture-ledger がそのエンドポイントを出していない —— どちらのエンドポイントも、capture-ledger の設定が無ければエンドポイントごと出さない。
  */
 const routeMissing = (status, body) =>
   status === 404 && typeof body?.message === "string" && body.message.startsWith("Route ");
@@ -54,7 +54,7 @@ export const diagnosisOf = (status, body) => {
   if (routeMissing(status, body)) {
     return {
       kind: "trouble",
-      text: "404 —— 台帳にこのエンドポイントがありません（CAPTURE_LEDGER_TS_COMPILE_URL の無い配備）",
+      text: "404 —— capture-ledger にこのエンドポイントがありません（CAPTURE_LEDGER_TS_COMPILE_URL の無い配備）",
     };
   }
   return { kind: "trouble", text: `${String(status)} —— ${saidOf(body)}` };
@@ -65,7 +65,7 @@ export const lacksValues = (diagnosis) =>
   diagnosis?.kind === "errors" && diagnosis.rows.some((row) => row.code === "BH0001");
 
 /**
- * そのスクリプトに型の誤りがあるか（「直し方を訊く」を出すか）。**足りない変数が 1 つでも在れば出さない** —— 台帳の
+ * そのスクリプトに型の誤りがあるか（「直し方を訊く」を出すか）。**足りない変数が 1 つでも在れば出さない** —— capture-ledger の
  * 直し方のエンドポイントは、クロールのどこかに `BH0001` があれば Claude を呼ばず 422 で断る（通る案は必須を任意にする形だけになるため）。
  */
 export const hasErrorsIn = (diagnosis, scriptId) =>
@@ -82,7 +82,7 @@ const spentOf = (body) => {
 };
 
 /**
- * 直し方の答え（`POST …/fix`）の 1 行。200 は直した版が描けるので `kind: "ok"`、ほかは台帳の文をそのまま。
+ * 直し方の答え（`POST …/fix`）の 1 行。200 は直した版が描けるので `kind: "ok"`、ほかは capture-ledger の文をそのまま。
  * 上限（429）は、この月に使った額と上限を添える。
  */
 export const fixAnswer = (status, body) => {
@@ -98,7 +98,7 @@ export const fixAnswer = (status, body) => {
   if (routeMissing(status, body)) {
     return {
       kind: "bad",
-      text: "404 —— 台帳にこのエンドポイントがありません（CAPTURE_LEDGER_ANTHROPIC_API_KEY の無い配備）。Claude は呼んでいません",
+      text: "404 —— capture-ledger にこのエンドポイントがありません（CAPTURE_LEDGER_ANTHROPIC_API_KEY の無い配備）。Claude は呼んでいません",
     };
   }
   if (status === 429 && typeof body?.spentUsd === "number" && typeof body?.budgetUsd === "number") {

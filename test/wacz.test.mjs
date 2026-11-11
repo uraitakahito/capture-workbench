@@ -54,7 +54,7 @@ test("paramsFor: op ごとに要るものだけを組み、足りなければ Ba
 
 const SIGNED = "http://127.0.0.1:8333/b/k.wacz?X-Amz-Signature=SECRET-SIGNATURE&X-Amz-Expires=300";
 
-test("viaSignedUrl: 台帳が断ったら daemon を呼ばない", async () => {
+test("viaSignedUrl: capture-ledger が断ったら daemon を呼ばない", async () => {
   let called = 0;
   const res = await viaSignedUrl(
     {

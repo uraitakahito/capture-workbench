@@ -117,7 +117,7 @@ test("書き込みのエンドポイントは、定期実行の予定を作る�
   assert.equal(isWriteRoute("/api/schedules/"), false);
   assert.equal(isWriteRoute("/api/schedules?x=1"), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}/failed/`), false);
-  // fetch が .. を畳むので、台帳のほかのエンドポイントへ回り込む形を断る
+  // fetch が .. を畳むので、capture-ledger のほかのエンドポイントへ回り込む形を断る
   assert.equal(isWriteRoute(`/api/schedules/${id}/../../crawls`), false);
   assert.equal(isWriteRoute("/api/schedules/../crawls"), false);
   assert.equal(isWriteRoute(`/api/schedules/${id}%2F/run`), false);
@@ -145,9 +145,9 @@ test("書き込みのエンドポイントは、クロールを始めるエン�
   assert.equal(isWriteRoute("/xapi/scripts/check"), false);
 });
 
-test("書き込みのエンドポイントは、% と . で台帳のほかのエンドポイントへ回り込む形を断る", () => {
+test("書き込みのエンドポイントは、% と . で capture-ledger のほかのエンドポイントへ回り込む形を断る", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
-  // fetch は URL の .. を畳む（%2e%2e も）。/api/crawls/../… は台帳の別のエンドポイントに届いてしまう
+  // fetch は URL の .. を畳む（%2e%2e も）。/api/crawls/../… は capture-ledger の別のエンドポイントに届いてしまう
   assert.equal(isWriteRoute("/api/crawls/../inline/x/fix"), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/../fix`), false);
   assert.equal(isWriteRoute("/api/crawls/%2e%2e/inline/x/fix"), false);
@@ -166,7 +166,7 @@ test("書き込みのエンドポイントの本文は、上限ちょうどま�
   await assert.rejects(readBody(body(1025), 1024), TooLarge);
 });
 
-test("書き込みのエンドポイントの上限は、台帳の POST /api/crawls と同じ 1 MiB", () => {
-  // 片方だけを変えると、workbench が通すのに台帳が 413 になる（capture-ledger の CRAWL_BODY_LIMIT）
+test("書き込みのエンドポイントの上限は、capture-ledger の POST /api/crawls と同じ 1 MiB", () => {
+  // 片方だけを変えると、workbench が通すのに capture-ledger が 413 になる（capture-ledger の CRAWL_BODY_LIMIT）
   assert.equal(WRITE_LIMIT, 1024 * 1024);
 });

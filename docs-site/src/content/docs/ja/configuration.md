@@ -13,7 +13,7 @@ capture-ledger の `pnpm run dev:up` が workbench を起こすときは、サ�
 cp -n .env.example .env    # 要る行のコメントを外す
 ```
 
-[capture-ledger](https://github.com/uraitakahito/capture-ledger)（クロールを始め、撮れたものを記録する台帳）は、OpenFGA（認可のサービス）の id のように「走らせてみないと決まらない値」を必須で持ちます。
+[capture-ledger](https://github.com/uraitakahito/capture-ledger)（クロールを始め、撮れたものを記録するシステム）は、OpenFGA（認可のサービス）の id のように「走らせてみないと決まらない値」を必須で持ちます。
 workbench にも、そういう値が 2 つあります。
 IdP（Identity Provider。サインインするサービス）の issuer と、そこでの workbench の app client の ID です。
 手元の IdP は [Floci](https://github.com/floci-io/floci)（Cognito を真似るもの）で、プールの ID が issuer に入り、プールを作り直すたびに替わります。
@@ -28,7 +28,7 @@ IdP（Identity Provider。サインインするサービス）の issuer と、�
 | 名前 | 既定値 | 何を決めるか |
 | --- | --- | --- |
 | `WORKBENCH_PORT` | `7080` | capture-workbench の待受。loopback（`127.0.0.1`）にだけ bind する |
-| `WORKBENCH_LEDGER_URL` | `http://127.0.0.1:7070` | 台帳の API |
+| `WORKBENCH_LEDGER_URL` | `http://127.0.0.1:7070` | capture-ledger の API |
 | `WORKBENCH_OIDC_ISSUER` | 無い | IdP の issuer（`iss`）。手元は capture-ledger の `.dev/idp.env` の `IDP_ISSUER` |
 | `WORKBENCH_OIDC_CLIENT_ID` | 無い | IdP での workbench の app client の ID。手元は同じファイルの `IDP_WORKBENCH_CLIENT_ID` |
 | `WORKBENCH_REPLAYWEB_SERVER_URL` | `http://127.0.0.1:8899` | 「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
@@ -62,7 +62,7 @@ Floci の準備は capture-ledger の `pnpm run idp:bootstrap` がします。
 ### 行き先は、workbench が組み立てない
 
 replayweb-server と Windmill の行き先は、配備の事実です。
-台帳が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[エンドポイント](/routes/)）。
+capture-ledger が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[エンドポイント](/routes/)）。
 
 どの「replay ↗」も、保管庫の URL ではなく、replay と同じ origin の path を渡します。
 `?source=` の値は `/wacz/` と鍵で、鍵は `/` で区切って区切りごとに百分率の符号にし、その path をもう 1 度 query の値として符号にします。
@@ -91,4 +91,4 @@ ReplayWeb.page は合本の WACZ とページの一覧を、自分と同じ orig
 macOS の ControlCenter（AirPlay Receiver）が `*:7000` を握っています。
 `127.0.0.1:7000` に bind できてしまうので気づきにくいのですが、`localhost:7000` が `::1` へ解決されると AirPlay に当たります。
 port から持ち主を引く道具（capture-ledger の `dev:status`・`dev:down`）も、毎回「別のものが握っている」と言うことになります。
-だから台帳（7070）の隣の 7080 を取っています。
+だから capture-ledger（7070）の隣の 7080 を取っています。

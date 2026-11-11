@@ -1,15 +1,15 @@
 /**
- * 検索の画面（CAPTURE-53）の、画面に依らない部分。台帳の全文検索（`GET /api/search?q=`）の答えを、行に組む形に
+ * 検索の画面（CAPTURE-53）の、画面に依らない部分。capture-ledger の全文検索（`GET /api/search?q=`）の答えを、行に組む形に
  * するだけで、並べ替えも言い換えもしない。ブラウザは `/search.js` として読み、試験は `node --test` から import する。
  *
- * 台帳は、WACZ のページ一覧（`pages/pages.jsonl`）の 1 行を索引の 1 件にする。写しの行がある WACZ では
+ * capture-ledger は、WACZ のページ一覧（`pages/pages.jsonl`）の 1 行を索引の 1 件にする。写しの行がある WACZ では
  * 写しの行（`stage` が `after-load`・`after-behaviors`）だけを入れ、写しの無い取り込みは文書の行（`stage` が
  * null）を入れる（CAPTURE-48）。だから当たりは「アーカイブの 1 時点」で、同じアーカイブが時点ごとに並ぶ。
- * 返るのは見せてよいアーカイブの物だけ（台帳が OpenFGA の can_view で絞る）。
+ * 返るのは見せてよいアーカイブの物だけ（capture-ledger が OpenFGA の can_view で絞る）。
  */
 import { replaywebHref, replaywebSourceHref, replaywebTs } from "./replayweb.js";
 
-/** 検索のエンドポイント。語はそのまま `q` に（台帳は空を 400 で断る）。 */
+/** 検索のエンドポイント。語はそのまま `q` に（capture-ledger は空を 400 で断る）。 */
 export const searchPath = (words) => `/api/search?${new URLSearchParams({ q: words })}`;
 
 /** 検索の画面の URL。`#search/<語>`（語が空なら `#search`）。 */
@@ -30,7 +30,7 @@ export const parseSearchHash = (hash) => {
   }
 };
 
-/** 答えをそろえる。`hits` は配列、`total` は数（台帳は見せてよい当たりの数を返す。無ければ行の数）。 */
+/** 答えをそろえる。`hits` は配列、`total` は数（capture-ledger は見せてよい当たりの数を返す。無ければ行の数）。 */
 export const answerOf = (body) => {
   const hits = Array.isArray(body?.hits) ? body.hits : [];
   return { hits, total: typeof body?.total === "number" ? body.total : hits.length };
@@ -70,15 +70,15 @@ export const hitReplaywebHref = (origin, hit) => {
 };
 
 /**
- * 引けなかったときの文。台帳の文は `message` を先に（Fastify の 400 は `error` が「Bad Request」で、中身は
- * `message` に在る）。503 は OpenSearch が答えない、404 は台帳に検索のエンドポイントが無い（設定の無い古い台帳）。
+ * 引けなかったときの文。capture-ledger の文は `message` を先に（Fastify の 400 は `error` が「Bad Request」で、中身は
+ * `message` に在る）。503 は OpenSearch が答えない、404 は capture-ledger に検索のエンドポイントが無い（設定の無い古い capture-ledger）。
  */
 export const searchFailure = (status, body) => {
   const said = body?.message ?? body?.error ?? "答えに文がありません";
   if (status === 0) return `workbench 自身に届きません（${said}）`;
   if (status === 503) {
-    return `台帳の全文検索が答えません（OpenSearch。台帳の CAPTURE_LEDGER_OPENSEARCH_URL の先）: ${said}`;
+    return `capture-ledger の全文検索が答えません（OpenSearch。capture-ledger の CAPTURE_LEDGER_OPENSEARCH_URL の先）: ${said}`;
   }
-  if (status === 404) return `台帳に検索のエンドポイントがありません（CAPTURE_LEDGER_OPENSEARCH_URL の無い台帳）: ${said}`;
+  if (status === 404) return `capture-ledger に検索のエンドポイントがありません（CAPTURE_LEDGER_OPENSEARCH_URL の無い capture-ledger）: ${said}`;
   return `${String(status)} — ${said}`;
 };

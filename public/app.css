@@ -271,7 +271,7 @@ tr.detail td {
   background: var(--surface);
 }
 
-/* クロールの行の詳しい所: 失敗の文・走らせたもの・取れなかったページ。改行は台帳の文のまま。 */
+/* クロールの行の詳しい所: 失敗の文・走らせたもの・取れなかったページ。改行は capture-ledger の文のまま。 */
 tr.detail p {
   margin: 0 0 6px;
 }
@@ -377,7 +377,7 @@ tr.detail .tally li {
   color: var(--ink);
 }
 
-/* 渡した値（変数の名前と値）の表も中身の幅に。値は台帳の文のまま（改行も） */
+/* 渡した値（変数の名前と値）の表も中身の幅に。値は capture-ledger の文のまま（改行も） */
 tr.detail .vals {
   width: auto;
   min-width: 0;
@@ -733,7 +733,7 @@ body[data-face="start"] main {
   vertical-align: middle;
 }
 
-/* 当てる物は URL が入るので広く。印（台帳の確かめ）が窓 996 で 2 行に収まる所まで（55% だと 5 行） */
+/* 当てる物は URL が入るので広く。印（capture-ledger の確かめ）が窓 996 で 2 行に収まる所まで（55% だと 5 行） */
 .rules td:nth-child(3) {
   width: 40%;
 }
@@ -1129,7 +1129,7 @@ body[data-face="start"] main {
   line-height: 1.5;
 }
 
-/* 必須の印（required: true の宣言）。空のまま始めれば、台帳が 400 で名指す */
+/* 必須の印（required: true の宣言）。空のまま始めれば、capture-ledger が 400 で名指す */
 .req {
   display: inline-block;
   margin-left: 4px;

@@ -235,7 +235,7 @@ const SHOTS = [
       const site = [...document.querySelectorAll("#start-picks label.pick")].find((l) =>
         l.textContent.startsWith("egov-law-search"),
       );
-      // egov-law-search が宣言する変数 query の欄が出ている（宣言の無い台帳では fieldset ごと隠れる）
+      // egov-law-search が宣言する変数 query の欄が出ている（宣言の無い capture-ledger では fieldset ごと隠れる）
       return (
         site?.querySelector("input").checked === true &&
         document.getElementById("start-var-query") !== null &&
@@ -550,7 +550,7 @@ if (health?.ok !== true) {
   process.exit(1);
 }
 /**
- * workbench はサインインしないと台帳の答えを返さない（CAPTURE-185）。代役の IdP は画面を出さずにすぐ戻すので、
+ * workbench はサインインしないと capture-ledger の答えを返さない（CAPTURE-185）。代役の IdP は画面を出さずにすぐ戻すので、
  * リダイレクトを手で辿れば cookie が取れる。絵を撮るページのほうは、Chrome がリダイレクトを辿って自分でサインインする。
  */
 const signIn = async () => {

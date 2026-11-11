@@ -1,13 +1,13 @@
 ---
 title: capture-workbench
-description: Web Capture を開発するときに手元で開く Web アプリ。1 本のクロールを 1 行で見る —— 秘密も npm の依存も持たず、台帳の API を中継するだけ
+description: Web Capture を開発するときに手元で開く Web アプリ。1 本のクロールを 1 行で見る —— 秘密も npm の依存も持たず、capture-ledger の API を中継するだけ
 ---
 
 capture-workbench は、[Web Capture](https://uraitakahito.github.io/capture-ledger/ja/#web-capture)（Web ページを撮ってアーカイブに残し、後から確かめられるようにする repo の一式）を開発するときに手元で開く Web アプリです。
 **1 本のクロールを 1 行で見ます。**
 新しいクロールを始めることも、撮れた WACZ の中身を読むこともできます。
 
-クロールを始めるのは [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録する台帳）、
+クロールを始めるのは [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録するシステム）、
 走らせるのは [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)（クロールを Windmill の flow で回す）、
 撮れたものを置くのは [seaweedfs](https://github.com/uraitakahito/seaweedfs)（Web Capture が共有する S3 互換の store）、
 開いて読むのは [replayweb-server](https://github.com/uraitakahito/replayweb-server)（WACZ をブラウザで再生する画面）です。
@@ -30,9 +30,9 @@ flowchart LR
 ブラウザが話す相手は workbench（同一オリジン）と、サインインの画面のときだけの IdP（Identity Provider。サインインするサービス）です。
 手元の IdP は [Floci](https://github.com/floci-io/floci)（Cognito を真似るもの）で、capture-ledger の compose がサービス `idp` として動かします。
 本番は Amazon Cognito です。
-workbench はサインインから戻ってきた code をアクセストークンに替え（authorization code と PKCE。PKCE は Proof Key for Code Exchange）、それを付けて `/api/*` をそのまま台帳へ通します。
-書くのは、新しいクロールの画面から始めるときの `POST /api/crawls` と、定期実行の予定を作って操作するエンドポイント（HTTP の method と path の組。[エンドポイントの一覧](/routes/)）で、同じ道で台帳へ通します。
-WACZ の検証と中身は、台帳に署名してもらった URL を [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon に渡して読ませます。
+workbench はサインインから戻ってきた code をアクセストークンに替え（authorization code と PKCE。PKCE は Proof Key for Code Exchange）、それを付けて `/api/*` をそのまま capture-ledger へ通します。
+書くのは、新しいクロールの画面から始めるときの `POST /api/crawls` と、定期実行の予定を作って操作するエンドポイント（HTTP の method と path の組。[エンドポイントの一覧](/routes/)）で、同じ道で capture-ledger へ通します。
+WACZ の検証と中身は、capture-ledger に署名してもらった URL を [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon に渡して読ませます。
 replayweb-server と Windmill へは、画面の行からリンクで飛ぶだけです。
 
 ## 約束
@@ -49,7 +49,7 @@ replayweb-server と Windmill へは、画面の行からリンクで飛ぶだ�
   依存が在るのは、このサイトの原稿（`docs-site/`）と、その 1 ファイルを作る元（`highlighter/`）です（[開発](/development/)）。
 - **中継するだけ。**
   workbench のロジックはサーバに置きません。
-  置いた瞬間に「台帳が知っていることの写し」が生まれるからです。
+  置いた瞬間に「capture-ledger が知っていることの写し」が生まれるからです。
 - **文を持たない。**
   検証の message も、日本語も、仕様の節も、daemon が解決して返したものをそのまま出します。
   workbench が言い換えると、検証器が言い始めたことと静かにずれていきます。
