@@ -70,7 +70,7 @@ The workbench itself is in Japanese, so the messages below are quoted as they ap
 | --- | --- | --- |
 | top of the screen (red) | `not found` | The identity has no permission. Run the `fga:grant` above |
 | top of the screen (red) | `… に届かない (…)。capture-ledger で pnpm run oidc:issuer は動いているか?` | The development issuer is not up. Start it with `dev:up` |
-| top of the screen (red) | `… が名乗りを断った (…)。…` | The issuer refused the identity. Look at the issuer's terminal |
+| top of the screen (red) | `… が名乗りを断った (…)。…` | The parentheses hold the issuer's answer. `subject is required` means `WORKBENCH_SUBJECT` is only whitespace ([Configuration](/configuration/)). Any other answer means something other than the development issuer is answering at `WORKBENCH_ISSUER_URL`; see who holds 9099 with capture-ledger's `pnpm run dev:status` |
 | top of the screen (red) | `… に届かない (…)。capture-ledger で pnpm run api は動いているか?` | The ledger's API is not up. Start it with `dev:up` |
 | validation cell, WACZ view | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | The daemon is not up. Run the command it names |
 | identity line | `workbench 自身に届きません` | The workbench's own server has stopped. Start it again |

@@ -106,7 +106,14 @@ const mint = async () => {
     );
   }
   if (!res.ok) {
-    throw new Error(`${ISSUER} が名乗りを断った (${String(res.status)})。` + HOW_TO_START_ISSUER);
+    // **断ったのは、動いている相手。** 起こし方を言っても直らない。開発用 issuer が断るのは
+    // subject が空白だけのときの 400 だけなので、答えを添える。ほかの答えなら、宛先で別のものが
+    // 答えている。issuer は要求ごとのログを書かないので、手がかりはこの文にしか無い。
+    const answer = (await res.text()).slice(0, 200);
+    throw new Error(
+      `${ISSUER} が名乗りを断った (${String(res.status)} ${answer})。` +
+        "WORKBENCH_SUBJECT が空白だけでないか、WORKBENCH_ISSUER_URL の先が開発用 issuer か?",
+    );
   }
   token = (await res.json()).access_token;
 };
