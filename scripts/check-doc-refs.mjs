@@ -15,7 +15,7 @@
  *   6. README の Documentation の 2 本の URL が、docs-site/astro.config.ts の `site` ＋ `BASE` から
  *      組んだものと一致する (base を変えた日に、README だけが 404 を指し続けないように)
  *   7. 「画面」の絵 (`docs-site/src/assets/screens/`) が shots.json の一覧と揃い、ja・en の screens.md が
- *      全部を載せている。どれも DPR 1 の lossless の WebP で、予算 (1 枚 32 KB・全部で 235 KB) の中。
+ *      全部を載せている。どれも DPR 1 の lossless の WebP で、予算 (1 枚 35 KB・全部で 264 KB) の中。
  *      wide (本文に縮めて載せる表) でない絵は、本文の幅 (`COLUMN`) 以内。絵の元 (`public/`・`sandbox/`・
  *      撮る道具) が、撮ったときから変わっていない
  *
@@ -174,8 +174,11 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // （状態の欄に「完走・1 枚取れず」が出て、クロールの画面の絵が 1.7 KB 増えたとき。理由は同じ）。2026-11-06 に
 // 226 → 234 KB（CAPTURE-116 で新しいクロールの左の列に User-Agent の枠が、開いた行に 1 行が増えたとき。理由は同じ）。同じ日に
 // 234 → 235 KB（User-Agent の欄の注記を替えて、新しいクロールの絵が 0.2 KB はみ出したとき。理由は同じ）。2026-11-07 に
-// 235 → 260 KB（CAPTURE-174 で定期実行の画面の絵 23.6 KB を足し、クロールの行の印で 1 枚が少し増えたとき。理由は同じ）
-const BUDGET = { one: 32 * 1024, all: 260 * 1024 };
+// 235 → 260 KB（CAPTURE-174 で定期実行の画面の絵 23.6 KB を足し、クロールの行の印で 1 枚が少し増えたとき。理由は同じ）。
+// 2026-11-11 に 1 枚の枠を 32 → 35 KB、全部の枠を 260 → 264 KB（CAPTURE-166 で開いた行の使ったシークレットに、WARC で隠すか
+// 残すかの印と、残すシークレットの行が増え、開いた行の絵が 31.1 → 34.7 KB になったとき。印だけでも 32.0 KB で枠に届いた。
+// 開いた行の絵は ④⑤ の印まで切ってあり、詰めれば本文が指す所が消える）
+const BUDGET = { one: 35 * 1024, all: 264 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);

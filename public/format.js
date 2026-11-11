@@ -79,6 +79,37 @@ export const verdict = (summary) => {
 };
 
 /**
+ * シークレットの値を WARC に残すか（宣言の `archive`）を、言葉にする。台帳はクロールの行の答えに、宣言の写しを
+ * `"keep"`（残す）か `null`（隠す）で返す（capture-ledger v0.90.0）。新しいクロールの画面の宣言も、`start.js` の
+ * `declaredOf` が同じ形に揃える（宣言は省けば隠す）。どちらでも、値は台帳・写し・ページの文字・ログには無い。
+ *
+ * 字は短く、何が起きるかは `title` で言う —— 開いた行の 1 行は、docs の絵の幅（632px）に収まる長さでないと切れる。
+ *
+ * **隠すのは BrowserHive v29.0.0 から。** それより前の BrowserHive は、通信に載せた値を WARC に残す —— 台帳は
+ * そのころの行にも `null` を返すので、`title` で添える。`archive` を返さない台帳（v0.89 まで）の行は undefined
+ * （何も出さない）。知らない値は、隠す・残すのどちらにも倒さずにそのまま見せる（`severityKind` と同じ考え）。
+ */
+export const secretArchiveOf = (archive) => {
+  if (archive === undefined) return undefined;
+  if (archive === "keep") {
+    return {
+      text: "WARC に残す（keep）",
+      kind: "warn",
+      title: "値は WARC の通信の記録（request・response・metadata と、その URL）に値のまま残る",
+    };
+  }
+  if (archive === null) {
+    return {
+      text: "WARC で隠す",
+      kind: "muted",
+      title:
+        "値は WARC で *** に置き換わる。BrowserHive v29.0.0 から（それより前の BrowserHive は、通信に載せた値を WARC に残す）",
+    };
+  }
+  return { text: `WARC: ${String(archive)}`, kind: "warn" };
+};
+
+/**
  * 覚えた検証の答えから、「仕様どおりか」の欄の結論を作る。まだ検証していなければ undefined（欄は空）。
  * 検証できなかった（Error）は「問題なし」と区別して言う。
  */

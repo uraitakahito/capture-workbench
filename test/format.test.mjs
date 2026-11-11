@@ -7,7 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { checkVerdict, forgetMissing, linksOf, stateOf, took } from "../public/format.js";
+import { checkVerdict, forgetMissing, linksOf, secretArchiveOf, stateOf, took } from "../public/format.js";
 
 const crawl = (state, stopReason, pagesFailed = 0) => ({ state, stopReason, pagesFailed });
 
@@ -148,4 +148,23 @@ test("一覧から消えた id だけを、覚えた答えから忘れる", () =
   const map = new Map([["a", 1], ["b", 2], ["c", 3]]);
   forgetMissing(map, ["a", "c", "z"]);
   assert.deepEqual([...map.keys()], ["a", "c"]);
+});
+
+test("シークレットを WARC に残すか: keep は残す（warn）、null は隠す（*** と版の注記は title）、archive を返さない台帳の行は何も言わない", () => {
+  assert.deepEqual(secretArchiveOf("keep"), {
+    text: "WARC に残す（keep）",
+    kind: "warn",
+    title: "値は WARC の通信の記録（request・response・metadata と、その URL）に値のまま残る",
+  });
+  const hidden = secretArchiveOf(null);
+  assert.equal(hidden.text, "WARC で隠す");
+  assert.equal(hidden.kind, "muted");
+  assert.match(hidden.title, /\*\*\* に置き換わる/);
+  // 台帳は v29 より前の取り込みの行にも null を返す。隠したとは言い切らない
+  assert.match(hidden.title, /BrowserHive v29\.0\.0 から/);
+  assert.equal(secretArchiveOf(undefined), undefined);
+});
+
+test("知らない archive は、隠す・残すのどちらにも倒さず、そのまま見せる", () => {
+  assert.deepEqual(secretArchiveOf("sealed"), { text: "WARC: sealed", kind: "warn" });
 });

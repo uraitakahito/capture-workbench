@@ -87,7 +87,7 @@ the crawl's bundle.
   color and the explanation. The rule is `isPartialBundle` in `public/replayweb.js`, pinned by
   `test/replayweb.test.mjs`.
 
-![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the values passed and the secrets used, the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
+![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the values passed and the secrets used (one hidden in the WARC, one kept), the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
 
 ① what ran (in run order)\
 ② 欄に戻す (back to the form)\
@@ -105,8 +105,17 @@ the crawl's bundle.
   takes you to the [new crawl view](#start-a-crawl). A site script carries its sites, as a chip such as
   `laws.e-gov.go.jp 用`. Then come the values: the variables the crawl was started with (the ledger's
   `variables`, name and value) and the secrets it used (`secrets`: the name, the path of the Windmill
-  variable, and its `edited_at` when the ledger checked that it existed). A secret's value never
-  appears: neither the ledger nor the WACZ holds it, only Windmill does. If the Windmill variable was
+  variable, its `edited_at` when the ledger checked that it existed, and whether its value stays in
+  the WARC, `archive`). A secret's value never appears: only Windmill holds it, the ledger does not,
+  and it is gone from the snapshots, the page text and title, and the logs. What the WARC keeps is
+  up to the declaration. A secret marked WARC で隠す (hidden in the WARC) had its value replaced by
+  `***` in the WARC, whether the script put it on the wire or the site sent it back. WARC に残す（keep）
+  (kept in the WARC) is a secret declared with `archive: "keep"`: its value stays as it is in the
+  record of the traffic (the WARC's request, response and metadata records, and their URLs). In the
+  picture above `api_token` is hidden and `login` is kept (crawl `5b0c0007` of the stand-in's
+  scenario). Hiding started with BrowserHive v29.0.0: in a capture made before it, a value put on the
+  wire is still in the WARC, yet the ledger answers `archive: null` for those rows too, so they read
+  WARC で隠す (the mark says so when the pointer rests on it). If the Windmill variable was
   rewritten while the crawl ran, the row says from which level. Above them is the `User-Agent` the crawl
   asked for, as typed, or HeadlessChrome のまま (still HeadlessChrome). A crawl given nothing reads 渡した値:
   なし (values passed: none), and a row from an older ledger without values shows nothing here. Last
@@ -285,10 +294,20 @@ follow).
   `BH0004` (a script that runs before navigation has nowhere to read a variable), or 宣言を確かめられません
   (could not check the declarations) with the ledger's sentence. Ordinary type errors are not shown
   there; the compile step reports them when the crawl runs. A secret (`kind: secret`) is
-  listed under 使うシークレット (secrets used) by name only, with no field: its value is put by a
+  listed under 使うシークレット (secrets used) by name only, with no field, and beside the name whether
+  the WARC hides or keeps it (the declaration's `archive`; left out, it hides): its value is put by a
   person into the Windmill variable `f/waggle_secrets/<name>`, the ledger checks that it exists
   (otherwise a 400 naming it with its path), and Windmill resolves it for the script on every crawl.
-  The value never reaches the workbench, the ledger or the WACZ. No bundled script declares a secret,
+  The value never reaches the workbench or the ledger. In the WACZ, a hidden secret's value is
+  replaced by `***` in the WARC, and one declared with `archive: "keep"` stays as it is; either way it is
+  gone from the snapshots, the page text and title, and the logs. A hidden value needs at least 8
+  characters, and BrowserHive refuses a capture given a shorter one (see "WARC に残すか" in the
+  capture-scripts README). When a hidden secret is used while the deployment's formats (the ledger's
+  `CAPTURE_LEDGER_CAPTURE_FORMATS`) include PNG, WebP, HTML or MHTML, none of which can have the value
+  replaced, the ledger refuses with a 400 before it creates a row, naming the secrets and how to fix it
+  (under the left column: `400 —— formats that cannot hide secrets: api_token（CAPTURE_LEDGER_CAPTURE_FORMATS の png は値を置き換えられない …）`).
+  Declaring one name as kept in one script and hidden in another gives
+  `400 —— conflicting params: api_token`. No bundled script declares a secret,
   so this view passes variables only; your own script can declare a secret (`inline.params`) only when
   calling the ledger's API directly.
 - **A script left out of the default is listed unticked.** It reads 既定では走らない (does not run
