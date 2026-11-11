@@ -31,7 +31,8 @@ IdP（Identity Provider。サインインするサービス）の issuer と、�
 | `WORKBENCH_LEDGER_URL` | `http://127.0.0.1:7070` | capture-ledger の API |
 | `WORKBENCH_OIDC_ISSUER` | 無い | IdP の issuer（`iss`）。手元は capture-ledger の `.dev/idp.env` の `IDP_ISSUER` |
 | `WORKBENCH_OIDC_CLIENT_ID` | 無い | IdP での workbench の app client の ID。手元は同じファイルの `IDP_WORKBENCH_CLIENT_ID` |
-| `WORKBENCH_REPLAYWEB_SERVER_URL` | `http://127.0.0.1:8899` | 「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
+| `WORKBENCH_REPLAYWEB_SERVER_URL` | `http://127.0.0.1:8899` | 「ReplayWeb.page ↗」の行き先（改変していない ReplayWeb.page を配る replayweb-server）。アーカイブの行と検索の当たりは WACZ 1 本を、クロールの行とページの行はクロールの合本を開く |
+| `WORKBENCH_CAPTURE_PLAYER_URL` | `http://127.0.0.1:8897` | 「Web Capture ↗」の行き先（ReplayWeb.page を改変した capture-player）。link の形は「ReplayWeb.page ↗」と同じで、origin だけが違う |
 | `WORKBENCH_WINDMILL_URL` | `http://127.0.0.1:8000` | クロールの行の「run ↗」の行き先 |
 | `WORKBENCH_WINDMILL_WORKSPACE` | `crawler` | 「run ↗」が開く Windmill の workspace |
 | `WORKBENCH_VALIDATOR_URL` | `http://127.0.0.1:7180` | 検証と WACZ の画面に答える [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon |
@@ -64,7 +65,7 @@ Floci の準備は capture-ledger の `pnpm run idp:bootstrap` がします。
 replayweb-server と Windmill の行き先は、配備の事実です。
 capture-ledger が返すのは `objectKey`・クロールの合本の鍵・run の id だけなので、どこで開くかはサーバが 1 か所で決め、`/healthz` でブラウザの側に配ります（[エンドポイント](/routes/)）。
 
-どの「replay ↗」も、保管庫の URL ではなく、replay と同じ origin の path を渡します。
+どの「ReplayWeb.page ↗」と「Web Capture ↗」も、保管庫の URL ではなく、開くビューアと同じ origin の path を渡します。
 `?source=` の値は `/wacz/` と鍵で、鍵は `/` で区切って区切りごとに百分率の符号にし、その path をもう 1 度 query の値として符号にします。
 replayweb-server（v0.3.0 から）は区切りごとに 1 度だけ解くので、`%` を含む鍵（BrowserHive はラベルを百分率の符号で鍵に入れます）も、そのまま保管庫に届きます。
 決まりは `public/replayweb.js` の `replaywebSourceHref` で、WACZ 1 本もクロールの合本も同じです。

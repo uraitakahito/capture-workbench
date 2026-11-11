@@ -140,7 +140,7 @@ const SHOTS = [
     name: "crawls",
     hash: "#crawls",
     box: "#face-crawls table",
-    // 表は折り返さない欄で、中身の幅に伸びる。開いた行は crawl-detail。合本の在る行は run ↗ の後に replay ↗（先頭の走行中の行は途中の版）
+    // 表は折り返さない欄で、中身の幅に伸びる。開いた行は crawl-detail。合本の在る行は run ↗ の後に ReplayWeb.page ↗ と Web Capture ↗（先頭の走行中の行は途中の版）
     wide: true,
     // 撮る窓より表が広いと、main の中で横に流れて右端が切れる。絵には表の全部を写す
     prepare: async (page) => {
@@ -150,10 +150,10 @@ const SHOTS = [
     },
     ready: () =>
       document.querySelector("#crawls tr.head td:nth-child(8)")?.textContent === "1m 40s" &&
-      document.querySelector("#crawls tr.head td:last-child a + a")?.textContent === "replay r1（途中）↗",
+      document.querySelector("#crawls tr.head td:last-child a + a")?.textContent === "ReplayWeb.page r1（途中）↗",
     marks: [
       { n: 1, at: "#crawls tr.head:first-child td:first-child" },
-      // 合本の無い行の run ↗。先頭の走行中の行は、隣に replay ↗ があって丸が重なる
+      // 合本の無い行の run ↗。先頭の走行中の行は、隣に再生の link があって丸が重なる
       { n: 2, at: "#crawls tr.head:nth-child(4) td:last-child a" },
     ],
   },
@@ -168,7 +168,7 @@ const SHOTS = [
       document.getElementById("schedule-band")?.hidden === false,
   },
   {
-    // 前回からの変化（CAPTURE-167）。開いた回（台本の「毎時の確認」の直近の回）。差分・Claude の 1 行・引用・replay ↗ 2 本
+    // 前回からの変化（CAPTURE-167）。開いた回（台本の「毎時の確認」の直近の回）。差分・Claude の 1 行・引用・前と今の再生の link
     name: "changes",
     hash: "#changes/5c0d0006-6a1e-4000-8000-000000000006",
     // 開いた回だけ（一覧の表は広く、1 枚の枠 35 KB に収まらない。一覧は定期実行の画面の絵と同じ形）
@@ -212,7 +212,7 @@ const SHOTS = [
     hash: "#crawls",
     box: "#crawls tr.detail .pages",
     // 開いた行の「ページ」の表（台本の 5b0c0009）。時間切れのページのログを開いて写す。表は中身の幅で、COLUMN に収まる。
-    // 合本に入った 2 ページは、結末の後ろに replay ↗
+    // 合本に入った 2 ページは、結末の後ろに ReplayWeb.page ↗ と Web Capture ↗
     maxWidth: COLUMN,
     prepare: async (page) => {
       await page.evaluate(() => {
@@ -230,7 +230,8 @@ const SHOTS = [
     ready: () =>
       document.querySelector("#crawls tr.detail .logbox .chip.on")?.textContent === "すべて 4" &&
       document.querySelectorAll("#crawls tr.detail .logbox .loglines tr").length === 4 &&
-      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a").length === 2,
+      // 合本に入った 2 ページ × 2 つの再生（ReplayWeb.page ↗・Web Capture ↗）
+      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a").length === 4,
     marks: [
       { n: 1, at: "#crawls tr.detail .pagelist th:nth-child(2)" },
       { n: 2, at: "#crawls tr.detail .pagelist tr:nth-child(2) td:nth-child(3)" },
@@ -335,8 +336,12 @@ const SHOTS = [
     box: "#face-archives table",
     maxHeight: 360,
     wide: true,
-    // 検証の答えは行に残る。報告の行（かかった ms が出る）は、もう 1 度押して閉じる
+    // 検証の答えは行に残る。報告の行（かかった ms が出る）は、もう 1 度押して閉じる。
+    // 行き先の欄に再生の link が 2 つ並ぶと（CAPTURE-102）、表が main の中で横に流れて右端が切れる。crawls と同じく止めて撮る
     prepare: async (page) => {
+      await page.evaluate(() => {
+        document.querySelector("main").style.overflowX = "visible";
+      });
       for (const file of ["good.wacz", "datapackage-bad-hash.wacz"]) await pressValidate(page, file);
       await page.waitForFunction(
         () => [...document.querySelectorAll("#archives td span.state")].filter((s) => !/中|…/.test(s.textContent)).length >= 2,

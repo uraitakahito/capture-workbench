@@ -1,5 +1,5 @@
 /**
- * replay（ReplayWeb.page 2.5.0）への「replay ↗」の行き先。アーカイブの行と検索の当たりは WACZ 1 本を（CAPTURE-48）、
+ * 2 つの再生（replayweb-server の ReplayWeb.page 2.5.0 と、capture-player の Web Capture）への link の行き先。アーカイブの行と検索の当たりは WACZ 1 本を（CAPTURE-48）、
  * クロールの行とページの行はクロールの合本を開く（CAPTURE-54）。
  *
  * replay は、`?source=` だけで開くとページ一覧を出し、一覧を日付の新しい順に並べる。WACZ の `mainPageURL` は読まない。
@@ -19,7 +19,7 @@ const waczSourcePath = (key) => `/wacz/${String(key).split("/").map(encodeURICom
 /**
  * ReplayWeb.page を開く URL の hash の前まで（`<origin>/?source=…`）。`source` の値は `waczSourcePath` の path を、もう 1 度
  * query の値として符号にした物 —— replay（wabac）は `source` を 1 度解き、その path を自分の origin から引く。素の path を
- * 置くと、そこで 1 度解かれ、server がもう 1 度解いて、`%` を含む鍵が別の鍵になる。**どの「replay ↗」もこれで組む**
+ * 置くと、そこで 1 度解かれ、server がもう 1 度解いて、`%` を含む鍵が別の鍵になる。**どの再生の link もこれで組む**
  * （WACZ 1 本も合本も。綴りはここだけ）。
  */
 export const replaywebSourceHref = (origin, key) => `${origin}/?source=${encodeURIComponent(waczSourcePath(key))}`;
@@ -33,7 +33,7 @@ export const replaywebTs = (when) => {
 };
 
 /**
- * 「replay ↗」の行き先。取り込んだ URL（`sourceUrl`）と時刻（`capturedAt`）が在れば、その頁を直に開く
+ * 再生の link の行き先。取り込んだ URL（`sourceUrl`）と時刻（`capturedAt`）が在れば、その頁を直に開く
  * （`#view=replay&url=…&ts=…`）。どちらかが無ければ、いままでどおりページ一覧を開く。
  */
 export const replaywebHref = (origin, { objectKey, sourceUrl, capturedAt }) => {
@@ -50,7 +50,7 @@ const bundleKeyOf = (replayBundle) => {
 };
 
 /**
- * クロールの合本の「replay ↗」の行き先。合本は、capture-ledger が段ごとに保管庫へ書く `replay.json`（と `pages.json`）で、replay は
+ * クロールの合本の再生の link の行き先。合本は、capture-ledger が段ごとに保管庫へ書く `replay.json`（と `pages.json`）で、replay は
  * クロールの WACZ を全部束ねた 1 つのアーカイブとして開く（リンクで別の WACZ のページへ行ける）。行き先が無ければ undefined
  * （link を出さない）。
  *
@@ -104,21 +104,37 @@ export const awaitsFinalBundle = (crawl, now = Date.now()) => {
   return bundleKeyOf(crawl.replayBundle) === undefined || isPartialBundle(crawl);
 };
 
+/**
+ * 2 つの再生（CAPTURE-102）。どちらも同じ形の URL（`?source=/wacz/<鍵>#view=…`）を、違う origin に付ける。
+ * `setting` は `/healthz` の欄の名前。並びは画面に出る順。
+ * - ReplayWeb.page — replayweb-server。改変していない ReplayWeb.page（互換の再生）
+ * - Web Capture — capture-player。ReplayWeb.page を改変し、BrowserHive の規格を見せる再生
+ */
+export const VIEWERS = [
+  { setting: "replaywebServerOrigin", label: "ReplayWeb.page" },
+  { setting: "capturePlayerOrigin", label: "Web Capture" },
+];
+
+/** 再生の link の字。 */
+export const viewerText = (viewer) => `${viewer.label} ↗`;
+
 /** クロールの行の合本の link の字。途中の版なら、番号と「途中」を言う。 */
-export const replayBundleText = (crawl) =>
-  isPartialBundle(crawl) ? `replay r${String(crawl.replayBundle.rev)}（途中）↗` : "replay ↗";
+export const replayBundleText = (crawl, viewer) =>
+  isPartialBundle(crawl)
+    ? `${viewer.label} r${String(crawl.replayBundle.rev)}（途中）↗`
+    : viewerText(viewer);
 
 /** 途中の版の link に添える説明（title）。 */
 export const PARTIAL_BUNDLE_NOTE = "走行中に書いた途中の版です。まだ入っていないページは Not Found になります";
 
 /**
  * 合本を書けなかった理由の 1 行（capture-ledger の `replayBundle.error`。文は言い換えない）。失敗が無ければ undefined。capture-ledger は指す版を
- * 前へだけ進め、失敗の理由は次に書けたら消す —— 書けた版が在れば、replay ↗ はその（前の）版を開く。
+ * 前へだけ進め、失敗の理由は次に書けたら消す —— 書けた版が在れば、再生の link はその（前の）版を開く。
  */
 export const replayBundleFailure = (replayBundle) => {
   const error = replayBundle?.error;
   if (typeof error !== "string" || error === "") return undefined;
   return bundleKeyOf(replayBundle) === undefined
-    ? `合本を書けませんでした（replay で開ける版はまだありません）: ${error}`
-    : `合本の新しい版を書けませんでした（replay ↗ は前の版 r${String(replayBundle.rev)} を開きます）: ${error}`;
+    ? `合本を書けませんでした（再生で開ける版はまだありません）: ${error}`
+    : `合本の新しい版を書けませんでした（再生のリンクは前の版 r${String(replayBundle.rev)} を開きます）: ${error}`;
 };

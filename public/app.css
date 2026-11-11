@@ -456,7 +456,7 @@ tr.detail .pagelist .outcome {
   max-width: 27ch;
 }
 
-/* 結末の後ろの replay ↗（合本の中で開けるページだけ）。結末の字と押す所を分ける */
+/* 結末の後ろの再生の link（ReplayWeb.page ↗・Web Capture ↗。合本の中で開けるページだけ）。結末の字と押す所を分ける */
 tr.detail .pagelist .outcome a {
   margin-left: 6px;
 }
@@ -556,12 +556,17 @@ tr.head {
   cursor: pointer;
 }
 
-/* クロールの行の行き先の 2 つ目の link（run ↗ の後の replay ↗）。字の間を空けて、押す所を分ける */
+/* クロールの行の行き先の 2 つ目からの link（run ↗ の後の ReplayWeb.page ↗・Web Capture ↗）。字の間を空けて、押す所を分ける */
 #crawls tr.head td:last-child a + a {
   margin-left: 10px;
 }
 
-/* 途中の版を開く replay ↗（CAPTURE-114）。状態の「打ち切り」と同じ警告の色で、完成した版の link と分ける */
+/* アーカイブの行の 2 つの再生の link（CAPTURE-102）。字の間を空けて、押す所を分ける */
+td.replays a + a {
+  margin-left: 10px;
+}
+
+/* 途中の版を開く再生の link（CAPTURE-114）。状態の「打ち切り」と同じ警告の色で、完成した版の link と分ける */
 a.partial {
   color: var(--run);
 }

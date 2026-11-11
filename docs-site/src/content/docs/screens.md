@@ -20,7 +20,7 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 | Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replayweb-server (the whole crawl as one archive) |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
 | Schedules | schedules and their runs; pause, resume, run now, repin and delete a schedule. A run that did not capture shows on a band on every view |
-| Changes | how a scheduled run differs from the previous one — one line per run, and per page the diff, Claude's summary (not evidence) and replay ↗ for before and after |
+| Changes | how a scheduled run differs from the previous one — one line per run, and per page the diff, Claude's summary (not evidence) and ReplayWeb.page ↗ / Web Capture ↗ for before and after |
 | Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser) |
 | Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replayweb-server |
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
@@ -45,10 +45,10 @@ what you have read stays listed when the table is fetched again.
 Each row is one crawl. It shows the state, the first 8 characters of the id, who started it and
 for which organization, the first seed URL, pages captured, links (リンク), the number of
 WACZ files and the time taken. "run ↗" at the right end opens the Windmill run in a new tab, and
-"replay ↗" next to it opens the whole crawl in replay as one archive, once the ledger has written
+"ReplayWeb.page ↗" and "Web Capture ↗" next to it open the whole crawl in replay as one archive, once the ledger has written
 the crawl's bundle.
 
-![The crawls table: running, finished, cut-off and failed rows; rows whose crawl has a bundle have replay ↗ next to run ↗, and the running row reads replay r1（途中）↗](../../assets/screens/crawls.webp)
+![The crawls table: running, finished, cut-off and failed rows; rows whose crawl has a bundle have ReplayWeb.page ↗ / Web Capture ↗ next to run ↗, and the running row reads ReplayWeb.page r1（途中）↗ and Web Capture r1（途中）↗](../../assets/screens/crawls.webp)
 
 ① state\
 ② the link to the run
@@ -65,7 +65,7 @@ the crawl's bundle.
 - **run ↗ is the run of the last level that was handed over.** The link is built from the id of
   `lastJob` that the ledger returns, plus the Windmill origin and workspace the server hands out
   through `/healthz`. Rows where the ledger has no `lastJob` get no link.
-- **replay ↗ opens the crawl as one archive.** After each level, the ledger writes the crawl's
+- **ReplayWeb.page ↗ / Web Capture ↗ open the crawl as one archive.** After each level, the ledger writes the crawl's
   bundle (合本) to the store: a `replay.json` that lists every WACZ file of the crawl, and the
   index of its pages (`pages.json`) that replayweb-server answers from when ReplayWeb.page looks a page
   up. ReplayWeb.page opens them as one archive, so a link on a captured page leads to a page captured into
@@ -74,17 +74,17 @@ the crawl's bundle.
   (`replayBundle.key`), at the replayweb-server origin the server hands out through `/healthz`. A crawl with
   no bundle (nothing captured yet, or a ledger that writes none) gets no link. The ledger never
   stops a crawl over a bundle it could not write: an opened row says why first, in the ledger's
-  words (`replayBundle.error`), and replay ↗ keeps opening the version written before, if there is
+  words (`replayBundle.error`), and ReplayWeb.page ↗ / Web Capture ↗ keep opening the version written before, if there is
   one. The rules for these links are `replayBundleHref` in `public/replayweb.js`, pinned by
   `test/replayweb.test.mjs`.
-- **A version written mid-crawl says so.** While a crawl runs, replay ↗ opens the version the
+- **A version written mid-crawl says so.** While a crawl runs, ReplayWeb.page ↗ / Web Capture ↗ open the version the
   ledger has written so far. Pages captured in later levels are not in it, so a link to one ends
-  in Not Found in replay. The link therefore reads `replay r1（途中）↗` ("mid-crawl"), in the warning
+  in Not Found in replay. The links therefore read `ReplayWeb.page r1（途中）↗ and Web Capture r1（途中）↗` ("mid-crawl"), in the warning
   color, with an explanation on hover. A finished row reads the same while the version it points at
   is older than the end of the crawl (`builtAt` before `finishedAt`): the flow runs `report` (the
   crawl ends here) before `replay_bundle` (the last version is written here), so the last version
   arrives slightly later. A row whose next version could not be written keeps opening the earlier
-  one the same way. The pages table of an opened row keeps the text "replay ↗" and only takes the
+  one the same way. The pages table of an opened row keeps the texts "ReplayWeb.page ↗" and "Web Capture ↗" and only takes the
   color and the explanation. The rule is `isPartialBundle` in `public/replayweb.js`, pinned by
   `test/replayweb.test.mjs`.
 
@@ -143,9 +143,9 @@ the crawl's bundle.
   link, Windmill で調べる (inspect in Windmill), to the script `f/waggle/inspect_crawl` in Windmill
   with this crawl's id already filled in (Windmill keeps a run's arguments in the URL's hash).
 
-![The pages table of an opened crawl: four pages with their URL, outcome (replay ↗ after the captured ones) and warn and error counts, and the log of the page that timed out, opened, with lines from a script, an exception in the captured page and BrowserHive's timeout](../../assets/screens/crawl-pages.webp)
+![The pages table of an opened crawl: four pages with their URL, outcome (ReplayWeb.page ↗ / Web Capture ↗ after the captured ones) and warn and error counts, and the log of the page that timed out, opened, with lines from a script, an exception in the captured page and BrowserHive's timeout](../../assets/screens/crawl-pages.webp)
 
-① the outcome (the ledger's state and reason), with replay ↗ for a page in the crawl's bundle\
+① the outcome (the ledger's state and reason), with ReplayWeb.page ↗ / Web Capture ↗ for a page in the crawl's bundle\
 ② the warn and error counts\
 ③ ログ (log): opens the page's log, and closes it on a second press\
 ④ the level filter
@@ -159,7 +159,7 @@ the crawl's bundle.
   ended such a page reads `pending（報告なし —— クロールが先に終わった）` (no report: the crawl
   ended first) — a crawl that failed the type check captured nothing, and its seed would otherwise
   look like it is still waiting. A page whose WACZ is in the bundle the ledger points at has
-  replay ↗ after its outcome: it opens that page inside the crawl's bundle, at the time it was
+  ReplayWeb.page ↗ / Web Capture ↗ after its outcome: it opens that page inside the crawl's bundle, at the time it was
   captured (`#view=replay&url=…&ts=…`). What decides it is the ledger's `bundledRev`, the first
   version of the bundle that the page's WACZ went into: the link appears when it is no later than
   the version in the opened row's `replayBundle`. A page without a WACZ, a WACZ in no version yet,
@@ -264,8 +264,8 @@ follow).
   a site that refuses Headless can be captured, and the text never goes stale when the browser is upgraded.
   For example, the [Prime Minister's Office of Japan](https://www.kantei.go.jp/) answers HTTP 404 to text containing
   `HeadlessChrome`. Started with the box empty and このページだけ (this page only), the page ends in
-  `failed: http_error: HTTP 404: Not Found`: nothing is captured and no replay ↗ appears. Fill in
-  `{chrome} BrowserHive` with the button and it is captured and opens with replay ↗ (checked on 2026-11-07; what a
+  `failed: http_error: HTTP 404: Not Found`: nothing is captured and no ReplayWeb.page ↗ / Web Capture ↗ appears. Fill in
+  `{chrome} BrowserHive` with the button and it is captured and opens with ReplayWeb.page ↗ / Web Capture ↗ (checked on 2026-11-07; what a
   site answers can change). Whether to include the word `BrowserHive` is up to whoever types: with it, a site can tell that BrowserHive took the page and
   robots.txt is read under that name; without it, only the `*` rules are read. The workbench does not check the text:
   the ledger refuses text of the wrong form (printable ASCII, at most 512 characters) with a 400, and the workbench
@@ -459,12 +459,12 @@ How a scheduled run differs from the previous run of the same schedule with the 
 (`#changes`, `#changes/<crawl id>`). Comparing and summarizing happen in
 [capture-ledger](https://github.com/uraitakahito/capture-ledger); this view only reads.
 
-![A run opened in the changes view. Under the note that Claude's summary is not evidence, each page shows the lines added and removed, Claude's line and quotes (a quote not in the diff in red), and replay ↗ for before and after](../../assets/screens/changes.webp)
+![A run opened in the changes view. Under the note that Claude's summary is not evidence, each page shows the lines added and removed, Claude's line and quotes (a quote not in the diff in red), and ReplayWeb.page ↗ / Web Capture ↗ for before and after](../../assets/screens/changes.webp)
 
 - **The diff comes from the evidence; the summary only makes it easier to read.** capture-ledger
   builds the diff from the two WACZ files without Claude. Claude's line always carries
   「Claude の要約（証拠ではない）」 (Claude's summary, not evidence) with the model, the prompt version and
-  the cost. To check, open both with 「replay ↗ 前」 and 「replay ↗ 今」.
+  the cost. To check, open both with the two viewer links after 「前:」 and 「今:」.
 - **Three weights:** nothing that matters (only a time moved), a small change (a promotion swapped),
   and a change of content (an article or a fact). Claude decides and can be wrong; the diff stays.
 - **Quotes that are not in the diff are marked** in red with （差分に無い）.
@@ -486,13 +486,13 @@ The WACZ files you can see, newest capture first.
   can tell how each one did without pressing again. Reloading the page clears them. What the report shows is in
   [Inspecting a WACZ](/wacz/).
 - **開く (open) enters the WACZ view** (`#wacz/<archiveId>`).
-- **"replay ↗" opens the captured URL in replay.** The link is built from the replay origin the
+- **"ReplayWeb.page ↗" and "Web Capture ↗" open the captured URL in a viewer.** The link is built from the replay origin the
   server hands out through `/healthz`, the `objectKey` the ledger returns, and the row's URL and
   capture time (`#view=replay&url=…&ts=…`). The page's own scripts run there, so pictures that the
   page shows with JavaScript appear too. The DOM snapshots BrowserHive took (before and after the
   scripts) are on replay's Pages tab. replay does not pick a start page on its own: it lists the
   pages newest first, and it does not read the WACZ's `mainPageURL`. It opens that one WACZ: to
-  follow links into the crawl's other pages, open the crawl with replay ↗ on its row in the
+  follow links into the crawl's other pages, open the crawl with ReplayWeb.page ↗ / Web Capture ↗ on its row in the
   [crawls view](#crawls).
 
 ## Search
@@ -508,7 +508,7 @@ The view that searches the titles and text of captured pages with the ledger's f
   before-search and the after-search stage of one archive match, two rows are listed.
 - **Only archives you may see are listed.** The ledger filters with the same authorization as the
   archive list. The count is the number of rows listed; the ledger returns at most 50 at a time.
-- **replay ↗ opens a document hit at the captured URL, and a snapshot hit at the snapshot itself.**
+- **ReplayWeb.page ↗ / Web Capture ↗ open a document hit at the captured URL, and a snapshot hit at the snapshot itself.**
   The document opens with the page's scripts running; a snapshot is the DOM copy without scripts,
   the page as it was at that stage.
 - **開く (open) enters the WACZ view** (only for archives listed in the archives view).
