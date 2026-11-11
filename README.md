@@ -16,7 +16,8 @@ npm の依存を持たず（例外は commit した色付けの 1 ファイル�
 - [capture-ledger](https://github.com/uraitakahito/capture-ledger) — 読む API の持ち主。`dev:up` が workbench を起こす
 - [wacz-validator](https://github.com/uraitakahito/wacz-validator) — 「検証」と WACZ の画面に答える daemon
 - [capture-scheduler](https://github.com/uraitakahito/capture-scheduler) — クロールの run（Windmill）への行き先
-- [replayweb-server](https://github.com/uraitakahito/replayweb-server) — アーカイブを開く行き先
+- [replayweb-server](https://github.com/uraitakahito/replayweb-server) — アーカイブを開く行き先（改変していない ReplayWeb.page。「ReplayWeb.page ↗」）
+- [capture-player](https://github.com/uraitakahito/capture-player) — アーカイブを開くもう 1 つの行き先（ReplayWeb.page を改変した Web Capture のビューア。「Web Capture ↗」）
 
 ## License
 

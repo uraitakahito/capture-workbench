@@ -16,6 +16,8 @@ import {
   replayBundleText,
   replaywebHref,
   replaywebTs,
+  VIEWERS,
+  viewerText,
 } from "../public/replayweb.js";
 import { hitReplaywebHref } from "../public/search.js";
 
@@ -187,12 +189,33 @@ test("合本を書けなかった理由は 1 行で、capture-ledger の文の�
   assert.equal(replayBundleFailure(undefined), undefined);
   assert.equal(
     replayBundleFailure({ ...BUNDLE, error: "could not write r3 to the store: socket hang up" }),
-    "合本の新しい版を書けませんでした（replay ↗ は前の版 r2 を開きます）: could not write r3 to the store: socket hang up",
+    "合本の新しい版を書けませんでした（再生のリンクは前の版 r2 を開きます）: could not write r3 to the store: socket hang up",
   );
   assert.equal(
     replayBundleFailure(NEVER_WRITTEN),
-    "合本を書けませんでした（replay で開ける版はまだありません）: could not write r1 to the store: The specified bucket does not exist",
+    "合本を書けませんでした（再生で開ける版はまだありません）: could not write r1 to the store: The specified bucket does not exist",
   );
+});
+
+// ── 2 つの再生（CAPTURE-102）─────────────────────────────────────────────────
+
+const [REPLAYWEB, CAPTURE_PLAYER] = VIEWERS;
+
+test("再生は 2 つで、ReplayWeb.page（replayweb-server）が先、Web Capture（capture-player）が後", () => {
+  assert.deepEqual(
+    VIEWERS.map((v) => [v.setting, viewerText(v)]),
+    [
+      ["replaywebServerOrigin", "ReplayWeb.page ↗"],
+      ["capturePlayerOrigin", "Web Capture ↗"],
+    ],
+  );
+});
+
+test("2 つの再生の link は、同じ形の URL を違う origin に付ける", () => {
+  const a = replaywebHref("http://127.0.0.1:8899", ARCHIVE);
+  const b = replaywebHref("http://127.0.0.1:8897", ARCHIVE);
+  assert.notEqual(a, b);
+  assert.equal(b.replace("http://127.0.0.1:8897", "http://127.0.0.1:8899"), a);
 });
 
 // ── 途中の版（CAPTURE-114）───────────────────────────────────────────────────
@@ -206,14 +229,16 @@ const SOON = Date.parse(FINISHED) + 5_000;
 test("走行中の行の合本は途中の版で、字に版の番号と「途中」を出す", () => {
   const running = { state: "running", finishedAt: null, replayBundle: { ...BUNDLE, rev: 1 } };
   assert.equal(isPartialBundle(running), true);
-  assert.equal(replayBundleText(running), "replay r1（途中）↗");
+  assert.equal(replayBundleText(running, REPLAYWEB), "ReplayWeb.page r1（途中）↗");
+  assert.equal(replayBundleText(running, CAPTURE_PLAYER), "Web Capture r1（途中）↗");
 });
 
 test("終わった行は、版を書いた時刻が終わった時刻より前なら途中で、同じか後なら完成した版", () => {
   assert.equal(isPartialBundle(ended(beforeEnd)), true);
-  assert.equal(replayBundleText(ended(beforeEnd)), `replay r${String(BUNDLE.rev)}（途中）↗`);
+  assert.equal(replayBundleText(ended(beforeEnd), REPLAYWEB), `ReplayWeb.page r${String(BUNDLE.rev)}（途中）↗`);
   assert.equal(isPartialBundle(ended(afterEnd)), false);
-  assert.equal(replayBundleText(ended(afterEnd)), "replay ↗");
+  assert.equal(replayBundleText(ended(afterEnd), REPLAYWEB), "ReplayWeb.page ↗");
+  assert.equal(replayBundleText(ended(afterEnd), CAPTURE_PLAYER), "Web Capture ↗");
   assert.equal(isPartialBundle(ended({ ...BUNDLE, builtAt: FINISHED })), false, "同じ時刻は途中でない");
 });
 

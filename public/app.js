@@ -82,6 +82,8 @@ import {
   replayBundleFailure,
   replayBundleHref,
   replayBundleText,
+  VIEWERS,
+  viewerText,
   replaywebHref,
 } from "/replayweb.js";
 import {
@@ -652,7 +654,7 @@ const restoreScroll = () => {
  * ときに引き、その行の下の箱に出す。**開いた箱は id で覚え、作り直さずに移す** —— 表は引くたびに作り直すので、
  * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（capture-ledger が古ければエンドポイントが無い）。
  *
- * 結末の後ろの「replay ↗」は、そのページをクロールの合本の中で開く。合本は詳しい所（`/api/crawls/:id`。ページと
+ * 結末の後ろの再生の link は、そのページをクロールの合本の中で開く。合本は詳しい所（`/api/crawls/:id`。ページと
  * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/replayweb.js` の `replayBundleHref`。
  * 2 つを引く間に capture-ledger が次の版を書いても、指す版に無いページを開かせない）。**列は足さない** —— 出るのはふつう
  * 撮れたページ（結末が `captured` の 1 語）で、結末の列の幅の中に収まる。列を足すと表が広がり、docs の画面の絵
@@ -683,8 +685,10 @@ const pagesOf = (one) => {
     url.append(tag("span", String(page.url), "mono url"));
     const outcome = document.createElement("td");
     const said = tag("span", outcomeOf(page, one.state), "outcome");
-    const replay = replayBundleHref(settings.replaywebServerOrigin, one.replayBundle, page);
-    if (replay !== undefined) said.append(" ", bundleLink(replay, "replay ↗", one));
+    for (const viewer of VIEWERS) {
+      const replay = replayBundleHref(settings[viewer.setting], one.replayBundle, page);
+      if (replay !== undefined) said.append(" ", bundleLink(replay, viewerText(viewer), one));
+    }
     outcome.append(said);
     const toggle = document.createElement("td");
     toggle.append(button(log === undefined ? "ログ ▾" : "閉じる ▴", () => toggleOne(one.crawlId, page.id)));
@@ -764,7 +768,7 @@ const diagnosedOf = async (crawlId, detail) => {
 /**
  * 1 本の詳しい所。**失敗の文が先** —— compile の段で落ちたクロールは 1 枚も撮っていないので
  * failures が空で、それだけを出すと「取れなかったページはありません」と、成功のように読める。
- * 次が合本を書けなかった理由。合本はクロールを止めない派生物なので warn の色で、「replay ↗」が無い（前の版を開く）
+ * 次が合本を書けなかった理由。合本はクロールを止めない派生物なので warn の色で、再生の link が無い（前の版を開く）
  * 訳をここで言う。capture-ledger の文は言い換えない。
  */
 const detailOf = (one) => {
@@ -883,8 +887,10 @@ const drawCrawls = () => {
     // 行き先: run と、capture-ledger が合本を書けていれば、クロールを 1 つのアーカイブとして replayweb-server で。**run ↗ が先頭**
     // （docs の画面の絵の印が、この欄の先頭の link を指す）
     const go = linkCell(runHref(crawl), "run ↗");
-    const replay = replayBundleHref(settings.replaywebServerOrigin, crawl.replayBundle);
-    if (replay !== undefined) go.append(bundleLink(replay, replayBundleText(crawl), crawl));
+    for (const viewer of VIEWERS) {
+      const replay = replayBundleHref(settings[viewer.setting], crawl.replayBundle);
+      if (replay !== undefined) go.append(bundleLink(replay, replayBundleText(crawl, viewer), crawl));
+    }
     row.append(go);
     row.onclick = (event) => {
       if (event.target instanceof HTMLAnchorElement) return;
@@ -1798,9 +1804,12 @@ const drawArchives = () => {
     row.append(verdictCellOf(archive.id));
     row.append(check);
     row.append(hashCell(waczHash(archive.id), "開く"));
-    row.append(
-      linkCell(replaywebHref(settings.replaywebServerOrigin, archive), "replay ↗"),
-    );
+    const replays = document.createElement("td");
+    replays.className = "replays";
+    for (const viewer of VIEWERS) {
+      replays.append(link(replaywebHref(settings[viewer.setting], archive), viewerText(viewer)));
+    }
+    row.append(replays);
     body.append(row);
     if (checks.get(archive.id)?.open) body.append(checkRow(archive.id));
   }
@@ -1857,7 +1866,9 @@ const drawHits = (hits) => {
       open.textContent = "開く";
       go.append(open);
     }
-    go.append(link(hitReplaywebHref(settings.replaywebServerOrigin, hit), "replay ↗"));
+    for (const viewer of VIEWERS) {
+      go.append(link(hitReplaywebHref(settings[viewer.setting], hit), viewerText(viewer)));
+    }
     row.append(go);
     body.append(row);
   }
@@ -3077,11 +3088,19 @@ const drawChangeDetail = (detail) => {
     meta.append(`足した行 ${String(page.added)} ・ 消した行 ${String(page.removed)}`);
     const note = versionNote(page);
     if (note !== "") meta.append(` ・ ${note}`);
-    for (const [label, ref] of [["replay ↗ 前", page.before], ["replay ↗ 今", page.after]]) {
-      if (ref === null) continue;
-      meta.append(" ・ ", link(replaywebHref(settings.replaywebServerOrigin, ref), label));
-    }
     article.append(meta);
+    // 前と今を 2 つの再生で開く link（CAPTURE-102）。4 本になるので、数の行とは分けて 1 行に置く
+    const opens = document.createElement("p");
+    opens.className = "muted";
+    for (const [when, ref] of [["前", page.before], ["今", page.after]]) {
+      if (ref === null) continue;
+      if (opens.childNodes.length > 0) opens.append(" ・ ");
+      opens.append(`${when}:`);
+      for (const viewer of VIEWERS) {
+        opens.append(" ", link(replaywebHref(settings[viewer.setting], ref), viewerText(viewer)));
+      }
+    }
+    if (opens.childNodes.length > 0) article.append(opens);
     if (page.headline !== null) article.append(tag("p", `Claude: ${page.headline}`));
     for (const quote of page.quotes) {
       article.append(tag("p", `引用「${quote.text}」${quote.verified ? "" : "（差分に無い）"}`, quote.verified ? "muted" : "state bad"));

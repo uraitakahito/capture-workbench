@@ -57,7 +57,7 @@ export const highlightParts = (fragment) => {
 };
 
 /**
- * 当たった行の「replay ↗」の行き先。文書の行は取り込んだ URL を撮った時刻で直に開き（`replaywebHref`。頁の script も
+ * 当たった行の再生の link の行き先。文書の行は取り込んだ URL を撮った時刻で直に開き（`replaywebHref`。頁の script も
  * 動く）、写しの行は写しの URI（`urn:browserhive:snapshot:<時点>:<文書の URL>`）を直に開く（script の無い DOM の
  * 写し）。写しの URI のレコードは 1 つなので、`ts` は撮った時刻でよい（replay がいちばん近い物を選ぶ）。
  */

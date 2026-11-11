@@ -79,6 +79,8 @@ const REDIRECT_URI = `http://127.0.0.1:${String(PORT)}/callback`;
  * （`replayBundle.key`）・`lastJob.id` だけで、どこで開くかは配備の事実。1 か所で決めて `/healthz` で配る。
  */
 const REPLAYWEB_SERVER = optional("WORKBENCH_REPLAYWEB_SERVER_URL", "http://127.0.0.1:8899");
+/** 改変した Web Capture のビューア（capture-player）。リンクの形は replayweb-server と同じ（CAPTURE-102）。 */
+const CAPTURE_PLAYER = optional("WORKBENCH_CAPTURE_PLAYER_URL", "http://127.0.0.1:8897");
 const WINDMILL = optional("WORKBENCH_WINDMILL_URL", "http://127.0.0.1:8000");
 const WORKSPACE = optional("WORKBENCH_WINDMILL_WORKSPACE", "crawler");
 /** WACZ を検証する daemon。**鍵を持たない** —— capture-ledger が署名した URL だけを読む。 */
@@ -223,6 +225,7 @@ const server = createServer((request, reply) => {
         // 誰としてサインインしているか (画面の上に出す)。サインインしていなければ null。
         signedIn: held === undefined ? null : whoOf(held.accessToken),
         replaywebServerOrigin: REPLAYWEB_SERVER,
+        capturePlayerOrigin: CAPTURE_PLAYER,
         windmillOrigin: WINDMILL,
         windmillWorkspace: WORKSPACE,
         // 書き込みのエンドポイントの上限。workbench は欄の下に本文の大きさを出し、超えたら送る前に止める

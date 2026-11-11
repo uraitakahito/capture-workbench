@@ -13,7 +13,7 @@ that decides which URLs get captured and records what came back), run by
 [capture-scheduler](https://github.com/uraitakahito/capture-scheduler) (which drives crawls with
 Windmill flows), stored in [seaweedfs](https://github.com/uraitakahito/seaweedfs) (the
 S3-compatible store Web Capture shares) and opened with
-[replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser). A WACZ
+two viewers: [replayweb-server](https://github.com/uraitakahito/replayweb-server) (unmodified ReplayWeb.page, which plays a WACZ back in the browser) and [capture-player](https://github.com/uraitakahito/capture-player) (a modified ReplayWeb.page that also shows what BrowserHive adds to a WACZ). A WACZ
 (Web Archive Collection Zipped) is the archive format that packs the captured pages into a single
 ZIP.
 
@@ -27,7 +27,8 @@ flowchart LR
   D -->|"passes /api/* through"| L["capture-ledger API"]
   D -->|"hands over one signed URL"| V["wacz-validator daemon"]
   V -->|"reads with Range"| S[("seaweedfs store")]
-  B -.->|"link out"| R["replayweb-server"]
+  B -.->|"ReplayWeb.page ↗"| R["replayweb-server"]
+  B -.->|"Web Capture ↗"| P["capture-player"]
   B -.->|"link to the run"| W["Windmill"]
 ```
 
@@ -38,7 +39,7 @@ workbench turns the code that comes back from the sign-in into an access token (
 with PKCE, Proof Key for Code Exchange) and passes `/api/*` straight through to the ledger with it. The writes are
 `POST /api/crawls`, when you start a crawl from the form, and the routes for schedules ([Routes](/routes/)), sent the same way. For
 validating a WACZ and reading its contents, it asks the ledger to sign a URL and hands that URL to
-the daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a WACZ rule by rule), which reads the archive itself. replayweb-server and Windmill are only linked to from the rows.
+the daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a WACZ rule by rule), which reads the archive itself. replayweb-server, capture-player and Windmill are only linked to from the rows.
 
 ## Promises
 

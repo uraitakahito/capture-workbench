@@ -17,7 +17,7 @@ WACZ の画面のタブは、アーカイブの行の「開く」で入るまで
 | クロール | 1 行 = 1 本。状態・撮れた数・リンクの数・WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の数・かかった時間・run と replayweb-server（クロールを 1 つのアーカイブとして）への行き先 |
 | 新しいクロール | 起点の URL・スクリプト・深さを選び、スクリプトが宣言した変数の値を書き、その場の TS を書いて始める。TS の箱は窓の高さいっぱい。スクリプトは右の列のタブで読める |
 | 定期実行 | 予定と回。予定を止める・再開する・いま撮る・固定し直す・消す。撮れなかった回は全部の画面の帯に出る |
-| 変化 | 予定の回を前の回と比べた結果。回ごとのまとめと、開くとページごとの差分・Claude の要約（証拠ではない）・前と今の replay ↗ |
+| 変化 | 予定の回を前の回と比べた結果。回ごとのまとめと、開くとページごとの差分・Claude の要約（証拠ではない）・前と今の再生の link（ReplayWeb.page ↗・Web Capture ↗） |
 | アーカイブ | 見えている WACZ（一覧）。行から検証・WACZ の画面・[replayweb-server](https://github.com/uraitakahito/replayweb-server)（WACZ をブラウザで再生する画面）へ |
 | 検索 | capture-ledger の全文検索。語を打って探し、当たったアーカイブの時点（文書か写し）を並べる。行から WACZ の画面と replayweb-server へ |
 | スクリプト集 | ページの中で走らせるスクリプトと、書くための型。行番号つきで読め、古い版も読める。空なら赤で言う |
@@ -40,9 +40,9 @@ workbench は続きを取りに行きません。
 
 1 行が 1 本のクロールです。
 状態・id の先頭 8 文字・始めた人と組織・最初の起点の URL・撮れた数・リンクの数・WACZ の数・かかった時間が並び、右端の「run ↗」が Windmill の run を新しいタブで開きます。
-capture-ledger がクロールの合本を書いていれば、隣の「replay ↗」が、クロールを 1 つのアーカイブとして replay で開きます。
+capture-ledger がクロールの合本を書いていれば、隣の「ReplayWeb.page ↗」と「Web Capture ↗」が、クロールを 1 つのアーカイブとして replay で開きます。
 
-![クロールの画面の表。走行中・完走・打ち切り・失敗の行が並び、合本の在るクロールの行は run ↗ の隣に replay ↗ が付いている。走行中の行の字は replay r1（途中）↗](../../../assets/screens/crawls.webp)
+![クロールの画面の表。走行中・完走・打ち切り・失敗の行が並び、合本の在るクロールの行は run ↗ の隣に ReplayWeb.page ↗・Web Capture ↗ が付いている。走行中の行の字は ReplayWeb.page r1（途中）↗ と Web Capture r1（途中）↗](../../../assets/screens/crawls.webp)
 
 ① 状態\
 ② run の行き先
@@ -58,18 +58,18 @@ capture-ledger がクロールの合本を書いていれば、隣の「replay �
 - **run ↗ は、最後に投げた段の run。**
   行き先は、capture-ledger が返す `lastJob` の id と、サーバが `/healthz` で配る Windmill の origin と workspace から組みます。
   capture-ledger が `lastJob` を持たない行には出ません。
-- **replay ↗ は、クロールを 1 つのアーカイブとして開く。**
+- **ReplayWeb.page ↗・Web Capture ↗ は、クロールを 1 つのアーカイブとして開く。**
   capture-ledger は段ごとに、クロールの合本を保管庫へ書きます。
   合本は、クロールの WACZ を全部並べた `replay.json` と、ページの一覧（`pages.json`）の組です。ReplayWeb.page がページを引くと、replayweb-server がこの一覧から答えます。
   replay は合本を 1 つのアーカイブとして開くので、撮ったページのリンクから、別の WACZ に撮ったページへ行けます。
   行き先は、サーバが `/healthz` で配る replayweb-server の origin と、capture-ledger が指す版の鍵（`replayBundle.key`）から組み、ページ一覧（`#view=pages`）を開きます。
   合本の無いクロール（まだ何も撮っていない・合本を書かない capture-ledger）の行には出ません。
-  capture-ledger は、合本を書けなくてもクロールを止めません。開いた行の先頭に書けなかった理由を capture-ledger の文のまま（`replayBundle.error`）出し、replay ↗ は前に書けた版があればそれを開きます。
+  capture-ledger は、合本を書けなくてもクロールを止めません。開いた行の先頭に書けなかった理由を capture-ledger の文のまま（`replayBundle.error`）出し、ReplayWeb.page ↗・Web Capture ↗ は前に書けた版があればそれを開きます。
   決まりは `public/replayweb.js` の `replayBundleHref` で、`test/replayweb.test.mjs` が固定しています。
 - **途中の版は、字で言う。**
-  走行中の行の replay ↗ は、その時点で capture-ledger が書けた途中の版を開きます。
+  走行中の行の ReplayWeb.page ↗・Web Capture ↗ は、その時点で capture-ledger が書けた途中の版を開きます。
   後の段で撮るページはまだ入っていないので、そのページへのリンクは replay で Not Found になります。
-  そのため、字を `replay r1（途中）↗` にして、警告の色と説明を付けます。
+  そのため、字を `ReplayWeb.page r1（途中）↗ と Web Capture r1（途中）↗` にして、警告の色と説明を付けます。
   終わった行でも、指す版の `builtAt` が `finishedAt` より前なら同じです。
   flow は `report`（ここでクロールが終わる）の後に `replay_bundle`（ここで最後の版を書く）を走らせるので、最後の版は少し遅れて届きます。
   次の版を書けなかった行は、前の版を途中の版として開きます。
@@ -120,9 +120,9 @@ capture-ledger がクロールの合本を書いていれば、隣の「replay �
   リンクを 1 本も見ていないクロールは、全部の規則に 0 を並べず、そう 1 行で言います。
   最後が「Windmill で調べる」のリンクで、Windmill の `f/waggle/inspect_crawl` を、このクロールの id を入れた状態で開きます（Windmill は run の引数を URL の hash に持ちます）。
 
-![クロールの画面の開いた行の「ページ」の表。4 ページの URL・結末（撮れたページには replay ↗）・warn と error の数が並び、時間切れのページのログを開いて、スクリプトの行・取り込みのページの例外・BrowserHive の時間切れの行が出ている](../../../assets/screens/crawl-pages.webp)
+![クロールの画面の開いた行の「ページ」の表。4 ページの URL・結末（撮れたページには ReplayWeb.page ↗・Web Capture ↗）・warn と error の数が並び、時間切れのページのログを開いて、スクリプトの行・取り込みのページの例外・BrowserHive の時間切れの行が出ている](../../../assets/screens/crawl-pages.webp)
 
-① 結末（capture-ledger の state と理由。合本に入ったページには replay ↗）\
+① 結末（capture-ledger の state と理由。合本に入ったページには ReplayWeb.page ↗・Web Capture ↗）\
 ② warn と error の数\
 ③ ログ（押すと開き、もう 1 度押すと閉じる）\
 ④ level の絞り込み
@@ -132,7 +132,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「replay �
   並びは capture-ledger に入った順で、URL・結末・warn と error の数・「ログ」の button が並びます。
   結末は capture-ledger の state（`captured`・`failed` など）を言い換えずに出し、理由（取らなかった・取れなかった理由）があれば後ろに付けます。
   capture-ledger は、報告の来なかったページを `pending` のまま残します（撮れたかは分からない）。なので、終わったクロールのそういうページは「`pending`（報告なし —— クロールが先に終わった）」と出します。型の検査で落ちたクロールは 1 枚も撮っておらず、そのままでは起点のページが、まだ待っているように読めるためです。
-  capture-ledger が指す合本に WACZ が入ったページは、結末の後ろに「replay ↗」が付き、そのページを合本の中で、撮った時刻に開きます（`#view=replay&url=…&ts=…`）。
+  capture-ledger が指す合本に WACZ が入ったページは、結末の後ろに「ReplayWeb.page ↗」と「Web Capture ↗」が付き、そのページを合本の中で、撮った時刻に開きます（`#view=replay&url=…&ts=…`）。
   決め手は capture-ledger の `bundledRev`（そのページの WACZ が最初に入った版）で、開いた行の `replayBundle` が指す版より後でなければ付きます。
   WACZ の無いページ・まだどの版にも入っていない WACZ・行と一緒に引いた版より新しい版に入った WACZ には付きません。
   warn と error は、capture-ledger がその取り込みの `.result.json` から数えたログの行の数です。数を読んでいないページは「—」で、0 とは別です。
@@ -206,7 +206,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 - **User-Agent の箱で、クロールの `User-Agent` を決める。**
   空なら何も送らず、ブラウザの字（`HeadlessChrome` を含む）のまま撮ります。
   「Headless を外す型を入れる」を押すと `{chrome} BrowserHive` が入ります。`{chrome}` は BrowserHive がブラウザの字から Headless を外した物に置き換えるので、Headless を断るサイトも撮れ、ブラウザを上げても字が古くなりません。
-  たとえば[首相官邸の公式サイト](https://www.kantei.go.jp/)は、`HeadlessChrome` を含む字に HTTP 404 を返します。欄を空のまま「このページだけ」で始めると、ページの結末が `failed: http_error: HTTP 404: Not Found` になり、1 枚も撮れず replay ↗ も出ません。ボタンで `{chrome} BrowserHive` を入れて始めると撮れて、replay ↗ で開けます（2026-11-07 に確かめました。相手のサイトの答えは変わることがあります）。
+  たとえば[首相官邸の公式サイト](https://www.kantei.go.jp/)は、`HeadlessChrome` を含む字に HTTP 404 を返します。欄を空のまま「このページだけ」で始めると、ページの結末が `failed: http_error: HTTP 404: Not Found` になり、1 枚も撮れず ReplayWeb.page ↗・Web Capture ↗ も出ません。ボタンで `{chrome} BrowserHive` を入れて始めると撮れて、ReplayWeb.page ↗・Web Capture ↗ で開けます（2026-11-07 に確かめました。相手のサイトの答えは変わることがあります）。
   `BrowserHive` の語を含めるかは打つ人が決めます。含むと、相手のサイトに BrowserHive が撮っていると分かり、robots.txt もその名前の規則で読みます。含まなければ `*` の規則だけを読みます。
   workbench は字を検査しません。形（印字可能な ASCII・512 字以下）に合わない字は capture-ledger が 400 で断り、その文をそのまま出します。
   始めた後も、字は変数やスクリプトと同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は WACZ の `settings.userAgent` で読めます。
@@ -346,12 +346,12 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 予定の回を、同じ予定・同じ撮り方の前の回と比べた結果です（`#changes`・`#changes/<クロールの id>`）。
 比べるのも要約させるのも [capture-ledger](https://github.com/uraitakahito/capture-ledger) で、この画面は読むだけです。
 
-![変化の画面で開いた回。Claude の要約（証拠ではない）の添え書きの下に、ページごとに足した行と消した行、Claude の 1 行と引用（差分に無い引用は赤）、前と今の replay ↗ が出ている](../../../assets/screens/changes.webp)
+![変化の画面で開いた回。Claude の要約（証拠ではない）の添え書きの下に、ページごとに足した行と消した行、Claude の 1 行と引用（差分に無い引用は赤）、前と今の再生の link（ReplayWeb.page ↗・Web Capture ↗） が出ている](../../../assets/screens/changes.webp)
 
 - **差分は証拠から作った物、要約は読みやすくしただけ。**
   差分は capture-ledger が 2 本の WACZ から Claude なしで作った物です。
   Claude の 1 行には必ず「Claude の要約（証拠ではない）」と model・決まりの文の版・費用が付きます。
-  確かめるときは「replay ↗ 前」と「replay ↗ 今」で 2 本を開きます。
+  確かめるときは「前:」と「今:」の後ろの 2 つの再生の link で 2 本を開きます。
 - **重さは 3 つ。**
   「意味のある変化なし」（時刻だけなど）・「小さい変化」（宣伝の入れ替わりなど）・「中身の変化」（記事や事実が変わった）。
   決めるのは Claude で、誤りえます。
@@ -380,11 +380,11 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 ページを読み直すと消えます。
   報告に何が出るかは [WACZ を見る](/wacz/)に書きました。
 - **「開く」で WACZ の画面に入る**（`#wacz/<archiveId>`）。
-- **「replay ↗」は、取り込んだ URL を replay で直に開く。**
+- **「ReplayWeb.page ↗」と「Web Capture ↗」は、取り込んだ URL を replay で直に開く。**
   行き先は、サーバが `/healthz` で配る replayweb-server の origin、capture-ledger が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
   頁の script が動くので、JS で出す絵も出ます。BrowserHive が撮った DOM の写し（スクリプトの前と後）は、replay の Pages タブにあります。
   replay は自分では最初の頁を選びません。ページ一覧を日付の新しい順に並べ、WACZ の `mainPageURL` は読みません。
-  開くのはその WACZ 1 本です。クロールのほかのページへリンクで行くなら、[クロール](#クロール)の画面の行の replay ↗ から開きます。
+  開くのはその WACZ 1 本です。クロールのほかのページへリンクで行くなら、[クロール](#クロール)の画面の行の ReplayWeb.page ↗・Web Capture ↗ から開きます。
 
 ## 検索
 
@@ -399,7 +399,7 @@ capture-ledger の全文検索で、撮ったページの題と文字を探す�
 - **見せてよいアーカイブの物だけが並ぶ。**
   capture-ledger が、アーカイブの一覧と同じ認可で絞ります。
   件数は並んだ行の数で、capture-ledger が 1 回に返すのは 50 件までです。
-- **「replay ↗」は、文書の行なら取り込んだ URL を、写しの行なら写しを直に開く。**
+- **「ReplayWeb.page ↗」と「Web Capture ↗」は、文書の行なら取り込んだ URL を、写しの行なら写しを直に開く。**
   文書の行は頁の script が動く形で、写しの行は script の無い DOM の写し（その時点の頁の姿）です。
 - **「開く」で WACZ の画面に入る**（アーカイブの画面の一覧に在るアーカイブだけ）。
 - **引くのは「探す」を押したときと、URL で開いたときだけ。**

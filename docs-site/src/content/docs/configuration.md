@@ -32,7 +32,8 @@ destinations are fixed loopback addresses. There are no secrets.
 | `WORKBENCH_LEDGER_URL` | `http://127.0.0.1:7070` | The ledger's API |
 | `WORKBENCH_OIDC_ISSUER` | none | The IdP's issuer (`iss`). Locally, `IDP_ISSUER` in capture-ledger's `.dev/idp.env` |
 | `WORKBENCH_OIDC_CLIENT_ID` | none | The workbench's app client ID at the IdP. Locally, `IDP_WORKBENCH_CLIENT_ID` in the same file |
-| `WORKBENCH_REPLAYWEB_SERVER_URL` | `http://127.0.0.1:8899` | Where "replay ↗" goes: one WACZ from an archive row or a search hit, and the crawl's bundle from a crawl row or a page row |
+| `WORKBENCH_REPLAYWEB_SERVER_URL` | `http://127.0.0.1:8899` | Where "ReplayWeb.page ↗" goes (replayweb-server, which serves ReplayWeb.page unmodified): one WACZ from an archive row or a search hit, and the crawl's bundle from a crawl row or a page row |
+| `WORKBENCH_CAPTURE_PLAYER_URL` | `http://127.0.0.1:8897` | Where "Web Capture ↗" goes (capture-player, a modified ReplayWeb.page). The link has the same shape as "ReplayWeb.page ↗"; only the origin differs |
 | `WORKBENCH_WINDMILL_URL` | `http://127.0.0.1:8000` | Where "run ↗" on a crawl row goes |
 | `WORKBENCH_WINDMILL_WORKSPACE` | `crawler` | The Windmill workspace "run ↗" opens |
 | `WORKBENCH_VALIDATOR_URL` | `http://127.0.0.1:7180` | The daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (which checks a WACZ rule by rule) that answers validation and the WACZ view |
@@ -66,7 +67,7 @@ Where replayweb-server and Windmill live is a fact of the deployment. The ledger
 `objectKey`, the key of a crawl's bundle and a run id, so the server decides in one place where to
 open them and hands that to the browser through `/healthz` (see [Routes](/routes/)).
 
-Every "replay ↗" hands replay a path on replay's own origin, never a URL of the store: `/wacz/`
+Every "ReplayWeb.page ↗" and "Web Capture ↗" hands the viewer a path on the viewer's own origin, never a URL of the store: `/wacz/`
 and the key, with each `/`-separated part of the key percent-encoded, as the value of `?source=`
 (encoded once more as a query value). replayweb-server (v0.3.0 and later) decodes each part once,
 so a key that itself contains `%` (BrowserHive writes labels into keys percent-encoded) reaches the

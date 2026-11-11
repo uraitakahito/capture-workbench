@@ -2,7 +2,7 @@
   "//": "npm run docs:shots の生成物。手で直さない —— source を直して緑にすると、絵は古いまま残る",
   "chrome": "152.0.7977.54",
   "dpr": 1,
-  "source": "b80c76598e2aa7685f56b67fee2ace970b64e7023be1ad95c078bd3076d1308c",
+  "source": "3c8818fdbaaf80e1b460f184cdf06b6c5b1348e3d01b693ecb8d97de132e40b6",
   "shots": {
     "tabs": {
       "width": 669,
@@ -10,7 +10,7 @@
       "wide": true
     },
     "crawls": {
-      "width": 1069,
+      "width": 1316,
       "height": 410,
       "wide": true
     },
@@ -21,7 +21,7 @@
     },
     "changes": {
       "width": 632,
-      "height": 516
+      "height": 565
     },
     "crawl-detail": {
       "width": 632,
@@ -29,7 +29,7 @@
     },
     "crawl-pages": {
       "width": 632,
-      "height": 429
+      "height": 463
     },
     "start": {
       "width": 300,
@@ -48,13 +48,13 @@
       "height": 297
     },
     "archives": {
-      "width": 956,
+      "width": 1107,
       "height": 307,
       "wide": true
     },
     "search": {
       "width": 616,
-      "height": 423
+      "height": 461
     },
     "scripts": {
       "width": 300,
