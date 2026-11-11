@@ -3,7 +3,7 @@
  *
  * ## 本番は Amazon Cognito、手元は代役の Floci
  *
- * 台帳（capture-ledger）はトークンを Cognito の形で確かめる。workbench は人の代わりに台帳を叩くので、
+ * capture-ledger はトークンを Cognito の形で確かめる。workbench は人の代わりに capture-ledger を叩くので、
  * 人に IdP のサインインの画面を通ってもらい、戻ってきた code を access token に替えて持つ。
  * 手元の IdP は capture-ledger の compose の Floci で、`pnpm run idp:bootstrap` が workbench 用の
  * app client（public・戻り先 `http://127.0.0.1:7080/callback`）を作る（CAPTURE-185）。
@@ -51,7 +51,7 @@ export const sessionCookie = (id, maxAge = undefined) =>
 
 /**
  * JWT の中身を読む（**検証しない**）。画面に「誰としてサインインしているか」を出すためだけに使う ——
- * 署名を確かめるのは、トークンを受ける台帳。
+ * 署名を確かめるのは、トークンを受ける capture-ledger。
  */
 export const claimsOf = (jwt) => {
   try {

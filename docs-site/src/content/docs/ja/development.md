@@ -18,7 +18,7 @@ lockfile も audit も Dependabot もそこに閉じ、root に `node_modules` �
 
 | 打つもの | 何をするか |
 | --- | --- |
-| `npm run dev` | 画面（`public/`）を配り、`/api/*` を台帳へ、`/wacz/*` を daemon へ中継する |
+| `npm run dev` | 画面（`public/`）を配り、`/api/*` を capture-ledger へ、`/wacz/*` を daemon へ中継する |
 | `npm run check` | push の前に走らせる、workbench の検査の全部。中身と並びは `package.json` の `check`（CI の `ci.yml` が走らせるのも同じ） |
 | `npm run site:check` | docs を build し、docs と repo のずれを見る（先に `npm ci --prefix docs-site`） |
 | `npm run vendor` | `highlighter/` の lockfile から `public/vendor/`（束と、束ねた物の license の本文）を作り直す |
@@ -57,12 +57,12 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
 `public/` のものは、ブラウザが読むのと同じファイルを試験も読むので、写しが腐りません。
 
 **中継と、本物の IdP でのサインインは、CI では見ません。**
-サインインの手順（`state`・PKCE・セッション）は偽の IdP で試します（`test/auth.test.mjs`）が、行って戻る道は台帳と Floci が立っていないと確かめられないので、証拠は手で当てて PR に貼ります。
+サインインの手順（`state`・PKCE・セッション）は偽の IdP で試します（`test/auth.test.mjs`）が、行って戻る道は capture-ledger と Floci が立っていないと確かめられないので、証拠は手で当てて PR に貼ります。
 
 ## サンドボックスで開く
 
-台帳のスタックを起こさずに、workbench を全部の状態で開く手です。
-相手（台帳の代役と、本物の検証の daemon）はコンテナで、workbench は host で動きます。
+capture-ledger のスタックを起こさずに、workbench を全部の状態で開く手です。
+相手（capture-ledger の代役と、本物の検証の daemon）はコンテナで、workbench は host で動きます。
 
 1. この repo の隣（`../wacz-validator`）に [wacz-validator](https://github.com/uraitakahito/wacz-validator) を置く。
    daemon の image は、その Dockerfile の daemon の段から建てます。
@@ -87,19 +87,19 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | したいこと | すること |
 | --- | --- |
 | 見せるものを変える | 台本を書き換える。代役は要求のたびに読むので、起こし直さずに画面に出る |
-| 台帳にスクリプトが無いときを見る | 台本の `"emptyCatalog"` を `true` にする。スクリプト集の画面には受け皿の型だけが残る |
-| スクリプトを変える | 台本の `catalog` を書き換える。1 版に 1 つで、id の現れる順が既定の実行順。`sandbox/catalog/` のファイル（capture-scripts v0.13.0 のスクリプトと受け皿の型の写し。`egov-law-search` は `generated/` の物）を名指す。`sha256` と `bytes` は代役が台帳と同じくファイルから数え、一覧は各 id に 1 行（有効な版の中の最新、無ければ最新版を `enabled: false` で）。autoscroll v2 は同じファイルで `options` だけが違う版。autofetch は `enabled: false` —— カタログに `"default": false` と書いたスクリプトを台帳が持つ姿で、名指したときだけ走る。`sites`（対象サイト）のある版はサイト用のスクリプトで、既定で走るのは起点のどれかが対象サイトのホストにあるときだけ。`egov-law-search`（対象サイト `laws.e-gov.go.jp`）も capture-scripts の写しで、本物の台帳と同じ版。版の `params` は宣言（capture-scripts の `catalog.json` の `params`）で、一覧と 1 版のエンドポイント（HTTP の method と path の組）に出る —— `egov-law-search` は変数 `query` を宣言する。`hostTypes` は受け皿の型で、消すと型を取り込んでいない台帳になる。写しは `check:terms` から外してある（別の repo の言葉で、直すと行番号が実物とずれる） |
+| 登録済みのスクリプトが無いときを見る | 台本の `"emptyCatalog"` を `true` にする。スクリプト集の画面には受け皿の型だけが残る |
+| スクリプトを変える | 台本の `catalog` を書き換える。1 版に 1 つで、id の現れる順が既定の実行順。`sandbox/catalog/` のファイル（capture-scripts v0.13.1 のスクリプトと受け皿の型の写し。`egov-law-search` は `generated/` の物）を名指す。`sha256` と `bytes` は代役が capture-ledger と同じくファイルから数え、一覧は各 id に 1 行（有効な版の中の最新、無ければ最新版を `enabled: false` で）。autoscroll v2 は同じファイルで `options` だけが違う版。autofetch は `enabled: false` —— カタログに `"default": false` と書いたスクリプトを capture-ledger が持つ姿で、名指したときだけ走る。`sites`（対象サイト）のある版はサイト用のスクリプトで、既定で走るのは起点のどれかが対象サイトのホストにあるときだけ。`egov-law-search`（対象サイト `laws.e-gov.go.jp`）も capture-scripts の写しで、本物の capture-ledger と同じ版。版の `params` は宣言（capture-scripts の `catalog.json` の `params`）で、一覧と 1 版のエンドポイント（HTTP の method と path の組）に出る —— `egov-law-search` は変数 `query` を宣言する。`hostTypes` は受け皿の型で、消すと型を取り込んでいない capture-ledger になる。写しは `check:terms` から外してある（別の repo の言葉で、直すと行番号が実物とずれる） |
 | 別の WACZ を並べる | `SANDBOX_WACZ_DIR=<dir> npm run sandbox`（相対なら、この repo から。例: `../wacz-validator/samples`）。代役と daemon の両方に同じ置き場が入る |
 | wacz-validator の更新を daemon に入れる | `npm run sandbox:build`。`npm run sandbox` は、image が無いときにしか建てない |
-| 新しいクロールの画面を試す | 新しいクロールの画面から始める。代役は受けた行を台本の `submit.runsSeconds` 秒だけ走らせてから完走にする。走っている間にもう 1 度押すと 409、読めない URL は 400。走らせるもの（スクリプトのチェックとその場の TS）も台帳と同じ形で受け、知らないスクリプトの id・同じ id の重ね・名前の綴り・起点に合わないサイト用のスクリプトの名指し・既定が空（台帳にスクリプトが無いか、全部が別のサイト用）は台帳と同じ文で 400。台帳の schema に無い鍵も台帳と同じ文（`body must NOT have additional properties`）で 400。行を開くと走らせたものが出る。チェックの横の「読む」は右の列に開く（代役の autoscroll は v2 で設定つき、egov-law-search は起点に laws.e-gov.go.jp が無いと押せないが読める） |
-| クロールごとの値を試す | 起点に `https://laws.e-gov.go.jp/` を書いて egov-law-search を選ぶと、必須の変数 `query` の欄が出る。書いた値は `variables` で送られ、行を開くと「渡した値」に出る。その場の TS に `defineParams` を書いても欄が出る —— 代役は `POST /api/scripts/check` に、source を正規表現で読んで答える（代役だけの近道で、本物は ts-compile-service が構文木を歩く。型を検査しないので、`diagnostics` は `BH0002` と `BH0004` だけ）。代役は台帳 v0.90.0 と同じ順と文で 400 を言う —— 必須の変数が無い（`missing variables`。ほかの値の誤りより先）・同じ名前を別の種類か別の形で宣言している、または WARC に残すか（`archive`）が食い違う（`conflicting params`）・シークレットの名前を変数で渡している（`secrets cannot be passed as variables`）・どのスクリプトも宣言していない変数（`unknown variables`）・宣言の形に合わない値（`invalid variables`。理由は `hint`）・宣言した必須のシークレットが Windmill に無い（`unknown secrets`。名前と path と `hint`）・在るが secret でない（`not a secret variable`）・隠すシークレットを送るのに、配備の形式が値を置き換えられない（`formats that cannot hide secrets`。名前と `hint`）。配備の形式の代わりは台本の `captureFormats`（既定は台帳と同じ `["wacz"]`。`"png"` などを足すと、この 400 を見られる）。その場の TS の宣言の形は台帳の schema と同じ文で、`inline.params` に書けるのはシークレットだけで、値を WARC に残すなら `"archive": "keep"`。変数を書くか、同じ名前が 2 度あれば `invalid params`。Windmill の代わりは台本の `windmillSecrets`（在る secret 変数の名前）と `windmillVariables`（在るが secret でない名前）。シークレットの宣言は、その場の TS の `inline.params` を台帳の API に直に送るときだけ試せる（画面には欄が無い）。台本のクロール `5b0c0007` は変数 `query` と、隠すシークレット `api_token`・残すシークレット `login`（`archive: "keep"`）を持ち、開いた行に「渡した値」と「使ったシークレット」（WARC で隠すか残すか）が出る。値は代役もどこにも書かない |
-| User-Agent の箱を試す | 新しいクロールの画面で「Headless を外す型を入れる」を押すか、字を打つ。代役は字の形を台帳と同じ文で断り、受けた字を開いた行に出す |
-| 規則を試す | 新しいクロールの画面で「リンクを辿る」を選ぶ。代役は台帳 v0.62.0 と同じく規則を確かめる（同じ 3 つの 400 を同じ文で、`/api/crawl-rules/check` も同じ答え）し、`/api/crawls/:id/decisions` にも答える。台本のクロール `5b0c0007` は `rules`・`decisions`・`robots` を持ち、1 度も当たらない規則が 1 本ある。**`same-site` は近似**: 代役は Public Suffix List を持たず、ホスト名の最後の 2 ラベルをサイトとする。だから `example.co.jp` と `other.co.jp` を同じサイトと読む（台帳は tldts で、そう読まない） |
-| ページとログを見る | 台本のクロールに `pages` を書く（ページの行と、BrowserHive の答えの形の `log`。`counts` は省けば行から数える）。代役は台帳の `/api/crawls/:id/pages`（`after` と `limit`。続きは本文の `next`）と `/api/crawls/:id/pages/:page/log` に答え、`failures` の要素に `page` を付ける。`after` が数字だけでない・`limit` が範囲の外なら 400。`log` の無いページは、ログを読めない理由を返す（台本の `logReason`。省けば taskId の無いページは `not-captured`、在れば `no-log`）。台本のクロール `5b0c0009` は、時間切れのページ（warn と error の行）・捨てた行と途中で切った行を持つページ・robots.txt で撮らなかったページを持つ。`pages` の無い行は一覧が空。「続きを読む」を見るなら、行に台帳の 1 回分より多いページを書く（代役の 1 回分は台帳と同じ既定で、`sandbox/fake-ledger.mjs` の `pageList` に在る） |
-| 走らせたものの在る行を見る | 台本のクロールに `scripts` を書く（その場の物は `inline` つき）。同梱の台本には、その場の TS で完走した行と、compile の段で落ちた行が在る。代役も台帳と同じく、1 本の詳しい所には source を載せず、「欄に戻す」は名前で引くエンドポイント（`/api/crawls/:id/inline/:name`）から取る。クロール `5b0c0008` の autoscroll の `sha256` はわざと台帳の v1 と違えてあり、版の番号が使い回されたときに、クロールの「読む」が出す知らせを見られる |
-| 検索を試す | 検索の画面で語を打つ（同梱の台本では「ランプ」で 2 件）。代役は台本の `searchPages`（アーカイブごとのページ一覧の行。`stage` の無い行が文書の行）から、台帳と同じ決まりで答える —— 写しの行が在るアーカイブでは写しの行だけを引き、`hidden` のアーカイブは出さない。**代役は OpenSearch を持たない**: 題か本文に語を含む行を拾うだけで、点数も分かち書きも無い。`q` が無い・空・ほかの欄があれば、台帳の schema と同じ文で 400 |
-| クロールの合本を見る | 台本のクロール `5b0c0009` を開く。行の run ↗ の隣に replay ↗ が出て、ページの表では撮れたページの結末の後ろに replay ↗ が付く（行の `replayBundle` は r2、ページの `bundledRev` は 1 と 2）。時間切れのページと robots.txt で撮らなかったページには付かない。`5b0c0003` は r2 の次の版を書けなかった行（replay ↗ は r2 を開き、開いた行が理由を言う）、`5b0c0002` は 1 度も書けなかった行（replay ↗ が出ず、開いた行が理由を言う）。台本の行に `replayBundle`（`rev`・`pages`・`builtAt`・`error`。失敗だけの行は `rev` を省く）を、ページに `capturedAt` と `bundledRev` を書く。鍵は代役が台帳と同じ形（`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`）に組む。**代役は合本を書かない** —— replay ↗ の先には何も無い |
-| 直し方を訊く | クロール `5b0c0008`（型の検査で落ちた行）を開く。代役は `/api/crawls/:id/diagnostics` に台本の行の `diagnosed`（台帳の答えそのまま。無い行は型を通る答え）で、`POST /api/crawls/:id/inline/:name/fix` に `fixes`（その場の TS の名前ごとの `{ status, body }`）で答える。**代役は Claude を呼ばない** —— `fixes` に無い名前は 404。`5b0c0008` は TS7006 の 1 件と、検査に通った直し（2〜3 行目。直した版は TypeScript 6.0.3 の strict で通る）を持つ。ほかの答えを見るなら、`fixes` に 429 や 422 の `status` と台帳の本文を書く |
+| 新しいクロールの画面を試す | 新しいクロールの画面から始める。代役は受けた行を台本の `submit.runsSeconds` 秒だけ走らせてから完走にする。走っている間にもう 1 度押すと 409、読めない URL は 400。走らせるもの（スクリプトのチェックとその場の TS）も capture-ledger と同じ形で受け、知らないスクリプトの id・同じ id の重ね・名前の綴り・起点に合わないサイト用のスクリプトの名指し・既定が空（登録済みのスクリプトが無いか、全部が別のサイト用）は capture-ledger と同じ文で 400。capture-ledger の schema に無い鍵も capture-ledger と同じ文（`body must NOT have additional properties`）で 400。行を開くと走らせたものが出る。チェックの横の「読む」は右の列に開く（代役の autoscroll は v2 で設定つき、egov-law-search は起点に laws.e-gov.go.jp が無いと押せないが読める） |
+| クロールごとの値を試す | 起点に `https://laws.e-gov.go.jp/` を書いて egov-law-search を選ぶと、必須の変数 `query` の欄が出る。書いた値は `variables` で送られ、行を開くと「渡した値」に出る。その場の TS に `defineParams` を書いても欄が出る —— 代役は `POST /api/scripts/check` に、source を正規表現で読んで答える（代役だけの近道で、本物は ts-compile-service が構文木を歩く。型を検査しないので、`diagnostics` は `BH0002` と `BH0004` だけ）。代役は capture-ledger v0.90.0 と同じ順と文で 400 を言う —— 必須の変数が無い（`missing variables`。ほかの値の誤りより先）・同じ名前を別の種類か別の形で宣言している、または WARC に残すか（`archive`）が食い違う（`conflicting params`）・シークレットの名前を変数で渡している（`secrets cannot be passed as variables`）・どのスクリプトも宣言していない変数（`unknown variables`）・宣言の形に合わない値（`invalid variables`。理由は `hint`）・宣言した必須のシークレットが Windmill に無い（`unknown secrets`。名前と path と `hint`）・在るが secret でない（`not a secret variable`）・隠すシークレットを送るのに、配備の形式が値を置き換えられない（`formats that cannot hide secrets`。名前と `hint`）。配備の形式の代わりは台本の `captureFormats`（既定は capture-ledger と同じ `["wacz"]`。`"png"` などを足すと、この 400 を見られる）。その場の TS の宣言の形は capture-ledger の schema と同じ文で、`inline.params` に書けるのはシークレットだけで、値を WARC に残すなら `"archive": "keep"`。変数を書くか、同じ名前が 2 度あれば `invalid params`。Windmill の代わりは台本の `windmillSecrets`（在る secret 変数の名前）と `windmillVariables`（在るが secret でない名前）。シークレットの宣言は、その場の TS の `inline.params` を capture-ledger の API に直に送るときだけ試せる（画面には欄が無い）。台本のクロール `5b0c0007` は変数 `query` と、隠すシークレット `api_token`・残すシークレット `login`（`archive: "keep"`）を持ち、開いた行に「渡した値」と「使ったシークレット」（WARC で隠すか残すか）が出る。値は代役もどこにも書かない |
+| User-Agent の箱を試す | 新しいクロールの画面で「Headless を外す型を入れる」を押すか、字を打つ。代役は字の形を capture-ledger と同じ文で断り、受けた字を開いた行に出す |
+| 規則を試す | 新しいクロールの画面で「リンクを辿る」を選ぶ。代役は capture-ledger v0.62.0 と同じく規則を確かめる（同じ 3 つの 400 を同じ文で、`/api/crawl-rules/check` も同じ答え）し、`/api/crawls/:id/decisions` にも答える。台本のクロール `5b0c0007` は `rules`・`decisions`・`robots` を持ち、1 度も当たらない規則が 1 本ある。**`same-site` は近似**: 代役は Public Suffix List を持たず、ホスト名の最後の 2 ラベルをサイトとする。だから `example.co.jp` と `other.co.jp` を同じサイトと読む（capture-ledger は tldts で、そう読まない） |
+| ページとログを見る | 台本のクロールに `pages` を書く（ページの行と、BrowserHive の答えの形の `log`。`counts` は省けば行から数える）。代役は capture-ledger の `/api/crawls/:id/pages`（`after` と `limit`。続きは本文の `next`）と `/api/crawls/:id/pages/:page/log` に答え、`failures` の要素に `page` を付ける。`after` が数字だけでない・`limit` が範囲の外なら 400。`log` の無いページは、ログを読めない理由を返す（台本の `logReason`。省けば taskId の無いページは `not-captured`、在れば `no-log`）。台本のクロール `5b0c0009` は、時間切れのページ（warn と error の行）・捨てた行と途中で切った行を持つページ・robots.txt で撮らなかったページを持つ。`pages` の無い行は一覧が空。「続きを読む」を見るなら、行に capture-ledger の 1 回分より多いページを書く（代役の 1 回分は capture-ledger と同じ既定で、`sandbox/fake-ledger.mjs` の `pageList` に在る） |
+| 走らせたものの在る行を見る | 台本のクロールに `scripts` を書く（その場の物は `inline` つき）。同梱の台本には、その場の TS で完走した行と、compile の段で落ちた行が在る。代役も capture-ledger と同じく、1 本の詳しい所には source を載せず、「欄に戻す」は名前で引くエンドポイント（`/api/crawls/:id/inline/:name`）から取る。クロール `5b0c0008` の autoscroll の `sha256` はわざと登録済みの v1 と違えてあり、版の番号が使い回されたときに、クロールの「読む」が出す知らせを見られる |
+| 検索を試す | 検索の画面で語を打つ（同梱の台本では「ランプ」で 2 件）。代役は台本の `searchPages`（アーカイブごとのページ一覧の行。`stage` の無い行が文書の行）から、capture-ledger と同じ決まりで答える —— 写しの行が在るアーカイブでは写しの行だけを引き、`hidden` のアーカイブは出さない。**代役は OpenSearch を持たない**: 題か本文に語を含む行を拾うだけで、点数も分かち書きも無い。`q` が無い・空・ほかの欄があれば、capture-ledger の schema と同じ文で 400 |
+| クロールの合本を見る | 台本のクロール `5b0c0009` を開く。行の run ↗ の隣に replay ↗ が出て、ページの表では撮れたページの結末の後ろに replay ↗ が付く（行の `replayBundle` は r2、ページの `bundledRev` は 1 と 2）。時間切れのページと robots.txt で撮らなかったページには付かない。`5b0c0003` は r2 の次の版を書けなかった行（replay ↗ は r2 を開き、開いた行が理由を言う）、`5b0c0002` は 1 度も書けなかった行（replay ↗ が出ず、開いた行が理由を言う）。台本の行に `replayBundle`（`rev`・`pages`・`builtAt`・`error`。失敗だけの行は `rev` を省く）を、ページに `capturedAt` と `bundledRev` を書く。鍵は代役が capture-ledger と同じ形（`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`）に組む。**代役は合本を書かない** —— replay ↗ の先には何も無い |
+| 直し方を訊く | クロール `5b0c0008`（型の検査で落ちた行）を開く。代役は `/api/crawls/:id/diagnostics` に台本の行の `diagnosed`（capture-ledger の答えそのまま。無い行は型を通る答え）で、`POST /api/crawls/:id/inline/:name/fix` に `fixes`（その場の TS の名前ごとの `{ status, body }`）で答える。**代役は Claude を呼ばない** —— `fixes` に無い名前は 404。`5b0c0008` は TS7006 の 1 件と、検査に通った直し（2〜3 行目。直した版は TypeScript 6.0.3 の strict で通る）を持つ。ほかの答えを見るなら、`fixes` に 429 や 422 の `status` と capture-ledger の本文を書く |
 | 定期実行 | タブ「定期実行」。回が失敗した予定（全部の画面に帯が出る）・順番待ちの予定・止めた予定が並ぶ。操作の結果は代役が起きている間だけ覚える。周回は無いので、「いま撮る」は頼みが立つだけ |
 
 代役にできないこともあります。
@@ -113,9 +113,9 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
   開いても、代役の行（と合本）は向こうに在りません。
 - 検証の報告の版は `wacz-validator unknown` と出ます（image に `.git` を入れないため）。
 - 画面の赤い文は、直し方に capture-ledger のコマンドを挙げます。
-  サンドボックスでは、台帳は代役、daemon は `sandbox-validator` のコンテナと読み替えてください。
-- 代役の答えの形は、台帳のコードから写したものです。
-  台帳が欄を変えても、代役はついてきません（写した欄の集合は `test/sandbox.test.mjs` が固定しています）。
+  サンドボックスでは、capture-ledger は代役、daemon は `sandbox-validator` のコンテナと読み替えてください。
+- 代役の答えの形は、capture-ledger のコードから写したものです。
+  capture-ledger が欄を変えても、代役はついてきません（写した欄の集合は `test/sandbox.test.mjs` が固定しています）。
   本物との突き合わせは、`dev:up` のスタックでします。
 
 headless Chrome の `--dump-dom` で読もうとすると、終わりません。
@@ -172,7 +172,7 @@ npm run docs:shots -- start crawls   # 名指した絵だけ
   控えを手で写して緑にしないこと —— 絵が古いまま残ります。
 - **名指して撮っても、控えは変わらない。**
   控えを今に合わせるのは、全部を撮ったときだけです。
-- **絵は lossless の WebP で、1 枚 35 KB・全部で 264 KB まで。**
+- **絵は lossless の WebP で、1 枚 35 KB・全部で 268 KB まで。**
   撮り直すたびに git に積もるからです。
   超えると `site:check` が落ちます。
   そのときは `docs-shots.mjs` の `SHOTS` で、写す箱を小さくするか、高さの上限（`maxHeight`）を下げます。

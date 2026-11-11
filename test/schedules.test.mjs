@@ -1,5 +1,5 @@
 /**
- * 定期実行の画面（`public/schedules.js`）の、画面に依らない部分。台帳の `GET /api/schedules` の語を、帯の文・状態の字・
+ * 定期実行の画面（`public/schedules.js`）の、画面に依らない部分。capture-ledger の `GET /api/schedules` の語を、帯の文・状態の字・
  * 回の行にする形（CAPTURE-174）。
  */
 import { test } from "node:test";
@@ -148,7 +148,7 @@ test("帯は複数の予定を並べる", () => {
 });
 
 test("読めないときは、何も起きていないと取り違えないように帯で言う", () => {
-  assert.equal(bandOf([], "台帳に届きません", NOW), "定期実行の状態を読めません（台帳に届きません）");
+  assert.equal(bandOf([], "capture-ledger に届きません", NOW), "定期実行の状態を読めません（capture-ledger に届きません）");
   // 前に読めた予定があっても、読めないことを先に言う
   assert.match(bandOf([schedule({ health: "failing" })], "x", NOW), /読めません/);
 });
@@ -238,7 +238,7 @@ test("作った答えの 1 行", () => {
   assert.match(createAnswer(400, { error: "every seed must be an http(s) URL" }).text, /every seed/);
 });
 
-test("操作の答えの 1 行。断られたら台帳の文をそのまま", () => {
+test("操作の答えの 1 行。断られたら capture-ledger の文をそのまま", () => {
   assert.equal(actionAnswer("pause", 200, {}).kind, "ok");
   assert.equal(actionAnswer("run", 202, {}).kind, "ok");
   assert.equal(actionAnswer("delete", 200, {}).text, "消しました。");

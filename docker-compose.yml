@@ -1,10 +1,10 @@
-# workbench のサンドボックス。workbench の相手 (台帳の代役と、本物の検証の daemon) をコンテナで起こす。
+# workbench のサンドボックス。workbench の相手 (capture-ledger の代役と、本物の検証の daemon) をコンテナで起こす。
 # workbench は host で `npm run sandbox` (sandbox/sandbox.env だけを読む)。
 #
 # **コンテナどうしは話さない。** どちらも host の 127.0.0.1 に出したポートで、workbench から呼ばれる。
 # だから DNS ドメイン (sudo container system dns create) は要らない。
 #
-# - sandbox-ledger: 台帳と開発用 issuer の代役 (sandbox/fake-ledger.mjs)。何を見せるかは
+# - sandbox-ledger: capture-ledger と開発用 issuer の代役 (sandbox/fake-ledger.mjs)。何を見せるかは
 #   sandbox/scenario.json が決める
 # - sandbox-validator: 本物の daemon。image は、隣の ../wacz-validator の Dockerfile の daemon の段から
 #   `npm run sandbox:build` が建てる (`npm run sandbox` は、無いときだけ建てる)。

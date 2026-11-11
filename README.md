@@ -1,7 +1,7 @@
 # capture-workbench
 
 Web Capture を開発するときに手元で開く Web アプリ。**1 本のクロールを 1 行で見る。**
-始める（[capture-ledger](https://github.com/uraitakahito/capture-ledger)）・走らせる（[capture-scheduler](https://github.com/uraitakahito/capture-scheduler) の Windmill）・置く（[seaweedfs](https://github.com/uraitakahito/seaweedfs)）・読む（[replayweb-server](https://github.com/uraitakahito/replayweb-server)）の 4 枚に割れていた画面を、台帳の API から 1 枚に組み立てる。
+始める（[capture-ledger](https://github.com/uraitakahito/capture-ledger)）・走らせる（[capture-scheduler](https://github.com/uraitakahito/capture-scheduler) の Windmill）・置く（[seaweedfs](https://github.com/uraitakahito/seaweedfs)）・読む（[replayweb-server](https://github.com/uraitakahito/replayweb-server)）の 4 枚に割れていた画面を、capture-ledger の API から 1 枚に組み立てる。
 npm の依存を持たず（例外は commit した色付けの 1 ファイル）、秘密も持たない。loopback（既定は `127.0.0.1:7080`）でだけ待ち受ける。
 
 ## Documentation
@@ -13,7 +13,7 @@ npm の依存を持たず（例外は commit した色付けの 1 ファイル�
 
 ## Related Projects
 
-- [capture-ledger](https://github.com/uraitakahito/capture-ledger) — 読む台帳の API。`dev:up` が workbench を起こす
+- [capture-ledger](https://github.com/uraitakahito/capture-ledger) — 読む API の持ち主。`dev:up` が workbench を起こす
 - [wacz-validator](https://github.com/uraitakahito/wacz-validator) — 「検証」と WACZ の画面に答える daemon
 - [capture-scheduler](https://github.com/uraitakahito/capture-scheduler) — クロールの run（Windmill）への行き先
 - [replayweb-server](https://github.com/uraitakahito/replayweb-server) — アーカイブを開く行き先

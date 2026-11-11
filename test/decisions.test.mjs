@@ -1,5 +1,5 @@
 /**
- * クロールの行を開いたときの「規則が何を決めたか」（`public/decisions.js`）。台帳の
+ * クロールの行を開いたときの「規則が何を決めたか」（`public/decisions.js`）。capture-ledger の
  * `GET /api/crawls/:id/decisions` の答え（capture-ledger v0.62.0 の形）を数え直すだけ。
  */
 import { test } from "node:test";

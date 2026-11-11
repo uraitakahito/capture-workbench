@@ -43,24 +43,24 @@ export const replaywebHref = (origin, { objectKey, sourceUrl, capturedAt }) => {
   return `${base}#${new URLSearchParams({ view: "replay", url: sourceUrl, ts })}`;
 };
 
-/** 台帳が指す合本の鍵（`replayBundle.key`）。書けた版が無ければ（null の欄・失敗だけの欄・欄の無い台帳）undefined。 */
+/** capture-ledger が指す合本の鍵（`replayBundle.key`）。書けた版が無ければ（null の欄・失敗だけの欄・欄の無い capture-ledger）undefined。 */
 const bundleKeyOf = (replayBundle) => {
   const key = replayBundle?.key;
   return typeof key === "string" && key !== "" ? key : undefined;
 };
 
 /**
- * クロールの合本の「replay ↗」の行き先。合本は、台帳が段ごとに保管庫へ書く `replay.json`（と `pages.json`）で、replay は
+ * クロールの合本の「replay ↗」の行き先。合本は、capture-ledger が段ごとに保管庫へ書く `replay.json`（と `pages.json`）で、replay は
  * クロールの WACZ を全部束ねた 1 つのアーカイブとして開く（リンクで別の WACZ のページへ行ける）。行き先が無ければ undefined
  * （link を出さない）。
  *
  * - **`source` は replayweb-server と同じ origin の path**（`/wacz/<鍵>`。replayweb-server が保管庫へ中継する）。ReplayWeb.page は JSON の
  *   中の `resources[].path` と `pagesQueryUrl` を JSON の URL から解くので、ほかの origin の URL では引けない。綴りは
  *   WACZ 1 本と同じ（`replaywebSourceHref`）
- * - replay は `source` が `.json` で終わると合本（複数の WACZ）として開く（拡張子だけで決める）。台帳の鍵は
+ * - replay は `source` が `.json` で終わると合本（複数の WACZ）として開く（拡張子だけで決める）。capture-ledger の鍵は
  *   `replay.json` で終わる
  * - ページの行を渡さなければ一覧（`#view=pages`）。渡せば、そのページを撮った時刻で合本の中で直に開く
- *   （`#view=replay&url=…&ts=…`）。ただしページの WACZ が台帳の指す版に入っているときだけ —— `bundledRev`（その WACZ が
+ *   （`#view=replay&url=…&ts=…`）。ただしページの WACZ が capture-ledger の指す版に入っているときだけ —— `bundledRev`（その WACZ が
  *   最初に入った版）が無いか、指す版より大きければ undefined（指す版の合本で開いても、replay は見つけられない）。URL か
  *   時刻が読めなければ一覧
  */
@@ -80,7 +80,7 @@ export const replayBundleHref = (origin, replayBundle, page) => {
  * クロールの行（一覧か詳しい所の答え）の合本が、途中の版か（CAPTURE-114）。途中の版には後の段で撮るページが入っていないので、
  * そのページへのリンクは replay で Not Found になる。走行中なら途中。終わった行は、指す版を書いた時刻（`builtAt`）が
  * 終わった時刻（`finishedAt`）より前なら途中 —— flow は report（ここでクロールが終わる）の後に replay_bundle（ここで最後の
- * 版を書く）を走らせるので、最後の版は少し遅れて届く。次の版を書けなかった行も、ここに入る。どちらの時刻も台帳の時計。
+ * 版を書く）を走らせるので、最後の版は少し遅れて届く。次の版を書けなかった行も、ここに入る。どちらの時刻も capture-ledger の時計。
  * 開ける版が無ければ false（link を出さない）。
  */
 export const isPartialBundle = (crawl) => {
@@ -95,7 +95,7 @@ const FINAL_BUNDLE_WAIT_MS = 60_000;
 /**
  * 終わったのに、最後の版がまだ見えていないか。見えるまで速く引き直す（`app.js` の `pace`）。走行中でなくなると引き直しは
  * 30 秒ごとになるので、待たないと、最後の版が書かれた後も古い版を開く link が残る。走行中の行は終わった時刻が無いので
- * 待たない（別に速く引いている）。台帳が書けなかったと言っている行と、終わってから `FINAL_BUNDLE_WAIT_MS` を過ぎた行も待たない。
+ * 待たない（別に速く引いている）。capture-ledger が書けなかったと言っている行と、終わってから `FINAL_BUNDLE_WAIT_MS` を過ぎた行も待たない。
  */
 export const awaitsFinalBundle = (crawl, now = Date.now()) => {
   const finished = Date.parse(crawl.finishedAt);
@@ -112,7 +112,7 @@ export const replayBundleText = (crawl) =>
 export const PARTIAL_BUNDLE_NOTE = "走行中に書いた途中の版です。まだ入っていないページは Not Found になります";
 
 /**
- * 合本を書けなかった理由の 1 行（台帳の `replayBundle.error`。文は言い換えない）。失敗が無ければ undefined。台帳は指す版を
+ * 合本を書けなかった理由の 1 行（capture-ledger の `replayBundle.error`。文は言い換えない）。失敗が無ければ undefined。capture-ledger は指す版を
  * 前へだけ進め、失敗の理由は次に書けたら消す —— 書けた版が在れば、replay ↗ はその（前の）版を開く。
  */
 export const replayBundleFailure = (replayBundle) => {

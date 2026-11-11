@@ -67,16 +67,16 @@ export const hostAllowed = (host, port) =>
   host === `127.0.0.1:${String(port)}` || host === `localhost:${String(port)}`;
 
 /**
- * 書き込みのエンドポイント。**台帳へそのまま渡す POST は、この形だけ**:
+ * 書き込みのエンドポイント。**capture-ledger へそのまま渡す POST は、この形だけ**:
  *
  * - `/api/crawls` —— クロールを始める
  * - `/api/crawls/<id>/inline/<name>/fix` —— 型で落ちたクロールの、その場の TS の直し方を Claude に訊く
- *   （CAPTURE-49。台帳は型の検査に通った案だけを返し、費用を数える）
+ *   （CAPTURE-49。capture-ledger は型の検査に通った案だけを返し、費用を数える）
  * - `/api/scripts/check` —— 書いている途中のその場の TS が宣言した変数を訊く。**書かない**が、source を本文で送るので
  *   POST で、JSON だけを通す門も要る（よそのページから叩かれると、ts-compile-service を働かせられる）
  *
  * **端を固めて照らす** —— 末尾の足し・query・`%`（`%2F` も `%2e%2e` も）・`.` を通さない。id と名前の字まで絞るのは、
- * fetch が URL の `..` を畳み、台帳のほかのエンドポイントに届かせないため。判断は台帳がする —— ここは中継する形を絞るだけ。
+ * fetch が URL の `..` を畳み、capture-ledger のほかのエンドポイントに届かせないため。判断は capture-ledger がする —— ここは中継する形を絞るだけ。
  */
 const WRITE_ROUTES = [
   /^\/api\/crawls$/,
@@ -109,8 +109,8 @@ export const writeRefusal = (headers, port) => {
 /**
  * 書き込みのエンドポイントが受ける本文の上限。起点の URL と、その場で書いた TS が入る。**capture-ledger の
  * `POST /api/crawls` の上限（`src/api/crawls.ts` の `CRAWL_BODY_LIMIT`）と同じ 1 MiB** —— 片方だけを
- * 変えると、workbench が通すのに台帳が 413、の形になる。workbench は `/healthz` の `writeLimit` で知り、
- * 送る前に止める。超えたら 413（台帳まで行かない）。
+ * 変えると、workbench が通すのに capture-ledger が 413、の形になる。workbench は `/healthz` の `writeLimit` で知り、
+ * 送る前に止める。超えたら 413（capture-ledger まで行かない）。
  */
 export const WRITE_LIMIT = 1024 * 1024;
 

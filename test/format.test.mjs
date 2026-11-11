@@ -150,7 +150,7 @@ test("一覧から消えた id だけを、覚えた答えから忘れる", () =
   assert.deepEqual([...map.keys()], ["a", "c"]);
 });
 
-test("シークレットを WARC に残すか: keep は残す（warn）、null は隠す（*** と版の注記は title）、archive を返さない台帳の行は何も言わない", () => {
+test("シークレットを WARC に残すか: keep は残す（warn）、null は隠す（*** と版の注記は title）、archive を返さない capture-ledger の行は何も言わない", () => {
   assert.deepEqual(secretArchiveOf("keep"), {
     text: "WARC に残す（keep）",
     kind: "warn",
@@ -160,7 +160,7 @@ test("シークレットを WARC に残すか: keep は残す（warn）、null �
   assert.equal(hidden.text, "WARC で隠す");
   assert.equal(hidden.kind, "muted");
   assert.match(hidden.title, /\*\*\* に置き換わる/);
-  // 台帳は v29 より前の取り込みの行にも null を返す。隠したとは言い切らない
+  // capture-ledger は v29 より前の取り込みの行にも null を返す。隠したとは言い切らない
   assert.match(hidden.title, /BrowserHive v29\.0\.0 から/);
   assert.equal(secretArchiveOf(undefined), undefined);
 });

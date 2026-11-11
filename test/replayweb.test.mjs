@@ -64,10 +64,10 @@ test("WACZ の鍵も合本と同じ綴り: 区切りごとに符号にした pat
   assert.equal(new URL(href).searchParams.get("source"), "/wacz/a%20b/c.wacz");
 });
 
-// ── クロールの合本（CAPTURE-54）。台帳の `replayBundle` とページの行の `capturedAt`・`bundledRev` から組む ──────────
+// ── クロールの合本（CAPTURE-54）。capture-ledger の `replayBundle` とページの行の `capturedAt`・`bundledRev` から組む ──────────
 
 const CRAWL = "5b0c0009-6a1e-4000-8000-000000000009";
-/** 台帳の行の `replayBundle`（書けた版 r2）。 */
+/** capture-ledger の行の `replayBundle`（書けた版 r2）。 */
 const BUNDLE = {
   key: `org/acme/crawls/${CRAWL}/r2/replay.json`,
   rev: 2,
@@ -149,7 +149,7 @@ test("ページは、合本の中で撮った時刻に直に開く（source は�
   assert.equal(sourceOf(href), sourceOf(replayBundleHref(ORIGIN, BUNDLE)));
 });
 
-test("台帳が合本を持たない行（replayBundle が null・欄の無い古い台帳）には、行き先が無い", () => {
+test("capture-ledger が合本を持たない行（replayBundle が null・欄の無い古い capture-ledger）には、行き先が無い", () => {
   assert.equal(replayBundleHref(ORIGIN, null), undefined);
   assert.equal(replayBundleHref(ORIGIN, undefined), undefined);
   assert.equal(replayBundleHref(ORIGIN, null, PAGE), undefined);
@@ -162,7 +162,7 @@ test("1 度も書けず失敗だけの行（key が無く error だけ）には�
   assert.equal(sourceOf(replayBundleHref(ORIGIN, later)), `/wacz/org/acme/crawls/${CRAWL}/r2/replay.json`);
 });
 
-test("ページの WACZ が台帳の指す版より後の版に入ったなら（bundledRev > rev）、行き先が無い", () => {
+test("ページの WACZ が capture-ledger の指す版より後の版に入ったなら（bundledRev > rev）、行き先が無い", () => {
   assert.equal(replayBundleHref(ORIGIN, BUNDLE, { ...PAGE, bundledRev: 3 }), undefined);
   assert.notEqual(replayBundleHref(ORIGIN, BUNDLE, { ...PAGE, bundledRev: 2 }), undefined, "指す版で入った");
   assert.notEqual(replayBundleHref(ORIGIN, BUNDLE, { ...PAGE, bundledRev: 1 }), undefined, "前の版で入った");
@@ -170,7 +170,7 @@ test("ページの WACZ が台帳の指す版より後の版に入ったなら�
 
 test("WACZ がどの版にも入っていないページ（bundledRev が null）には、行き先が無い", () => {
   assert.equal(replayBundleHref(ORIGIN, BUNDLE, { ...PAGE, bundledRev: null }), undefined);
-  // 欄の無い台帳のページ
+  // 欄の無い capture-ledger のページ
   assert.equal(replayBundleHref(ORIGIN, BUNDLE, { id: PAGE.id, url: PAGE.url }), undefined);
 });
 
@@ -181,7 +181,7 @@ test("合本に入ったページでも、URL か撮った時刻が読めなけ�
   assert.equal(replayBundleHref(ORIGIN, BUNDLE, { ...PAGE, url: "" }), list);
 });
 
-test("合本を書けなかった理由は 1 行で、台帳の文のまま。書けた版が在れば、前の版を開くと添える", () => {
+test("合本を書けなかった理由は 1 行で、capture-ledger の文のまま。書けた版が在れば、前の版を開くと添える", () => {
   assert.equal(replayBundleFailure(BUNDLE), undefined);
   assert.equal(replayBundleFailure(null), undefined);
   assert.equal(replayBundleFailure(undefined), undefined);
@@ -245,7 +245,7 @@ test("走行中の行は、最後の版を待つ行に数えない（別に速�
   assert.equal(awaitsFinalBundle({ state: "running", finishedAt: null, replayBundle: BUNDLE }, SOON), false);
 });
 
-test("台帳が書けなかったと言っている行は、待たない", () => {
+test("capture-ledger が書けなかったと言っている行は、待たない", () => {
   assert.equal(awaitsFinalBundle(ended(NEVER_WRITTEN), SOON), false, "1 度も書けなかった");
   assert.equal(awaitsFinalBundle(ended({ ...beforeEnd, error: "socket hang up" }), SOON), false, "次の版を書けなかった");
 });

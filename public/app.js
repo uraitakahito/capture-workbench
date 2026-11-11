@@ -1,7 +1,7 @@
 /**
  * workbench。**素の JS**（bundler も framework も通さない）。
  *
- * 読むのは台帳のエンドポイントと、WACZ の中身を読む `/wacz/` のエンドポイントだけ。ここで畳むのは「どの画面を
+ * 読むのは capture-ledger のエンドポイントと、WACZ の中身を読む `/wacz/` のエンドポイントだけ。ここで畳むのは「どの画面を
  * 出すか」と「どう描くか」で、何が起きたかは全部向こうが知っている。
  *
  * **撮った中身は他人が書いたもの。** 文字は `textContent`、画像は raster だけを
@@ -162,7 +162,7 @@ const post = async (path) => {
 };
 
 /**
- * 失敗は**消さずに出す**。台帳が落ちている間も、最後に描けた表は残す ——
+ * 失敗は**消さずに出す**。capture-ledger が落ちている間も、最後に描けた表は残す ——
  * 空の表は「見えるものが無い」と読めてしまい、「取りに行けない」と区別が付かない。
  */
 const trouble = (message) => {
@@ -293,7 +293,7 @@ const diffBoxOf = (edits) => {
 };
 
 /**
- * 「直し方を訊く」と、訊いた答え。**押したときだけ Claude を呼ぶ**（型の誤りの表は呼ばずに出る）。台帳が返すのは
+ * 「直し方を訊く」と、訊いた答え。**押したときだけ Claude を呼ぶ**（型の誤りの表は呼ばずに出る）。capture-ledger が返すのは
  * 型の検査に通った直しだけで、理由・差分・回数と費用を出し、「直した版を欄に戻す」で新しいクロールの画面へ渡す。
  */
 const fixOf = (crawlId, script) => {
@@ -351,8 +351,8 @@ const askFix = async (crawlId, name) => {
 };
 
 /**
- * 走らせたもの。**並びが実行順。** 台帳のスクリプトは版を、その場で書いた物は「その場」と出す ——
- * その場の物にだけ、台帳は頼まれた要素（`inline`）を返す。サイト用のスクリプトには対象サイトを添える。
+ * 走らせたもの。**並びが実行順。** 登録済みのスクリプトは版を、その場で書いた物は「その場」と出す ——
+ * その場の物にだけ、capture-ledger は頼まれた要素（`inline`）を返す。サイト用のスクリプトには対象サイトを添える。
  */
 const ranOf = (one) => {
   const scripts = one.scripts ?? [];
@@ -363,12 +363,12 @@ const ranOf = (one) => {
     const item = document.createElement("li");
     const where =
       script.inline === undefined
-        ? `台帳 v${String(script.version)}・${script.phase}`
+        ? `登録 v${String(script.version)}・${script.phase}`
         : `その場・${script.phase}・${count(script.inline.bytes)} バイト`;
     item.append(tag("span", script.id, "mono"));
     if (script.sites.length > 0) item.append(siteChip(script.sites));
     item.append(tag("span", where, "muted"));
-    // その場の TS は、直して撮り直せるように欄へ戻せる（台帳のスクリプトは台帳に在る）。source は詳しい所に
+    // その場の TS は、直して撮り直せるように欄へ戻せる（登録済みのスクリプトは capture-ledger に在る）。source は詳しい所に
     // 無いので、押したときに名前で引くエンドポイントから取る
     if (script.inline !== undefined) {
       item.append(button("欄に戻す", () => void putBack(one.crawlId, script.inline.name)));
@@ -387,7 +387,7 @@ const ranOf = (one) => {
   return box;
 };
 
-/** 時刻を読める形に。読めない文字列（台帳が null を返した所など）はそのまま。 */
+/** 時刻を読める形に。読めない文字列（capture-ledger が null を返した所など）はそのまま。 */
 const whenOf = (iso) => {
   const ms = Date.parse(String(iso));
   return Number.isNaN(ms) ? String(iso) : new Date(ms).toLocaleString("ja-JP");
@@ -395,7 +395,7 @@ const whenOf = (iso) => {
 
 /**
  * シークレットの値を WARC に残すかの印（`format.js` の `secretArchiveOf`）。開いた行と新しいクロールの画面が同じ物を
- * 出す。台帳が言わなければ undefined。
+ * 出す。capture-ledger が言わなければ undefined。
  */
 const archiveTag = (archive) => {
   const said = secretArchiveOf(archive);
@@ -406,11 +406,11 @@ const archiveTag = (archive) => {
 };
 
 /**
- * 渡した値（台帳の `variables`。始めるときに行へ固定された名前と値）と、使ったシークレット（`secrets`。名前と
- * Windmill の変数の path と、台帳が確かめたときの edited_at。途中で替わっていれば、どの段からか。WARC に残すか）。
- * **値を持つのは変数だけ** —— シークレットの値は台帳に無く、写し・ページの文字・ログからも消える。WARC では、隠す
+ * 渡した値（capture-ledger の `variables`。始めるときに行へ固定された名前と値）と、使ったシークレット（`secrets`。名前と
+ * Windmill の変数の path と、capture-ledger が確かめたときの edited_at。途中で替わっていれば、どの段からか。WARC に残すか）。
+ * **値を持つのは変数だけ** —— シークレットの値は capture-ledger に無く、写し・ページの文字・ログからも消える。WARC では、隠す
  * シークレットの値は `***` に置き換わり、`keep` と宣言した物は値のまま残る（`format.js` の `secretArchiveOf`）。
- * どちらも持たない台帳（v0.66 まで）の行は何も出さない。
+ * どちらも持たない capture-ledger（v0.66 まで）の行は何も出さない。
  */
 const valuesOf = (one) => {
   const box = document.createElement("div");
@@ -440,7 +440,7 @@ const valuesOf = (one) => {
     box.append(table);
   }
   if (secrets.length > 0) {
-    box.append(tag("p", "使ったシークレット（名前と Windmill の変数。値は台帳・写し・ページの文字・ログに無い）"));
+    box.append(tag("p", "使ったシークレット（名前と Windmill の変数。値は capture-ledger・写し・ページの文字・ログに無い）"));
     const list = document.createElement("ul");
     list.className = "secrets";
     for (const secret of secrets) {
@@ -465,10 +465,10 @@ const valuesOf = (one) => {
 const ACTION_LABEL = Object.fromEntries(ACTIONS);
 
 /**
- * 規則が何を決めたか（台帳の `GET /api/crawls/:id/decisions`）。規則ごとの数（段を跨いで足し、0 回の規則に
+ * 規則が何を決めたか（capture-ledger の `GET /api/crawls/:id/decisions`）。規則ごとの数（段を跨いで足し、0 回の規則に
  * 印）と、落とした物（規則・どれにも当たらない・robots.txt、ホスト名ごと）、その下に Windmill で調べる 1 行。
  * **決めたリンクが 1 本も無ければ数を並べない** —— リンクの無いページでも全部の規則に「当たって
- * いません」が付き、読み違える。読めなければ 1 行で言う（台帳が古ければエンドポイントが無い）。
+ * いません」が付き、読み違える。読めなければ 1 行で言う（capture-ledger が古ければエンドポイントが無い）。
  */
 const decisionsOf = (one) => {
   const box = document.createElement("div");
@@ -532,7 +532,7 @@ const tallyCell = (counts, level) => {
 
 /**
  * 1 ページのログの箱の中身。答えが来たときと、絞り込みを替えたときに描く（箱そのものは作り直さない）。行は
- * 台帳の並びのまま、文（msg）は言い換えず、data は JSON のまま文の後ろに続ける（欄を分けると、狭い箱で data が
+ * capture-ledger の並びのまま、文（msg）は言い換えず、data は JSON のまま文の後ろに続ける（欄を分けると、狭い箱で data が
  * 数字ずつに折れた）。どちらも textContent で入れる。途中で切った行の印は文の前に（長い行は箱の下に隠れる）。
  */
 const drawLog = (state) => {
@@ -635,14 +635,14 @@ const restoreScroll = () => {
 };
 
 /**
- * ページ（台帳の `GET /api/crawls/:id/pages`。詳しい所と一緒に引く）。台帳に入った順に、URL・結末・warn と
- * error の数・ログの button。並べるのは台帳の 1 回分で、続きは「続きを読む」を押したときだけ引く。ログは押した
+ * ページ（capture-ledger の `GET /api/crawls/:id/pages`。詳しい所と一緒に引く）。capture-ledger に入った順に、URL・結末・warn と
+ * error の数・ログの button。並べるのは capture-ledger の 1 回分で、続きは「続きを読む」を押したときだけ引く。ログは押した
  * ときに引き、その行の下の箱に出す。**開いた箱は id で覚え、作り直さずに移す** —— 表は引くたびに作り直すので、
- * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（台帳が古ければエンドポイントが無い）。
+ * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（capture-ledger が古ければエンドポイントが無い）。
  *
  * 結末の後ろの「replay ↗」は、そのページをクロールの合本の中で開く。合本は詳しい所（`/api/crawls/:id`。ページと
  * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/replayweb.js` の `replayBundleHref`。
- * 2 つを引く間に台帳が次の版を書いても、指す版に無いページを開かせない）。**列は足さない** —— 出るのはふつう
+ * 2 つを引く間に capture-ledger が次の版を書いても、指す版に無いページを開かせない）。**列は足さない** —— 出るのはふつう
  * 撮れたページ（結末が `captured` の 1 語）で、結末の列の幅の中に収まる。列を足すと表が広がり、docs の画面の絵
  * （本文の幅）に収まらなかった（2026-11-05 に測った）。同じ理由で、途中の版でも字は増やさず、色と説明だけを付ける。
  */
@@ -659,7 +659,7 @@ const pagesOf = (one) => {
     box.append(tag("p", "ページ: なし", "muted"));
     return box;
   }
-  box.append(tag("p", "ページ（台帳に入った順。warn と error はログの行の数で、— は数を読んでいない）"));
+  box.append(tag("p", "ページ（capture-ledger に入った順。warn と error はログの行の数で、— は数を読んでいない）"));
   const table = document.createElement("table");
   table.className = "pagelist";
   const head = document.createElement("tr");
@@ -702,7 +702,7 @@ const pagesOf = (one) => {
 };
 
 /**
- * 取り直した型の誤り（`GET /api/crawls/:id/diagnostics`）。**Claude は呼ばずに出る** —— 行の失敗の文は台帳の
+ * 取り直した型の誤り（`GET /api/crawls/:id/diagnostics`）。**Claude は呼ばずに出る** —— 行の失敗の文は capture-ledger の
  * 上限で切られ、最初の数件しか無い。ここには全部が、スクリプト・行と列つきで並ぶ。
  */
 const typeErrorsOf = (one) => {
@@ -753,7 +753,7 @@ const diagnosedOf = async (crawlId, detail) => {
  * 1 本の詳しい所。**失敗の文が先** —— compile の段で落ちたクロールは 1 枚も撮っていないので
  * failures が空で、それだけを出すと「取れなかったページはありません」と、成功のように読める。
  * 次が合本を書けなかった理由。合本はクロールを止めない派生物なので warn の色で、「replay ↗」が無い（前の版を開く）
- * 訳をここで言う。台帳の文は言い換えない。
+ * 訳をここで言う。capture-ledger の文は言い換えない。
  */
 const detailOf = (one) => {
   const bundleFailure = replayBundleFailure(one.replayBundle);
@@ -868,7 +868,7 @@ const drawCrawls = () => {
     row.append(cell(linksOf(crawl), "num mono"));
     row.append(cell(String(crawl.waczCount), "num mono"));
     row.append(cell(took(crawl), "num mono"));
-    // 行き先: run と、台帳が合本を書けていれば、クロールを 1 つのアーカイブとして replayweb-server で。**run ↗ が先頭**
+    // 行き先: run と、capture-ledger が合本を書けていれば、クロールを 1 つのアーカイブとして replayweb-server で。**run ↗ が先頭**
     // （docs の画面の絵の印が、この欄の先頭の link を指す）
     const go = linkCell(runHref(crawl), "run ↗");
     const replay = replayBundleHref(settings.replaywebServerOrigin, crawl.replayBundle);
@@ -894,14 +894,14 @@ const drawCrawls = () => {
 
 // ── 新しいクロール ─────────────────────────────────────────────────
 /**
- * 描いたスクリプトの行（スクリプト集の画面と同じ、台帳の並び。対象サイトの無い物もサイト用の物も）。宣言した値の欄はこの並びで
+ * 描いたスクリプトの行（スクリプト集の画面と同じ、capture-ledger の並び。対象サイトの無い物もサイト用の物も）。宣言した値の欄はこの並びで
  * 出す —— ↑↓ で行を動かしても、打っている変数の欄は動かない。画面の行と送る物の順は `moved` から決まる（`orderOf`）。
  * `why` はサイト用のスクリプトにだけ在る、押せない理由の欄。
  */
 let picks = [];
 
 /**
- * 人が ↑↓ で動かした走る順（`start.js` の `orderOf`）。動かすまでは undefined で、台帳の並びに付いていく。
+ * 人が ↑↓ で動かした走る順（`start.js` の `orderOf`）。動かすまでは undefined で、capture-ledger の並びに付いていく。
  * チェック（`chosen`）と同じく、**引き直しても、始めた後も覚えておく**。
  */
 let moved;
@@ -934,7 +934,7 @@ const runRow = (id, title, body) => {
 const inlineRow = runRow(INLINE_ROW, "その場の TS", tag("span", "その場の TS", "pick"));
 
 /**
- * 人が付け外ししたチェック（id → 付けたか）。**引き直しても覚えておく。** 覚えていない id は、台帳の既定
+ * 人が付け外ししたチェック（id → 付けたか）。**引き直しても覚えておく。** 覚えていない id は、capture-ledger の既定
  * （`enabled`）のとおりに出る —— 既定に入る物は付いた状態で、入らない物（autofetch など）は外れた状態で。
  */
 const chosen = new Map();
@@ -953,7 +953,7 @@ const values = new Map();
 let catalogKey;
 
 /**
- * スクリプトのチェックを描く。**台帳のスクリプトが変わったときだけ描き直す** —— 一覧は走行中なら 2 秒ごとに
+ * スクリプトのチェックを描く。**登録済みのスクリプトが変わったときだけ描き直す** —— 一覧は走行中なら 2 秒ごとに
  * 引くので、毎回作り直すと、押そうとしているチェックが手の下で入れ替わる。付け外しは `syncPicks`。
  */
 const drawPicks = (scripts) => {
@@ -984,7 +984,7 @@ const drawPicks = (scripts) => {
     read.href = readingHash({ id: script.id, version: script.version });
     read.dataset.read = "";
     const why = script.sites.length === 0 ? undefined : tag("span", "", "why");
-    // 既定に入らないスクリプト。チェックは外れた状態で出るが、付ければ走る（台帳は名指しを通す）
+    // 既定に入らないスクリプト。チェックは外れた状態で出るが、付ければ走る（capture-ledger は名指しを通す）
     const off = script.enabled ? [] : [tag("span", "既定では走らない", "off")];
     // 名前と対象サイトをまとめる。狭い列で対象サイトや「読む」が折り返しても、名前の下に揃う（理由の行と同じ）
     const head = tag("span", "", "phead");
@@ -992,17 +992,17 @@ const drawPicks = (scripts) => {
     label.append(input, head, ...(why === undefined ? [] : [why]));
     picks.push({ script, input, why, ...runRow(script.id, script.id, label) });
   }
-  if (scripts.length === 0) box.append(tag("span", "台帳にスクリプトがありません（スクリプト集の画面を見てください）", "muted"));
+  if (scripts.length === 0) box.append(tag("span", "登録済みのスクリプトがありません（スクリプト集の画面を見てください）", "muted"));
   syncPicks();
-  syncStart(); // 行を置くのは drawRunOrder。本文の大きさも台帳のスクリプトで変わる
-  // 読む窓の版が既定から外れたかもしれない。standing（既定で走る版か）を今の台帳のスクリプトで言い直す
+  syncStart(); // 行を置くのは drawRunOrder。本文の大きさも登録済みのスクリプトで変わる
+  // 読む窓の版が既定から外れたかもしれない。standing（既定で走る版か）を今の登録済みのスクリプトで言い直す
   if (startRead.doc !== undefined && startRead.target.id !== undefined) drawStartReadHead();
 };
 
 /**
  * チェックを起点に合わせる。サイト用のスクリプトは、起点のどれかが対象サイトのホストにあるときだけ押せる
- * （台帳の決まりの写し。`start.js` の `onSeed`）。**人が付け外ししたチェックは覚えたまま** —— 起点を
- * 書き換えて合わなくなれば押せなくなり、合うようになれば、人が選んだとおり（選んでいなければ台帳の既定のとおり）に付く。
+ * （capture-ledger の決まりの写し。`start.js` の `onSeed`）。**人が付け外ししたチェックは覚えたまま** —— 起点を
+ * 書き換えて合わなくなれば押せなくなり、合うようになれば、人が選んだとおり（選んでいなければ capture-ledger の既定のとおり）に付く。
  */
 const syncPicks = () => {
   const hosts = seedHosts($("start-seeds").value);
@@ -1022,7 +1022,7 @@ const syncPicks = () => {
 
 /**
  * 番号と矢印と行の並びを、いまの選びに合わせる。行を置くのはここだけ。**並びが同じなら行を動かさない** —— 起点や TS を
- * 打つたびに呼ばれるので、動かすと押そうとしている物が手の下で外れる。台帳が空のときの文を消さないよう、
+ * 打つたびに呼ばれるので、動かすと押そうとしている物が手の下で外れる。capture-ledger が空のときの文を消さないよう、
  * `replaceChildren` はしない。
  */
 const drawRunOrder = () => {
@@ -1046,7 +1046,7 @@ const drawRunOrder = () => {
 };
 
 /**
- * いま選んでいる物。起点のホストと、台帳の並びのスクリプトと、そのうち起点に合ってチェックの付いた物の id。
+ * いま選んでいる物。起点のホストと、capture-ledger の並びのスクリプトと、そのうち起点に合ってチェックの付いた物の id。
  * `runOf`・`drawValues`・`variablesNow` が同じ物を見る（3 つがばらばらに選ぶと、欄に出た変数と送る変数がずれる）。
  */
 const pickedNow = () => {
@@ -1061,7 +1061,7 @@ const pickedNow = () => {
 
 /**
  * 欄の「走らせるもの」。組み立ては `start.js` の `scriptsOf`（試験から呼べる）。選んだ物は、起点に合い、
- * チェックの付いた物。既定の顔ぶれ（台帳が `scripts` を省いた頼みに選ぶ物）と同じ物が同じ順なら、送らずに済む。
+ * チェックの付いた物。既定の顔ぶれ（capture-ledger が `scripts` を省いた頼みに選ぶ物）と同じ物が同じ順なら、送らずに済む。
  */
 const runOf = () => {
   const { hosts, scripts, picked } = pickedNow();
@@ -1080,7 +1080,7 @@ const inlineNow = () => ({
   source: $("start-inline-source").value,
 });
 
-/** 箱の TS について台帳が答えた宣言と、箱の下の 1 行（`start.js` の `inlineDeclared`）。 */
+/** 箱の TS について capture-ledger が答えた宣言と、箱の下の 1 行（`start.js` の `inlineDeclared`）。 */
 let inlineAnswer = { params: [], note: "" };
 
 /** 欄に出す宣言（`start.js` の `declaredWith`）。`drawValues` と `variablesNow` が同じ物を見る。 */
@@ -1092,7 +1092,7 @@ const declaredNow = (kind) => {
 /** 送る変数（`start.js` の `variablesOf`）。宣言された名前のうち、欄に値の在る物。 */
 const variablesNow = () => variablesOf(declaredNow("variable"), values);
 
-/** いまの欄から台帳へ送る本文。「始める」と「定期にする」と、大きさの行が同じ物を見る。 */
+/** いまの欄から capture-ledger へ送る本文。「始める」と「定期にする」と、大きさの行が同じ物を見る。 */
 const startBodyNow = () =>
   startBody($("start-seeds").value, followOf(), runOf(), variablesNow(), $("start-ua-text").value);
 
@@ -1101,7 +1101,7 @@ let valuesKey;
 
 /**
  * 値の欄 1 つ。宣言の `schema.enum` があれば選択の欄、ほかは文字の欄。選択の欄は先頭に空の行を置く —— 選ばなければ
- * 送らない（必須なら、始めたときに台帳が 400 で名指す）。
+ * 送らない（必須なら、始めたときに capture-ledger が 400 で名指す）。
  */
 const valueField = (v) => {
   const wanted = values.get(v.name) ?? "";
@@ -1170,7 +1170,7 @@ const drawValues = () => {
     if (archive !== undefined) line.append(" ", archive);
   });
   line.append(
-    tag("span", "。値はここには書きません。Windmill の変数 f/waggle_secrets/<名前> に人が置き、台帳が在るかを確かめます", "muted"),
+    tag("span", "。値はここには書きません。Windmill の変数 f/waggle_secrets/<名前> に人が置き、capture-ledger が在るかを確かめます", "muted"),
   );
 };
 
@@ -1210,7 +1210,7 @@ const intoForm = (name, phase, source) => {
 /**
  * ファイルを読む。**ブラウザの中で読むだけ**で、サーバには何も足さない。capture-scripts の中で
  * 型の補完を効かせて書いたファイルを、そのまま欄に入れるため。名前が空なら、拡張子を除いた
- * ファイル名を入れる（綴りは台帳が見る）。
+ * ファイル名を入れる（綴りは capture-ledger が見る）。
  */
 const readFileIntoForm = async () => {
   const file = $("start-inline-file").files?.[0];
@@ -1236,7 +1236,7 @@ const drawGutter = () => {
 /**
  * 空の欄では押せない。**上限を超えた本文も**、送る前に止める（上限は /healthz の writeLimit。
  * 知らなければ止めない —— 門が 413 で言う）。欄の下に、行数・本文の大きさ・上限に対する割合を出す。
- * 走る順の番号と行もここで合わせる（起点・TS の箱・2 択・チェック・↑↓・台帳の描き直しのどれもここを通る）。
+ * 走る順の番号と行もここで合わせる（起点・TS の箱・2 択・チェック・↑↓・capture-ledger の描き直しのどれもここを通る）。
  */
 const syncStart = () => {
   drawRunOrder();
@@ -1250,8 +1250,8 @@ const syncStart = () => {
     : `${count(size.lines)} 行 · 本文 ${count(size.bytes)} バイト` +
       (limit === Infinity ? "" : ` · 上限の ${String(size.percent)}%`);
   line.classList.toggle("bad", size.over);
-  // 辿るなら、規則が無いときと、台帳が今の表を「始められない」と言っているときも押せない。台帳に
-  // 確かめられなかった（答えが無い）なら止めない —— 始めれば台帳が 400 で言う
+  // 辿るなら、規則が無いときと、capture-ledger が今の表を「始められない」と言っているときも押せない。capture-ledger に
+  // 確かめられなかった（答えが無い）なら止めない —— 始めれば capture-ledger が 400 で言う
   const answer = currentCheck();
   const rulesBad = follow !== null && (follow.rows.length === 0 || (answer !== undefined && !answer.ok));
   $("start-go").disabled = body.seeds.length === 0 || size.over || rulesBad;
@@ -1264,8 +1264,8 @@ const syncStart = () => {
 let ruleRows = PRESETS.host.map((row) => ({ ...row }));
 
 /**
- * 台帳の確かめ。`key` は問うた query で、答えは表と起点がその形のときにだけ使う —— 遅れて届いた前の
- * 答えで印を描かない。`answer` が undefined なら、台帳に確かめられなかった（届かない・エンドポイントが無い）。
+ * capture-ledger の確かめ。`key` は問うた query で、答えは表と起点がその形のときにだけ使う —— 遅れて届いた前の
+ * 答えで印を描かない。`answer` が undefined なら、capture-ledger に確かめられなかった（届かない・エンドポイントが無い）。
  */
 const rulesCheck = { key: undefined, answer: undefined, timer: undefined };
 
@@ -1298,7 +1298,7 @@ const drawMarks = () => {
   }
   if (answer === undefined) {
     const asked = rulesCheck.key === checkQuery($("start-seeds").value, ruleRows);
-    said.textContent = asked ? "台帳に確かめられません（始めれば、台帳が答えで言います）" : "台帳に確かめています…";
+    said.textContent = asked ? "capture-ledger に確かめられません（始めれば、capture-ledger が答えで言います）" : "capture-ledger に確かめています…";
     said.className = "start-said muted";
     return;
   }
@@ -1359,7 +1359,7 @@ const drawRules = (focus) => {
   if (focus !== undefined) body.rows[focus.i]?.querySelector(focus.selector)?.focus();
 };
 
-/** 表か起点が変わったら、300 ms 止まってから台帳に確かめる。予約は 1 つだけ。 */
+/** 表か起点が変わったら、300 ms 止まってから capture-ledger に確かめる。予約は 1 つだけ。 */
 const scheduleCheck = () => {
   clearTimeout(rulesCheck.timer);
   if (!following()) return;
@@ -1449,7 +1449,7 @@ $("start-page").addEventListener("change", syncFollow);
 $("start-follow").addEventListener("change", syncFollow);
 
 /**
- * 箱の TS が宣言した変数を、箱が止まってから台帳に訊く（`POST /api/scripts/check`。行は立たない）。箱が空なら訊かない。
+ * 箱の TS が宣言した変数を、箱が止まってから capture-ledger に訊く（`POST /api/scripts/check`。行は立たない）。箱が空なら訊かない。
  * 答えが今の箱の物なら、値の欄と「始める」を合わせる（同じ宣言なら `valuesKey` が欄を作り直さない）。
  */
 const declaredChanged = askWhenSettled({
@@ -1496,8 +1496,8 @@ const drawSource = () => {
 };
 
 /**
- * 欄から 1 本始める。**送る前に検査しない** —— 読めない URL は台帳が 400 で言う。
- * 答えは欄の下に 1 行で、台帳の文は言い換えずに出す（`start.js` の `startAnswer`）。
+ * 欄から 1 本始める。**送る前に検査しない** —— 読めない URL は capture-ledger が 400 で言う。
+ * 答えは欄の下に 1 行で、capture-ledger の文は言い換えずに出す（`start.js` の `startAnswer`）。
  */
 const startCrawl = async (event) => {
   event.preventDefault();
@@ -1546,7 +1546,7 @@ $("start").addEventListener("input", (event) => {
   if (event.target === $("start-seeds")) {
     syncPicks();
     drawMarks(); // 前の起点の答えは、今の起点に合わない
-    scheduleCheck(); // same-site は起点で変わり、起点が辿られるかも台帳が見る
+    scheduleCheck(); // same-site は起点で変わり、起点が辿られるかも capture-ledger が見る
   }
   if (event.target === $("start-max-depth") || event.target === $("start-max-pages")) drawMarks();
   syncStart();
@@ -1581,7 +1581,7 @@ const postJson = async (path, body = {}) => {
   return { status, answer };
 };
 
-/** いまの欄の中身で予定を作る。**送る前に検査しない** —— cron も頼みの中身も台帳が見て、文で答える。 */
+/** いまの欄の中身で予定を作る。**送る前に検査しない** —— cron も頼みの中身も capture-ledger が見て、文で答える。 */
 const makeSchedule = async () => {
   const request = startBodyNow();
   if (request.seeds.length === 0) return;
@@ -1797,7 +1797,7 @@ const drawArchives = () => {
 // ── 検索 ───────────────────────────────────────────────────────────
 /**
  * 検索の画面の状態。**引くのは押したときと URL で開いたときだけ** —— 引き直しの周回（refresh）には入れない。
- * 検索の答えない台帳（OpenSearch が落ちている・古い台帳）で、周回ごと落とさないため。
+ * 検索の答えない capture-ledger（OpenSearch が落ちている・古い capture-ledger）で、周回ごと落とさないため。
  */
 const searching = {
   /** 最後に開いた URL。タブ「検索」はここへ戻る（WACZ の画面の wacz.hash と同じ） */
@@ -1907,7 +1907,7 @@ $("search").onsubmit = (event) => {
 /**
  * 読む所の状態。**取るのは開いたときだけ** —— 一覧（有効な各 id の最新版）は引き直しの答えを使い、版のリンクと
  * 1 版の中身は開いた id の分だけ取る。受け皿の型は画面を最初に開いたとき 1 回で、refresh には入れない
- * （入れると、型を取り込んでいない台帳で引き直し全体が落ちる）。
+ * （入れると、型を取り込んでいない capture-ledger で引き直し全体が落ちる）。
  */
 const reading = {
   /** 最後に開いた URL。タブ「スクリプト集」はここへ戻る（WACZ の画面の wacz.hash と同じ） */
@@ -1918,7 +1918,7 @@ const reading = {
   docs: new Map(),
   /** 有効な各 id の最新版（GET /api/scripts の最後の答え）。サイト用のスクリプトも対象サイトつきで入る */
   latest: [],
-  /** 受け皿の型。undefined はまだ訊いていない、null は台帳に無い（404） */
+  /** 受け皿の型。undefined はまだ訊いていない、null は capture-ledger に無い（404） */
   types: undefined,
   /** 最後に描いた一覧の形。同じなら描き直さない */
   listKey: undefined,
@@ -1991,7 +1991,7 @@ const drawReadingList = () => {
     const off = reading.latest.filter((s) => !s.enabled);
     nav.replaceChildren(tag("span", "既定で走る", "grp"));
     if (anywhere.length === 0) {
-      nav.append(tag("span", reading.latest.length === 0 ? "（台帳にスクリプトが無い）" : "（無し）", "muted"));
+      nav.append(tag("span", reading.latest.length === 0 ? "（登録済みのスクリプトが無い）" : "（無し）", "muted"));
     }
     nav.append(...anywhere.map(item));
     if (onSites.length > 0) {
@@ -2001,7 +2001,7 @@ const drawReadingList = () => {
       nav.append(tag("span", "既定では走らない（選べば走る）", "grp"), ...off.map(item));
     }
     nav.append(tag("span", "書くための型", "grp"));
-    if (types === null) nav.append(tag("span", "host.d.ts（台帳に無い）", "muted"));
+    if (types === null) nav.append(tag("span", "host.d.ts（capture-ledger に無い）", "muted"));
     if (types !== null && types !== undefined) {
       nav.append(listItem(TYPES_HASH, "host.d.ts", `v${String(types.version)}`, TYPES_KEY));
     }
@@ -2208,7 +2208,7 @@ const openTypes = (target, stale) => {
   if (types === null) {
     drawReadingHead(IN_CATALOG, { name: "host.d.ts", facts: [] });
     readingNote(IN_CATALOG, 
-      "受け皿の型はまだ台帳に在りません。",
+      "受け皿の型はまだ capture-ledger に在りません。",
       "cd ../capture-ledger && pnpm run scripts import .upstream/capture-scripts で入ります。",
       "bad",
     );
@@ -2235,7 +2235,7 @@ const openScript = async (target, stale) => {
   if (stale()) return;
   if (listed === undefined) {
     drawReadingHead(IN_CATALOG, { name: target.id, facts: [] });
-    readingNote(IN_CATALOG, `台帳に ${target.id} はありません。`, "", "bad");
+    readingNote(IN_CATALOG, `${target.id} は登録されていません。`, "", "bad");
     drawLines(IN_CATALOG, undefined);
     return;
   }
@@ -2246,7 +2246,7 @@ const openScript = async (target, stale) => {
   if (entry === undefined) {
     drawReadingHead(IN_CATALOG, { name: `${target.id} v${String(version)}`, chips, facts: [] });
     readingNote(IN_CATALOG, 
-      `v${String(version)} は台帳に在りません（消されています）。`,
+      `v${String(version)} は登録されていません（消されています）。`,
       "走った物はアーカイブの behaviors/custom.jsonl に在ります（変換後の JS）。",
     );
     drawLines(IN_CATALOG, undefined);
@@ -2268,8 +2268,8 @@ const openScript = async (target, stale) => {
   if (target.sha !== undefined && !doc.sha256.startsWith(target.sha)) {
     readingNote(IN_CATALOG, 
       `このクロールが走らせた v${String(version)} とは中身が違います。`,
-      `クロールの記録は sha256 ${target.sha}…、台帳の v${String(version)} は ` +
-        `${doc.sha256.slice(0, 12)}… です。v${String(version)} は台帳から消され、別の中身で足し直されて` +
+      `クロールの記録は sha256 ${target.sha}…、登録済みの v${String(version)} は ` +
+        `${doc.sha256.slice(0, 12)}… です。v${String(version)} は一度消され、別の中身で登録し直されて` +
         "います。走った物はアーカイブの behaviors/custom.jsonl に在ります（変換後の JS）。",
     );
   } else {
@@ -2279,7 +2279,7 @@ const openScript = async (target, stale) => {
   void colorize(IN_CATALOG, doc, stale); // 1 色で読めるようにしてから、worker の答えを同じ行に塗る
 };
 
-/** 受け皿の型。訊くのは最初の 1 回（台帳に無かったら、型を名指したときに訊き直す）。null は台帳に無い */
+/** 受け皿の型。訊くのは最初の 1 回（capture-ledger に無かったら、型を名指したときに訊き直す）。null は capture-ledger に無い */
 const hostTypes = async (asked) => {
   if (reading.types === undefined || (asked && reading.types === null)) {
     reading.types = (await find("/api/host-types")) ?? null;
@@ -2356,7 +2356,7 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
   box.value = source;
   // 元を外す。両方走ると 2 回走り、coverage は id を見ずに、先に走る方の報告を採る
   chosen.set(doc.id, false);
-  catalogKey = undefined; // drawPicks は台帳のスクリプトが変わったときだけ描くので、ここで描き直させる
+  catalogKey = undefined; // drawPicks は登録済みのスクリプトが変わったときだけ描くので、ここで描き直させる
   drawPicks(reading.latest);
   const said = $("start-answer");
   said.hidden = false;
@@ -2366,7 +2366,7 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
     (changed.length === 0
       ? "id を替える所はありませんでした。"
       : `${changed.join("・")} 行目の id を inline-${name} に替えました。`) +
-    `台帳の ${doc.id} は外しました（両方走ると 2 回走ります）。` +
+    `登録済みの ${doc.id} は外しました（両方走ると 2 回走ります）。` +
     // その場の TS は対象サイトを持たない。スクリプトの冒頭の見分けが、ほかのサイトでは何もさせない
     (doc.sites.length === 0
       ? ""
@@ -2451,7 +2451,7 @@ const readInStart = async (target) => {
     if (doc === null) {
       readingNote(
         IN_START,
-        "受け皿の型はまだ台帳に在りません。",
+        "受け皿の型はまだ capture-ledger に在りません。",
         "cd ../capture-ledger && pnpm run scripts import .upstream/capture-scripts で入ります。",
         "bad",
       );
@@ -2855,7 +2855,7 @@ const openRecord = async (path, offset, length) => {
 let schedules = [];
 let schedulesError;
 let schedulesTimer;
-/** `api()` と違って時間を切る。答えない台帳を待ち続けると、帯も出ない。 */
+/** `api()` と違って時間を切る。答えない capture-ledger を待ち続けると、帯も出ない。 */
 const SCHEDULES_TIMEOUT_MS = 15_000;
 
 const drawBand = () => {

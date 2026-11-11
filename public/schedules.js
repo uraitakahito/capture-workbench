@@ -1,6 +1,6 @@
 /**
- * 定期実行の画面（CAPTURE-174）の、画面に依らない部分。台帳の `GET /api/schedules` の答えを、状態の字・帯の文・回の行に
- * するだけで、判定はしない —— 状態の語（`health`）を決めるのは台帳で、ここは語を文にする。ブラウザは `/schedules.js` と
+ * 定期実行の画面（CAPTURE-174）の、画面に依らない部分。capture-ledger の `GET /api/schedules` の答えを、状態の字・帯の文・回の行に
+ * するだけで、判定はしない —— 状態の語（`health`）を決めるのは capture-ledger で、ここは語を文にする。ブラウザは `/schedules.js` と
  * して読み、試験は `node --test` から import する。
  *
  * 帯を出すのは 3 つの語と、読めないときだけ。順番待ち（`blocked`）は待っているだけなので出さない。頁の一部だけ失敗した回は
@@ -209,7 +209,7 @@ const DONE = {
   close: "締めました。",
 };
 
-/** 操作の答えの 1 行。断られたら、台帳の文をそのまま出す。 */
+/** 操作の答えの 1 行。断られたら、capture-ledger の文をそのまま出す。 */
 export const actionAnswer = (action, status, answer) => {
   if (status >= 200 && status < 300) return { kind: "ok", text: DONE[action] ?? "済みました。" };
   return startAnswer(status, answer);

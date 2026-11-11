@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * workbench の画面（`public/`）を配り、台帳の API を中継する。
+ * workbench の画面（`public/`）を配り、capture-ledger の API を中継する。
  *
  *   npm run dev         # http://127.0.0.1:7080/
  *
@@ -14,15 +14,15 @@
  *
  * ## なぜ中継するのか
  *
- * 台帳は CORS を返さない（`OPTIONS /api/archives` は 404。実測）。ブラウザから
+ * capture-ledger は CORS を返さない（`OPTIONS /api/archives` は 404。実測）。ブラウザから
  * 直に叩く道は塞がっているので、同一オリジンにするために通す。**ここに workbench の
- * ロジックは置かない** —— 置いた瞬間に「台帳が知っていることの写し」が生まれる。
+ * ロジックは置かない** —— 置いた瞬間に「capture-ledger が知っていることの写し」が生まれる。
  *
  * ## 書き込みのエンドポイント
  *
  * 書くのは `POST /api/crawls`（クロールを始める）と、`POST /api/crawls/:id/inline/:name/fix`（型で落ちた
- * その場の TS の直し方を訊く）だけで、中身は検査せずに台帳へ渡す。起点の URL も方針も、直しが検査に通るかも、
- * 決めるのは台帳。代わりに門を通す —— 全部のエンドポイントで Host を見て（DNS rebinding）、書き込みのエンドポイントでは workbench の
+ * その場の TS の直し方を訊く）だけで、中身は検査せずに capture-ledger へ渡す。起点の URL も方針も、直しが検査に通るかも、
+ * 決めるのは capture-ledger。代わりに門を通す —— 全部のエンドポイントで Host を見て（DNS rebinding）、書き込みのエンドポイントでは workbench の
  * ページからの JSON だけを受ける（CSRF）。書き込みのエンドポイントの形と門の判定は `lib.mjs` に在り、試験から直接呼べる。
  *
  * ## 7080 であって 7000 ではない
@@ -31,7 +31,7 @@
  * `127.0.0.1:7000` に bind すること自体はできてしまうが、**`localhost:7000` が
  * `::1` へ解決されると AirPlay に当たる** し、port から持ち主を引く道具
  * (capture-ledger の `dev:status` / `dev:down`) は毎回「別のものが握っている」と
- * 言い続けることになる。空いている隣 (台帳が 7070) を取る。
+ * 言い続けることになる。空いている隣 (capture-ledger が 7070) を取る。
  *
  * ## http・loopback・公開しない
  *
@@ -75,13 +75,13 @@ const OIDC_CLIENT_ID = optional("WORKBENCH_OIDC_CLIENT_ID", "");
 /** IdP に登録した戻り先と一字一句同じでなければならない（capture-ledger の idp:bootstrap が登録する）。 */
 const REDIRECT_URI = `http://127.0.0.1:${String(PORT)}/callback`;
 /**
- * 深いリンクの行き先。**workbench はこれを組み立てない** —— 台帳が返すのは `objectKey`・クロールの合本の鍵
+ * 深いリンクの行き先。**workbench はこれを組み立てない** —— capture-ledger が返すのは `objectKey`・クロールの合本の鍵
  * （`replayBundle.key`）・`lastJob.id` だけで、どこで開くかは配備の事実。1 か所で決めて `/healthz` で配る。
  */
 const REPLAYWEB_SERVER = optional("WORKBENCH_REPLAYWEB_SERVER_URL", "http://127.0.0.1:8899");
 const WINDMILL = optional("WORKBENCH_WINDMILL_URL", "http://127.0.0.1:8000");
 const WORKSPACE = optional("WORKBENCH_WINDMILL_WORKSPACE", "crawler");
-/** WACZ を検証する daemon。**鍵を持たない** —— 台帳が署名した URL だけを読む。 */
+/** WACZ を検証する daemon。**鍵を持たない** —— capture-ledger が署名した URL だけを読む。 */
 const VALIDATOR = optional("WORKBENCH_VALIDATOR_URL", "http://127.0.0.1:7180");
 const auth = createAuth({ issuer: OIDC_ISSUER, clientId: OIDC_CLIENT_ID, redirectUri: REDIRECT_URI });
 
@@ -89,7 +89,7 @@ const auth = createAuth({ issuer: OIDC_ISSUER, clientId: OIDC_CLIENT_ID, redirec
 class NotSignedIn extends Error {}
 
 /**
- * 台帳へ中継する。トークンはその人のセッションの物。
+ * capture-ledger へ中継する。トークンはその人のセッションの物。
  *
  * **時計で測らず、401 で取得し直す。** 寿命を数える形にすると、IdP のプールを作り直した日に落ちる ——
  * 鍵が変わり、まだ有効なはずのトークンが静かに通らなくなる。401 は、その両方（期限切れ・鍵替わり）を
@@ -109,7 +109,7 @@ const toLedger = async (path, method = "GET", body = undefined, session = undefi
         ...(body !== undefined && { body }),
       });
     } catch (err) {
-      // **何が居ないかを言う。** 素の `fetch failed` は、台帳が落ちているのか
+      // **何が居ないかを言う。** 素の `fetch failed` は、capture-ledger が落ちているのか
       // 宛先を間違えているのかを区別しない。
       throw new Error(
         `${LEDGER} に届かない (${err instanceof Error ? err.message : String(err)})。` +
@@ -166,7 +166,7 @@ const pass = async (reply, upstream) => {
   await pipeline(Readable.fromWeb(upstream.body), reply);
 };
 
-/** 台帳の答えを、状態と content-type と本文のまま返す。 */
+/** capture-ledger の答えを、状態と content-type と本文のまま返す。 */
 const relay = async (reply, res) => {
   reply.writeHead(res.status, {
     "content-type": res.headers.get("content-type") ?? "application/json; charset=utf-8",
@@ -212,7 +212,7 @@ const server = createServer((request, reply) => {
     return;
   }
 
-  // 生存と、workbench が要る設定。**`/api/` の下には置かない** —— あちらは台帳へ素通しする
+  // 生存と、workbench が要る設定。**`/api/` の下には置かない** —— あちらは capture-ledger へ素通しする
   // 場所で、こちらの答えを混ぜると「どちらが答えたのか」が読めなくなる。
   if (url === "/healthz") {
     const held = auth.tokenOf(session);
@@ -288,7 +288,7 @@ const server = createServer((request, reply) => {
    * 署名は範囲ごとに取り直す（1 本 7 ms・実測）。取っておくと、workbench が
    * 300 秒有効な鍵を持つことになる。
    *
-   * 順番に意味がある: 先に台帳へ訊くので、**見てよい archive でなければ
+   * 順番に意味がある: 先に capture-ledger へ訊くので、**見てよい archive でなければ
    * daemon まで行かない**。絞るのは認可を持っている側。
    */
   const route = parseWaczRoute(url);
@@ -317,7 +317,7 @@ const server = createServer((request, reply) => {
 
   /**
    * 書き込みのエンドポイント（`lib.mjs` の `isWriteRoute`）。**中身は検査しない** —— クロールを始める頼みも、直し方を訊く頼みも、宣言を訊く頼みも
-   * 台帳が検査して決め、答えをそのまま返す。門だけはここで見る。
+   * capture-ledger が検査して決め、答えをそのまま返す。門だけはここで見る。
    */
   if (isWriteRoute(url) && request.method === "POST") {
     const refusal = writeRefusal(request.headers, PORT);
@@ -423,11 +423,11 @@ server.on("error", (err) => {
   throw err;
 });
 
-// **loopback にだけ bind する。** workbench は台帳のトークンを持つので、
+// **loopback にだけ bind する。** workbench は capture-ledger のトークンを持つので、
 // 届く相手はこの機械の中だけでよい。
 server.listen(PORT, "127.0.0.1", () => {
   process.stdout.write(
-    `workbench http://127.0.0.1:${String(PORT)}/  台帳: ${LEDGER}  ` +
+    `workbench http://127.0.0.1:${String(PORT)}/  capture-ledger: ${LEDGER}  ` +
       (auth.configured
         ? `名乗り: ${OIDC_ISSUER} のサインイン (client ${OIDC_CLIENT_ID})\n`
         : "名乗りの設定が無い —— WORKBENCH_OIDC_ISSUER と WORKBENCH_OIDC_CLIENT_ID を書く\n"),

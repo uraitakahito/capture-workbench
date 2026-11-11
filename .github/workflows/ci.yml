@@ -7,7 +7,7 @@ name: ci
 # docs の検査は site.yml、公開は docs.yml、束の作り直しは vendor.yml が持つ。
 #
 # 走らせるのは `npm run check` (中身は package.json の `check`)。**中継と名乗りは
-# ここでは見ない** —— あれは台帳と issuer が立っていないと確かめられないので、
+# ここでは見ない** —— あれは capture-ledger と issuer が立っていないと確かめられないので、
 # 証拠は手で当てて PR に貼る。
 
 on:

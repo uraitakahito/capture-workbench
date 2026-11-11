@@ -38,7 +38,7 @@ test("取り直した誤りを、スクリプト・どこ・code・文の行に�
   ]);
 });
 
-test("誤りが無ければ通ると言い、エンドポイントの無い 404 と行の無い 404 を言い分け、ほかは台帳の文のまま", () => {
+test("誤りが無ければ通ると言い、エンドポイントの無い 404 と行の無い 404 を言い分け、ほかは capture-ledger の文のまま", () => {
   assert.deepEqual(diagnosisOf(200, { typescript: "6.0.3", hostTypes: "v0.6.0", diagnostics: [] }), {
     kind: "clean",
     typescript: "6.0.3",
@@ -64,7 +64,7 @@ test("直し方を訊けるのは、誤りの在るスクリプトだけ", () =>
   assert.equal(hasErrorsIn(undefined, "inline-close-banner"), false);
 });
 
-test("必須の変数が足りない行では、どのスクリプトにも直し方を訊かない —— 台帳のエンドポイントが Claude を呼ばず 422 で断るので", () => {
+test("必須の変数が足りない行では、どのスクリプトにも直し方を訊かない —— capture-ledger のエンドポイントが Claude を呼ばず 422 で断るので", () => {
   const said = diagnosisOf(200, {
     typescript: "6.0.3",
     diagnostics: [
@@ -95,7 +95,7 @@ test("200 は、何の検査に通った直しかと、回数と費用を言う"
   assert.deepEqual(said, { kind: "ok", text: "TypeScript 6.0.3・受け皿の型 v0.6.0 の検査に通った直し（1 往復・$0.0304）" });
 });
 
-test("429 は、この月に使った額と上限を添える。ほかは台帳の文に、回数と費用があれば添える", () => {
+test("429 は、この月に使った額と上限を添える。ほかは capture-ledger の文に、回数と費用があれば添える", () => {
   assert.deepEqual(fixAnswer(429, { error: "claude budget exhausted", spentUsd: 5.0123, budgetUsd: 5 }), {
     kind: "bad",
     text: "429 —— claude budget exhausted（この月 $5.0123・上限 $5。Claude は呼んでいません）",
@@ -109,7 +109,7 @@ test("429 は、この月に使った額と上限を添える。ほかは台帳�
     text: "409 —— scripts compile",
   });
   assert.deepEqual(fixAnswer(503, { error: "ts-compile unreachable" }), { kind: "bad", text: "503 —— ts-compile unreachable" });
-  // 鍵の無い台帳はエンドポイントごと出さない（Fastify の 404）。行やその場の TS が無い 404 とは言い分ける
+  // 鍵の無い capture-ledger はエンドポイントごと出さない（Fastify の 404）。行やその場の TS が無い 404 とは言い分ける
   const noRoute = fixAnswer(404, { message: "Route POST:/api/crawls/x/inline/y/fix not found", error: "Not Found" });
   assert.match(noRoute.text, /CAPTURE_LEDGER_ANTHROPIC_API_KEY/);
   assert.deepEqual(fixAnswer(404, { error: "not found" }), { kind: "bad", text: "404 —— not found" });

@@ -1,5 +1,5 @@
 /**
- * 検索の画面（`public/search.js`）の、画面に依らない部分。台帳の `GET /api/search` の答えを行に組む形と、
+ * 検索の画面（`public/search.js`）の、画面に依らない部分。capture-ledger の `GET /api/search` の答えを行に組む形と、
  * 当たった行の replayweb-server の行き先（CAPTURE-53）。
  */
 import { test } from "node:test";
@@ -96,12 +96,12 @@ test("時刻が読めない当たりは、replay のページ一覧を開く形�
   assert.equal(hitReplaywebHref(ORIGIN, { ...SNAPSHOT, capturedAt: "" }), `${ORIGIN}/?source=%2Fwacz%2Ftask-a_corr-b.wacz`);
 });
 
-test("引けなかったときの文: 503 は OpenSearch を、404 は検索のエンドポイントの無い台帳を名指し、台帳の message を先に出す", () => {
+test("引けなかったときの文: 503 は OpenSearch を、404 は検索のエンドポイントの無い capture-ledger を名指し、capture-ledger の message を先に出す", () => {
   assert.match(
     searchFailure(503, { error: "search unavailable", message: "OpenSearch did not answer" }),
-    /OpenSearch。台帳の CAPTURE_LEDGER_OPENSEARCH_URL の先）: OpenSearch did not answer$/,
+    /OpenSearch。capture-ledger の CAPTURE_LEDGER_OPENSEARCH_URL の先）: OpenSearch did not answer$/,
   );
-  assert.match(searchFailure(404, { error: "Not Found" }), /CAPTURE_LEDGER_OPENSEARCH_URL の無い台帳）: Not Found$/);
+  assert.match(searchFailure(404, { error: "Not Found" }), /CAPTURE_LEDGER_OPENSEARCH_URL の無い capture-ledger）: Not Found$/);
   assert.equal(
     searchFailure(400, { error: "Bad Request", message: "querystring/q must NOT have fewer than 1 characters" }),
     "400 — querystring/q must NOT have fewer than 1 characters",

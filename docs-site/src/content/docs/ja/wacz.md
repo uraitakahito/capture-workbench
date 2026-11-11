@@ -6,18 +6,18 @@ description: アーカイブの行から、撮れたものが仕様どおりか�
 アーカイブの行からは、2 つのことができます。
 「検証」で撮れたものが WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の仕様どおりかを確かめ、「開く」で WACZ の中身に入ります。
 どちらも [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon が答えます。
-capture-workbench は、台帳に署名してもらった URL を daemon に渡すだけです。
+capture-workbench は、capture-ledger に署名してもらった URL を daemon に渡すだけです。
 
-## 先に台帳へ訊く
+## 先に capture-ledger へ訊く
 
 ```mermaid
 sequenceDiagram
   participant B as ブラウザ
   participant D as workbench
-  participant L as 台帳
+  participant L as capture-ledger
   participant V as daemon
   B->>D: /wacz/:id/ のエンドポイント
-  Note over D: 引数を検める（足りなければ 400。台帳へは行かない）
+  Note over D: 引数を検める（足りなければ 400。capture-ledger へは行かない）
   D->>L: POST /api/archives/:id/url
   alt 見てよくない archive
     L-->>D: 404
@@ -31,12 +31,12 @@ sequenceDiagram
 ```
 
 どのエンドポイント（HTTP の method と path の組）も同じ 2 段です。
-台帳に署名をもらい、その URL を daemon に渡します（一覧は[エンドポイント](/routes/)のページ）。
+capture-ledger に署名をもらい、その URL を daemon に渡します（一覧は[エンドポイント](/routes/)のページ）。
 
 - **鍵はどこにも増えない。**
-  渡すのは台帳が署名した URL 1 本で、daemon は store の資格情報を持ちません。
+  渡すのは capture-ledger が署名した URL 1 本で、daemon は store の資格情報を持ちません。
 - **順番に意味がある。**
-  先に台帳へ訊くので、見てよい archive でなければ 404 になり、daemon までは行きません。
+  先に capture-ledger へ訊くので、見てよい archive でなければ 404 になり、daemon までは行きません。
   絞るのは、認可を持っている側です。
 - **署名付き URL は、ここから外に出さない。**
   応答にも、ログにも、失敗の文にも載せません（daemon が URL 入りの例外を投げても、`(署名付き URL)` に伏せます）。
@@ -76,7 +76,7 @@ BrowserHive の規定で見たいなら、workbench から profile を渡す手�
 
 wacz-validator を出しても、動いている daemon は起こしたときの build のまま動き続けます。
 古いまま動いていれば、報告に出る版で分かります。
-[capture-ledger](https://github.com/uraitakahito/capture-ledger)（クロールを始め、撮れたものを記録する台帳）の `pnpm run dev:status` も、動いている build を checkout と比べて言います。
+[capture-ledger](https://github.com/uraitakahito/capture-ledger)（クロールを始め、撮れたものを記録するシステム）の `pnpm run dev:status` も、動いている build を checkout と比べて言います。
 起こし直すのは、capture-ledger で `pnpm run dev:up --from validator` です。
 
 ## WACZ の画面

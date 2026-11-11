@@ -1,7 +1,7 @@
 /**
- * 台帳の代役。workbench のサンドボックス (docker-compose.yml の sandbox-ledger) の中で動く。
+ * capture-ledger の代役。workbench のサンドボックス (docker-compose.yml の sandbox-ledger) の中で動く。
  *
- * workbench が台帳に訊くエンドポイントと、IdP (手元は capture-ledger の Floci) のサインインに、台本 (scenario.json) と
+ * workbench が capture-ledger に訊くエンドポイントと、IdP (手元は capture-ledger の Floci) のサインインに、台本 (scenario.json) と
  * WACZ の置き場から答える。応答の欄は capture-ledger の応答に合わせてある (出どころは
  * 各関数の注記)。認可は真似ない —— 名乗りは何でも通す。サインインは画面を出さずにすぐ戻す
  * (`/sandbox-pool/authorize`)。トークンは署名の無い見本で、名乗りの欄 (`username`・`cognito:groups`) だけを持つ。
@@ -11,20 +11,20 @@
  *
  * `POST /api/crawls` (workbench の新しいクロールの画面) にも答える。受けた行は代役が起きている間だけ在り、
  * 台本の `submit.runsSeconds` 秒走ってから完走になる (台本の行とは別に持つ)。走らせるもの
- * (`scripts`。台帳のスクリプトの名指しとその場の TS) も台帳と同じ形で受け、1 本の詳しい所に返す。
+ * (`scripts`。登録済みのスクリプトの名指しとその場の TS) も capture-ledger と同じ形で受け、1 本の詳しい所に返す。
  *
- * 台帳のスクリプト (台本の `catalog`) は版の並びで、source は sandbox/catalog の写しから読む。スクリプトを読むエンドポイント
- * (版の一覧・1 版・受け皿の型) にも答える。対象サイト (`sites`) のある版はサイト用のスクリプトで、台帳と同じく
+ * 登録済みのスクリプト (台本の `catalog`) は版の並びで、source は sandbox/catalog の写しから読む。スクリプトを読むエンドポイント
+ * (版の一覧・1 版・受け皿の型) にも答える。対象サイト (`sites`) のある版はサイト用のスクリプトで、capture-ledger と同じく
  * 起点のホストで選び、合わない名指しは 400 で断る。
  *
- * クロールごとの値 (台帳 v0.67.0) も受ける。版の `params` (宣言) を一覧と 1 版のエンドポイントに出し、頼みの `variables` を
- * 宣言に照らして台帳と同じ文で 400 を言う。宣言したシークレットは、台本の `windmillSecrets` (在る secret 変数の名前)
+ * クロールごとの値 (capture-ledger v0.67.0) も受ける。版の `params` (宣言) を一覧と 1 版のエンドポイントに出し、頼みの `variables` を
+ * 宣言に照らして capture-ledger と同じ文で 400 を言う。宣言したシークレットは、台本の `windmillSecrets` (在る secret 変数の名前)
  * と `windmillVariables` (在るが secret でない変数の名前) を Windmill の代わりにして確かめ、受けた行に名前と path を持つ
- * (値はどこにも無い —— 台帳と同じ)。シークレットの宣言の `archive` (値を WARC に残すなら `"keep"`。台帳 v0.90.0) も
- * 台帳と同じく読み、行に写す。隠すシークレットを送るのに配備の形式 (台本の `captureFormats`) が値を置き換えられない物を
- * 頼むなら、台帳と同じ文で 400。
+ * (値はどこにも無い —— capture-ledger と同じ)。シークレットの宣言の `archive` (値を WARC に残すなら `"keep"`。capture-ledger v0.90.0) も
+ * capture-ledger と同じく読み、行に写す。隠すシークレットを送るのに配備の形式 (台本の `captureFormats`) が値を置き換えられない物を
+ * 頼むなら、capture-ledger と同じ文で 400。
  *
- * ページのエンドポイント (CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
+ * ページのエンドポイント (CAPTURE-18 で capture-ledger が足す `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
  * 答える。ログは台本のページの `log` (BrowserHive の答えの log の形) で、無ければ読めない理由を返す。
  *
  * 型で落ちた行の、型の誤りの取り直し (`GET /api/crawls/:id/diagnostics`) と直し方 (`POST …/inline/:name/fix`。
@@ -33,8 +33,8 @@
  * 検索のエンドポイント (`GET /api/search`。CAPTURE-53) にも、台本の `searchPages` から答える。**代役は OpenSearch を持たない** ——
  * 語を含む行を拾うだけで、点数も分かち書きも無い。
  *
- * クロールの合本 (CAPTURE-54。台帳が段ごとに保管庫へ書く replay.json と pages.json) の欄も返す —— 行と詳しい所の
- * `replayBundle` (台本の行の `replayBundle` から。鍵は台帳と同じ形に組む) と、ページの行の `capturedAt`・`bundledRev`
+ * クロールの合本 (CAPTURE-54。capture-ledger が段ごとに保管庫へ書く replay.json と pages.json) の欄も返す —— 行と詳しい所の
+ * `replayBundle` (台本の行の `replayBundle` から。鍵は capture-ledger と同じ形に組む) と、ページの行の `capturedAt`・`bundledRev`
  * (台本のページから)。**代役は合本を書かない** —— 保管庫も replay も無いので、replay ↗ の先には何も無い。
  *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
@@ -59,7 +59,7 @@ const sha256Of = (text) => createHash("sha256").update(text, "utf8").digest("hex
  */
 const STARTED = Date.now();
 
-/** 台帳と同じ UUID の形の id を、名前から決める (何度起こしても同じ id になる)。 */
+/** capture-ledger と同じ UUID の形の id を、名前から決める (何度起こしても同じ id になる)。 */
 export const idOf = (name) =>
   createHash("sha1")
     .update(name)
@@ -67,9 +67,9 @@ export const idOf = (name) =>
     .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12}).*/, "$1-$2-$3-$4-$5");
 
 /**
- * 行の合本の欄 (`replayBundle`)。形は CAPTURE-56 で台帳が足す src/api/crawls.ts の replayBundleOf と同じ ——
+ * 行の合本の欄 (`replayBundle`)。形は CAPTURE-56 で capture-ledger が足す src/api/crawls.ts の replayBundleOf と同じ ——
  * 書けた版も、書けなかった記録も無ければ null。台本の行の `replayBundle` は `{ rev, pages, builtSecondsAgo, error }` で
- * （`builtAt` は `scenarioAt` が組む）、鍵は台帳と同じ置き場 (`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`) に組む。`rev` を省いた行は失敗だけの行
+ * （`builtAt` は `scenarioAt` が組む）、鍵は capture-ledger と同じ置き場 (`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`) に組む。`rev` を省いた行は失敗だけの行
  * (鍵・版・ページの数・時刻が null)。受けた行 (`submittedRow`) は null を持つ。
  */
 export const replayBundleOf = (c) => {
@@ -107,7 +107,7 @@ export const scenarioAt = (c, now) => ({
 
 /**
  * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.57.4) と同じ。合本の欄 (`replayBundle`) は
- * CAPTURE-56 の形から、`pagesFailed` は v0.77.0 から (台帳と同じく、ページの行の failed を数える)。
+ * CAPTURE-56 の形から、`pagesFailed` は v0.77.0 から (capture-ledger と同じく、ページの行の failed を数える)。
  * 時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
  */
 export const crawlRow = (c, now) => ({
@@ -127,7 +127,7 @@ export const crawlRow = (c, now) => ({
   waczCount: c.waczCount ?? 0,
   lastJob: c.lastJobId === undefined ? null : { id: c.lastJobId, depth: c.lastJobDepth ?? 0 },
   replayBundle: replayBundleOf(scenarioAt(c, now)),
-  // 定期の回の欄 (台帳 CAPTURE-173)。手で始めた行は null と 0
+  // 定期の回の欄 (capture-ledger CAPTURE-173)。手で始めた行は null と 0
   schedule: c.schedule ?? null,
   scheduledFor: c.scheduledSecondsAgo === undefined ? null : new Date(now - c.scheduledSecondsAgo * 1000).toISOString(),
   scheduleMissed: c.scheduleMissed ?? 0,
@@ -135,7 +135,7 @@ export const crawlRow = (c, now) => ({
 
 /**
  * /api/crawls/:id の、走らせたもの 1 本。欄は capture-ledger v0.61.0 の src/api/crawls.ts と同じ ——
- * 台帳のスクリプトは身元と対象サイトだけ、その場の物にだけ `inline` が付く。**source は載せない**（名前・phase・バイト数）。
+ * 登録済みのスクリプトは身元と対象サイトだけ、その場の物にだけ `inline` が付く。**source は載せない**（名前・phase・バイト数）。
  */
 const detailScript = (s) => ({
   id: s.id,
@@ -157,7 +157,7 @@ const detailScript = (s) => ({
 
 /**
  * /api/crawls/:id/inline/:name。欄は capture-ledger v0.59.0 の src/api/crawls.ts と同じ ——
- * その場の TS 1 本の source を返す（workbench の「欄に戻す」が使う）。台帳のスクリプトと、知らない名前は 404。
+ * その場の TS 1 本の source を返す（workbench の「欄に戻す」が使う）。登録済みのスクリプトと、知らない名前は 404。
  */
 export const inlineSource = (scripts, name) => {
   const script = (scripts ?? []).find((x) => x.inline?.name === name);
@@ -167,8 +167,8 @@ export const inlineSource = (scripts, name) => {
 };
 
 /**
- * /api/crawls/:id/diagnostics (CAPTURE-49)。台本の行の `diagnosed` (台帳の答えの本文そのまま) を返す。無い行は、
- * いまの組み合わせが型を通る答え (`diagnostics` が空。台帳は hostTypes も添える)。行が無ければ 404。
+ * /api/crawls/:id/diagnostics (CAPTURE-49)。台本の行の `diagnosed` (capture-ledger の答えの本文そのまま) を返す。無い行は、
+ * いまの組み合わせが型を通る答え (`diagnostics` が空。capture-ledger は hostTypes も添える)。行が無ければ 404。
  */
 export const diagnosticsOf = (c) =>
   c === undefined
@@ -177,7 +177,7 @@ export const diagnosticsOf = (c) =>
 
 /**
  * POST /api/crawls/:id/inline/:name/fix (CAPTURE-49)。台本の行の `fixes` の、その名前の答え (`{ status, body }`。
- * 台帳の答えの本文そのまま) を返す。**Claude は呼ばない** —— 台本に無い行・名前は 404。
+ * capture-ledger の答えの本文そのまま) を返す。**Claude は呼ばない** —— 台本に無い行・名前は 404。
  */
 export const fixOf = (c, name) => {
   const answer = c?.fixes?.[name];
@@ -186,17 +186,17 @@ export const fixOf = (c, name) => {
     : { status: answer.status, body: answer.body };
 };
 
-/** クロールごとの値 (台帳 v0.67.0 の行の `variables`・`secrets`)。台本の行に無ければ、何も渡さなかったクロール。 */
+/** クロールごとの値 (capture-ledger v0.67.0 の行の `variables`・`secrets`)。台本の行に無ければ、何も渡さなかったクロール。 */
 const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [], userAgent: c.userAgent ?? null });
 
 /**
- * /api/crawls/:id。台帳はほかの欄 (上限など) も返すが、workbench が読むのは seeds・rules・finishedAt・
+ * /api/crawls/:id。capture-ledger はほかの欄 (上限など) も返すが、workbench が読むのは seeds・rules・finishedAt・
  * error・scripts・replayBundle・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に
- * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ台帳の既定。
- * `replayBundle` は一覧の行と同じ形 (台帳も同じ関数で組む)。
- * `secrets` は台帳 v0.90.0 と同じく `{ name, path, editedAt, rotated, archive }` の列で、値は無い (`archive` は宣言の
+ * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ capture-ledger の既定。
+ * `replayBundle` は一覧の行と同じ形 (capture-ledger も同じ関数で組む)。
+ * `secrets` は capture-ledger v0.90.0 と同じく `{ name, path, editedAt, rotated, archive }` の列で、値は無い (`archive` は宣言の
  * 写しで、`"keep"` か null。台本の行も、この形で書く)。`failures` の要素は
- * `{ url, depth, reason, page }` (page はページの行の id。CAPTURE-18 で台帳が足す)。
+ * `{ url, depth, reason, page }` (page はページの行の id。CAPTURE-18 で capture-ledger が足す)。
  */
 export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEFAULT_RULES, values = valuesIn(c)) => ({
   crawlId: c.crawlId,
@@ -232,7 +232,7 @@ const countsOf = (log) =>
   log.counts ?? Object.fromEntries(LEVELS.map((level) => [level, log.lines.filter((line) => line.level === level).length]));
 
 /**
- * ページの 1 行。欄は CAPTURE-18 で台帳が足す `GET /api/crawls/:id/pages` の形と同じ (id は数字だけの文字列)。
+ * ページの 1 行。欄は CAPTURE-18 で capture-ledger が足す `GET /api/crawls/:id/pages` の形と同じ (id は数字だけの文字列)。
  * `logCounts` は台本の `log` から組み (level ごとの数と dropped)、`log` の無いページは null (数を読んでいない)。
  * `capturedAt` と `bundledRev` (CAPTURE-56) は WACZ の撮った時刻と、その WACZ が最初に入った合本の版で、台本の
  * ページから (WACZ の無いページ・どの版にも入っていないページは null)。
@@ -252,13 +252,13 @@ export const pageRow = (p) => ({
 
 const DIGITS = /^[0-9]+$/;
 
-/** 台帳の id の並び (bigserial を文字列で持つので、数として比べる)。 */
+/** capture-ledger の id の並び (bigserial を文字列で持つので、数として比べる)。 */
 const byId = (a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : BigInt(a.id) > BigInt(b.id) ? 1 : 0);
 
 /**
  * /api/crawls/:id/pages。台本の行 `c` の `pages` を id の昇順で、`after` の後から `limit` 件 (既定 100・最大 500)。
  * `next` は続きが在れば返した最後の id、無ければ null。limit が整数でない・範囲の外、after が数字だけでなければ、
- * 行を探す前に 400 (Fastify の schema の形。台帳の実物の文は、エンドポイントが出たら写す)。行が無ければ 404。
+ * 行を探す前に 400 (Fastify の schema の形。capture-ledger の実物の文は、エンドポイントが出たら写す)。行が無ければ 404。
  */
 export const pageList = (c, query) => {
   const after = query.get("after");
@@ -294,7 +294,7 @@ export const pageLog = (c, raw) => {
 /**
  * /api/archives の行。欄は capture-ledger の src/api/routes.ts (v0.57.4) と同じ。
  * 置き場の WACZ に、台本の「見えない」行 (hidden) を足し、台本の archives で欄を上書きする。
- * 見えない行は一覧に出るが、署名は出ない (台帳の「見てよくない」と同じ 404 になる)。
+ * 見えない行は一覧に出るが、署名は出ない (capture-ledger の「見てよくない」と同じ 404 になる)。
  */
 export const archiveRows = (names, s) =>
   [...names, ...(s.hidden ?? [])].map((name) => ({
@@ -310,7 +310,7 @@ export const archiveRows = (names, s) =>
 
 /**
  * 当たった所の断片。OpenSearch の highlight と同じく、本文の当たった所を `<em>` で包み、前後を少し残す
- * （1 断片・前後 30 字）。題だけに当たったなら無し（台帳の highlight は本文だけ）。
+ * （1 断片・前後 30 字）。題だけに当たったなら無し（capture-ledger の highlight は本文だけ）。
  */
 const fragmentOf = (text, q) => {
   const at = text.toLowerCase().indexOf(q.toLowerCase());
@@ -322,10 +322,10 @@ const fragmentOf = (text, q) => {
 
 /**
  * 検索のエンドポイント（GET /api/search）の答え。欄は capture-ledger の src/api/search.ts（CAPTURE-53 の後）と同じ:
- * `{ hits, total }` で、total は返した当たりの数。台本の `searchPages` を、台帳と同じ決まりで引く ——
+ * `{ hits, total }` で、total は返した当たりの数。台本の `searchPages` を、capture-ledger と同じ決まりで引く ——
  * 写しの行が在るアーカイブでは写しの行だけ（文書の行は引かない。CAPTURE-48）、見えない行（`hidden`）は
- * 答えに出さない（台帳は OpenFGA の can_view で落とす）。当たりは題か本文に、大小を問わず語を含む行。
- * 台帳は 400 で `q` の無い・空の・ほかの欄のある問いを断る（Fastify の schema の文）。
+ * 答えに出さない（capture-ledger は OpenFGA の can_view で落とす）。当たりは題か本文に、大小を問わず語を含む行。
+ * capture-ledger は 400 で `q` の無い・空の・ほかの欄のある問いを断る（Fastify の schema の文）。
  */
 export const searchOf = (names, s, params) => {
   const keys = [...params.keys()];
@@ -380,8 +380,8 @@ const httpUrl = (raw) => {
   }
 };
 
-// ── 規則（台帳 v0.62.0 の src/crawl/rules.ts と scope.ts の写し）────────────
-/** 規則を省いた頼みの並び (台帳と同じ)。 */
+// ── 規則（capture-ledger v0.62.0 の src/crawl/rules.ts と scope.ts の写し）────────────
+/** 規則を省いた頼みの並び (capture-ledger と同じ)。 */
 const DEFAULT_RULES = [{ follow: "same-origin" }];
 const SCOPES = new Set(["same-origin", "same-host", "same-site", "any"]);
 const ACTIONS = ["follow", "capture", "skip"];
@@ -390,7 +390,7 @@ const RANK = { "same-origin": 0, "same-host": 1, "same-site": 2, any: 3 };
 
 /**
  * サイト (登録ドメイン)。**代役は Public Suffix List を持たない** —— ホスト名の最後の 2 ラベルで近似する。
- * `example.co.jp` を `co.jp` と読み違えるのは代役だけ (台帳は tldts。docs の development に書いてある)。
+ * `example.co.jp` を `co.jp` と読み違えるのは代役だけ (capture-ledger は tldts。docs の development に書いてある)。
  */
 export const siteOf = (hostname) => hostname.split(".").slice(-2).join(".");
 
@@ -432,7 +432,7 @@ const matches = (url, pattern, seeds) =>
       ? under(url.hostname, pattern.domain)
       : url.normalized.startsWith(pattern.url.normalized);
 
-/** 言い切れるときだけ覆いと言う (台帳と同じ組)。 */
+/** 言い切れるときだけ覆いと言う (capture-ledger と同じ組)。 */
 const covers = (a, b, seeds) => {
   if (a.kind === "scope" && a.scope === "any") return true;
   if (b.kind === "scope") return a.kind === "scope" && RANK[a.scope] >= RANK[b.scope];
@@ -451,7 +451,7 @@ const patternText = (pattern) =>
 const decide = (url, read, seeds) => read.find((rule) => matches(url, rule.pattern, seeds))?.action ?? "skip";
 
 /**
- * 規則の並びを確かめる (台帳の `checkRules`)。読めない行は覆いと起点の判定から外し、番号は頼まれたまま。
+ * 規則の並びを確かめる (capture-ledger の `checkRules`)。読めない行は覆いと起点の判定から外し、番号は頼まれたまま。
  */
 export const checkRules = (rules, seeds) => {
   const read = rules.map((rule) => {
@@ -472,7 +472,7 @@ export const checkRules = (rules, seeds) => {
   return { read, invalid, covered, unfollowedSeeds };
 };
 
-/** `rules` の形を見る (台帳の schema)。断るなら文を返す。 */
+/** `rules` の形を見る (capture-ledger の schema)。断るなら文を返す。 */
 const rulesRefusal = (rules) => {
   if (!Array.isArray(rules)) return "body/rules must be array";
   if (rules.length < 1) return "body/rules must NOT have fewer than 1 items";
@@ -491,7 +491,7 @@ const rulesRefusal = (rules) => {
 };
 
 /**
- * 始めるエンドポイントの規則の 400 (台帳 v0.62.0 と同じ順と文)。通れば、読んだ形で固定する規則を返す。
+ * 始めるエンドポイントの規則の 400 (capture-ledger v0.62.0 と同じ順と文)。通れば、読んだ形で固定する規則を返す。
  */
 const resolveRules = (rules, seeds) => {
   // 形は submitCrawl が先に見ている (schema の 400 は handler より前)
@@ -509,7 +509,7 @@ const resolveRules = (rules, seeds) => {
 };
 
 /**
- * 確かめのエンドポイント (`GET /api/crawl-rules/check`)。答えの形は台帳 v0.62.0 と同じ。規則は「動き:当てる物」で、
+ * 確かめのエンドポイント (`GET /api/crawl-rules/check`)。答えの形は capture-ledger v0.62.0 と同じ。規則は「動き:当てる物」で、
  * 動きの名前が違えば schema の 400。
  */
 export const crawlRulesCheck = (seedTexts, ruleTexts) => {
@@ -553,27 +553,27 @@ export const crawlRulesCheck = (seedTexts, ruleTexts) => {
   };
 };
 
-/** その場の TS の名前の綴り (台帳の schema と同じ。`inline-` と合わせて 64 字まで)。 */
+/** その場の TS の名前の綴り (capture-ledger の schema と同じ。`inline-` と合わせて 64 字まで)。 */
 const INLINE_NAME = /^[a-z][a-z0-9-]*$/;
-/** クロールごとの値の名前の綴り (台帳 v0.67.0 の schema と capture-scripts の check.mjs と同じ。64 字まで)。 */
+/** クロールごとの値の名前の綴り (capture-ledger v0.67.0 の schema と capture-scripts の check.mjs と同じ。64 字まで)。 */
 const VALUE_NAME = /^[a-z][a-z0-9_]*$/;
-/** 宣言したシークレットを置く Windmill のフォルダ (台帳と capture-scheduler の決まり)。 */
+/** 宣言したシークレットを置く Windmill のフォルダ (capture-ledger と capture-scheduler の決まり)。 */
 const SECRETS_FOLDER = "f/waggle_secrets/";
-/** `POST /api/crawls` の body の鍵 (台帳 v0.67.0 の schema。`additionalProperties: false`)。外の鍵は 400。 */
+/** `POST /api/crawls` の body の鍵 (capture-ledger v0.67.0 の schema。`additionalProperties: false`)。外の鍵は 400。 */
 const BODY_KEYS = ["userAgent", "seeds", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
 /** Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。試験が渡さなければ、何も置いていない Windmill。 */
 const NO_WINDMILL = { secrets: [], variables: [], editedAt: null };
 /**
- * 配備の形式 (台帳の `CAPTURE_LEDGER_CAPTURE_FORMATS`) の代わり (台本の `captureFormats`。小文字の名前の並び)。
- * 試験と台本が渡さなければ、台帳の既定と同じ `wacz` だけ。
+ * 配備の形式 (capture-ledger の `CAPTURE_LEDGER_CAPTURE_FORMATS`) の代わり (台本の `captureFormats`。小文字の名前の並び)。
+ * 試験と台本が渡さなければ、capture-ledger の既定と同じ `wacz` だけ。
  */
 const DEFAULT_FORMATS = ["wacz"];
-/** 隠すシークレットの値を置き換えられない形式 (台帳 v0.90.0 の `FORMATS_WITHOUT_REPLACEMENT`。この順で名指す)。 */
+/** 隠すシークレットの値を置き換えられない形式 (capture-ledger v0.90.0 の `FORMATS_WITHOUT_REPLACEMENT`。この順で名指す)。 */
 const FORMATS_WITHOUT_REPLACEMENT = ["png", "webp", "html", "mhtml"];
 
 /**
- * Fastify が schema の誤りで返す本文の形 (台帳の 400 と同じ。workbench は `message` を出す)。
- * 文は台帳 v0.58.0 の実物から写した —— 要素は鍵が 1 つの object なので、誤りの場所だけが出る。
+ * Fastify が schema の誤りで返す本文の形 (capture-ledger の 400 と同じ。workbench は `message` を出す)。
+ * 文は capture-ledger v0.58.0 の実物から写した —— 要素は鍵が 1 つの object なので、誤りの場所だけが出る。
  */
 const schemaError = (message) => ({
   status: 400,
@@ -608,10 +608,10 @@ const elementRefusal = (element, i) => {
 };
 
 /**
- * 宣言 (`params`) の形を見る (台帳 v0.90.0 の schema)。断るなら文を返す。名前は `^[a-z][a-z0-9_]*$` で 64 字まで、
+ * 宣言 (`params`) の形を見る (capture-ledger v0.90.0 の schema)。断るなら文を返す。名前は `^[a-z][a-z0-9_]*$` で 64 字まで、
  * kind は variable か secret、required は真偽値、summary は文字列 (その場の TS では省ける)、archive は `"keep"` だけ
  * (値を WARC に残す。省けば隠す)、知らない鍵は断る。
- * kind: variable と、同じ名前が 2 度ある宣言は schema では見ず、`paramsReading` が台帳の handler と同じ文で断る。
+ * kind: variable と、同じ名前が 2 度ある宣言は schema では見ず、`paramsReading` が capture-ledger の handler と同じ文で断る。
  */
 const paramsRefusal = (params, at) => {
   if (params === undefined) return undefined;
@@ -632,7 +632,7 @@ const paramsRefusal = (params, at) => {
     if (p.kind !== "variable" && p.kind !== "secret") return `${here}/kind must be equal to one of the allowed values`;
     if (p.required !== undefined && typeof p.required !== "boolean") return `${here}/required must be boolean`;
     if (p.summary !== undefined && typeof p.summary !== "string") return `${here}/summary must be string`;
-    // 台帳の Ajv は数・真偽・null を文字列に読み替えてから enum で断る。読み替えられないのは object だけ
+    // capture-ledger の Ajv は数・真偽・null を文字列に読み替えてから enum で断る。読み替えられないのは object だけ
     if (typeof p.archive === "object" && p.archive !== null) return `${here}/archive must be string`;
     if (p.archive !== undefined && p.archive !== "keep") return `${here}/archive must be equal to one of the allowed values`;
   }
@@ -640,9 +640,9 @@ const paramsRefusal = (params, at) => {
 };
 
 /**
- * その場の TS の宣言を、台帳の handler (schema の後) と同じく読む。`params` に書けるのはシークレットだけで、変数なら 400、
- * 同じ名前が 2 度あれば 400 (どちらも `{ error: "invalid params", script, hint }`。文は台帳と同じ)。
- * 通れば、省いた required を false にした宣言。`archive` は書いたときだけ写す (台帳の readParams。写し忘れると、
+ * その場の TS の宣言を、capture-ledger の handler (schema の後) と同じく読む。`params` に書けるのはシークレットだけで、変数なら 400、
+ * 同じ名前が 2 度あれば 400 (どちらも `{ error: "invalid params", script, hint }`。文は capture-ledger と同じ)。
+ * 通れば、省いた required を false にした宣言。`archive` は書いたときだけ写す (capture-ledger の readParams。写し忘れると、
  * 残すつもりの値が黙って隠れる)。
  */
 const paramsReading = (inline) => {
@@ -677,7 +677,7 @@ const paramsReading = (inline) => {
 };
 
 /**
- * `variables` の形を見る (台帳の schema)。断るなら文を返す。名前は宣言と同じ綴りで 32 個まで、値は文字列で 4,096 字まで。
+ * `variables` の形を見る (capture-ledger の schema)。断るなら文を返す。名前は宣言と同じ綴りで 32 個まで、値は文字列で 4,096 字まで。
  */
 const variablesRefusal = (variables) => {
   if (variables === undefined) return undefined;
@@ -721,7 +721,7 @@ export const readDeclared = (source) =>
   });
 
 /**
- * POST /api/scripts/check。書いている途中のその場の TS が宣言した変数を返す (台帳の `src/api/scripts.ts`)。行は立たない。
+ * POST /api/scripts/check。書いている途中のその場の TS が宣言した変数を返す (capture-ledger の `src/api/scripts.ts`)。行は立たない。
  * 本物は TS の誤りも `diagnostics` に返す (`BH0001` は除く) が、代役は型を検査しないので、欄が出ない理由の 2 つだけを言う。
  */
 export const checkInline = (body) => {
@@ -754,7 +754,7 @@ export const checkInline = (body) => {
   };
 };
 
-/** 値が宣言の形に合わないなら、人に見せる文 (台帳の `crawl/values.ts` の `shapeProblem`)。長さは code point で数える。 */
+/** 値が宣言の形に合わないなら、人に見せる文 (capture-ledger の `crawl/values.ts` の `shapeProblem`)。長さは code point で数える。 */
 const shapeProblem = (name, value, schema) => {
   const length = [...value].length;
   if (schema.enum !== undefined && !schema.enum.includes(value)) return `${name} は ${schema.enum.join("・")} のどれか`;
@@ -764,12 +764,12 @@ const shapeProblem = (name, value, schema) => {
 };
 
 /**
- * クロールごとの値を、台帳の route と `checkValues`・`resolveSecrets` と同じ順で解く: 必須の変数が無い (台帳は compile の
+ * クロールごとの値を、capture-ledger の route と `checkValues`・`resolveSecrets` と同じ順で解く: 必須の変数が無い (capture-ledger は compile の
  * 答えの `BH0001` で断る。行も立たない) → 同じ名前を別の種類か別の形で宣言している、WARC に残すかが食い違う → シークレットの
  * 名前を変数で渡している → 知らない変数 → 値が宣言の形に合わない → シークレットが多すぎる → 宣言したシークレットが
  * Windmill に在るか → 在るが secret でない → 隠すシークレットを送るのに、配備の形式 (`formats`) が値を置き換えられない
- * 物を頼む (台帳 v0.90.0 の `formatsRefusal`)。
- * 宣言は走らせるものから集める。台帳のスクリプトは版の `params`、その場の TS は変数が source の `defineParams`
+ * 物を頼む (capture-ledger v0.90.0 の `formatsRefusal`)。
+ * 宣言は走らせるものから集める。登録済みのスクリプトは版の `params`、その場の TS は変数が source の `defineParams`
  * (`readDeclared`) でシークレットが `inline.params`。同じ名前の宣言は 1 つにまとめる (名前順)。required でないシークレットが
  * Windmill に無ければ、渡さないだけで断らない (スクリプトは undefined を読む)。形式の 400 が見るのも、Windmill に在って
  * 送る物だけ。通れば、行に固定する `variables` と `secrets` (名前・path・確かめたときの edited_at・途中で替わったか・
@@ -876,9 +876,9 @@ const resolveValues = (variables = {}, run, windmill, formats = DEFAULT_FORMATS)
 };
 
 /**
- * 走らせるものを、台帳 (capture-ledger v0.61.0) と同じ順で解く: 形 (schema) → 重ね → 台帳に無い id →
+ * 走らせるものを、capture-ledger (v0.61.0) と同じ順で解く: 形 (schema) → 重ね → 登録されていない id →
  * 起点に合わないサイト用のスクリプト。省けば既定の顔ぶれ (`defaultSet`) で、それが空なら 400。
- * その場の TS は `inline-<name>`・版 1 で、sha256 は source から打つ (台帳と同じ)。対象サイトは持たない。
+ * その場の TS は `inline-<name>`・版 1 で、sha256 は source から打つ (capture-ledger と同じ)。対象サイトは持たない。
  */
 const resolveRun = (scripts, versions, hosts) => {
   if (scripts === undefined) {
@@ -890,7 +890,7 @@ const resolveRun = (scripts, versions, hosts) => {
     const refused = elementRefusal(element, i);
     if (refused !== undefined) return schemaError(refused);
   }
-  // その場の TS の宣言を読む (台帳の readParams。schema の後、名指しを解く前)。省いた required は false に
+  // その場の TS の宣言を読む (capture-ledger の readParams。schema の後、名指しを解く前)。省いた required は false に
   const read = [];
   for (const element of scripts) {
     if (!("inline" in element)) {
@@ -907,7 +907,7 @@ const resolveRun = (scripts, versions, hosts) => {
   if (twice.length > 0) {
     return { status: 400, body: { error: "duplicate script ids", ids: twice } };
   }
-  // 名指しは有効かどうかを見ない（台帳 v0.64.0 の resolveScripts）—— 既定に入らないスクリプトも、名指せば最新版が走る
+  // 名指しは有効かどうかを見ない（capture-ledger v0.64.0 の resolveScripts）—— 既定に入らないスクリプトも、名指せば最新版が走る
   const catalog = latestOf(versions);
   const missing = [
     ...new Set(
@@ -945,7 +945,7 @@ const resolveRun = (scripts, versions, hosts) => {
 };
 
 /**
- * 既定を頼まれたのに、既定が空。文は台帳 v0.61.3 の src/api/crawls.ts と同じ —— スクリプトは在るのに
+ * 既定を頼まれたのに、既定が空。文は capture-ledger v0.61.3 の src/api/crawls.ts と同じ —— スクリプトは在るのに
  * 全部が別のサイト用なら、「スクリプトが無い」とは言わない (取り込み直しても直らない)。
  */
 const emptyDefault = (versions) => {
@@ -972,7 +972,7 @@ const emptyDefault = (versions) => {
 
 /**
  * 台本のスクリプト（版の並び）に source を読み込む。source は sandbox/catalog の写し（capture-scripts のファイル）で、
- * sha256 と bytes は台帳と同じく source から数える（手で書いた sha256 は、本物の
+ * sha256 と bytes は capture-ledger と同じく source から数える（手で書いた sha256 は、本物の
  * 中身と結び付かない）。欄は capture-ledger v0.61.0 の 1 版のエンドポイント（`GET /api/scripts/:id/versions/:version`）と同じ。
  */
 export const catalogOf = (s, read = readBeside) =>
@@ -989,14 +989,14 @@ export const catalogOf = (s, read = readBeside) =>
       createdAt: v.createdAt,
       source,
       options: v.options ?? {},
-      // 宣言 (catalog.json の params)。台帳 v0.67.0 は版ごとに持ち、一覧と 1 版のエンドポイントに出す。無ければ空
+      // 宣言 (catalog.json の params)。capture-ledger v0.67.0 は版ごとに持ち、一覧と 1 版のエンドポイントに出す。無ければ空
       params: v.params ?? [],
     };
   });
 
 /**
- * 各 id の最新版を、台本の `catalog` に現れた順で（台帳の既定の実行順。capture-scripts の catalog.json の並びの写し）。
- * 有効かどうかは見ない（台帳の resolveScripts の名指しの側）。
+ * 各 id の最新版を、台本の `catalog` に現れた順で（capture-ledger の既定の実行順。capture-scripts の catalog.json の並びの写し）。
+ * 有効かどうかは見ない（capture-ledger の resolveScripts の名指しの側）。
  */
 export const latestOf = (versions) =>
   [...new Set(versions.map((v) => v.id))].map((id) =>
@@ -1004,22 +1004,22 @@ export const latestOf = (versions) =>
   );
 
 /**
- * 有効な各 id の最新版を同じ順で。サイト用のスクリプトも入る（台帳の enabledLatest。既定の顔ぶれの元）。順は
- * 無効な版も数えて決める —— 台帳の順は id に 1 つなので、一覧のエンドポイントと既定の順はずれない。
+ * 有効な各 id の最新版を同じ順で。サイト用のスクリプトも入る（capture-ledger の enabledLatest。既定の顔ぶれの元）。順は
+ * 無効な版も数えて決める —— capture-ledger の順は id に 1 つなので、一覧のエンドポイントと既定の順はずれない。
  */
 export const latestEnabled = (versions) => pickable(versions).filter((v) => v.enabled);
 
 /**
  * 一覧のエンドポイント（`GET /api/scripts`）の顔ぶれ。各 id に 1 行で、既定で走る版（有効な版の中の最新）があればそれ、
- * 無ければ最新版を `enabled: false` で（台帳 v0.64.0 の pickable）。既定に入らないスクリプトも、名指せば
+ * 無ければ最新版を `enabled: false` で（capture-ledger v0.64.0 の pickable）。既定に入らないスクリプトも、名指せば
  * 走るので載せる。
  */
 export const pickable = (versions) =>
   latestOf(versions).map((latest) => latestOf(versions.filter((v) => v.id === latest.id && v.enabled))[0] ?? latest);
 
 /**
- * `GET /api/scripts` の行。身元と対象サイトと enabled に、宣言 `params` を添える（台帳 v0.67.0。新しいクロールの画面が
- * 変数の欄をこれから描く）。source・options・bytes は一覧に無い（台帳と同じ）。
+ * `GET /api/scripts` の行。身元と対象サイトと enabled に、宣言 `params` を添える（capture-ledger v0.67.0。新しいクロールの画面が
+ * 変数の欄をこれから描く）。source・options・bytes は一覧に無い（capture-ledger と同じ）。
  */
 export const scriptRows = (versions) =>
   pickable(versions).map(({ id, version, phase, sha256, sites, enabled, params }) => ({
@@ -1032,12 +1032,12 @@ export const scriptRows = (versions) =>
     params,
   }));
 
-/** 対象サイトの無いスクリプトはいつでも、サイト用のスクリプトは対象サイトのどれかが起点のホストにあるとき（台帳の onSeed）。 */
+/** 対象サイトの無いスクリプトはいつでも、サイト用のスクリプトは対象サイトのどれかが起点のホストにあるとき（capture-ledger の onSeed）。 */
 const onSeed = (sites, hosts) => sites.length === 0 || sites.some((site) => hosts.has(site));
 
 /**
  * 既定の顔ぶれ: 有効な各 id の最新版のうち、対象サイトの無い物と、起点に合うサイト用の物（カタログの順）。
- * **最新版を選んでから対象サイトで絞る** —— 台帳の resolveScripts と同じ順。逆にすると、対象サイトを付け直した id の
+ * **最新版を選んでから対象サイトで絞る** —— capture-ledger の resolveScripts と同じ順。逆にすると、対象サイトを付け直した id の
  * 対象サイトの無い古い版が出てくる。
  */
 export const defaultSet = (versions, hosts) => latestEnabled(versions).filter((v) => onSeed(v.sites, hosts));
@@ -1065,7 +1065,7 @@ export const versionsOf = (versions, id) => {
 };
 
 /**
- * GET /api/scripts/:id/versions/:version。版が 1 以上の整数でなければ 400（文は台帳 v0.60.0 の実物から
+ * GET /api/scripts/:id/versions/:version。版が 1 以上の整数でなければ 400（文は capture-ledger v0.60.0 の実物から
  * 写した）、無ければ 404。有効かどうかは見ない。
  */
 export const versionOf = (versions, id, raw) => {
@@ -1075,7 +1075,7 @@ export const versionOf = (versions, id, raw) => {
   return one === undefined ? { status: 404, body: { error: "not found" } } : { status: 200, body: one };
 };
 
-/** GET /api/host-types。台本の `hostTypes` の file を読む。台本に無ければ 404（取り込んでいない台帳）。 */
+/** GET /api/host-types。台本の `hostTypes` の file を読む。台本に無ければ 404（取り込んでいない capture-ledger）。 */
 export const hostTypesOf = (s, read = readBeside) => {
   if (s.hostTypes === undefined) return { status: 404, body: { error: "not found" } };
   const source = read(s.hostTypes.file);
@@ -1099,13 +1099,13 @@ export const hostTypesOf = (s, read = readBeside) => {
  * **走行中の 1 本は、受けた行だけで数える** —— 台本の走行中の行は飾りで、それで 409 に
  * すると何も始められない。409 を見たいなら、走っている間にもう 1 度始める。
  *
- * `versions` はスクリプトの版の並び (`catalogOf`)。起点のホスト (台帳と同じく `hostname`。ポートは見ない) で
+ * `versions` はスクリプトの版の並び (`catalogOf`)。起点のホスト (capture-ledger と同じく `hostname`。ポートは見ない) で
  * 既定を選び、名指しを照らす。走らせたものと値は受けた行の `scripts`・`variables`・`secrets` に持ち、一覧の行
  * (`submittedRow`) には出さない。`windmill` は Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)、
  * `formats` は配備の形式の代わり (台本の `captureFormats`)。
  */
 export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = NO_WINDMILL, formats = DEFAULT_FORMATS) => {
-  // 知らない鍵 (消した scriptIds・scope も) は、schema の 400 (台帳は additionalProperties: false)
+  // 知らない鍵 (消した scriptIds・scope も) は、schema の 400 (capture-ledger は additionalProperties: false)
   if (body !== null && typeof body === "object" && Object.keys(body).some((key) => !BODY_KEYS.includes(key))) {
     return schemaError("body must NOT have additional properties");
   }
@@ -1120,7 +1120,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   if (!Array.isArray(body?.seeds)) {
     return { status: 400, body: { error: "seeds is required" } };
   }
-  // 台帳と同じ順と文 (schema は文字列だけを見て、形は handler が読める文で断る)
+  // capture-ledger と同じ順と文 (schema は文字列だけを見て、形は handler が読める文で断る)
   if ("userAgent" in body && typeof body.userAgent !== "string") return schemaError("body/userAgent must be string");
   const userAgent = (body.userAgent ?? "").trim();
   if (userAgent !== "" && !/^[\x20-\x7e]{1,512}$/.test(userAgent)) {
@@ -1130,7 +1130,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   if (!body.seeds.every(httpUrl)) {
     return { status: 400, body: { error: "every seed must be an http(s) URL" } };
   }
-  // 規則の誤りは起点の次 (台帳と同じ順)。走らせるものの誤りも、走行中でも 400 が先 —— 台帳は解いてから
+  // 規則の誤りは起点の次 (capture-ledger と同じ順)。走らせるものの誤りも、走行中でも 400 が先 —— capture-ledger は解いてから
   // 行を立て、409 は行を立てる所で出る
   const ruled = resolveRules(body.rules, body.seeds.map(parseUrl));
   if (ruled.status !== undefined) return ruled;
@@ -1249,7 +1249,7 @@ export const readingLastGood = (read, graceMs, now = Date.now) => {
 };
 
 /**
- * /api/schedules の 1 行。欄は capture-ledger の src/api/schedules.ts と同じ。状態の語 (`health`) の判定は台帳の物なので、
+ * /api/schedules の 1 行。欄は capture-ledger の src/api/schedules.ts と同じ。状態の語 (`health`) の判定は capture-ledger の物なので、
  * 台本に語を書く。時刻は絶対の時刻のまま (画面の絵が撮るたびに変わらないように)。
  */
 export const scheduleRow = (c) => ({
@@ -1287,7 +1287,7 @@ const schedulesIn = (s) =>
     .filter((row) => !deletedSchedules.has(row.id))
     .map((row) => ({ ...row, ...scheduleEdits.get(row.id) }));
 
-/** `POST /api/schedules`。cron の確かめは台帳の決まりの写しで、欄の数と周期の下限だけを見る。 */
+/** `POST /api/schedules`。cron の確かめは capture-ledger の決まりの写しで、欄の数と周期の下限だけを見る。 */
 export const createSchedule = (rows, body, now = Date.now()) => {
   if (typeof body?.name !== "string" || body.name.trim() === "") {
     return { status: 400, body: { error: "name must not be blank" } };
@@ -1323,10 +1323,10 @@ const scenario = readingLastGood(() => JSON.parse(readFileSync(SCENARIO, "utf8")
 /** workbench の欄から受けた行。代役が起きている間だけ在る (台本には書かない)。 */
 const submitted = [];
 
-/** 台本のスクリプトの版の並び。`emptyCatalog` なら空 (スクリプトが無い台帳。読む所には受け皿の型だけが残る)。 */
+/** 台本のスクリプトの版の並び。`emptyCatalog` なら空 (スクリプトが無い capture-ledger。読む所には受け皿の型だけが残る)。 */
 const versionsIn = (s) => (s.emptyCatalog === true ? [] : catalogOf(s));
 
-/** 台本の Windmill の代わり。edited_at は台本の撮った時刻 (台帳は Windmill の答えの edited_at を写す)。 */
+/** 台本の Windmill の代わり。edited_at は台本の撮った時刻 (capture-ledger は Windmill の答えの edited_at を写す)。 */
 const windmillOf = (s) => ({
   secrets: s.windmillSecrets ?? [],
   variables: s.windmillVariables ?? [],
@@ -1432,7 +1432,7 @@ const handle = (req, res, raw) => {
     send(res, acted[2] === "run" ? 202 : 200, scheduleRow({ ...row, ...edit }));
     return;
   }
-  // 走ったままの行を締める (台帳の /failed と同じ本文)。代役の台本の行は書き換えないので、閉じたとだけ答える
+  // 走ったままの行を締める (capture-ledger の /failed と同じ本文)。代役の台本の行は書き換えないので、閉じたとだけ答える
   if (req.method === "POST" && /^\/api\/crawls\/[^/]+\/failed$/.test(pathname)) {
     send(res, 200, { closed: true });
     return;
@@ -1479,7 +1479,7 @@ const handle = (req, res, raw) => {
     send(res, answer.status, answer.body);
     return;
   }
-  // 規則が何を決めたか (台帳 v0.62.0)。受けた行は何も辿っていないので空
+  // 規則が何を決めたか (capture-ledger v0.62.0)。受けた行は何も辿っていないので空
   const decided = /^\/api\/crawls\/([^/]+)\/decisions$/.exec(pathname);
   if (req.method === "GET" && decided !== null) {
     const mine = submitted.find((row) => row.crawlId === decided[1]);
@@ -1534,11 +1534,11 @@ const handle = (req, res, raw) => {
     return;
   }
   if (req.method === "GET" && pathname === "/api/scripts") {
-    // 各 id に 1 行、対象サイトと enabled と宣言つきで（台帳 v0.64.0。既定で走るのは、enabled の物のうち対象サイトの無い物と起点に合う物）
+    // 各 id に 1 行、対象サイトと enabled と宣言つきで（capture-ledger v0.64.0。既定で走るのは、enabled の物のうち対象サイトの無い物と起点に合う物）
     send(res, 200, { scripts: scriptRows(versionsIn(s)) });
     return;
   }
-  // スクリプトを読むエンドポイント（台帳 v0.60.0）。id は % を解いてから引く
+  // スクリプトを読むエンドポイント（capture-ledger v0.60.0）。id は % を解いてから引く
   const versions = /^\/api\/scripts\/([^/]+)\/versions(?:\/([^/]+))?$/.exec(pathname);
   if (req.method === "GET" && versions !== null) {
     const id = decodeURIComponent(versions[1]);

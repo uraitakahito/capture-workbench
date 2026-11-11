@@ -96,7 +96,7 @@ test("渡す値が空なら「既定のまま」と言い、あればそのま�
   assert.equal(optionsText({ maxSteps: 60 }), '設定 {"maxSteps":60}');
 });
 
-test("既定の版は、台帳の一覧で既定に入る物の版。既定に入らない id と載っていない id は無い", () => {
+test("既定の版は、capture-ledger の一覧で既定に入る物の版。既定に入らない id と載っていない id は無い", () => {
   const latest = [
     { id: "autoscroll", version: 2, enabled: true, sites: [] },
     { id: "autofetch", version: 1, enabled: false, sites: [] },

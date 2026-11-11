@@ -15,7 +15,7 @@
  *   6. README の Documentation の 2 本の URL が、docs-site/astro.config.ts の `site` ＋ `BASE` から
  *      組んだものと一致する (base を変えた日に、README だけが 404 を指し続けないように)
  *   7. 「画面」の絵 (`docs-site/src/assets/screens/`) が shots.json の一覧と揃い、ja・en の screens.md が
- *      全部を載せている。どれも DPR 1 の lossless の WebP で、予算 (1 枚 35 KB・全部で 264 KB) の中。
+ *      全部を載せている。どれも DPR 1 の lossless の WebP で、予算 (1 枚 35 KB・全部で 268 KB) の中。
  *      wide (本文に縮めて載せる表) でない絵は、本文の幅 (`COLUMN`) 以内。絵の元 (`public/`・`sandbox/`・
  *      撮る道具) が、撮ったときから変わっていない
  *
@@ -179,7 +179,9 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // 2026-11-11 に 1 枚の枠を 32 → 35 KB、全部の枠を 260 → 264 KB（CAPTURE-166 で開いた行の使ったシークレットに、WARC で隠すか
 // 残すかの印と、残すシークレットの行が増え、開いた行の絵が 31.1 → 34.7 KB になったとき。印だけでも 32.0 KB で枠に届いた。
 // 開いた行の絵は ④⑤ の印まで切ってあり、詰めれば本文が指す所が消える）
-const BUDGET = { one: 35 * 1024, all: 264 * 1024 };
+// 2026-11-12 に全部の枠を 264 → 268 KB（CAPTURE-186 の言い換えで、capture-ledger・登録済みのと字が伸びた 6 枚で
+// 264.1 KB になったとき。利用者の判断）。
+const BUDGET = { one: 35 * 1024, all: 268 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);

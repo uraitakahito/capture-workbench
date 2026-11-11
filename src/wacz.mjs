@@ -1,9 +1,9 @@
 /**
- * WACZ の中身を読むエンドポイント。`/wacz/<archiveId>/<op>` を読み、台帳に署名をもらい、daemon に渡す。
+ * WACZ の中身を読むエンドポイント。`/wacz/<archiveId>/<op>` を読み、capture-ledger に署名をもらい、daemon に渡す。
  *
- * 6 本とも同じ 2 段 —— **台帳に署名をもらう → daemon に渡す** —— で、署名はこの
+ * 6 本とも同じ 2 段 —— **capture-ledger に署名をもらう → daemon に渡す** —— で、署名はこの
  * ファイルの外に出ない。workbench が呼ぶのは GET（`<img src>` も GET）で、daemon へは
- * POST に組み替える。`/api/` は台帳の素通しだけに戻した（server.mjs 自身が
+ * POST に組み替える。`/api/` は capture-ledger の素通しだけに戻した（server.mjs 自身が
  * 「こちらの答えを混ぜない」と書いているので、daemon 行きのエンドポイントはここに集める）。
  *
  *   POST /wacz/<id>/validate                              → POST /validate
@@ -64,7 +64,7 @@ export const parseWaczRoute = (url) => {
 
 /**
  * op ごとに daemon へ渡す引数（source を除く）を組む。足りなければ BadRequest。
- * **署名をもらう前に検査する** —— 引数が壊れているのに台帳へ行かない。
+ * **署名をもらう前に検査する** —— 引数が壊れているのに capture-ledger へ行かない。
  */
 export const paramsFor = (op, params) => {
   const need = (name) => {
@@ -91,9 +91,9 @@ export const paramsFor = (op, params) => {
 /**
  * 署名をもらい、daemon に渡し、答えを返す。**署名はこの関数の外に出ない** ——
  * 応答にもログにも、失敗の文にも載せない（call が URL 入りの例外を投げても伏せる）。
- * 見えない archive なら、台帳の応答（404）をそのまま返す。
+ * 見えない archive なら、capture-ledger の応答（404）をそのまま返す。
  *
- * 順番に意味がある: 先に台帳へ訊くので、**見てよい archive でなければ daemon まで
+ * 順番に意味がある: 先に capture-ledger へ訊くので、**見てよい archive でなければ daemon まで
  * 行かない**。絞るのは認可を持っている側。
  */
 export const viaSignedUrl = async ({ toLedger, call }, archiveId) => {

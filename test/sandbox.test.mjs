@@ -1,17 +1,17 @@
 /**
  * サンドボックスの代役 (sandbox/fake-ledger.mjs) の、応答を組み立てる部分。
  *
- * 欄の集合を台帳の応答と揃えておくことと、同梱の台本が画面の状態を全部出せることを固定する。
- * 台帳の欄は capture-ledger v0.57.4 から写した —— 台帳が欄を足したら、ここと代役を直す。
+ * 欄の集合を capture-ledger の応答と揃えておくことと、同梱の台本が画面の状態を全部出せることを固定する。
+ * capture-ledger の欄は capture-ledger v0.57.4 から写した —— capture-ledger が欄を足したら、ここと代役を直す。
  * スクリプトを読むエンドポイント（版の一覧・1 版・受け皿の型）は v0.60.0 から、対象サイト（`sites`）と起点で選ぶ既定は v0.61.0 から。
  * 規則の並び（`rules`・400 の 3 つ・確かめと判断のエンドポイント）は v0.62.0 から。既定に入らないスクリプト（一覧の
  * `enabled`・名指しは有効かどうかを見ない）は v0.64.0 から。クロールごとの値（版の `params`・頼みの `variables`・
  * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。シークレットの宣言の `archive`（行の `secrets` の
  * `archive`・食い違いの `conflicting params`・隠せない形式の 400）は v0.90.0 から。ページのエンドポイント（`GET /api/crawls/:id/pages` と
- * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で台帳が足す形から（台帳の版は、エンドポイントが出たら書く）。
+ * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で capture-ledger が足す形から（capture-ledger の版は、エンドポイントが出たら書く）。
  * 型の誤りの取り直し（`GET /api/crawls/:id/diagnostics`）と直し方（`POST …/inline/:name/fix`）は CAPTURE-49 の形から。
- * 合本の欄（行と詳しい所の `replayBundle`・ページの行の `capturedAt` と `bundledRev`）は、CAPTURE-56 で台帳が足す形から
- * （台帳の版は、出たら書く）。
+ * 合本の欄（行と詳しい所の `replayBundle`・ページの行の `capturedAt` と `bundledRev`）は、CAPTURE-56 で capture-ledger が足す形から
+ * （capture-ledger の版は、出たら書く）。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -134,7 +134,7 @@ const LEDGER_SCHEDULE_RUN_KEYS = [
   "error",
 ].sort();
 
-test("予定の 1 行は、台帳の /api/schedules と同じ欄を持つ", () => {
+test("予定の 1 行は、capture-ledger の /api/schedules と同じ欄を持つ", () => {
   for (const c of scenario.schedules) {
     const row = scheduleRow(c);
     assert.deepEqual(Object.keys(row).sort(), LEDGER_SCHEDULE_KEYS, c.id);
@@ -148,7 +148,7 @@ test("同梱の台本は、定期実行の見本を 3 つ出す（失敗・順�
   assert.deepEqual(scenario.schedules.map((c) => c.health), ["failing", "blocked", "paused"]);
 });
 
-test("予定を作るエンドポイントは、台帳と同じ文で断る", () => {
+test("予定を作るエンドポイントは、capture-ledger と同じ文で断る", () => {
   assert.equal(createSchedule([], { name: " ", cron: "0 4 * * *" }).body.error, "name must not be blank");
   assert.equal(createSchedule([], { name: "a", cron: "0 0 4 * * *" }).body.error, "invalid cron");
   assert.equal(createSchedule([], { name: "a", cron: "*/5 * * * *" }).body.error, "cron runs too often");
@@ -159,7 +159,7 @@ test("予定を作るエンドポイントは、台帳と同じ文で断る", ()
   assert.deepEqual(made.row.seeds, ["https://site.test/"]);
 });
 
-test("クロールの 1 行は、台帳の /api/crawls と同じ欄を持つ", () => {
+test("クロールの 1 行は、capture-ledger の /api/crawls と同じ欄を持つ", () => {
   for (const c of scenario.crawls) {
     assert.deepEqual(Object.keys(crawlRow(c, NOW)).sort(), LEDGER_CRAWL_KEYS, c.crawlId);
   }
@@ -210,7 +210,7 @@ test("runsSeconds を過ぎると完走になり、次を受ける", () => {
   assert.equal(rows[0].crawlId, next.body.crawlId, "新しい順の先頭");
 });
 
-test("読めない起点・空の起点・seeds の無い body は、台帳と同じ文で 400", () => {
+test("読めない起点・空の起点・seeds の無い body は、capture-ledger と同じ文で 400", () => {
   const rows = [];
   const say = (body) => submitCrawl(rows, body, NOW, RUNS, versions);
   assert.deepEqual(say({}), { status: 400, body: { error: "seeds is required" } });
@@ -225,7 +225,7 @@ test("読めない起点・空の起点・seeds の無い body は、台帳と�
   assert.equal(rows.length, 0, "断った本は行にしない");
 });
 
-test("受けた行も、台帳の /api/crawls と同じ欄を持つ", () => {
+test("受けた行も、capture-ledger の /api/crawls と同じ欄を持つ", () => {
   const rows = [];
   submitCrawl(rows, { seeds: ["https://site.test/"] }, NOW, RUNS, versions);
   assert.deepEqual(Object.keys(submittedRow(rows[0], NOW)).sort(), LEDGER_CRAWL_KEYS);
@@ -255,9 +255,9 @@ test("同梱の台本は、画面の状態の言い分けを全部出す", () =>
   assert.ok((scenario.hidden ?? []).length > 0, "見えない archive の行");
 });
 
-// ── 合本の欄（CAPTURE-56 で台帳が足す行の replayBundle）────────────────────────────────
+// ── 合本の欄（CAPTURE-56 で capture-ledger が足す行の replayBundle）────────────────────────────────
 
-test("合本の欄は台帳と同じ形で、行と詳しい所で同じ。鍵は台帳と同じ置き場の版を指す", () => {
+test("合本の欄は capture-ledger と同じ形で、行と詳しい所で同じ。鍵は capture-ledger と同じ置き場の版を指す", () => {
   let seen = 0;
   for (const c of scenario.crawls) {
     const bundle = crawlRow(c, NOW).replayBundle;
@@ -266,7 +266,7 @@ test("合本の欄は台帳と同じ形で、行と詳しい所で同じ。鍵�
     seen += 1;
     assert.deepEqual(Object.keys(bundle).sort(), LEDGER_BUNDLE_KEYS, c.crawlId);
     if (bundle.rev === null) {
-      // 失敗だけの行は、鍵・ページの数・時刻を持たない（台帳の replayBundleOf と同じ）
+      // 失敗だけの行は、鍵・ページの数・時刻を持たない（capture-ledger の replayBundleOf と同じ）
       assert.deepEqual([bundle.key, bundle.pages, bundle.builtAt], [null, null, null], c.crawlId);
       assert.equal(typeof bundle.error, "string", c.crawlId);
     } else {
@@ -339,7 +339,7 @@ test("クロール 1 本は、workbench が読む seeds・error・scripts・fail
   assert.deepEqual(detail.seeds, failed.seeds);
   assert.equal(detail.error, failed.error);
   assert.ok(detail.failures.length > 0);
-  // 走らせたものを持たない行は、空の並び（台帳も、何も走らせなければ []）
+  // 走らせたものを持たない行は、空の並び（capture-ledger も、何も走らせなければ []）
   assert.deepEqual(detail.scripts, []);
 });
 
@@ -349,7 +349,7 @@ test("同梱の台本に、その場の TS で完走した行と、compile の�
   assert.equal(withInline.filter((c) => c.state === "failed").length, 1, "compile の段で落ちた行は 1 本");
   const broken = crawlDetail(withInline.find((c) => c.state === "failed"));
   assert.match(broken.error, /compile 422 .*inline-close-banner\.ts/);
-  // 台帳と同じく、その場の物にだけ inline が付き、台帳のスクリプトは身元だけ
+  // capture-ledger と同じく、その場の物にだけ inline が付き、登録済みのスクリプトは身元だけ
   assert.equal(broken.scripts[0].id, "inline-close-banner");
   assert.equal(broken.scripts[0].inline.name, "close-banner");
   assert.equal("inline" in broken.scripts[1], false);
@@ -378,7 +378,7 @@ test("scripts を受けると、その場の TS は inline- の id・版 1 で�
   assert.deepEqual(detail.scripts[0].inline, { name: "close-banner", phase: "preload", bytes: 2 });
   assert.equal(JSON.stringify(detail).includes('"source"'), false);
   assert.equal("inline" in detail.scripts[1], false);
-  // 一覧の行には出さない（欄は台帳の一覧と揃えて固定している）
+  // 一覧の行には出さない（欄は capture-ledger の一覧と揃えて固定している）
   assert.equal("scripts" in submittedRow(rows[0], NOW), false);
 });
 
@@ -406,7 +406,7 @@ test("名前で引くエンドポイントは、受けた行と台本の行の�
   assert.match(theirs.body.source, /close/);
 });
 
-test("名前で引くエンドポイントは、台帳のスクリプト・知らない名前・知らない行には 404（台帳と同じ文）", () => {
+test("名前で引くエンドポイントは、登録済みのスクリプト・知らない名前・知らない行には 404（capture-ledger と同じ文）", () => {
   const rows = [];
   submitCrawl(
     rows,
@@ -427,7 +427,7 @@ test("名前で引くエンドポイントは、台帳のスクリプト・知�
   assert.equal(inlineSource(undefined, "a").status, 404);
 });
 
-test("走行中でも、走らせるものの誤りは 409 より先に 400 —— 台帳と同じ順", () => {
+test("走行中でも、走らせるものの誤りは 409 より先に 400 —— capture-ledger と同じ順", () => {
   const rows = [];
   submitCrawl(rows, { seeds: ["https://site.test/"] }, NOW, RUNS, versions);
   const busy = submitCrawl(
@@ -452,7 +452,7 @@ test("scripts を省くと、起点で選んだ既定を走らせたものとし
   assert.deepEqual(at(ranFrom("https://other-site.test/")), ["autoscroll@2"]);
   const onSite = ranFrom("https://laws.e-gov.go.jp/", { query: "個人情報" });
   assert.deepEqual(at(onSite), ["autoscroll@2", "egov-law-search@1"]);
-  // 対象サイトは台帳 v0.61.0 と同じく詳しい所に出る。対象サイトの無い物は空の並び
+  // 対象サイトは capture-ledger v0.61.0 と同じく詳しい所に出る。対象サイトの無い物は空の並び
   assert.deepEqual(
     onSite.map((s) => s.sites),
     [[], ["laws.e-gov.go.jp"]],
@@ -490,7 +490,7 @@ test("既定の顔ぶれは、有効な物のうち対象サイトの無い物�
 });
 
 test("既定は最新版を選んでから対象サイトで絞る —— 対象サイトを付け直した id の、対象サイトの無い古い版は出てこない", () => {
-  // 台帳 v0.61.0 の resolveScripts と同じ順。逆にすると v1 が出てくる
+  // capture-ledger v0.61.0 の resolveScripts と同じ順。逆にすると v1 が出てくる
   const resited = [
     ...versions,
     { ...versions[0], id: "google-results", version: 1, sites: [] },
@@ -500,11 +500,11 @@ test("既定は最新版を選んでから対象サイトで絞る —— 対象
 });
 
 test("代役の既定と、新しいクロールの画面の既定（public/start.js）は、同じ起点に同じ顔ぶれを出す", () => {
-  // 決まりの正は台帳。2 つの写しが食い違えば、workbench が「省いても同じ」と送った頼みで別の物が走る。
-  // workbench が持つのは一覧のエンドポイントの答え（pickable）だけ —— 版ごとに無効にした台帳でも、それで同じ顔ぶれになる
+  // 決まりの正は capture-ledger。2 つの写しが食い違えば、workbench が「省いても同じ」と送った頼みで別の物が走る。
+  // workbench が持つのは一覧のエンドポイントの答え（pickable）だけ —— 版ごとに無効にした capture-ledger でも、それで同じ顔ぶれになる
   const off = versions.map((v) => (v.id === "autoscroll" && v.version === 2 ? { ...v, enabled: false } : v));
   const allOff = versions.map((v) => (v.id === "autoscroll" ? { ...v, enabled: false } : v));
-  // 版が離れて並び、先に現れた版が無効でも、id の順は最初に現れた所（台帳の順は id に 1 つ）
+  // 版が離れて並び、先に現れた版が無効でも、id の順は最初に現れた所（capture-ledger の順は id に 1 つ）
   const [scroll1, scroll2, egov, fetch1] = versions;
   const apart = [{ ...scroll1, enabled: false }, egov, scroll2, fetch1];
   const seeds = [
@@ -527,14 +527,14 @@ test("代役の既定と、新しいクロールの画面の既定（public/star
   }
 });
 
-test("既定に入らないスクリプトも、名指せば最新版が走る（台帳 v0.64.0）", () => {
+test("既定に入らないスクリプトも、名指せば最新版が走る（capture-ledger v0.64.0）", () => {
   const rows = [];
   const answer = submitCrawl(rows, { seeds: ["https://other-site.test/"], scripts: [{ catalog: "autofetch" }] }, NOW, RUNS, versions);
   assert.equal(answer.status, 202);
   assert.deepEqual(at(crawlDetail(submittedRow(rows[0], NOW), rows[0].scripts).scripts), ["autofetch@1"]);
 });
 
-test("起点に合わないサイト用のスクリプトを名指すと、台帳と同じ文で 400 —— 走行中でも 409 より先", () => {
+test("起点に合わないサイト用のスクリプトを名指すと、capture-ledger と同じ文で 400 —— 走行中でも 409 より先", () => {
   const rows = [];
   const post = (seeds) =>
     submitCrawl(
@@ -557,7 +557,7 @@ test("起点に合わないサイト用のスクリプトを名指すと、台�
   assert.equal(post(["https://other-site.test/"]).status, 400);
 });
 
-test("既定が空なら 400 —— 台帳にスクリプトが無いのと、全部が別のサイト用とで文を分ける（台帳と同じ文）", () => {
+test("既定が空なら 400 —— 登録済みのスクリプトが無いのと、全部が別のサイト用とで文を分ける（capture-ledger と同じ文）", () => {
   const post = (list, body = {}) => submitCrawl([], { seeds: ["https://other-site.test/"], ...body }, NOW, RUNS, list);
   assert.deepEqual(post([]), {
     status: 400,
@@ -591,19 +591,19 @@ test("版の一覧は新しい順で、どの版にも source が無い。知ら
   assert.deepEqual(versionsOf(versions, "nope"), { status: 404, body: { error: "not found" } });
 });
 
-test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.13.0）", () => {
+test("1 版は source を持ち、sha256 と bytes は source から数える（写しは capture-scripts v0.13.1）", () => {
   const fetch1 = versionOf(versions, "autofetch", "1");
   assert.equal(fetch1.status, 200);
   assert.equal(fetch1.body.sha256.slice(0, 12), "f24100fd1c9b");
   assert.equal(fetch1.body.bytes, 4778);
   const scroll1 = versionOf(versions, "autoscroll", "1").body;
-  assert.equal(scroll1.sha256.slice(0, 12), "4117c0345645");
-  assert.equal(scroll1.bytes, 2706);
+  assert.equal(scroll1.sha256.slice(0, 12), "f5379a5d3323");
+  assert.equal(scroll1.bytes, 2700);
   assert.match(scroll1.source.split("\n")[32], /remainingMs < stepDelayMs \+ settleMs/);
   // v0.7.0 から report は id を取らない（写しが古いままなら、ここで分かる）
   assert.match(scroll1.source.split("\n")[47], /globalThis\.__bh\.report\(\{$/);
   // egov-law-search は v0.7.0 で途中の様子を log に書く形になり、v0.11.0 で必須の変数 query を defineParams で読む形になった。
-  // v0.12.0 から台帳が読むのは generated/ の物で、見分けの行に sites が書き込まれている
+  // v0.12.0 から capture-ledger が読むのは generated/ の物で、見分けの行に sites が書き込まれている
   const egov1 = versionOf(versions, "egov-law-search", "1").body;
   assert.equal(egov1.sha256.slice(0, 12), "09fddfea0306");
   assert.equal(egov1.bytes, 3376);
@@ -615,15 +615,15 @@ test("1 版は source を持ち、sha256 と bytes は source から数える（
   assert.equal(versionOf(versions, "autoscroll", "0").body.message, "params/version must be >= 1");
 });
 
-test("受け皿の型は台本の file の中身。台本に無ければ 404（型を取り込んでいない台帳）", () => {
+test("受け皿の型は台本の file の中身。台本に無ければ 404（型を取り込んでいない capture-ledger）", () => {
   const types = hostTypesOf(scenario);
   assert.equal(types.status, 200);
   assert.equal(types.body.version, 1);
   assert.equal(types.body.bytes, Buffer.byteLength(types.body.source, "utf8"));
-  // 写しは capture-scripts v0.13.0（log が在り、report は data だけを取る。変数は defineParams で読み、__bh.vars は型に無い。
+  // 写しは capture-scripts v0.13.1（log が在り、report は data だけを取る。変数は defineParams で読み、__bh.vars は型に無い。
   // secrets の注記は、WARC から既定で隠す動きと keep を言う）
-  assert.equal(types.body.sha256.slice(0, 12), "a7bc97e406c9");
-  assert.equal(types.body.bytes, 4235);
+  assert.equal(types.body.sha256.slice(0, 12), "a13c44ec770e");
+  assert.equal(types.body.bytes, 4248);
   assert.match(types.body.source, /warn\(message: string, data\?: object\): void;/);
   assert.match(types.body.source, /report\(data: object\): void;/);
   assert.match(types.body.source, /declare function defineParams</);
@@ -634,7 +634,7 @@ test("受け皿の型は台本の file の中身。台本に無ければ 404（�
   assert.deepEqual(hostTypesOf(without), { status: 404, body: { error: "not found" } });
 });
 
-test("台本のクロールが走らせた台帳のスクリプトは、台帳のその版と同じ sha256（5b0c0008 の autoscroll だけはわざと違う）", () => {
+test("台本のクロールが走らせた登録済みのスクリプトは、capture-ledger のその版と同じ sha256（5b0c0008 の autoscroll だけはわざと違う）", () => {
   const MISMATCH = "5b0c0008-6a1e-4000-8000-000000000008 autoscroll@1";
   const seen = [];
   for (const c of scenario.crawls) {
@@ -654,7 +654,7 @@ test("下敷きを実物の写しに掛けると、替わるのは autoscroll �
   assert.deepEqual(asTemplate(sourceOf("autofetch"), "autofetch", "my-autofetch").changed, [14, 17]);
 });
 
-test("知らないスクリプトの id・重ね・形の誤り・scriptIds は、台帳と同じ文で 400", () => {
+test("知らないスクリプトの id・重ね・形の誤り・scriptIds は、capture-ledger と同じ文で 400", () => {
   const post = (body) =>
     submitCrawl([], { seeds: ["https://site.test/"], ...body }, NOW, RUNS, versions);
   const inline = (name) => ({ inline: { name, phase: "behavior", source: "x;" } });
@@ -666,7 +666,7 @@ test("知らないスクリプトの id・重ね・形の誤り・scriptIds は�
     error: "duplicate script ids",
     ids: ["inline-a"],
   });
-  // 文は台帳 v0.58.0 が Fastify の schema で返す物（workbench は message を出す）
+  // 文は capture-ledger v0.58.0 が Fastify の schema で返す物（workbench は message を出す）
   assert.equal(
     post({ scripts: [inline("Probe")] }).body.message,
     'body/scripts/0/inline/name must match pattern "^[a-z][a-z0-9-]*$"',
@@ -707,7 +707,7 @@ test("一覧と 1 版のエンドポイントは宣言（params）を運ぶ —�
   );
 });
 
-test("知らない鍵は schema の 400 で、台帳の鍵（maxDepth・variables）は通る。variables の形の誤りも schema の 400", () => {
+test("知らない鍵は schema の 400 で、capture-ledger の鍵（maxDepth・variables）は通る。variables の形の誤りも schema の 400", () => {
   const post = (body) => submitCrawl([], { seeds: ["https://laws.e-gov.go.jp/"], ...body }, NOW, RUNS, versions, WINDMILL);
   assert.equal(post({ foo: 1 }).body.message, "body must NOT have additional properties");
   assert.equal(post({ maxDepth: 2, variables: { query: "個人情報" } }).status, 202);
@@ -721,7 +721,7 @@ test("知らない鍵は schema の 400 で、台帳の鍵（maxDepth・variable
   );
 });
 
-test("必須の変数が無ければ、ほかの値の誤りより先に 400 で名指し、行を立てない —— 台帳のスクリプトもその場の TS も", () => {
+test("必須の変数が無ければ、ほかの値の誤りより先に 400 で名指し、行を立てない —— 登録済みのスクリプトもその場の TS も", () => {
   const rows = [];
   const post = (body) => submitCrawl(rows, { seeds: ["https://laws.e-gov.go.jp/"], ...body }, NOW, RUNS, versions, WINDMILL);
   assert.deepEqual(post({}), {
@@ -749,7 +749,7 @@ test("必須の変数が無ければ、ほかの値の誤りより先に 400 で
   assert.equal(onSite({ scripts: [declaring("a", "q: z.string().optional()")] }).status, 202);
 });
 
-test("値は宣言に照らして台帳と同じ順と文で 400 —— 別の種類か形の宣言 → シークレットの名前 → 知らない名前 → 形に合わない", () => {
+test("値は宣言に照らして capture-ledger と同じ順と文で 400 —— 別の種類か形の宣言 → シークレットの名前 → 知らない名前 → 形に合わない", () => {
   const post = (body) => submitCrawl([], { seeds: ["https://site.test/"], ...body }, NOW, RUNS, versions, WINDMILL);
   // 宣言の無い名前は渡せない。宣言の無いその場の TS が在っても同じ（読むなら defineParams で宣言する）
   assert.deepEqual(post({ variables: { qeury: "x" } }), { status: 400, body: { error: "unknown variables", names: ["qeury"] } });
@@ -785,11 +785,11 @@ test("値は宣言に照らして台帳と同じ順と文で 400 —— 別の�
     },
   });
   assert.deepEqual(post({ scripts: [typed], variables: { level: "low", word: "abcd", code: "ab" } }).body.hint, "word は 3 字まで");
-  // 長さは code point で数える（台帳の Ajv の決まりと同じ）
+  // 長さは code point で数える（capture-ledger の Ajv の決まりと同じ）
   assert.equal(post({ scripts: [typed], variables: { level: "low", word: "𠮷野", code: "𠮷野" } }).status, 202);
 });
 
-test("その場の TS の params に変数は書けない。宣言の形の誤りは schema の 400、同じ名前が 2 度あるのは台帳の handler の 400", () => {
+test("その場の TS の params に変数は書けない。宣言の形の誤りは schema の 400、同じ名前が 2 度あるのは capture-ledger の handler の 400", () => {
   const post = (body) => submitCrawl([], { seeds: ["https://site.test/"], ...body }, NOW, RUNS, versions, WINDMILL);
   assert.deepEqual(post({ scripts: [probe([{ name: "q", kind: "variable", required: true, summary: "語" }])] }), {
     status: 400,
@@ -817,11 +817,11 @@ test("その場の TS の params に変数は書けない。宣言の形の誤�
   });
 });
 
-test("その場の TS のシークレットの宣言は archive: \"keep\" を持てる。ほかの値は台帳 v0.90.0 の schema と同じ文で 400", () => {
+test("その場の TS のシークレットの宣言は archive: \"keep\" を持てる。ほかの値は capture-ledger v0.90.0 の schema と同じ文で 400", () => {
   const post = (archive) =>
     submitCrawl([], { seeds: ["https://site.test/"], scripts: [probe([{ name: "q", kind: "secret", archive }])] }, NOW, RUNS, versions, WINDMILL);
   assert.equal(post("keep").status, 202);
-  // 文は台帳と同じ Fastify の設定（removeAdditional: false・既定の coerceTypes）で、台帳の schema に当てて写した（2026-11-11）。
+  // 文は capture-ledger と同じ Fastify の設定（removeAdditional: false・既定の coerceTypes）で、capture-ledger の schema に当てて写した（2026-11-11）。
   // 数・真偽・null は文字列に読み替えられてから enum で断られ、読み替えられない object だけが型の文になる
   for (const archive of ["drop", "", 1, true, null]) {
     assert.equal(
@@ -909,7 +909,7 @@ test("宣言したシークレットは Windmill の代わりに照らす ——
   assert.deepEqual(detail.variables, {});
 });
 
-test("同じ名前のシークレットを、WARC に残す宣言と隠す宣言の両方ですると 400 conflicting params（台帳 v0.90.0 と同じ）", () => {
+test("同じ名前のシークレットを、WARC に残す宣言と隠す宣言の両方ですると 400 conflicting params（capture-ledger v0.90.0 と同じ）", () => {
   const post = (scripts) => submitCrawl([], { seeds: ["https://site.test/"], scripts }, NOW, RUNS, versions, WINDMILL);
   const token = (name, archive) => ({ ...probe([{ name: "api_token", kind: "secret", ...(archive && { archive }) }]).inline, name });
   assert.deepEqual(post([{ inline: token("a", "keep") }, { inline: token("b") }]), {
@@ -921,7 +921,7 @@ test("同じ名前のシークレットを、WARC に残す宣言と隠す宣言
   assert.equal(post([{ inline: token("a") }, { inline: token("b") }]).status, 202);
 });
 
-test("隠すシークレットを送るのに配備の形式が値を置き換えられない物を頼むなら、台帳 v0.90.0 と同じ文で 400。行は立たない", () => {
+test("隠すシークレットを送るのに配備の形式が値を置き換えられない物を頼むなら、capture-ledger v0.90.0 と同じ文で 400。行は立たない", () => {
   const rows = [];
   const post = (params, formats) =>
     submitCrawl(rows, { seeds: ["https://site.test/"], scripts: [probe(params)] }, NOW, RUNS, versions, WINDMILL, formats);
@@ -945,12 +945,12 @@ test("隠すシークレットを送るのに配備の形式が値を置き換�
   // 任意で Windmill に無いシークレットは送られないので、断る理由にならない
   assert.equal(post([{ name: "nope", kind: "secret" }, login], ["wacz", "png"]).status, 202);
   rows.length = 0;
-  // 形式を渡さなければ台帳の既定（wacz だけ）で、台本も同じ
+  // 形式を渡さなければ capture-ledger の既定（wacz だけ）で、台本も同じ
   assert.equal(post([token]).status, 202);
   assert.deepEqual(scenario.captureFormats, ["wacz"]);
 });
 
-test("値の 400 は、走行中でも 409 より先（台帳と同じ順）", () => {
+test("値の 400 は、走行中でも 409 より先（capture-ledger と同じ順）", () => {
   const rows = [];
   submitCrawl(rows, { seeds: ["https://site.test/"] }, NOW, RUNS, versions, WINDMILL);
   const busy = submitCrawl(rows, { seeds: ["https://site.test/"], variables: { qeury: "x" } }, NOW + 1000, RUNS, versions, WINDMILL);
@@ -969,7 +969,7 @@ test("行の詳しい所は variables と secrets を必ず持つ —— 台本�
       ["login", "f/waggle_secrets/login", null, "keep"],
     ],
   );
-  // 欄は台帳 v0.90.0 の secretsOf と同じ（archive は宣言の写しで、"keep" か null）
+  // 欄は capture-ledger v0.90.0 の secretsOf と同じ（archive は宣言の写しで、"keep" か null）
   for (const s of detail.secrets) {
     assert.deepEqual(Object.keys(s).sort(), ["archive", "editedAt", "name", "path", "rotated"]);
     assert.ok(Date.parse(s.editedAt) > 0);
@@ -1004,7 +1004,7 @@ test("行の詳しい所は variables と secrets を必ず持つ —— 台本�
   assert.equal("variables" in submittedRow(rows[0], NOW), false);
 });
 
-test("アーカイブの 1 行は、台帳の /api/archives と同じ欄を持ち、台本で上書きできる", () => {
+test("アーカイブの 1 行は、capture-ledger の /api/archives と同じ欄を持ち、台本で上書きできる", () => {
   const rows = archiveRows(["good.wacz", "datapackage-bad-hash.wacz"], scenario);
   for (const row of rows) assert.deepEqual(Object.keys(row).sort(), LEDGER_ARCHIVE_KEYS, row.objectKey);
   const bad = rows.find((row) => row.objectKey === "sandbox/datapackage-bad-hash.wacz");
@@ -1049,13 +1049,13 @@ test("検索のエンドポイントは、写しの行が在るアーカイブ�
       ["sandbox/good.wacz", "after-behaviors"],
     ],
   );
-  // total は返した当たりの数（台帳も見せてよい物だけを数える）
+  // total は返した当たりの数（capture-ledger も見せてよい物だけを数える）
   assert.equal(answer.body.total, 2);
   // good.wacz の文書の行も同じ語を含むが、写しの行が在るので引かない。ghost.wacz は見えない
   assert.equal(answer.body.hits.some((hit) => hit.objectKey === "sandbox/ghost.wacz"), false);
 });
 
-test("検索の当たり 1 件は、台帳と同じ欄を持ち、写しの URL は urn、文書の URL は取り込んだ URL", () => {
+test("検索の当たり 1 件は、capture-ledger と同じ欄を持ち、写しの URL は urn、文書の URL は取り込んだ URL", () => {
   const { hits } = ask({ q: "ランプ" }).body;
   for (const hit of hits) assert.deepEqual(Object.keys(hit).sort(), LEDGER_HIT_KEYS, hit.objectKey);
   const [doc, snapshot] = hits;
@@ -1072,7 +1072,7 @@ test("検索は題か本文に、大小を問わず語を含む行に当たり�
   assert.equal(ask({ q: "nothing-here" }, s, ["x.wacz"]).body.total, 0);
 });
 
-test("検索のエンドポイントは、q の無い・空の・ほかの欄のある問いを 400 で断る（台帳の schema と同じ）", () => {
+test("検索のエンドポイントは、q の無い・空の・ほかの欄のある問いを 400 で断る（capture-ledger の schema と同じ）", () => {
   assert.equal(ask({}).status, 400);
   assert.equal(ask({ q: "" }).status, 400);
   assert.equal(ask({ q: "ランプ", size: "10" }).status, 400);
@@ -1094,7 +1094,7 @@ test("id は名前から決まり、UUID の形をしている", () => {
 
 // ── 規則の並び（capture-ledger v0.62.0 の src/crawl/rules.ts と src/api/crawls.ts から写した）──
 
-test("規則を省けば、台帳の既定（same-origin を辿る 1 本）で固定する", () => {
+test("規則を省けば、capture-ledger の既定（same-origin を辿る 1 本）で固定する", () => {
   const rows = [];
   submitCrawl(rows, { seeds: ["https://site.test/"] }, NOW, RUNS, versions);
   assert.deepEqual(rows[0].rules, [{ follow: "same-origin" }]);
@@ -1122,7 +1122,7 @@ test("規則は読んだ形で固定する —— 前方一致は正規化した
   ]);
 });
 
-test("規則の 400 は台帳と同じ 3 つの文で、名指す物も同じ形。scope は知らない鍵", () => {
+test("規則の 400 は capture-ledger と同じ 3 つの文で、名指す物も同じ形。scope は知らない鍵", () => {
   const rows = [];
   const say = (body) => submitCrawl(rows, { seeds: ["https://www.site.test/"], ...body }, NOW, RUNS, versions);
   assert.deepEqual(say({ rules: [{ follow: "same-host" }, { skip: "ADS.site.test" }] }), {
@@ -1146,7 +1146,7 @@ test("規則の 400 は台帳と同じ 3 つの文で、名指す物も同じ形
 
 test("代役の same-site は、ホスト名の最後の 2 ラベルで近似する（Public Suffix List を持たない）", () => {
   const rows = [];
-  // 台帳なら example.co.jp と other.co.jp は別のサイト。代役は co.jp で同じと読む —— docs の development に書いてある
+  // capture-ledger なら example.co.jp と other.co.jp は別のサイト。代役は co.jp で同じと読む —— docs の development に書いてある
   const answer = submitCrawl(
     rows,
     { seeds: ["https://www.example.co.jp/"], rules: [{ follow: "same-site" }, { skip: "other.co.jp" }] },
@@ -1157,7 +1157,7 @@ test("代役の same-site は、ホスト名の最後の 2 ラベルで近似す
   assert.deepEqual(answer.body, { error: "rules that can never match", rules: [{ rule: 2, coveredBy: 1 }] });
 });
 
-test("確かめのエンドポイントは、行ごとの読めた種類と覆い、起点ごとのサイトと辿るかを、台帳と同じ形で返す", () => {
+test("確かめのエンドポイントは、行ごとの読めた種類と覆い、起点ごとのサイトと辿るかを、capture-ledger と同じ形で返す", () => {
   const answer = crawlRulesCheck(
     ["https://www.site.test/", "not a url"],
     ["follow:same-site", "skip:ads.site.test", "skip:HTTPS://WWW.Site.test:443/a", "capture:*.x"],
@@ -1184,13 +1184,13 @@ test("判断のエンドポイントは、台本の行の規則・判断・robot
   const answer = decisionsOf(c);
   assert.deepEqual(Object.keys(answer), ["crawlId", "rules", "decisions", "robots"]);
   assert.ok(answer.decisions.length > 0 && answer.robots.length > 0, "画面の絵に出す行がある");
-  // 台本の規則は台帳が断らない並びであること（覆われた行を絵に載せない）
+  // 台本の規則は capture-ledger が断らない並びであること（覆われた行を絵に載せない）
   const seeds = c.seeds.map((seed) => new URL(seed).href);
   assert.equal(submitCrawl([], { seeds, rules: c.rules, scripts: [] }, NOW, RUNS, versions).status, 202);
   assert.deepEqual(decisionsOf({ crawlId: "x" }), { crawlId: "x", rules: [{ follow: "same-origin" }], decisions: [], robots: [] });
 });
 
-// ── ページのエンドポイント（CAPTURE-18 で台帳が足す GET /api/crawls/:id/pages と …/pages/:page/log の形）────────
+// ── ページのエンドポイント（CAPTURE-18 で capture-ledger が足す GET /api/crawls/:id/pages と …/pages/:page/log の形）────────
 
 /** ページの 1 行の欄（一覧の pages[i] と、ログの答えの page）。 */
 const LEDGER_PAGE_KEYS = [
@@ -1213,7 +1213,7 @@ const LINE_KEYS = new Set([...LINE_REQUIRED, "dpr", "script", "data", "truncated
 const crawlOf = (head) => scenario.crawls.find((c) => c.crawlId.startsWith(head));
 const query = (text = "") => new URLSearchParams(text);
 
-test("ページの一覧は { pages, next } で、1 行の欄と logCounts の欄は台帳と同じ。id は数字だけの文字列", () => {
+test("ページの一覧は { pages, next } で、1 行の欄と logCounts の欄は capture-ledger と同じ。id は数字だけの文字列", () => {
   for (const c of scenario.crawls.filter((x) => x.pages !== undefined)) {
     const answer = pageList(c, query());
     assert.equal(answer.status, 200);
@@ -1306,7 +1306,7 @@ test("台本の途中の版: 走行中の行と次の版を書けなかった行
   }
 });
 
-test("5b0c0009 のページの表では、WACZ が台帳の指す合本に入った 2 ページにだけ replay ↗ が付く", () => {
+test("5b0c0009 のページの表では、WACZ が capture-ledger の指す合本に入った 2 ページにだけ replay ↗ が付く", () => {
   const c = crawlOf("5b0c0009");
   const bundle = crawlDetail(c).replayBundle;
   const pages = pageList(c, query()).body.pages;
@@ -1391,7 +1391,7 @@ test("代役は Claude を呼ばない —— 台本に無い行・名前の直�
   assert.equal(diagnosticsOf(undefined).status, 404);
 });
 
-test("代役の 5b0c0008（型で落ちた行）は、起点の頁を pending のまま持つ（台帳と同じ。画面は報告なしと添える）", () => {
+test("代役の 5b0c0008（型で落ちた行）は、起点の頁を pending のまま持つ（capture-ledger と同じ。画面は報告なしと添える）", () => {
   const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0008"));
   const answer = pageList(c, new URLSearchParams());
   assert.equal(answer.status, 200);
@@ -1422,7 +1422,7 @@ test("User-Agent は打った字のまま行に残り、詳しい答えが返す
   }
 });
 
-test("User-Agent は台帳と同じ文で断る。行は立たない", () => {
+test("User-Agent は capture-ledger と同じ文で断る。行は立たない", () => {
   const refused = (userAgent) => {
     const rows = [];
     const { status, body } = submitCrawl(rows, { seeds: ["https://site.test/"], userAgent }, NOW, RUNS, versions, WINDMILL);
