@@ -17,12 +17,6 @@ S3-compatible store Web Capture shares) and opened with
 (Web Archive Collection Zipped) is the archive format that packs the captured pages into a single
 ZIP.
 
-In your head that is one crawl, but it used to be spread over four screens. The workbench assembles
-one picture across those four from the ledger's API. From the same workbench you can also check
-whether a captured WACZ conforms to the spec, and look inside it. Those answers come from the
-daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that
-checks a WACZ rule by rule).
-
 ## Wiring
 
 ```mermaid
@@ -40,7 +34,7 @@ The browser only ever talks to the workbench (same origin). The workbench gets a
 development issuer and passes `/api/*` straight through to the ledger with it. The writes are
 `POST /api/crawls`, when you start a crawl from the form, and the routes for schedules ([Routes](/routes/)), sent the same way. For
 validating a WACZ and reading its contents, it asks the ledger to sign a URL and hands that URL to
-the daemon, which reads the archive itself. replayweb-server and Windmill are only linked to from the rows.
+the daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a WACZ rule by rule), which reads the archive itself. replayweb-server and Windmill are only linked to from the rows.
 
 ## Promises
 

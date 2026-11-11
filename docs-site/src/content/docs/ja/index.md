@@ -13,11 +13,6 @@ capture-workbench は、[Web Capture](https://uraitakahito.github.io/capture-led
 開いて読むのは [replayweb-server](https://github.com/uraitakahito/replayweb-server)（WACZ をブラウザで再生する画面）です。
 WACZ（Web Archive Collection Zipped）は、撮ったページを 1 つの ZIP にまとめたアーカイブの形式です。
 
-人の頭の中では 1 本のクロールなのに、画面は 4 枚に割れていました。
-workbench は、その 4 枚を跨いだ像を台帳の API から 1 枚に組み立てます。
-撮れた WACZ が仕様どおりかと、その中身も、同じ workbench から見られます。
-答えるのは [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon です。
-
 ## 配線
 
 ```mermaid
@@ -34,7 +29,7 @@ flowchart LR
 ブラウザが話す相手は workbench だけです（同一オリジン）。
 workbench は開発用の issuer からアクセストークンを取得し、それを付けて `/api/*` をそのまま台帳へ通します。
 書くのは、新しいクロールの画面から始めるときの `POST /api/crawls` と、定期実行の予定を作って操作する口（[口の一覧](/routes/)）で、同じ道で台帳へ通します。
-WACZ の検証と中身は、台帳に署名してもらった URL を daemon に渡して読ませます。
+WACZ の検証と中身は、台帳に署名してもらった URL を [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon に渡して読ませます。
 replayweb-server と Windmill へは、画面の行からリンクで飛ぶだけです。
 
 ## 約束
