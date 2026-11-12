@@ -94,17 +94,29 @@
       "crawlId": "5b0c0003-6a1e-4000-8000-000000000003",
       "state": "succeeded",
       "stopReason": "max_depth",
+      "maxDepth": 1,
       "seeds": ["https://sandbox.test/docs/"],
+      "//linkPages": "リンクの構成（capture-ledger の GET /api/crawls/:id/links と …/links/:page の元。CAPTURE-246）。ページと親と、そのページにあったリンク [URL, 文字, どうなったか]。数・束・ホストは代役がここから組む",
+      "linkPages": [
+        {"id": "301", "parent": null, "depth": 0, "url": "https://sandbox.test/docs/", "title": "Docs", "state": "captured", "links": [["https://sandbox.test/docs/start", "はじめに", "followed"], ["https://sandbox.test/docs/install", "入れる", "followed"], ["https://sandbox.test/docs/guide", "ガイド", "followed"], ["https://sandbox.test/docs/rules", "規則", "followed"], ["https://sandbox.test/docs/scripts", "スクリプト", "followed"], ["https://sandbox.test/docs/schedules", "定期実行", "followed"], ["https://sandbox.test/docs/crawls", "クロール", "followed"], ["https://github.test/sandbox", "GitHub", "skip"], ["https://status.sandbox-cdn.test/", "稼働状況", "skip"]]},
+        {"id": "302", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/start", "title": "はじめに", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/install", "入れる", "known"]]},
+        {"id": "303", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/install", "title": "入れる", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/install/macos", "macOS", "max_depth"], ["https://sandbox.test/docs/install/linux", "Linux", "max_depth"], ["https://sandbox.test/docs/install/windows", "Windows", "max_depth"]]},
+        {"id": "304", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/guide", "title": "ガイド", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/rules", "規則", "known"], ["https://sandbox.test/docs/scripts", "スクリプト", "known"], ["https://sandbox.test/docs/schedules", "定期実行", "known"], ["https://github.test/sandbox", "GitHub", "skip"]]},
+        {"id": "305", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/rules", "title": "規則", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/rules/order", "当てる順", "max_depth"], ["https://sandbox.test/docs/rules/examples", "例", "max_depth"]]},
+        {"id": "306", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/scripts", "title": "スクリプト", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/scripts/params", "値を渡す", "max_depth"], ["https://github.test/sandbox/scripts", "見本", "skip"]]},
+        {"id": "307", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/schedules", "title": "定期実行", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"]]},
+        {"id": "308", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/crawls", "title": "クロール", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/crawls/links", "links", "max_depth"], ["https://sandbox.test/docs/crawls/pages", "pages", "max_depth"], ["https://sandbox.test/docs/crawls/decisions", "decisions", "max_depth"], ["https://spec.openapis.test/", "OpenAPI", "skip"]]}
+      ],
       "startedSecondsAgo": 1800,
       "tookSeconds": 210,
-      "pagesCaptured": 12,
-      "pagesDiscovered": 40,
-      "waczCount": 12,
+      "pagesCaptured": 8,
+      "pagesDiscovered": 16,
+      "waczCount": 8,
       "lastJobId": "019a5b0c-0003-7000-8000-000000000003",
-      "lastJobDepth": 2,
+      "lastJobDepth": 1,
       "replayBundle": {
         "rev": 2,
-        "pages": 12,
+        "pages": 8,
         "builtSecondsAgo": 1620,
         "error": "could not write r3 to the store: socket hang up"
       }
@@ -173,6 +185,16 @@
       "state": "succeeded",
       "stopReason": "completed",
       "seeds": ["https://sandbox.test/news"],
+      "//linkPages": "リンクの構成（capture-ledger の GET /api/crawls/:id/links と …/links/:page の元。CAPTURE-246）。ページと親と、そのページにあったリンク [URL, 文字, どうなったか]。数・束・ホストは代役がここから組む",
+      "linkPages": [
+        {"id": "701", "parent": null, "depth": 0, "url": "https://sandbox.test/news", "title": "ニュース", "state": "captured", "links": [["https://sandbox.test/news/1", "記事 1", "followed"], ["https://sandbox.test/news/2", "記事 2", "followed"], ["https://sandbox.test/news/3", "記事 3", "followed"], ["https://sandbox.test/news/4", "記事 4", "followed"], ["https://sandbox.test/news/5", "記事 5", "followed"], ["https://sandbox.test/news/6", "記事 6", "followed"], ["https://ads.sandbox.test/banner", "", "skip"]]},
+        {"id": "702", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/1", "title": "記事 1", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
+        {"id": "703", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/2", "title": "記事 2", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
+        {"id": "704", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/3", "title": "記事 3", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
+        {"id": "705", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/4", "title": "記事 4", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
+        {"id": "706", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/5", "title": "記事 5", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
+        {"id": "707", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/6", "title": "記事 6", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]}
+      ],
       "//rules": "規則と、規則が何を決めたか（capture-ledger の GET /api/crawls/:id/decisions の形）。3 行目は 1 度も当たらない",
       "rules": [
         { "skip": "ads.sandbox.test" },
@@ -276,6 +298,13 @@
       "state": "succeeded",
       "stopReason": "completed",
       "seeds": ["https://sandbox.test/search"],
+      "//linkPages": "リンクの構成（capture-ledger の GET /api/crawls/:id/links と …/links/:page の元。CAPTURE-246）。ページと親と、そのページにあったリンク [URL, 文字, どうなったか]。数・束・ホストは代役がここから組む",
+      "linkPages": [
+        {"id": "1201", "parent": null, "depth": 0, "url": "https://sandbox.test/search", "title": "検索", "state": "captured", "links": [["https://sandbox.test/slow", "遅いページ", "followed"], ["https://sandbox.test/feed", "フィード", "followed"], ["https://sandbox.test/private/", "会員の頁", "followed"]]},
+        {"id": "1202", "parent": "1201", "depth": 1, "url": "https://sandbox.test/slow", "title": null, "state": "failed", "reason": "timeout: capture exceeded its budget", "links": []},
+        {"id": "1203", "parent": "1201", "depth": 1, "url": "https://sandbox.test/feed", "title": "フィード", "state": "captured", "links": [["https://sandbox.test/search", "検索", "known"]]},
+        {"id": "1204", "parent": "1201", "depth": 1, "url": "https://sandbox.test/private/", "title": null, "state": "skipped", "reason": "robots", "links": []}
+      ],
       "startedSecondsAgo": 1200,
       "tookSeconds": 96,
       "pagesCaptured": 2,

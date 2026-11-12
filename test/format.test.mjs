@@ -8,7 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  resendOf, checkVerdict, forgetMissing, linksOf, secretArchiveOf, stateOf, took } from "../public/format.js";
+  resendOf, checkVerdict, forgetMissing, linksNoteOf, linksOf, secretArchiveOf, stateOf, took } from "../public/format.js";
 
 const crawl = (state, stopReason, pagesFailed = 0) => ({ state, stopReason, pagesFailed });
 
@@ -202,4 +202,13 @@ test("段の送り直し: 諦めた段は「諦めた」と言い、赤", () => 
       error: "The operation was aborted due to timeout",
     },
   );
+});
+
+test("リンクの数の但し書き: 記録の無いクロールの数は延べだと言う。記録の在る行・数の無い行・欄の無い答えには付けない", () => {
+  assert.match(linksNoteOf({ pagesCaptured: 30, pagesDiscovered: 62, linksRecorded: false }), /^延べの数/);
+  assert.equal(linksNoteOf({ pagesCaptured: 30, pagesDiscovered: 60, linksRecorded: true }), undefined);
+  // 1 枚も撮れていない行は `−` なので、但し書きも要らない
+  assert.equal(linksNoteOf({ pagesCaptured: 0, pagesDiscovered: 0, linksRecorded: false }), undefined);
+  // 欄を返さない古い capture-ledger: 分からないので何も言わない
+  assert.equal(linksNoteOf({ pagesCaptured: 30, pagesDiscovered: 62 }), undefined);
 });

@@ -121,6 +121,8 @@ export const crawlRow = (c, now) => ({
   finishedAt: scenarioAt(c, now).finishedAt,
   maxDepth: c.maxDepth ?? 2,
   pagesDiscovered: c.pagesDiscovered ?? 0,
+  // リンクを 1 本ずつ残したクロールか (capture-ledger CAPTURE-246)。台本の行が `linkPages` を持てば true
+  linksRecorded: c.linkPages !== undefined,
   pagesCaptured: c.pagesCaptured ?? 0,
   pagesFailed: (c.pages ?? []).filter((page) => page.state === "failed").length,
   error: c.error ?? null,
@@ -206,6 +208,13 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   rules,
   state: c.state,
   stopReason: c.stopReason ?? null,
+  // 上限と数 (リンクの構成の画面の頭が読む。CAPTURE-246)。capture-ledger の 1 本の答えと同じ欄
+  maxDepth: c.maxDepth ?? 2,
+  maxPages: c.maxPages ?? 30,
+  pagesDiscovered: c.pagesDiscovered ?? 0,
+  linksRecorded: c.linkPages !== undefined,
+  pagesCaptured: c.pagesCaptured ?? 0,
+  pagesFailed: (c.pages ?? []).filter((page) => page.state === "failed").length,
   finishedAt: c.finishedAt ?? null,
   error: c.error ?? null,
   scripts: scripts.map(detailScript),
@@ -227,6 +236,143 @@ export const decisionsOf = (c, rules = c.rules ?? DEFAULT_RULES) => ({
   decisions: c.decisions ?? [],
   robots: c.robots ?? [],
 });
+
+/** `pages[].out` の鍵 (capture-ledger の src/crawl/links-read.ts の `KEY`)。 */
+const OUT_KEY = {
+  followed: "followed",
+  known: "known",
+  max_pages: "maxPages",
+  max_depth: "maxDepth",
+  closed: "closed",
+  skip: "skip",
+  nofollow: "nofollow",
+};
+const noLinks = () => ({ followed: 0, known: 0, maxPages: 0, maxDepth: 0, closed: 0, skip: 0, nofollow: 0 });
+
+/**
+ * /api/crawls/:id/links (capture-ledger CAPTURE-246・src/crawl/links-read.ts の `readLinkGraph` と同じ形)。台本の行の
+ * `linkPages` (ページと親と、そのページにあったリンク `[URL, 文字, どうなったか]`) から、数・束・ホスト・木に無い辺を
+ * 組む。**数は URL ごと**: 行の在る URL はページの結末、行の無い URL は最初に見つけたリンク (浅い段 → ページの id →
+ * ページの中の順。nofollow より規則を当てた物が先) のどうなったかで数える。
+ *
+ * `linkPages` の無い行は、リンクの記録が無いクロール (`recorded: false`): ページ (台本の `pages`) と親だけで、数は null。
+ */
+export const linkGraphOf = (c) => {
+  if (c.linkPages === undefined) {
+    return {
+      crawlId: c.crawlId,
+      recorded: false,
+      summary: null,
+      pages: (c.pages ?? []).map((p) => ({
+        id: p.id,
+        parent: p.parent ?? null,
+        depth: p.depth ?? 0,
+        url: p.url,
+        title: null,
+        state: p.state,
+        reason: p.reason ?? null,
+        out: null,
+        in: null,
+      })),
+      bundles: [],
+      hosts: [],
+      cross: [],
+      crossTruncated: false,
+    };
+  }
+  const pages = [...c.linkPages].sort(byId);
+  const byUrl = new Map(pages.map((p) => [p.url, p]));
+  const edges = pages.flatMap((p) =>
+    p.links.map(([url, text, outcome], seq) => ({ from: p, seq, url, text, outcome, to: byUrl.get(url) })),
+  );
+  const summary = { pending: 0, captured: 0, failed: 0, skipped: 0, maxPages: 0, maxDepth: 0, closed: 0, skip: 0, nofollow: 0, hosts: 0 };
+  for (const p of pages) if ((p.parent ?? null) !== null) summary[p.state] += 1;
+  // 行の無い URL を、URL ごとに最初の 1 本にする
+  const first = new Map();
+  const order = (a, b) =>
+    Number(a.outcome === "nofollow") - Number(b.outcome === "nofollow") ||
+    a.from.depth - b.from.depth ||
+    byId(a.from, b.from) ||
+    a.seq - b.seq;
+  for (const edge of edges.filter((e) => e.to === undefined).sort(order)) {
+    if (!first.has(edge.url)) first.set(edge.url, edge);
+  }
+  const bundles = new Map();
+  const hosts = new Map();
+  for (const edge of first.values()) {
+    if (edge.outcome === "skip") {
+      summary.skip += 1;
+      const hostname = new URL(edge.url).hostname;
+      hosts.set(hostname, (hosts.get(hostname) ?? 0) + 1);
+    } else if (edge.outcome === "nofollow") {
+      summary.nofollow += 1;
+    } else {
+      summary[OUT_KEY[edge.outcome]] += 1;
+      const key = `${edge.from.id} ${edge.outcome}`;
+      const at = bundles.get(key) ?? { from: edge.from.id, outcome: edge.outcome, urls: 0 };
+      at.urls += 1;
+      bundles.set(key, at);
+    }
+  }
+  summary.hosts = hosts.size;
+  return {
+    crawlId: c.crawlId,
+    recorded: true,
+    summary,
+    pages: pages.map((p) => {
+      const out = noLinks();
+      for (const [, , outcome] of p.links) out[OUT_KEY[outcome]] += 1;
+      return {
+        id: p.id,
+        parent: p.parent ?? null,
+        depth: p.depth,
+        url: p.url,
+        title: p.title ?? null,
+        state: p.state,
+        reason: p.reason ?? null,
+        out,
+        in: edges.filter((e) => e.to === p && e.from !== p).length,
+      };
+    }),
+    bundles: [...bundles.values()].sort((a, b) => Number(a.from) - Number(b.from) || a.outcome.localeCompare(b.outcome)),
+    hosts: [...hosts.entries()]
+      .map(([hostname, urls]) => ({ hostname, urls }))
+      .sort((a, b) => b.urls - a.urls || a.hostname.localeCompare(b.hostname)),
+    cross: edges.filter((e) => e.outcome === "known" && e.to !== undefined && e.to !== e.from).map((e) => [e.from.id, e.to.id]),
+    crossTruncated: false,
+  };
+};
+
+/**
+ * /api/crawls/:id/links/:page (capture-ledger の `readPageLinksOf` と同じ形)。そのページにあったリンクを 1 本ずつと、
+ * そのページへのリンクを持つページ。台本の行に無いページは 404。`linkPages` の無い行のページは、出入りとも空。
+ */
+export const pageLinksOf = (c, pageId) => {
+  if (!DIGITS.test(pageId)) return { status: 400, body: { error: "params/page must match pattern" } };
+  const pages = c.linkPages ?? c.pages ?? [];
+  const page = pages.find((p) => p.id === pageId);
+  if (page === undefined) return { status: 404, body: { error: "not found" } };
+  if (c.linkPages === undefined) return { status: 200, body: { out: [], in: [] } };
+  const byUrl = new Map(pages.map((p) => [p.url, p]));
+  return {
+    status: 200,
+    body: {
+      out: page.links.map(([url, text, outcome, rule], seq) => ({
+        seq,
+        url,
+        text,
+        rule: outcome === "nofollow" ? null : (rule ?? (outcome === "skip" ? 0 : 1)),
+        outcome,
+        to: byUrl.get(url)?.id ?? null,
+      })),
+      in: [...pages]
+        .sort(byId)
+        .flatMap((p) =>
+          p === page ? [] : p.links.filter(([url]) => url === page.url).map(([, text]) => ({ from: p.id, text })),
+        ),
+    },
+  };
+};
 
 /** BrowserHive の 4 つの level。台本の log に counts が無ければ、行をこれで数える。 */
 const LEVELS = ["debug", "info", "warn", "error"];
@@ -1186,6 +1332,8 @@ export const submittedRow = (row, now) => {
     finishedAt: done ? new Date(end).toISOString() : null,
     maxDepth: row.maxDepth,
     pagesDiscovered: 0,
+    // 受けた行は、まだ段の報告が無い (リンクの記録は最初の段の報告で始まる)
+    linksRecorded: false,
     pagesCaptured: done ? row.seeds.length : 0,
     pagesFailed: 0,
     error: null,
@@ -1521,6 +1669,23 @@ const handle = (req, res, raw) => {
       listed !== null
         ? pageList(c, new URL(req.url ?? "/", "http://sandbox").searchParams)
         : pageLog(c, decodeURIComponent(logged[2]));
+    send(res, answer.status, answer.body);
+    return;
+  }
+  // リンクの構成と、1 ページの出入りのリンク (capture-ledger CAPTURE-246)。受けた行は何も撮っていないので、記録なし
+  const graphed = /^\/api\/crawls\/([^/]+)\/links(?:\/([^/]+))?$/.exec(pathname);
+  if (req.method === "GET" && graphed !== null) {
+    const mine = submitted.find((row) => row.crawlId === graphed[1]);
+    const c = mine === undefined ? s.crawls.find((x) => x.crawlId === graphed[1]) : { crawlId: mine.crawlId };
+    if (c === undefined) {
+      send(res, 404, { error: "not found" });
+      return;
+    }
+    if (graphed[2] === undefined) {
+      send(res, 200, linkGraphOf(c));
+      return;
+    }
+    const answer = pageLinksOf(c, decodeURIComponent(graphed[2]));
     send(res, answer.status, answer.body);
     return;
   }

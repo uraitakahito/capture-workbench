@@ -17,6 +17,8 @@
   --bad: #9c2a2a;
   /* 中身の変化（CAPTURE-236）。小さい変化の琥珀色（--run）とも、link の青緑（--accent）とも分ける */
   --content: #1d4f91;
+  /* 深さで切ったリンク（CAPTURE-246）。枚数で切った琥珀色（--run）とも、もう行がある青（--content）とも分ける */
+  --depth: #6a3fa0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -31,6 +33,7 @@
     --ok: #71c98b;
     --bad: #e08383;
     --content: #8cb8f2;
+    --depth: #c3a6f0;
   }
 }
 
@@ -190,6 +193,15 @@ td.wide {
 }
 .state.content {
   color: var(--content);
+}
+.state.depth {
+  color: var(--depth);
+}
+.state.muted {
+  color: var(--muted);
+}
+.state.accent {
+  color: var(--accent);
 }
 
 a {
@@ -2027,4 +2039,267 @@ body[data-face="scripts"] main {
   .change-body {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/*
+ * リンクの構成（#links/<クロールの id>・CAPTURE-246）。上から、題・数の内訳の帯・道具・図・選んだページ。
+ * 図は SVG で、色は全部 token から（明暗のどちらでも読める）。図は自分の枠の中で横に流し、画面は流さない。
+ */
+#links-detail .muted {
+  color: var(--muted);
+}
+#links-head h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+#links-head h2 .wide {
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.links-facts {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.links-split-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+/* 帯は読める幅に留める（窓いっぱいに伸ばすと、長さの比が目で追えない）。docs の絵の幅にも収まる */
+.links-bar,
+.links-legend {
+  max-width: 600px;
+}
+.links-bar {
+  display: flex;
+  height: 18px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--line);
+}
+.links-bar span {
+  display: block;
+  min-width: 4px;
+}
+.links-bar .ok,
+.links-legend i.ok {
+  background: var(--ok);
+}
+.links-bar .bad,
+.links-legend i.bad {
+  background: var(--bad);
+}
+.links-bar .accent,
+.links-legend i.accent {
+  background: var(--accent);
+}
+.links-bar .run,
+.links-legend i.run {
+  background: var(--run);
+}
+.links-bar .depth,
+.links-legend i.depth {
+  background: var(--depth);
+}
+.links-bar .muted,
+.links-legend i.muted {
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+.links-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+}
+.links-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 2px;
+}
+.links-legend b {
+  font-variant-numeric: tabular-nums;
+}
+.links-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin: 14px 0 6px;
+  font-size: 12.5px;
+}
+.links-tools label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* 図の枠。角は丸めない —— 丸い角の縁の画素が、docs の絵を撮るたびに揺れた（14 回のうち 4 回、角の 8 画素） */
+.links-frame {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.links-graph {
+  overflow-x: auto;
+}
+.links-graph svg {
+  display: block;
+}
+.links-graph text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  fill: var(--ink);
+}
+.links-graph .lg-h {
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--muted);
+}
+.links-graph .lg-n {
+  cursor: pointer;
+}
+.links-graph .lg-n rect {
+  fill: color-mix(in srgb, var(--ok) 14%, var(--surface));
+  stroke: var(--ok);
+}
+.links-graph .lg-n.bad rect {
+  fill: color-mix(in srgb, var(--bad) 14%, var(--surface));
+  stroke: var(--bad);
+}
+.links-graph .lg-n.muted rect {
+  fill: var(--surface);
+  stroke: var(--muted);
+  stroke-dasharray: 2 2;
+}
+.links-graph .lg-n.accent rect {
+  fill: var(--surface);
+  stroke: var(--accent);
+}
+.links-graph .lg-n.run rect {
+  fill: var(--surface);
+  stroke: var(--run);
+}
+.links-graph .lg-n.sel rect {
+  stroke: var(--ink);
+  stroke-width: 2.4;
+}
+.links-graph .lg-n:focus-visible {
+  outline: none;
+}
+.links-graph .lg-n:focus-visible rect {
+  stroke: var(--accent);
+  stroke-width: 2.4;
+}
+.links-graph .lg-tog {
+  fill: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.links-graph .lg-b {
+  cursor: pointer;
+}
+.links-graph .lg-b rect {
+  fill: color-mix(in srgb, var(--run) 14%, var(--surface));
+  stroke: var(--run);
+  stroke-dasharray: 4 3;
+}
+.links-graph .lg-b.depth rect {
+  fill: color-mix(in srgb, var(--depth) 14%, var(--surface));
+  stroke: var(--depth);
+}
+.links-graph .lg-b.muted rect {
+  fill: var(--surface);
+  stroke: var(--muted);
+}
+.links-graph .lg-b text {
+  font-family: inherit;
+  font-size: 11px;
+}
+.links-graph .lg-e {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 1.2;
+}
+.links-graph .lg-e.cut {
+  stroke: var(--run);
+  stroke-dasharray: 4 3;
+}
+.links-graph .lg-e.cut.depth {
+  stroke: var(--depth);
+}
+.links-graph .lg-e.cut.muted {
+  stroke: var(--muted);
+}
+.links-graph .lg-x {
+  fill: none;
+  stroke: var(--content);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 3;
+}
+.links-graph .lg-head {
+  fill: var(--content);
+}
+.links-graph svg.dim .lg-e,
+.links-graph svg.dim .lg-x {
+  opacity: 0.3;
+}
+.links-graph svg.dim .hi {
+  opacity: 1;
+  stroke-width: 2.2;
+}
+#links-hosts {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+}
+#links-hosts summary,
+.links-panel summary {
+  cursor: pointer;
+}
+#links-hosts ul,
+.links-panel ul {
+  margin: 4px 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.links-panel {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 12.5px;
+}
+.links-panel h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+.links-panel h3 > *,
+.links-panel li > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.links-panel h3 .muted {
+  font-weight: 400;
+}
+.links-panel p {
+  margin: 4px 0;
+  /* URL の並びは「・」で繋ぐので、折り返せる所が無い。どこででも折る */
+  overflow-wrap: anywhere;
+}
+.links-panel li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 1px 0;
 }
