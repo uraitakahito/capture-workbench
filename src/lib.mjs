@@ -90,6 +90,17 @@ const WRITE_ROUTES = [
 export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url));
 
 /**
+ * 書き込みの中継で capture-ledger へ運ぶ、要求の見出し。**運ぶのは `POST /api/crawls` の `Idempotency-Key` だけ**
+ * （CAPTURE-180）。capture-ledger は鍵ごとに最初の答えを覚え、同じ鍵の送り直しには同じクロールを返す ——
+ * 応答が切れた後に押し直しても、2 本目が始まらない。ほかの見出しは運ばない（中継は形を絞るだけ）。
+ * 鍵の字は検査しない（capture-ledger が 400 で言う）。
+ */
+export const forwardedHeaders = (url, headers) => {
+  const key = headers["idempotency-key"];
+  return url === "/api/crawls" && typeof key === "string" ? { "idempotency-key": key } : {};
+};
+
+/**
  * 書き込みのエンドポイントの門。workbench のページからの JSON だけを通す。断るなら `{ status, error }` を返す。
  *
  * Origin を見るのは CSRF（別のサイトのページに、利用者のブラウザから POST させる手）のため。
