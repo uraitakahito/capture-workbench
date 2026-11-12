@@ -69,6 +69,7 @@
       "waczCount": 3,
       "lastJobId": "019a5b0c-0001-7000-8000-000000000001",
       "lastJobDepth": 1,
+      "dispatch": { "depth": 1, "state": "accepted", "attempts": 3, "lastError": "The operation was aborted due to timeout" },
       "replayBundle": { "rev": 1, "pages": 3, "builtSecondsAgo": 30 }
     },
     {

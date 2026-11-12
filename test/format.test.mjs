@@ -7,7 +7,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { checkVerdict, forgetMissing, linksOf, secretArchiveOf, stateOf, took } from "../public/format.js";
+import {
+  resendOf, checkVerdict, forgetMissing, linksOf, secretArchiveOf, stateOf, took } from "../public/format.js";
 
 const crawl = (state, stopReason, pagesFailed = 0) => ({ state, stopReason, pagesFailed });
 
@@ -172,4 +173,33 @@ test("シークレットを WARC に残すか: keep は残す（warn）、null �
 
 test("知らない archive は、隠す・残すのどちらにも倒さず、そのまま見せる", () => {
   assert.deepEqual(secretArchiveOf("sealed"), { text: "WARC: sealed", kind: "warn" });
+});
+
+test("段の送り直し: 1 回で受け取られた段には何も言わない（dispatch の無い答えも）", () => {
+  assert.equal(resendOf({ depth: 0, state: "reported", attempts: 1, lastError: null }), undefined);
+  assert.equal(resendOf(null), undefined);
+  assert.equal(resendOf(undefined), undefined);
+});
+
+test("段の送り直し: 送り直した回数は送った回数の 1 つ少ない数。最後の誤りも運ぶ", () => {
+  assert.deepEqual(
+    resendOf({ depth: 1, state: "accepted", attempts: 4, lastError: "crawl webhook → 502" }),
+    { text: "段 1 を Windmill に送り直し 3 回", kind: "warn", error: "crawl webhook → 502" },
+  );
+});
+
+test("段の送り直し: 諦めた段は「諦めた」と言い、赤", () => {
+  assert.deepEqual(
+    resendOf({
+      depth: 2,
+      state: "abandoned",
+      attempts: 21,
+      lastError: "The operation was aborted due to timeout",
+    }),
+    {
+      text: "段 2 を Windmill に渡せず諦めた（21 回送った）",
+      kind: "bad",
+      error: "The operation was aborted due to timeout",
+    },
+  );
 });

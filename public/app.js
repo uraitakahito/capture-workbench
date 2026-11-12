@@ -9,7 +9,7 @@
  * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
  * `outerHTML` のようなほかの API は見ない。
  */
-import { checkVerdict, count, forgetMissing, judgedUnder, linksOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
+import { checkVerdict, count, forgetMissing, judgedUnder, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
   addRow,
@@ -781,7 +781,18 @@ const diagnosedOf = async (crawlId, detail) => {
  */
 const detailOf = (one) => {
   const bundleFailure = replayBundleFailure(one.replayBundle);
+  // 段を Windmill に送り直した様子（CAPTURE-180）。諦めて締めた段なら、失敗の文の前に出す（失敗の理由の元がこれ）
+  const resend = resendOf(one.dispatch);
   return [
+    ...(resend === undefined
+      ? []
+      : [
+          tag(
+            "p",
+            resend.error === null ? resend.text : `${resend.text}。最後の誤り: ${resend.error}`,
+            `state ${resend.kind} pre`,
+          ),
+        ]),
     ...(one.error === null || one.error === undefined
       ? []
       : [tag("p", `失敗の文: ${one.error}`, "state bad pre")]),
@@ -876,7 +887,15 @@ const drawCrawls = () => {
     const state = stateOf(crawl);
     const row = document.createElement("tr");
     row.className = crawl.crawlId === spotlight ? "head spot" : "head";
-    row.append(cell(state.text, `state ${state.kind}`));
+    const stateCell = cell(state.text, `state ${state.kind}`);
+    // 段を Windmill に送り直したら、状態の隣に言う。最後の誤りは印の title（開けば文で出る）
+    const resend = resendOf(crawl.dispatch);
+    if (resend !== undefined) {
+      const badge = tag("span", resend.text, `resend-mark ${resend.kind}`);
+      if (resend.error !== null) badge.title = resend.error;
+      stateCell.append(" ", badge);
+    }
+    row.append(stateCell);
     row.append(cell(crawl.crawlId.slice(0, 8), "mono"));
     const who = cell(`${crawl.requestedBy} / ${crawl.orgId}`);
     const mark = markOf(crawl);
@@ -2940,7 +2959,7 @@ const scheduleButtons = (schedule) => {
     box.append(
       button(`走ったままの行 ${crawlId.slice(0, 8)} を締める`, () =>
         void scheduleAction("close", `/api/crawls/${crawlId}/failed`, {
-          ask: `クロール ${crawlId.slice(0, 8)} を失敗として締めます。本当に走っている場合、Windmill の run は止まらず、撮り続けて次の段も投げます。止めるなら先に Windmill で run を取り消してください。`,
+          ask: `クロール ${crawlId.slice(0, 8)} を失敗として締めます。本当に走っている場合、Windmill の run は止まらず、その段は撮り終えますが、次の段は投げません（撮った分は記録に残ります）。止めるなら先に Windmill で run を取り消してください。`,
           body: { reason: "定期実行の画面から締めた" },
         }),
       ),

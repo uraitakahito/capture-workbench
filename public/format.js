@@ -161,3 +161,22 @@ export const statsOf = (report) => {
 
 /** 数を 3 桁ずつ区切る（大きさの行・走らせたものの行・ページの表とログの行）。 */
 export const count = (n) => n.toLocaleString("en-US");
+
+/**
+ * 一番新しい段を Windmill に投げた様子（capture-ledger の `dispatch`・CAPTURE-180）を、クロールの行と開いた所の言葉にする。
+ * **1 回で受け取られた段には何も言わない。** 言うのは、送り直した（`attempts` が 2 以上）か、最後の誤りが残っているときだけ。
+ * `attempts` は送った回数（受け取られた 1 回を含む）なので、送り直しはその 1 つ少ない数。諦めた段（`abandoned`）は、
+ * 送り直しの数より先に「諦めた」と言う。`dispatch` の無い答え（段の行を入れる前の capture-ledger・前のクロール）は何も言わない。
+ */
+export const resendOf = (dispatch) => {
+  if (dispatch === null || dispatch === undefined) return undefined;
+  const resent = Math.max(0, dispatch.attempts - 1);
+  if (resent === 0 && dispatch.lastError === null) return undefined;
+  const level = `段 ${String(dispatch.depth)}`;
+  const text =
+    dispatch.state === "abandoned" && dispatch.lastError !== null
+      ? `${level} を Windmill に渡せず諦めた（${String(dispatch.attempts)} 回送った）`
+      : `${level} を Windmill に送り直し ${String(resent)} 回`;
+  const kind = dispatch.state === "abandoned" ? "bad" : "warn";
+  return { text, kind, error: dispatch.lastError };
+};

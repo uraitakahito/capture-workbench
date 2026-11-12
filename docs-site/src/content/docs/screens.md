@@ -65,6 +65,14 @@ the crawl's bundle.
 - **run ↗ is the run of the last level that was handed over.** The link is built from the id of
   `lastJob` that the ledger returns, plus the Windmill origin and workspace the server hands out
   through `/healthz`. Rows where the ledger has no `lastJob` get no link.
+- **When a level was sent to Windmill again, the state says so.** When capture-ledger cannot
+  confirm that Windmill took a level, it sends it again with the same level key (CAPTURE-180). If
+  the newest level was sent twice or more, or a last error is left, the state cell gets a mark such as
+  「段 1 を Windmill に送り直し 3 回」 (level 1 sent to Windmill again 3 times), and hovering the mark
+  shows the last error. A level given up after 10 minutes is red: 「段 1 を Windmill に渡せず諦めた（21
+  回送った）」 (level 1 could not be handed to Windmill, given up after 21 sends). A level taken at the
+  first send shows nothing. The numbers come from the ledger's `dispatch` (the newest level's
+  `attempts` and `lastError`); the resends are the sends minus one.
 - **ReplayWeb.page ↗ / Web Capture ↗ open the crawl as one archive.** After each level, the ledger writes the crawl's
   bundle (合本) to the store: a `replay.json` that lists every WACZ file of the crawl, and the
   index of its pages (`pages.json`) that replayweb-server answers from when ReplayWeb.page looks a page
@@ -98,7 +106,8 @@ the crawl's bundle.
 
 - **Click a row to see why it failed, what ran in the page, which values it was given, and the
   URLs that could not be fetched.** Only then does the workbench fetch `/api/crawls/:id`. The ledger's
-  `error` comes first, in its own words: a crawl that failed at the compile step captured nothing, so
+  `error` comes first, in its own words (a level sent to Windmill again comes even before it, with
+  the count and the last error): a crawl that failed at the compile step captured nothing, so
   its list of failed pages is empty and would otherwise read like a success. Next is what ran, in the
   order it ran: registered scripts with their version and a 読む (read) link to the
   [script collection view](#script-collection) at the version the crawl ran, and scripts written in the form marked その場
