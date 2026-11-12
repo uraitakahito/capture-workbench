@@ -9,7 +9,7 @@
  * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
  * `outerHTML` のようなほかの API は見ない。
  */
-import { checkVerdict, count, forgetMissing, judgedUnder, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
+import { checkVerdict, count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
   addRow,
@@ -82,6 +82,25 @@ import {
   tocOf,
   versionNote,
 } from "/changes.js";
+import {
+  SIZE,
+  colX,
+  crossOf,
+  foldableBelowSeeds,
+  foldedAtOpen,
+  groupsOf,
+  boxLabelOf,
+  indexOf,
+  layoutOf,
+  linksHash,
+  linksPath,
+  linkOutcomeOf,
+  originOf,
+  pageKind,
+  pageLinksPath,
+  parseLinksHash,
+  splitOf,
+} from "/links.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "/fix.js";
 import {
   awaitsFinalBundle,
@@ -486,6 +505,17 @@ const valuesOf = (one) => {
 /** 動きの画面の言い方（新しいクロールの画面の選ぶ欄と同じ）。 */
 const ACTION_LABEL = Object.fromEntries(ACTIONS);
 
+/** 開いた行から、そのクロールのリンクの構成（`#links/<クロールの id>`・CAPTURE-246）へ。 */
+const linksLineOf = (one) => {
+  const line = document.createElement("p");
+  line.className = "links-line";
+  const a = document.createElement("a");
+  a.href = linksHash(one.crawlId);
+  a.textContent = "リンクの構成を開く";
+  line.append(a, "（どのページから見つけたか・撮らなかったリンクとその理由）");
+  return line;
+};
+
 /**
  * 規則が何を決めたか（capture-ledger の `GET /api/crawls/:id/decisions`）。規則ごとの数（段を跨いで足し、0 回の規則に
  * 印）と、落とした物（規則・どれにも当たらない・robots.txt、ホスト名ごと）、その下に Windmill で調べる 1 行。
@@ -504,7 +534,8 @@ const decisionsOf = (one) => {
   if (decided.decisions.length === 0) {
     box.append(tag("p", "規則で決めたリンクはありません", "muted"));
   } else {
-    box.append(tag("p", "規則ごと（段を跨いで足した、別々の URL の数）"));
+    // 段の中では別々の URL だが、段を跨ぐと同じ URL を 2 度数える（延べ）。別々の URL での内訳は、リンクの構成の画面
+    box.append(tag("p", "規則ごと（別々の URL を段ごとに数えて足した数）"));
     const list = document.createElement("ol");
     list.className = "tally";
     for (const t of ruleTallies(decided.rules, decided.decisions)) {
@@ -801,6 +832,7 @@ const detailOf = (one) => {
     ranOf(one),
     valuesOf(one),
     decisionsOf(one),
+    linksLineOf(one),
     pagesOf(one),
     tag("p", failuresText(one), "pre"),
   ];
@@ -908,7 +940,15 @@ const drawCrawls = () => {
     row.append(cell(crawl.seeds[0] ?? "", "wide"));
     // **2 つの数を 1 つの欄に混ぜない。** リンクの数は撮れた数の分母ではない（`linksOf`）
     row.append(cell(String(crawl.pagesCaptured), "num mono"));
-    row.append(cell(linksOf(crawl), "num mono"));
+    // 数を押すと、リンクの構成（#links/<クロールの id>）。1 枚も撮れていない行（−）は link にしない
+    const links = crawl.pagesCaptured === 0 ? cell(linksOf(crawl), "num mono") : hashCell(linksHash(crawl.crawlId), linksOf(crawl));
+    links.className = "num mono";
+    const note = linksNoteOf(crawl);
+    if (note !== undefined) {
+      links.classList.add("muted");
+      links.title = note;
+    }
+    row.append(links);
     row.append(cell(String(crawl.waczCount), "num mono"));
     row.append(cell(took(crawl), "num mono"));
     // 行き先: run と、capture-ledger が合本を書けていれば、クロールを 1 つのアーカイブとして replayweb-server で。**run ↗ が先頭**
@@ -3339,6 +3379,414 @@ const openChanges = async (crawlId, pageId) => {
   }
 };
 
+// ── リンクの構成（#links/<クロールの id>[/<ページの id>]・CAPTURE-246） ─────────────
+/**
+ * クロール 1 本のリンクの構成。capture-ledger が残したリンクの記録（`GET /api/crawls/:id/links`）を、深さを列にした
+ * 図に描く。**数も「どうなったか」も capture-ledger の物で、ここは描くだけ** —— 配置と字は `public/links.js`。
+ *
+ *   crawl      クロールの 1 本の答え（起点・状態・上限）
+ *   graph      リンクの構成の答え。読んでいる間は undefined
+ *   collapsed  畳んだページの id
+ *   pageId     選んだページ（無ければ undefined）
+ *   cross      木に無い辺を全部出すか
+ *   pages      選んだページの出入りのリンクの答え（ページの id → 答え・読めなければ Error）
+ *   timer      走っているクロールの引き直し
+ */
+let linksView = { crawlId: undefined };
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const svgTag = (name, attrs = {}, text) => {
+  const el = document.createElementNS(SVG_NS, name);
+  for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value));
+  if (text !== undefined) el.textContent = text;
+  return el;
+};
+
+const linksAnswer = (text) => {
+  $("links-answer").hidden = text === undefined;
+  $("links-answer").textContent = text ?? "";
+};
+
+const drawLinksHead = () => {
+  const { crawl, crawlId, graph } = linksView;
+  const head = $("links-head");
+  head.replaceChildren();
+  const back = document.createElement("p");
+  back.className = "change-back";
+  const toList = document.createElement("a");
+  toList.href = "#crawls";
+  toList.textContent = "← クロールの一覧";
+  back.append(toList);
+  head.append(back);
+  const h2 = document.createElement("h2");
+  h2.append(tag("span", "リンクの構成"), tag("span", crawlId.slice(0, 8), "mono"));
+  if (crawl !== undefined) {
+    const said = stateOf(crawl);
+    h2.append(tag("span", crawl.seeds[0] ?? "", "wide"), tag("span", said.text, `state ${said.kind}`));
+  }
+  head.append(h2);
+  if (crawl !== undefined) {
+    // 欄の無い答え（古い capture-ledger）は、その項を書かない
+    const facts = [
+      typeof crawl.pagesCaptured === "number" ? `撮れた ${count(crawl.pagesCaptured)}` : undefined,
+      typeof crawl.maxDepth === "number" ? `深さ ${String(crawl.maxDepth)} まで` : undefined,
+      typeof crawl.maxPages === "number" ? `枚数 ${count(crawl.maxPages)} まで` : undefined,
+    ].filter((fact) => fact !== undefined);
+    head.append(tag("p", facts.join("・"), "links-facts"));
+  }
+  if (graph !== undefined && !graph.recorded) {
+    head.append(
+      tag(
+        "p",
+        "このクロールにはリンクの記録がありません（記録を残す前のクロール）。図は、見つけた道（木）だけです。",
+        "state warn",
+      ),
+    );
+  }
+};
+
+const drawLinksSplit = () => {
+  const box = $("links-split");
+  box.replaceChildren();
+  const { parts, total, aside } = splitOf(linksView.graph?.summary);
+  if (parts.length === 0) return;
+  box.append(tag("p", `見つけた別々の URL ${count(total)} 本（起点を除く）は、どうなったか`, "links-split-title"));
+  const bar = document.createElement("div");
+  bar.className = "links-bar";
+  bar.setAttribute("role", "img");
+  bar.setAttribute("aria-label", parts.map((part) => `${part.text} ${count(part.n)}`).join("、"));
+  const legend = document.createElement("div");
+  legend.className = "links-legend";
+  for (const part of parts) {
+    const seg = tag("span", "", part.kind);
+    seg.style.flex = String(part.n);
+    bar.append(seg);
+    const item = document.createElement("span");
+    item.append(tag("i", "", part.kind), `${part.text} `, tag("b", count(part.n)));
+    legend.append(item);
+  }
+  if (aside !== undefined) legend.append(tag("span", aside, "muted"));
+  box.append(bar, legend);
+};
+
+/** 選んだページを替える。URL は hashchange を発火させずに替える（発火すると route が読み直す）。 */
+const pickLinksPage = (pageId) => {
+  linksView.pageId = pageId;
+  history.replaceState(null, "", linksHash(linksView.crawlId, pageId));
+  drawLinksGraph();
+  drawLinksPanel();
+  if (pageId !== undefined) void loadLinksPage(pageId);
+};
+
+const drawLinksGraph = () => {
+  const { graph, collapsed, pageId, cross } = linksView;
+  const host = $("links-graph");
+  if (graph === undefined) {
+    host.replaceChildren();
+    return;
+  }
+  const layout = layoutOf(graph, collapsed);
+  const index = indexOf(graph);
+  const origin = originOf(graph);
+  const at = new Map(layout.rows.map((row) => [row.key, row]));
+  const hosts = graph.hosts ?? [];
+  const width = colX(layout.depth) + SIZE.col + 12;
+  const height = layout.height + (hosts.length > 0 ? 8 : 0);
+  const root = svgTag("svg", {
+    viewBox: `0 0 ${String(width)} ${String(height)}`,
+    width,
+    height,
+    role: "img",
+    "aria-label": `撮ったページ ${String(graph.pages.length)} 枚を、深さごとの列に置いた図`,
+  });
+  if (pageId !== undefined) root.classList.add("dim");
+  const defs = svgTag("defs");
+  const marker = svgTag("marker", { id: "lg-arrow", viewBox: "0 0 8 8", refX: 7, refY: 4, markerWidth: 6, markerHeight: 6, orient: "auto" });
+  marker.append(svgTag("path", { d: "M0,0 L8,4 L0,8 z", class: "lg-head" }));
+  defs.append(marker);
+  root.append(defs);
+  const maxDepth = linksView.crawl?.maxDepth;
+  for (let depth = 0; depth <= layout.depth; depth += 1) {
+    const text =
+      depth === 0 ? "深さ 0（起点）" : maxDepth !== undefined && depth > maxDepth ? `深さ ${String(depth)}（撮らない）` : `深さ ${String(depth)}`;
+    root.append(svgTag("text", { x: colX(depth), y: 16, class: "lg-h" }, text));
+  }
+  const mid = (row) => row.y + SIZE.node / 2;
+  const curve = (x1, y1, x2, y2) => {
+    const m = (x1 + x2) / 2;
+    return `M${String(x1)},${String(y1)} C${String(m)},${String(y1)} ${String(m)},${String(y2)} ${String(x2)},${String(y2)}`;
+  };
+  const touches = (a, b) => pageId !== undefined && (a === pageId || b === pageId);
+  // 木の辺（見つけた道）と、束への辺
+  for (const row of layout.rows) {
+    const from = at.get(row.kind === "page" ? (index.byId.get(row.id).parent ?? "") : row.from);
+    if (from === undefined) continue;
+    const kind = row.kind === "page" ? "" : ` cut ${linkOutcomeOf(row.outcome).kind}`;
+    const hi = touches(from.id, row.kind === "page" ? row.id : undefined) ? " hi" : "";
+    root.append(
+      svgTag("path", {
+        d: curve(colX(from.depth) + SIZE.col, mid(from), colX(row.depth), mid(row)),
+        class: `lg-e${kind}${hi}`,
+      }),
+    );
+  }
+  // 木に無い辺（もう行があるページへのリンク）
+  let lane = 0;
+  for (const [fromId, toId] of crossOf(graph, layout, pageId, cross)) {
+    const a = at.get(fromId);
+    const b = at.get(toId);
+    let d;
+    if (b.depth > a.depth) d = curve(colX(a.depth) + SIZE.col, mid(a), colX(b.depth), mid(b));
+    else if (b.depth === a.depth) {
+      const bend = colX(a.depth) + SIZE.col + 14 + (lane++ % 4) * 7;
+      d = `M${String(colX(a.depth) + SIZE.col)},${String(mid(a))} C${String(bend)},${String(mid(a))} ${String(bend)},${String(mid(b))} ${String(colX(b.depth) + SIZE.col + 2)},${String(mid(b))}`;
+    } else d = curve(colX(a.depth), mid(a), colX(b.depth) + SIZE.col + 2, mid(b));
+    root.append(
+      svgTag("path", { d, class: `lg-x${touches(fromId, toId) ? " hi" : ""}`, "marker-end": "url(#lg-arrow)" }),
+    );
+  }
+  const keyed = (el, act) => {
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("role", "button");
+    el.addEventListener("click", act);
+    el.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      act();
+    });
+  };
+  for (const row of layout.rows) {
+    const x = colX(row.depth);
+    if (row.kind === "bundle") {
+      const said = linkOutcomeOf(row.outcome);
+      const g = svgTag("g", { class: `lg-b ${said.kind}` });
+      g.append(
+        svgTag("rect", { x, y: row.y, width: SIZE.col, height: SIZE.node, rx: 8 }),
+        svgTag("text", { x: x + 8, y: row.y + 12.5 }, `＋${count(row.urls)} 本 ${said.text}`),
+      );
+      // 束を押すと、見つけたページを選ぶ（下に、そのページのリンクが 1 本ずつ出る）
+      keyed(g, () => pickLinksPage(row.from));
+      root.append(g);
+      continue;
+    }
+    const page = index.byId.get(row.id);
+    const g = svgTag("g", { class: `lg-n ${pageKind(page.state)}${pageId === row.id ? " sel" : ""}` });
+    const label = row.folded
+      ? `${boxLabelOf(page.url, origin, 13)} ＋${count(row.hidden)} 枚`
+      : boxLabelOf(page.url, origin, row.foldable ? 21 : 24);
+    g.append(
+      svgTag("rect", { x, y: row.y, width: SIZE.col, height: SIZE.node, rx: 4 }),
+      svgTag("text", { x: x + 6, y: row.y + 12.5 }, label),
+      svgTag("title", {}, `${page.url}${page.title ? ` ${page.title}` : ""}（${outcomeOfPage(page)}）`),
+    );
+    keyed(g, () => pickLinksPage(pageId === row.id ? undefined : row.id));
+    if (row.foldable) {
+      const toggle = svgTag("text", { x: x + SIZE.col - 13, y: row.y + 12.5, class: "lg-tog" }, row.folded ? "▸" : "▾");
+      toggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (!linksView.collapsed.delete(row.id)) linksView.collapsed.add(row.id);
+        drawLinksGraph();
+      });
+      g.append(toggle);
+    }
+    root.append(g);
+  }
+  if (hosts.length > 0) {
+    const skipped = hosts.reduce((n, one) => n + one.urls, 0);
+    const x = colX(Math.min(1, layout.depth));
+    const g = svgTag("g", { class: "lg-b muted" });
+    g.append(
+      svgTag("rect", { x, y: height - 30, width: Math.min(SIZE.col + 100, width - x - 12), height: SIZE.node + 1, rx: 8 }),
+      svgTag("text", { x: x + 8, y: height - 17 }, `規則で落とした ${count(skipped)} 本（${count(hosts.length)} 個のホスト）`),
+    );
+    root.append(g);
+  }
+  host.replaceChildren(root);
+};
+
+/** ページの結末の字（capture-ledger の state と理由をそのまま）。 */
+const outcomeOfPage = (page) =>
+  page.reason === null || page.reason === undefined ? String(page.state) : `${String(page.state)}: ${page.reason}`;
+
+const drawLinksHosts = () => {
+  const box = $("links-hosts");
+  box.replaceChildren();
+  const hosts = linksView.graph?.hosts ?? [];
+  if (hosts.length === 0) return;
+  const details = document.createElement("details");
+  details.append(tag("summary", `規則で落とした URL のホスト ${count(hosts.length)} 個を並べる`));
+  const list = document.createElement("ul");
+  for (const one of hosts) {
+    const item = document.createElement("li");
+    item.append(tag("span", one.hostname, "mono"), ` ${count(one.urls)} 本`);
+    list.append(item);
+  }
+  details.append(list);
+  box.append(details);
+};
+
+const drawLinksPanel = () => {
+  const { graph, pageId, crawlId } = linksView;
+  const box = $("links-panel");
+  box.replaceChildren();
+  box.hidden = graph === undefined;
+  if (graph === undefined) return;
+  const page = pageId === undefined ? undefined : graph.pages.find((one) => one.id === pageId);
+  if (page === undefined) {
+    box.append(tag("p", "図の箱を押すと、そのページの出入りのリンクがここに並びます。箱の ▾ は、その下を畳みます。", "muted"));
+    return;
+  }
+  const origin = originOf(graph);
+  const h3 = document.createElement("h3");
+  h3.append(tag("span", page.url, "mono"));
+  if (page.title) h3.append(tag("span", page.title, "muted"));
+  h3.append(tag("span", outcomeOfPage(page), `state ${pageKind(page.state)}`));
+  box.append(h3);
+  if (!graph.recorded) {
+    box.append(tag("p", "リンクの記録が無いので、出入りのリンクは出せません。", "muted"));
+    return;
+  }
+  const answer = linksView.pages.get(pageId);
+  if (answer === undefined) {
+    box.append(tag("p", "読み込み中…", "muted"));
+    return;
+  }
+  if (answer instanceof Error) {
+    box.append(tag("p", `リンクを読めません: ${answer.message}`, "state bad"));
+    return;
+  }
+  const byId = new Map(graph.pages.map((one) => [one.id, one]));
+  const pageLink = (id) => {
+    const a = document.createElement("a");
+    a.href = linksHash(crawlId, id);
+    a.className = "mono";
+    a.textContent = boxLabelOf(byId.get(id)?.url ?? id, origin, 60);
+    return a;
+  };
+  const into = document.createElement("p");
+  if (answer.in.length === 0) {
+    into.append(page.parent === null ? "入ってくるリンク: なし（起点）" : "入ってくるリンク: なし");
+  } else {
+    into.append(`入ってくるリンク ${count(answer.in.length)} 本: `);
+    const from = [...new Set(answer.in.map((link) => link.from))];
+    from.slice(0, 8).forEach((id, i) => into.append(i === 0 ? "" : "・", pageLink(id)));
+    if (from.length > 8) into.append(` ほか ${count(from.length - 8)} ページ`);
+  }
+  box.append(into);
+  if (answer.out.length === 0) box.append(tag("p", "出ていくリンク: なし"));
+  for (const group of groupsOf(answer.out)) {
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.append(tag("span", `${group.text} ${count(group.links.length)}`, `state ${group.kind}`));
+    details.append(summary);
+    const list = document.createElement("ul");
+    for (const link of group.links) {
+      const item = document.createElement("li");
+      // 行き先のページが在れば、そのページを選ぶ link。無ければ字だけ（撮っていない URL へは飛ばさない）
+      item.append(
+        link.to === null || link.to === undefined ? tag("span", boxLabelOf(link.url, origin, 80), "mono") : pageLink(link.to),
+      );
+      if (link.text) item.append(tag("span", link.text, "muted"));
+      list.append(item);
+    }
+    details.append(list);
+    // 撮らなかった理由は開いて出す（この画面で一番訊かれる所）
+    details.open = group.outcome === "max_pages" || group.outcome === "max_depth" || group.outcome === "closed";
+    box.append(details);
+  }
+};
+
+const loadLinksPage = async (pageId) => {
+  const { crawlId, graph } = linksView;
+  if (graph === undefined || !graph.recorded || linksView.pages.has(pageId)) return;
+  let answer;
+  try {
+    answer = await api(pageLinksPath(crawlId, pageId));
+  } catch (err) {
+    answer = asError(err);
+  }
+  if (linksView.crawlId !== crawlId) return; // 別のクロールを開いた
+  linksView.pages.set(pageId, answer);
+  if (linksView.pageId === pageId) drawLinksPanel();
+};
+
+const drawLinks = () => {
+  drawLinksHead();
+  drawLinksSplit();
+  $("links-tools").hidden = linksView.graph === undefined;
+  $("links-cross").checked = linksView.cross === true;
+  const crossed = linksView.graph?.cross?.length ?? 0;
+  $("links-cross").disabled = crossed === 0;
+  drawLinksGraph();
+  drawLinksHosts();
+  drawLinksPanel();
+};
+
+/** 走っているクロールは、この画面を開いている間だけ 5 秒ごとに引き直す（畳んだ箱と選んだページは覚えたまま）。 */
+const LINKS_PACE_MS = 5_000;
+
+const loadLinks = async (crawlId, { first }) => {
+  let crawl;
+  let graph;
+  try {
+    [crawl, graph] = await Promise.all([api(`/api/crawls/${crawlId}`), api(linksPath(crawlId))]);
+  } catch (err) {
+    if (linksView.crawlId === crawlId) linksAnswer(`リンクの構成を読めません: ${failedText(err)}`);
+    return;
+  }
+  if (linksView.crawlId !== crawlId) return; // 別のクロールを開いた・一覧へ戻った
+  linksAnswer(undefined);
+  linksView.crawl = crawl;
+  linksView.graph = graph;
+  if (first) linksView.collapsed = foldedAtOpen(graph);
+  // 走っている間は、開いたページのリンクも増える。答えを捨てて読み直す
+  if (!first) linksView.pages = new Map();
+  drawLinks();
+  if (linksView.pageId !== undefined) void loadLinksPage(linksView.pageId);
+  if (crawl.state === "running") {
+    linksView.timer = setTimeout(() => void loadLinks(crawlId, { first: false }), LINKS_PACE_MS);
+  }
+};
+
+const closeLinks = () => {
+  if (linksView.crawlId === undefined) return;
+  clearTimeout(linksView.timer);
+  linksView = { crawlId: undefined };
+  $("links-detail").hidden = true;
+  $("crawls-list").hidden = false;
+};
+
+const openLinks = (crawlId, pageId) => {
+  $("crawls-list").hidden = true;
+  $("links-detail").hidden = false;
+  if (linksView.crawlId === crawlId) {
+    // 同じクロールの別のページ（下の一覧の link を押した）
+    if (linksView.pageId !== pageId) {
+      linksView.pageId = pageId;
+      drawLinksGraph();
+      drawLinksPanel();
+      if (pageId !== undefined) void loadLinksPage(pageId);
+    }
+    return;
+  }
+  clearTimeout(linksView.timer);
+  linksView = { crawlId, crawl: undefined, graph: undefined, collapsed: new Set(), pageId, cross: false, pages: new Map(), timer: undefined };
+  linksAnswer(undefined);
+  drawLinks();
+  void loadLinks(crawlId, { first: true });
+};
+
+$("links-cross").addEventListener("change", (event) => {
+  linksView.cross = event.target.checked;
+  drawLinksGraph();
+});
+$("links-fold").addEventListener("click", () => {
+  if (linksView.graph === undefined) return;
+  // 畳んだ物が在れば全部開き、無ければ深さ 1 より下を畳む
+  linksView.collapsed = linksView.collapsed.size > 0 ? new Set() : new Set(foldableBelowSeeds(linksView.graph));
+  drawLinksGraph();
+});
+
 // ── 画面の切り替え ───────────────────────────────────────────────────
 const FACES = ["crawls", "start", "schedules", "changes", "archives", "search", "scripts", "wacz"];
 
@@ -3355,6 +3803,8 @@ const show = (face) => {
  * `#search` と `#search/<語>` は検索の画面、それ以外はほかの画面のどれか。
  */
 const route = () => {
+  // リンクの構成（#links/…）から出たら、クロールの画面を一覧に戻す
+  if (parseLinksHash(location.hash) === undefined) closeLinks();
   const target = parseWaczHash(location.hash);
   if (target !== undefined) {
     void openWacz(target);
@@ -3365,6 +3815,12 @@ const route = () => {
     show("search");
     searching.hash = location.hash;
     if (words !== searching.words) void runSearch(words);
+    return;
+  }
+  const links = parseLinksHash(location.hash);
+  if (links !== undefined) {
+    show("crawls");
+    openLinks(links.crawlId, links.pageId);
     return;
   }
   const changes = parseChangesHash(location.hash);

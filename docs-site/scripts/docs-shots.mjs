@@ -212,6 +212,24 @@ const SHOTS = [
     ],
   },
   {
+    name: "links",
+    // リンクの構成（CAPTURE-246）。代役の 5b0c0003（深さ 1・8 ページ）で、ガイドの頁（304）を選んだ所。
+    // 数の内訳の帯から図まで。図は列 3 本で COLUMN に収まる（`public/links.js` の SIZE）
+    hash: "#links/5b0c0003-6a1e-4000-8000-000000000003/304",
+    box: "#links-split, .links-frame",
+    maxWidth: COLUMN,
+    ready: () =>
+      document.querySelectorAll("#links-graph .lg-n").length === 8 &&
+      document.querySelector("#links-graph .lg-n.sel") !== null &&
+      document.querySelectorAll("#links-graph .lg-x.hi").length === 4 &&
+      document.querySelector("#links-split .links-legend")?.textContent.includes("深さで切った 9"),
+    marks: [
+      { n: 1, at: "#links-split .links-split-title" },
+      { n: 2, at: "#links-graph .lg-n.sel", edge: "box" },
+      { n: 3, at: "#links-graph .lg-b", edge: "box" },
+    ],
+  },
+  {
     name: "crawl-pages",
     hash: "#crawls",
     box: "#crawls tr.detail .pages",

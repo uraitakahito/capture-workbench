@@ -54,10 +54,13 @@ the crawl's bundle.
 ② the link to the run
 
 - **Pages captured and links are separate columns.** The links column (`pagesDiscovered`) is the
-  number of links on the captured pages that the rules let through. Links that were not captured
-  count too, so it is not the denominator of pages captured. A crawl of depth 0 counts them as
-  well; it just does not follow them. A depth-0 crawl started before capture-ledger v0.83.0 did
-  not count them, so it shows 0.
+  number of distinct URLs the rules let through among the links on the captured pages (seeds are
+  not counted). URLs that were not captured count too, so it is not the denominator of pages
+  captured. A crawl of depth 0 counts them as well; it just does not follow them. Clicking the
+  number opens the crawl's [link structure](#link-structure). A crawl from before the ledger kept
+  every link (before v0.99.0) still shows the per-level sum, which counts a URL twice when two
+  levels find it; that number is muted and says so on hover. A depth-0 crawl started before
+  capture-ledger v0.83.0 did not count them, so it shows 0.
 - **A row with no captured pages shows `−` for links.** There was no page to count, so it does
   not claim there were 0 links.
 - **For a running crawl, the time taken is "so far".** A missing finish time means "not finished
@@ -145,7 +148,7 @@ the crawl's bundle.
   passed, this month's limit reached, a ledger without the route) is one line, in the ledger's words.
 - **An opened row also shows what the crawl's rules decided** (the ledger's
   `/api/crawls/:id/decisions`, fetched together with the detail). First, per rule, the distinct URLs it
-  matched, added up over the levels; a rule that never matched is marked 当たっていません (not hit),
+  matched, counted per level and added up (a URL found on two levels counts twice); a rule that never matched is marked 当たっていません (not hit),
   since a rule that never fires usually does not say what its author meant. Then what was dropped,
   by host name: by a rule, by no rule, and the pages robots.txt kept the crawl from taking. A crawl
   that looked at no links says so in one line instead of listing rules that all show 0. Last is a
@@ -201,6 +204,46 @@ the crawl's bundle.
   crawl is running or when its state has changed. Opened logs are remembered by page id too, and
   their boxes are moved rather than rebuilt, so they keep their scroll position and filter. They are
   forgotten when you close the row or when the crawl leaves the list.
+
+### Link structure
+
+Clicking the links number on the list opens that crawl's link structure (the URL is
+`#links/<crawl id>`). The tab stays クロール; the view replaces the list, and ← クロールの一覧 goes
+back. The numbers and outcomes are what the ledger kept, one row per link, at each level report
+(`GET /api/crawls/:id/links`); the workbench only draws them.
+
+![A crawl's link structure: the bar of what became of the URLs on top, and the figure with one column per depth below. The lines touching the selected page stand out, and the links cut by the depth limit sit in boxes to the right of the pages that found them](../../assets/screens/links.webp)
+
+① the bar of what became of the URLs\
+② the selected page (its links are listed below)\
+③ a box of links that were not captured
+
+- **The bar on top says what became of the distinct URLs the crawl found.** Captured, not
+  captured (failed or deferred), cut by the page limit (枚数で切った), cut by the depth limit
+  (深さで切った), dropped by a rule (規則で落とした). A URL counts once however many pages link to
+  it, so the parts add up to the distinct URLs found. Seeds are not counted.
+- **The figure has one column per depth.** A box is a captured page; columns run from depth 0 (the
+  seeds) to the right. A solid line is how a page was found (the link that put it into the next
+  level). Links that were not captured are gathered into one box per reason, to the right of the
+  page that found them first (＋14 本 枚数で切った). URLs a rule dropped are one box in all (the
+  line below the figure lists them per host name).
+- **Clicking a box lists that page's links below.** The pages that link to it, and its own links
+  grouped as 次の段に入れた (entered the next level), もう行がある (already had a row),
+  枚数で切った, 深さで切った and 規則で落とした (`GET /api/crawls/:id/links/<page id>`). The URL
+  becomes `#links/<crawl id>/<page id>`. In the figure the lines touching that page stand out, and
+  the edges that are not in the tree (links to a page that already had a row, dotted) appear;
+  木に無い辺を全部出す shows them all without a selection.
+- **▾ folds what is under a page.** A folded box says how many pages it hides (＋17 枚). A figure
+  with more than 60 rows opens with everything below depth 1 folded. 深さ 1 より下を畳む folds
+  all of it, and unfolds all on the next click.
+- **A crawl with no link record shows only the tree.** That is a crawl from before capture-ledger
+  v0.99.0 that was not backfilled. Boxes and solid lines appear; the bar, the boxes of uncaptured
+  links and the per-page links do not.
+- **A running crawl is fetched again every 5 seconds while the view is open.** A column appears as
+  each level ends. Folded boxes and the selected page are remembered.
+
+The layout and wording are in `public/links.js` (`layoutOf` and others), pinned by
+`test/links.test.mjs`.
 
 ### The state is worded together with stopReason
 

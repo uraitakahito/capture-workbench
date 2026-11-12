@@ -38,11 +38,21 @@ export const stateOf = (crawl) => {
 };
 
 /**
- * リンクの数（`pagesDiscovered`）。撮ったページのリンクのうち規則が通した本数で、撮らなかった物も入る ——
+ * リンクの数（`pagesDiscovered`）。撮ったページのリンクのうち規則が通した別々の URL の数で、撮らなかった物も入る ——
  * 撮れた数の分母ではない。**1 枚も撮れていなければ数える物が無いので、`−` と書く**（0 と書くと「リンクが 0 本
  * だった」と読める）。
  */
 export const linksOf = (crawl) => (crawl.pagesCaptured === 0 ? "−" : String(crawl.pagesDiscovered));
+
+/**
+ * リンクの数の但し書き。capture-ledger は、リンクを 1 本ずつ残したクロール（`linksRecorded`）の数を、規則が通した
+ * **別々の URL の数**で返す。残す前のクロールは、段ごとに足した延べのまま（別の段で同じ URL が出ると 2 度数える）
+ * なので、そう言う。数の無い行（`−`）と、欄の無い古い capture-ledger の答えには付けない。
+ */
+export const linksNoteOf = (crawl) =>
+  crawl.linksRecorded === false && crawl.pagesCaptured > 0
+    ? "延べの数（リンクの記録が無いクロール。別の段で同じ URL が出ると 2 度数えている）"
+    : undefined;
 
 /**
  * かかった時間。**走行中は「いままで」を出す** —— `finishedAt` が null なのは

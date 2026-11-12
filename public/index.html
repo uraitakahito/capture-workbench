@@ -34,7 +34,12 @@
     <p id="schedule-band" class="schedule-band" hidden><span id="schedule-band-text"></span> <a href="#schedules">定期実行を開く</a></p>
 
     <main>
+      <!--
+        クロールの画面。一覧（#crawls）と、クロール 1 本のリンクの構成（#links/<クロールの id>[/<ページの id>]・
+        CAPTURE-246）。リンクの構成は、一覧の「リンク」の数から開き、一覧と入れ替える（タブは「クロール」のまま）。
+      -->
       <section id="face-crawls">
+       <div id="crawls-list">
         <table>
           <thead>
             <tr>
@@ -43,7 +48,7 @@
               <th>始めた人</th>
               <th>起点</th>
               <th class="num">撮れた</th>
-              <th class="num" title="撮ったページにあったリンクのうち、規則が通した本数。撮らなかった物も入る">リンク</th>
+              <th class="num" title="撮ったページにあったリンクのうち、規則が通した別々の URL の数。撮らなかった物も入る。押すとリンクの構成を開く">リンク</th>
               <th class="num">WACZ</th>
               <th class="num">かかった</th>
               <th>行き先</th>
@@ -52,6 +57,25 @@
           <tbody id="crawls"></tbody>
         </table>
         <p id="crawls-empty" class="empty" hidden>クロールがまだ 1 本もありません。</p>
+       </div>
+        <!--
+          リンクの構成。上から、戻るリンクと題・数の内訳の帯・道具・図（深さを列にした SVG。app.js が組む）・
+          選んだページの出入りのリンク。数も「どうなったか」も capture-ledger が残した物（crawl_links）で、
+          ここは描くだけ。
+        -->
+        <div id="links-detail" hidden>
+          <p id="links-answer" class="start-answer" hidden></p>
+          <div id="links-head"></div>
+          <div id="links-split"></div>
+          <div id="links-tools" class="links-tools">
+            <label><input type="checkbox" id="links-cross" /> 木に無い辺を全部出す</label>
+            <button type="button" id="links-fold">深さ 1 より下を畳む</button>
+          </div>
+          <!-- 枠（線）と、横に流す箱 -->
+          <div class="links-frame"><div id="links-graph" class="links-graph"></div></div>
+          <div id="links-hosts"></div>
+          <div id="links-panel" class="links-panel"></div>
+        </div>
       </section>
 
       <!--

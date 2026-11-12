@@ -57,6 +57,8 @@ import {
   submittedRow,
   versionOf,
   versionsOf,
+  linkGraphOf,
+  pageLinksOf,
 } from "../sandbox/fake-ledger.mjs";
 
 const scenario = JSON.parse(readFileSync(new URL("../sandbox/scenario.json", import.meta.url), "utf8"));
@@ -78,6 +80,8 @@ const LEDGER_CRAWL_KEYS = [
   "finishedAt",
   "maxDepth",
   "pagesDiscovered",
+  // リンクを 1 本ずつ残したクロールか (capture-ledger CAPTURE-246)
+  "linksRecorded",
   "pagesCaptured",
   "pagesFailed",
   "error",
@@ -1492,4 +1496,102 @@ test("User-Agent は capture-ledger と同じ文で断る。行は立たない",
   };
   assert.deepEqual(refused("クローラー"), [400, "userAgent must be printable ASCII, at most 512 characters"]);
   assert.deepEqual(refused(1), [400, "body/userAgent must be string"]);
+});
+
+/**
+ * capture-ledger の src/crawl/links-read.ts の `LinkGraph` と `PageLinks` の欄 (v0.99.0・CAPTURE-246)。
+ */
+const LEDGER_LINK_GRAPH_KEYS = ["crawlId", "recorded", "summary", "pages", "bundles", "hosts", "cross", "crossTruncated"].sort();
+const LEDGER_LINK_SUMMARY_KEYS = ["pending", "captured", "failed", "skipped", "maxPages", "maxDepth", "closed", "skip", "nofollow", "hosts"].sort();
+const LEDGER_LINK_PAGE_KEYS = ["id", "parent", "depth", "url", "title", "state", "reason", "out", "in"].sort();
+const LEDGER_LINK_OUT_KEYS = ["followed", "known", "maxPages", "maxDepth", "closed", "skip", "nofollow"].sort();
+const LEDGER_PAGE_LINK_KEYS = ["seq", "url", "text", "rule", "outcome", "to"].sort();
+
+test("リンクの構成の答えは、capture-ledger の /api/crawls/:id/links と同じ欄を持つ", () => {
+  const recorded = scenario.crawls.filter((c) => c.linkPages !== undefined);
+  assert.ok(recorded.length >= 2, "リンクの記録の在る見本が要る");
+  for (const c of scenario.crawls) {
+    const graph = linkGraphOf(c);
+    assert.deepEqual(Object.keys(graph).sort(), LEDGER_LINK_GRAPH_KEYS, c.crawlId);
+    assert.equal(graph.recorded, c.linkPages !== undefined, c.crawlId);
+    for (const page of graph.pages) {
+      assert.deepEqual(Object.keys(page).sort(), LEDGER_LINK_PAGE_KEYS, `${c.crawlId} ${page.id}`);
+      if (graph.recorded) assert.deepEqual(Object.keys(page.out).sort(), LEDGER_LINK_OUT_KEYS, page.id);
+      else assert.deepEqual([page.out, page.in], [null, null], page.id);
+    }
+    if (graph.recorded) assert.deepEqual(Object.keys(graph.summary).sort(), LEDGER_LINK_SUMMARY_KEYS, c.crawlId);
+    else assert.equal(graph.summary, null, c.crawlId);
+  }
+});
+
+test("リンクの構成の数は、URL ごとに数えて足し算が合う（内訳 = 束 + ホスト + 行の在る URL。一覧の数とも合う）", () => {
+  for (const c of scenario.crawls.filter((x) => x.linkPages !== undefined)) {
+    const graph = linkGraphOf(c);
+    const s = graph.summary;
+    const bundled = graph.bundles.reduce((n, b) => n + b.urls, 0);
+    const hosted = graph.hosts.reduce((n, h) => n + h.urls, 0);
+    assert.equal(bundled, s.maxPages + s.maxDepth + s.closed, c.crawlId);
+    assert.equal(hosted, s.skip, c.crawlId);
+    assert.equal(graph.hosts.length, s.hosts, c.crawlId);
+    // 行の在る URL (起点を除く) は、ページの数 − 起点
+    const seeds = graph.pages.filter((p) => p.parent === null).length;
+    assert.equal(s.pending + s.captured + s.failed + s.skipped, graph.pages.length - seeds, c.crawlId);
+    // 一覧の「リンク」(規則が通した別々の URL・起点を除く) と合う
+    assert.equal(crawlRow(c, NOW).pagesDiscovered, graph.pages.length - seeds + bundled, c.crawlId);
+    assert.equal(crawlRow(c, NOW).linksRecorded, true, c.crawlId);
+    // 親は、同じクロールのページか null。木に無い辺の両端もページ
+    const ids = new Set(graph.pages.map((p) => p.id));
+    for (const p of graph.pages) assert.ok(p.parent === null || ids.has(p.parent), `${c.crawlId} ${p.id}`);
+    for (const [from, to] of graph.cross) assert.ok(ids.has(from) && ids.has(to) && from !== to, c.crawlId);
+  }
+});
+
+test("docs の見本（5b0c0003）: 深さで切った 9 本が 4 つの束に、別のホストは 3 個・4 本", () => {
+  const graph = linkGraphOf(scenario.crawls.find((c) => c.crawlId.startsWith("5b0c0003")));
+  assert.deepEqual(graph.summary, { pending: 0, captured: 7, failed: 0, skipped: 0, maxPages: 0, maxDepth: 9, closed: 0, skip: 4, nofollow: 0, hosts: 3 });
+  assert.deepEqual(graph.bundles, [
+    { from: "303", outcome: "max_depth", urls: 3 },
+    { from: "305", outcome: "max_depth", urls: 2 },
+    { from: "306", outcome: "max_depth", urls: 1 },
+    { from: "308", outcome: "max_depth", urls: 3 },
+  ]);
+  assert.deepEqual(graph.hosts[0], { hostname: "github.test", urls: 2 });
+  const root = graph.pages[0];
+  // 起点: 次の段に入れた 7・落とした 2。深さ 1 の 7 ページが全部、起点へ戻るリンクを持つ
+  assert.deepEqual([root.out.followed, root.out.skip, root.in], [7, 2, 7]);
+});
+
+test("検索の見本（5b0c0009）: 行の在る URL は、ページの結末（撮れた・取れず・見送り）で数える", () => {
+  const graph = linkGraphOf(scenario.crawls.find((c) => c.crawlId.startsWith("5b0c0009")));
+  assert.deepEqual([graph.summary.captured, graph.summary.failed, graph.summary.skipped], [1, 1, 1]);
+});
+
+test("1 ページの出入りのリンクは、capture-ledger の /api/crawls/:id/links/:page と同じ欄を持つ", () => {
+  const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0003"));
+  const { status, body } = pageLinksOf(c, "304");
+  assert.equal(status, 200);
+  for (const link of body.out) assert.deepEqual(Object.keys(link).sort(), LEDGER_PAGE_LINK_KEYS);
+  // ガイドの頁: 起点へ戻る 1・もう行がある 3・落とした 1。行き先のページの id が付く
+  assert.deepEqual(body.out.map((link) => [link.outcome, link.to]), [
+    ["known", "301"],
+    ["known", "305"],
+    ["known", "306"],
+    ["known", "307"],
+    ["skip", null],
+  ]);
+  assert.equal(body.out[4].rule, 0);
+  // 入ってくるのは、起点だけ
+  assert.deepEqual(body.in.map((link) => link.from), ["301"]);
+  // 規則の頁へは、起点とガイドから
+  assert.deepEqual(pageLinksOf(c, "305").body.in.map((link) => link.from), ["301", "304"]);
+  assert.equal(pageLinksOf(c, "999").status, 404);
+  assert.equal(pageLinksOf(c, "abc").status, 400);
+});
+
+test("リンクの記録の無い行は、ページと親だけ。1 ページの出入りは空", () => {
+  const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0006"));
+  const graph = linkGraphOf(c);
+  assert.equal(graph.recorded, false);
+  assert.equal(graph.pages.length, c.pages.length);
+  assert.deepEqual(pageLinksOf(c, c.pages[0].id).body, { out: [], in: [] });
 });

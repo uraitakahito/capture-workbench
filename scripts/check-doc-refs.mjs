@@ -190,7 +190,10 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // 絵は窓を縮めずに撮る）で start-read が 0.7 KB 伸び、全部で 310.0 KB。計画で決めた上げ方）。
 // 2026-11-12 に全部の枠を 311 → 312 KB（CAPTURE-245 でクロールの表に「リンクなし」の行を足し、crawls が 22.8 → 24.3 KB、
 // 全部で 311.3 KB になったとき。Chief of Staff が決めた上げ方。1 枚の枠は上げていない）。
-const BUDGET = { one: 39 * 1024, all: 312 * 1024 };
+// 2026-11-13 に全部の枠を 312 → 333 KB（CAPTURE-246 でリンクの構成の画面の絵 links を 1 枚足したとき。残りは 0.1 KB で、
+// 数の内訳の帯と図だけ・幅 632 の絵でも約 20 KB。上げずに収める手は「絵を載せない」しか無く、利用者が上げると決めた。
+// 1 枚の枠は上げていない）。
+const BUDGET = { one: 39 * 1024, all: 333 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);
