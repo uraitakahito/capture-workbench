@@ -173,8 +173,10 @@ const SHOTS = [
     name: "changes",
     hash: "#changes/5c0d0006-6a1e-4000-8000-000000000006",
     box: "#change-detail",
-    // 目次と 1 ページの 2 段は COLUMN より広い。本文に縮めて載せる
+    // 目次と 1 ページの 2 段は COLUMN より広い。本文に縮めて載せる。右は差分の行の帯だけなので 840 で切る
+    // （切らないと 956px で 38.6 KB になり、1 枚の枠 35 KB を超える）
     wide: true,
+    maxWidth: 840,
     ready: () =>
       document.querySelector("#change-pane h3") !== null &&
       document.querySelectorAll("#change-toc li").length === 4 &&
@@ -639,7 +641,10 @@ try {
     const marks = await page.evaluate(placeMarks, shot.marks ?? [], clip);
     const why = refusals({ clip, wide: shot.wide, texts, marks });
     if (why.length > 0) throw new Error(`${shot.name}: 撮らない —— ${why.join("／")}`);
-    const png = await page.screenshot({ clip, type: "png" });
+    // 窓に収まる絵は、窓を広げずに撮る。広げて撮ると（puppeteer の captureBeyondViewport）撮る間に窓が一瞬 1×1 に
+    // 縮み、狭い窓の CSS（タブの折り返しなど）が一瞬効いて、sticky の行番号が描き直されないまま写る（2026-11-12）
+    const inWindow = clip.x + clip.width <= WINDOW && clip.y + clip.height <= (await page.evaluate(() => scrollY + innerHeight));
+    const png = await page.screenshot({ clip, type: "png", captureBeyondViewport: !inWindow });
     const webp = await sharp(png).webp({ lossless: true, effort: 6 }).toBuffer();
     const file = join(OUT, `${shot.name}.webp`);
     const same = await samePixels(file, webp);

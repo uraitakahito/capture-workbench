@@ -69,11 +69,6 @@ nav {
   gap: 4px;
 }
 
-/* 狭い窓ではタブを折り返す（折り返さないと、ボタンの字が縦に 1 字ずつ折れる） */
-#tabs {
-  flex-wrap: wrap;
-}
-
 nav button {
   font: inherit;
   color: var(--muted);
@@ -880,8 +875,12 @@ body[data-face="start"] main {
   font-weight: 600;
 }
 
-/* 狭い窓では 1 段に戻し、箱の高さは窓の 6 割に */
+/* 狭い窓では 1 段に戻し、箱の高さは窓の 6 割に。タブは折り返す（折り返さないと、ボタンの字が縦に 1 字ずつ折れる） */
 @media (max-width: 760px) {
+  #tabs {
+    flex-wrap: wrap;
+  }
+
   body[data-face="start"] {
     height: auto;
     display: block;
