@@ -68,10 +68,16 @@ import {
   changeDetailPath,
   changeOf,
   changesError,
+  changesHash,
   hunkLines,
+  neighborsOf,
+  pageClaudeLine,
   parseChangesHash,
-  SIGNIFICANCE_TEXT,
+  pickPage,
+  quoteLineOf,
+  runTimeText,
   summaryLine,
+  tocOf,
   versionNote,
 } from "/changes.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "/fix.js";
@@ -3021,26 +3027,46 @@ const refreshSchedules = async () => {
   schedulesTimer = setTimeout(() => void refreshSchedules(), pollMs(schedules));
 };
 
-// ── 前回からの変化（CAPTURE-167） ───────────────────────────────────────
-/** いま開いている回（`#changes/<id>`）。一覧だけなら undefined。 */
-let changesFor;
+// ── 前回からの変化（CAPTURE-167・目次と 1 ページは CAPTURE-236） ──────────────────────────
+/**
+ * いま開いている回。`crawlId` が替わったときだけ回の答えを読み、ページを替えても読み直さない。`detail` が undefined の
+ * 間は読んでいる途中（遅れて届いた前の回の答えは捨てる）。一覧（`#changes`）を開くと消える。
+ */
+let changesView = { crawlId: undefined, detail: undefined, toc: [] };
 
-/** 差分の箱。**DOM で組む**（public/ では HTML を差し込まない）。文脈の行は薄く、消した行と足した行に印。 */
-const changeDiffOf = (hunks) => {
+/** 狭い窓（目次が上・ページが下）。app.css の切り替えと同じ幅。 */
+const NARROW = "(max-width: 760px)";
+
+/**
+ * 差分の表。**DOM で組む**（public/ では HTML を差し込まない）。塊は 1 つの表に並べ、塊の境に「⋯」の行。印の列は字と
+ * 分けた帯。引用された行（`quoted`）に印を付け、引用のボタンから行へ動けるように行を返す。
+ */
+const changeDiffOf = (hunks, quotedAt) => {
   const box = document.createElement("div");
   box.className = "diff change-diff";
-  for (const hunk of hunks) {
-    const lines = document.createElement("table");
-    lines.className = "difflines";
-    for (const line of hunkLines(hunk)) {
+  const lines = document.createElement("table");
+  lines.className = "difflines";
+  const rows = new Map();
+  for (const [h, hunk] of hunks.entries()) {
+    if (h > 0) {
+      const gap = document.createElement("tr");
+      gap.className = "gap";
+      const td = cell("⋯", "mono");
+      td.colSpan = 2;
+      gap.append(td);
+      lines.append(gap);
+    }
+    for (const [l, line] of hunkLines(hunk).entries()) {
       const row = document.createElement("tr");
       row.className = line.sign === "-" ? "del" : line.sign === "+" ? "add" : "context";
-      row.append(cell(line.sign, "mono"), cell(line.text, "mono code"));
+      if (quotedAt.has(`${String(h)}:${String(l)}`)) row.classList.add("quoted");
+      row.append(cell(line.sign, "mono sign"), cell(line.text, "mono code"));
+      rows.set(`${String(h)}:${String(l)}`, row);
       lines.append(row);
     }
-    box.append(lines);
   }
-  return box;
+  box.append(lines);
+  return { box, rows };
 };
 
 const drawChangeList = (runs) => {
@@ -3051,9 +3077,10 @@ const drawChangeList = (runs) => {
   for (const run of runs) {
     const row = document.createElement("tr");
     row.append(cell(run.scheduleName ?? run.scheduleId.slice(0, 8)));
-    row.append(cell(shortTime(run.scheduledFor ?? run.startedAt), "mono"));
+    // 並びは始まった順なので、始まった時刻で言う（遅れた回にだけ本来の時刻。CAPTURE-235）
+    row.append(cell(runTimeText(run), "mono"));
     const said = changeOf(run);
-    const changed = hashCell(`#changes/${run.crawlId}`, said.text);
+    const changed = hashCell(changesHash(run.crawlId), said.text);
     changed.className = `state ${said.kind}`;
     row.append(changed);
     row.append(cell(run.restricted ? "（見てよくない WACZ を含む回）" : (run.headline ?? ""), "wide"));
@@ -3061,56 +3088,175 @@ const drawChangeList = (runs) => {
   }
 };
 
-const drawChangeDetail = (detail) => {
-  const box = $("change-detail");
-  box.replaceChildren();
-  box.hidden = false;
-  const head = document.createElement("h2");
-  head.append(tag("span", `${detail.scheduleName ?? "予定"} ・ ${shortTime(detail.scheduledFor ?? detail.startedAt)} の回`));
-  const said = changeOf(detail);
-  head.append(tag("span", said.text, `state ${said.kind}`));
-  box.append(head);
-  box.append(tag("p", summaryLine(detail.summary), "muted"));
-  if (detail.headline) box.append(tag("p", detail.headline, "change-headline"));
-  if (detail.error) box.append(tag("p", detail.error, "state bad"));
-  if (detail.restricted) box.append(tag("p", "見てよくない WACZ を含むページは出していません。", "muted"));
-  for (const page of detail.pages) {
-    const article = document.createElement("article");
-    article.className = "change-page";
-    const title = document.createElement("h3");
-    title.append(tag("span", page.url, "mono"));
-    if (page.significance !== null) {
-      title.append(tag("span", SIGNIFICANCE_TEXT[page.significance] ?? page.significance, "state"));
+/** 前と今を 2 つの再生で開く link（CAPTURE-102）。4 本になるので、数の行とは分けて 1 行に置く。 */
+const replayLinksOf = (page) => {
+  const opens = document.createElement("p");
+  opens.className = "muted";
+  for (const [when, ref] of [["前", page.before], ["今", page.after]]) {
+    if (ref === null || ref === undefined) continue;
+    if (opens.childNodes.length > 0) opens.append(" ・ ");
+    opens.append(`${when}:`);
+    for (const viewer of VIEWERS) {
+      opens.append(" ", link(replaywebHref(settings[viewer.setting], ref), viewerText(viewer)));
     }
-    article.append(title);
-    const meta = document.createElement("p");
-    meta.className = "muted";
-    meta.append(`足した行 ${String(page.added)} ・ 消した行 ${String(page.removed)}`);
-    const note = versionNote(page);
-    if (note !== "") meta.append(` ・ ${note}`);
-    article.append(meta);
-    // 前と今を 2 つの再生で開く link（CAPTURE-102）。4 本になるので、数の行とは分けて 1 行に置く
-    const opens = document.createElement("p");
-    opens.className = "muted";
-    for (const [when, ref] of [["前", page.before], ["今", page.after]]) {
-      if (ref === null) continue;
-      if (opens.childNodes.length > 0) opens.append(" ・ ");
-      opens.append(`${when}:`);
-      for (const viewer of VIEWERS) {
-        opens.append(" ", link(replaywebHref(settings[viewer.setting], ref), viewerText(viewer)));
+  }
+  return opens;
+};
+
+/** 前のページ・何番目か・次のページ。「同じ」を開いているときは番号を言わない。 */
+const changeStepsOf = (crawlId, toc, row) => {
+  const near = neighborsOf(toc, row);
+  const steps = document.createElement("p");
+  steps.className = "change-steps";
+  const step = (to, text) => {
+    if (to === undefined || to.id === null) return tag("span", text, "muted");
+    const a = document.createElement("a");
+    a.href = changesHash(crawlId, to.id);
+    a.textContent = text;
+    return a;
+  };
+  steps.append(step(near.prev, "← 前のページ"));
+  if (near.index !== undefined) steps.append(tag("span", `${String(near.index)} / ${String(near.total)}`, "muted"));
+  steps.append(step(near.next, "次のページ →"));
+  return steps;
+};
+
+/** 右の 1 ページ。差分の在るページ・同じだったページ・何も無い回の 3 つ。 */
+const drawChangePane = (detail, toc, picked) => {
+  const pane = $("change-pane");
+  pane.replaceChildren();
+  const row = picked.row;
+  if (picked.missing) pane.append(tag("p", "名指したページはこの回にありません。先頭のページを出しています。", "state bad"));
+  if (row === undefined) {
+    pane.append(
+      tag(
+        "p",
+        toc.length === 0 ? "出せるページがありません。" : "どのページも前の回と同じでした。",
+        "empty",
+      ),
+    );
+    return;
+  }
+  const title = document.createElement("h3");
+  title.append(tag("span", row.text, `state ${row.kind}`), tag("span", row.url, "mono"));
+  pane.append(title);
+  pane.append(changeStepsOf(detail.crawlId, toc, row));
+  const page = row.page;
+  if (row.same) {
+    pane.append(tag("p", "前の回と同じ文字でした（空行と字下げだけの違いも、ここに入ります）。"));
+    pane.append(replayLinksOf(page));
+    return;
+  }
+  const meta = document.createElement("p");
+  meta.className = "muted";
+  meta.append(`足した行 ${String(page.added)} ・ 消した行 ${String(page.removed)}`);
+  const note = versionNote(page);
+  if (note !== "") meta.append(` ・ ${note}`);
+  pane.append(meta, replayLinksOf(page));
+  if (page.headline !== null) pane.append(tag("p", pageClaudeLine(page.headline)));
+  if (page.state === "prev_missing") {
+    pane.append(tag("p", "前の回の WACZ が保管庫に無く、差分を作れませんでした。", "state bad"));
+    return;
+  }
+  // 引用は、それを含む差分の行に結ぶ。押すとその行へ動く（照合で外れた引用はボタンにしない）
+  const quoted = page.quotes.map((quote) => (quote.verified ? quoteLineOf(page.hunks, quote.text) : undefined));
+  const at = (pos) => `${String(pos.hunk)}:${String(pos.line)}`;
+  const diff = changeDiffOf(page.hunks, new Set(quoted.filter((pos) => pos !== undefined).map(at)));
+  if (page.quotes.length > 0) {
+    const quotes = document.createElement("p");
+    quotes.className = "change-quotes";
+    quotes.append(tag("span", "引用（押すと差分の行へ）:", "muted"));
+    for (const [i, quote] of page.quotes.entries()) {
+      const pos = quoted[i];
+      if (pos === undefined) {
+        quotes.append(tag("span", `「${quote.text}」${quote.verified ? "" : "（差分に無い）"}`, quote.verified ? "muted" : "state bad"));
+        continue;
       }
+      quotes.append(
+        button(`「${quote.text}」`, () => {
+          const line = diff.rows.get(at(pos));
+          for (const hit of pane.querySelectorAll("tr.hit")) hit.classList.remove("hit");
+          line?.classList.add("hit");
+          line?.scrollIntoView({ block: "center" });
+        }),
+      );
     }
-    if (opens.childNodes.length > 0) article.append(opens);
-    if (page.headline !== null) article.append(tag("p", `Claude: ${page.headline}`));
-    for (const quote of page.quotes) {
-      article.append(tag("p", `引用「${quote.text}」${quote.verified ? "" : "（差分に無い）"}`, quote.verified ? "muted" : "state bad"));
-    }
-    if (page.state === "prev_missing") {
-      article.append(tag("p", "前の回の WACZ が保管庫に無く、差分を作れませんでした。", "state bad"));
+    pane.append(quotes);
+  }
+  pane.append(diff.box);
+};
+
+/** 目次。押すと hash を書く（ブラウザの戻るで 1 つ前のページへ）。 */
+const drawChangeToc = (detail, toc, row) => {
+  const box = $("change-toc");
+  box.replaceChildren();
+  box.append(tag("h3", `目次（比べた ${String(detail.pagesCompared)} ページ）`));
+  const list = document.createElement("ol");
+  for (const entry of toc) {
+    const li = document.createElement("li");
+    // 1 行目に重さと数、2 行目に URL
+    const label = [tag("span", entry.text, entry.same ? "muted" : `state ${entry.kind}`)];
+    if (!entry.same) label.push(tag("span", `+${String(entry.page.added)} −${String(entry.page.removed)}`, "muted mono"));
+    const url = tag("span", entry.url.replace(/^https?:\/\//, ""), "mono toc-url");
+    if (entry.id === null) {
+      li.append(...label, url);
     } else {
-      article.append(changeDiffOf(page.hunks));
+      const a = document.createElement("a");
+      a.href = changesHash(detail.crawlId, entry.id);
+      a.append(...label, url);
+      if (entry === row) a.setAttribute("aria-current", "page");
+      li.append(a);
     }
-    box.append(article);
+    list.append(li);
+  }
+  box.append(list);
+};
+
+/** 回の頭（見出し・比べた 2 回の時刻・要約）。回が替わったときだけ描く。 */
+const drawChangeHead = (detail) => {
+  const head = $("change-head");
+  head.replaceChildren();
+  const back = document.createElement("p");
+  back.className = "change-back";
+  const toList = document.createElement("a");
+  toList.href = "#changes";
+  toList.textContent = "← 変化の一覧";
+  back.append(toList);
+  head.append(back);
+  const h2 = document.createElement("h2");
+  h2.append(tag("span", detail.scheduleName ?? "予定"));
+  const said = changeOf(detail);
+  h2.append(tag("span", said.text, `state ${said.kind}`));
+  head.append(h2);
+  // 比べた 2 回。前の回の時刻は v0.95.0 より前の capture-ledger には無い
+  const runs = [`今回 ${runTimeText(detail)}`];
+  if (detail.prev?.startedAt) runs.push(`前の回 ${runTimeText(detail.prev)}`);
+  head.append(tag("p", runs.join(" ・ "), "change-runs mono"));
+  head.append(tag("p", summaryLine(detail.summary), "muted"));
+  if (detail.headline) head.append(tag("p", detail.headline, "change-headline"));
+  if (detail.error) head.append(tag("p", detail.error, "state bad"));
+  if (detail.restricted) head.append(tag("p", "見てよくない WACZ を含むページは出していません。", "muted"));
+};
+
+/** 回の答えから、頭・目次・右のページを描く。`pageId` だけが替わったときは目次の印と右のページだけ。 */
+const drawChangeDetail = (pageId, { fresh }) => {
+  const { detail, toc } = changesView;
+  const body = $("change-body");
+  if (fresh) drawChangeHead(detail);
+  if (detail.state === "no_previous") {
+    body.hidden = true;
+    if (fresh) $("change-head").append(tag("p", "前の回が無いので比べていません。", "empty"));
+    return;
+  }
+  body.hidden = false;
+  const picked = pickPage(toc, pageId);
+  drawChangeToc(detail, toc, picked.row);
+  drawChangePane(detail, toc, picked);
+  // 狭い窓では目次の下にページが来るので、ページを替えたらその頭へ。回を開いたときは回の頭へ
+  if (fresh) {
+    if ($("change-detail").getBoundingClientRect().top < 0) $("change-detail").scrollIntoView({ block: "start" });
+  } else if (window.matchMedia(NARROW).matches) {
+    $("change-pane").scrollIntoView({ block: "start" });
   }
 };
 
@@ -3123,25 +3269,46 @@ const changesAnswer = (text) => {
   }
 };
 
-/** タブ「変化」を開いたときに引く（一覧の引き直しの輪には入れない。毎朝 1 回しか変わらない）。 */
-const openChanges = async (crawlId) => {
-  changesFor = crawlId;
+/**
+ * タブ「変化」を開いたときに引く（一覧の引き直しの輪には入れない。毎朝 1 回しか変わらない）。一覧（`#changes`）を
+ * 開くと一覧を読み、回を開くと一覧を隠して回の答えを 1 度だけ読む。
+ */
+const openChanges = async (crawlId, pageId) => {
+  $("changes-list").hidden = crawlId !== undefined;
+  if (crawlId === undefined) {
+    changesView = { crawlId: undefined, detail: undefined, toc: [] };
+    $("change-detail").hidden = true;
+    try {
+      const res = await fetch(CHANGES_PATH);
+      const body = await res.json();
+      signInAgain(res, body);
+      if (!res.ok) throw new Error(changesError(res.status, body));
+      drawChangeList(body.runs);
+      changesAnswer(undefined);
+    } catch (err) {
+      changesAnswer(failedText(err));
+    }
+    return;
+  }
+  if (changesView.crawlId === crawlId) {
+    if (changesView.detail !== undefined) drawChangeDetail(pageId, { fresh: false });
+    else changesView.pageId = pageId; // 読んでいる途中。届いたら最後に名指したページを出す
+    return;
+  }
+  changesView = { crawlId, detail: undefined, toc: [], pageId };
   $("change-detail").hidden = true;
   try {
-    const res = await fetch(CHANGES_PATH);
-    const body = await res.json();
-    signInAgain(res, body);
-    if (!res.ok) throw new Error(changesError(res.status, body));
-    drawChangeList(body.runs);
-    if (crawlId !== undefined && changesFor === crawlId) {
-      const one = await fetch(changeDetailPath(crawlId));
-      const detail = await one.json();
-      if (!one.ok) throw new Error(changesError(one.status, detail));
-      drawChangeDetail(detail);
-    }
+    const one = await fetch(changeDetailPath(crawlId));
+    const detail = await one.json();
+    signInAgain(one, detail);
+    if (!one.ok) throw new Error(changesError(one.status, detail));
+    if (changesView.crawlId !== crawlId) return; // 別の回を開いた
+    changesView = { crawlId, detail, toc: tocOf(detail), pageId: changesView.pageId };
+    $("change-detail").hidden = false;
+    drawChangeDetail(changesView.pageId, { fresh: true });
     changesAnswer(undefined);
   } catch (err) {
-    changesAnswer(failedText(err));
+    if (changesView.crawlId === crawlId) changesAnswer(failedText(err));
   }
 };
 
@@ -3176,7 +3343,7 @@ const route = () => {
   const changes = parseChangesHash(location.hash);
   if (changes !== undefined) {
     show("changes");
-    void openChanges(changes.crawlId);
+    void openChanges(changes.crawlId, changes.pageId);
     return;
   }
   const asked = parseReading(location.hash);

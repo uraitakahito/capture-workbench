@@ -15,6 +15,8 @@
   --run: #8f5500;
   --ok: #2b6b3a;
   --bad: #9c2a2a;
+  /* 中身の変化（CAPTURE-236）。小さい変化の琥珀色（--run）とも、link の青緑（--accent）とも分ける */
+  --content: #1d4f91;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,6 +30,7 @@
     --run: #d9a45c;
     --ok: #71c98b;
     --bad: #e08383;
+    --content: #8cb8f2;
   }
 }
 
@@ -64,6 +67,11 @@ h1 {
 nav {
   display: flex;
   gap: 4px;
+}
+
+/* 狭い窓ではタブを折り返す（折り返さないと、ボタンの字が縦に 1 字ずつ折れる） */
+#tabs {
+  flex-wrap: wrap;
 }
 
 nav button {
@@ -184,6 +192,9 @@ td.wide {
 }
 .state.warn {
   color: var(--run);
+}
+.state.content {
+  color: var(--content);
 }
 
 a {
@@ -1805,12 +1816,17 @@ body[data-face="scripts"] main {
   gap: 6px;
 }
 
-/* 前回からの変化の画面（CAPTURE-167）。差分は直し案の差分（tr.detail .difflines）と同じ色で、文脈の行は薄く */
+/* 前回からの変化の画面（CAPTURE-167）。回を開くと、左に回の全ページの目次、右に 1 ページ（CAPTURE-236）。差分は直し案の
+   差分（tr.detail .difflines）と同じ色で、文脈の行は薄く、印の列は字と分けた帯 */
 #change-detail {
-  margin: 18px 0 24px;
+  margin: 4px 0 24px;
 }
 
-#change-detail h2 {
+.change-back {
+  margin: 0 0 8px;
+}
+
+#change-head h2 {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -1819,56 +1835,147 @@ body[data-face="scripts"] main {
   font-size: 15px;
 }
 
-#change-detail h2 .state,
-.change-page h3 .state {
+#change-head h2 .state,
+.change-pane h3 .state {
   font-size: 13px;
   font-weight: 600;
 }
 
-.change-headline {
-  margin: 4px 0 12px;
+#change-head p {
+  margin: 2px 0;
 }
 
-.change-page {
+.change-headline {
+  margin: 4px 0 0;
+}
+
+.change-body {
+  display: grid;
+  grid-template-columns: minmax(15em, 17em) minmax(0, 1fr);
+  gap: 20px;
   margin: 14px 0 0;
-  padding: 10px 0 0;
+  padding: 12px 0 0;
   border-top: 1px solid var(--line);
 }
 
-.change-page h3 {
+.change-toc {
+  display: block;
+  align-self: start;
+}
+
+.change-toc h3,
+.change-pane h3 {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+}
+
+.change-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.change-toc li > a,
+.change-toc li {
+  display: block;
+}
+
+.change-toc li > a {
+  padding: 4px 8px;
+  border-left: 3px solid transparent;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.change-toc li > a:hover {
+  background: var(--surface);
+}
+
+.change-toc li > a[aria-current="page"] {
+  border-left-color: var(--accent);
+  background: var(--surface);
+}
+
+.change-toc li span {
+  margin-right: 8px;
+}
+
+.change-toc li .toc-url {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.change-pane {
+  min-width: 0;
+}
+
+.change-pane h3 {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 12px;
-  margin: 0 0 4px;
-  font-size: 13.5px;
   overflow-wrap: anywhere;
 }
 
-.change-page p {
+.change-pane p {
   margin: 2px 0;
 }
 
+.change-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.change-quotes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.change-quotes button {
+  font: inherit;
+  text-align: left;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
 .change-diff .difflines {
-  width: auto;
-  min-width: 0;
+  width: 100%;
   border-collapse: collapse;
-  margin: 6px 0;
+  margin: 8px 0;
 }
 
 .change-diff .difflines td {
-  padding: 0 8px 0 0;
+  padding: 0 6px;
   border: 0;
+  vertical-align: top;
+}
+
+.change-diff .difflines td.sign {
+  width: 1.6em;
+  text-align: center;
+  user-select: none;
 }
 
 .change-diff .difflines td.code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  padding-right: 4px;
 }
 
 .change-diff .difflines tr.context td {
   color: var(--muted);
+}
+
+.change-diff .difflines tr.gap td {
+  color: var(--muted);
+  text-align: center;
+  padding: 2px 0;
 }
 
 .change-diff .difflines tr.del td {
@@ -1877,4 +1984,29 @@ body[data-face="scripts"] main {
 
 .change-diff .difflines tr.add td {
   background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.change-diff .difflines tr.del td.sign {
+  background: color-mix(in srgb, var(--bad) 30%, transparent);
+}
+
+.change-diff .difflines tr.add td.sign {
+  background: color-mix(in srgb, var(--ok) 30%, transparent);
+}
+
+/* 引用された行（Claude の引用が在る行）と、引用を押して動いた先 */
+.change-diff .difflines tr.quoted td.code {
+  box-shadow: inset 3px 0 0 var(--content);
+}
+
+.change-diff .difflines tr.hit td {
+  outline: 2px solid var(--content);
+  outline-offset: -2px;
+}
+
+/* 狭い窓では目次が上・ページが下（ほかの画面の切り替えと同じ幅） */
+@media (max-width: 760px) {
+  .change-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
