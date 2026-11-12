@@ -199,7 +199,9 @@ the crawl's bundle.
 crawls that were cut at the depth or page limit. The workbench words them apart using `stopReason`
 (完走 for completed, 打ち切り for cut at a limit), and shows an unknown `stopReason` as it
 is, in parentheses. A depth-0 crawl asked not to follow links, so it is not cut even if links are
-left over: it reads このページだけ (the ledger's `maxDepth` on the list). If some pages could not be fetched it adds the count (the ledger's
+left over: it reads このページだけ (the ledger's `maxDepth` on the list). A crawl asked to follow links that found
+none the rules let through reads リンクなし, in the warning colour (capture-ledger's `no_links`): it never got past its
+seeds, and that is kept apart from a green 完走. If some pages could not be fetched it adds the count (the ledger's
 `pagesFailed`), as in 完走・2 枚取れず, and the row is not green even if everything was followed. A
 crawl that captured nothing is closed as `failed` by the ledger, so it reads 失敗.
 

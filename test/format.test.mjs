@@ -20,6 +20,11 @@ test("完走と打ち切りを、同じ「成功」にしない", () => {
   assert.equal(stateOf(crawl("succeeded", "max_depth")).kind, "warn");
 });
 
+test("辿るよう頼んだのにリンクが無かったクロールは「リンクなし」と言い、緑にしない", () => {
+  assert.deepEqual(stateOf(crawl("succeeded", "no_links")), { text: "リンクなし", kind: "warn" });
+  assert.equal(stateOf(crawl("succeeded", "no_links", 1)).text, "リンクなし・1 枚取れず");
+});
+
 test("知らない stopReason は、そのまま見せる（緑にしない）", () => {
   const odd = stateOf(crawl("succeeded", "なにか新しい理由"));
   assert.equal(odd.text, "成功 (なにか新しい理由)");

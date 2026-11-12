@@ -12,6 +12,9 @@
  * 締める。capture-ledger v0.77.0）、全部を辿った完走と、上限で切った打ち切りが混ざる。`max_depth`・`max_pages` が
  * 立つのは、まだ撮っていないリンクが残っていたときだけ（capture-ledger v0.83.0）。
  *
+ * **辿るよう頼んだのにリンクが 1 本も無ければ「リンクなし」と言う**（capture-ledger の `no_links`。CAPTURE-245）。
+ * 起点から 1 歩も進めなかったクロールを、緑の「完走」にしない —— frameset の頁は、これで 1 ページで黙って終わっていた。
+ *
  * **深さ 0 のクロールは「このページだけ」と言う。** 辿らないと頼んだのだから、リンクが残っていても打ち切りでは
  * ない。行の `maxDepth` で決める。
  *
@@ -25,6 +28,7 @@ export const stateOf = (crawl) => {
   if (crawl.maxDepth === 0) {
     return { text: `このページだけ${short}`, kind: short === "" ? "ok" : "warn" };
   }
+  if (crawl.stopReason === "no_links") return { text: `リンクなし${short}`, kind: "warn" };
   if (crawl.stopReason === "completed") {
     return { text: `完走${short}`, kind: short === "" ? "ok" : "warn" };
   }
