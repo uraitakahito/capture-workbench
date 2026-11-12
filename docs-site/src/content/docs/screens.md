@@ -5,7 +5,7 @@ description: What each view shows — crawls, start, schedules, changes, archive
 
 capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
 which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`; in the search view it also
-names the words searched, and in the script collection view what you are reading). The WACZ tab only appears once you
+names the words searched, in the changes view the run and page opened, and in the script collection view what you are reading). The WACZ tab only appears once you
 enter it with 開く (open) on an archive row. The workbench itself is in Japanese; the tab names are
 クロール, 新しいクロール, 定期実行, アーカイブ, 検索, スクリプト集 and WACZ.
 
@@ -20,7 +20,7 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 | Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replayweb-server (the whole crawl as one archive) |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
 | Schedules | schedules and their runs; pause, resume, run now, repin and delete a schedule. A run that did not capture shows on a band on every view |
-| Changes | how a scheduled run differs from the previous one — one line per run, and per page the diff, Claude's summary (not evidence) and ReplayWeb.page ↗ / Web Capture ↗ for before and after |
+| Changes | how a scheduled run differs from the previous one — one line per run; an opened run lists every page on the left and shows one page on the right: the diff, Claude's line (not evidence) and ReplayWeb.page ↗ / Web Capture ↗ for before and after |
 | Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser) |
 | Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replayweb-server |
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
@@ -456,17 +456,31 @@ Rows on the crawls view carry a 定期 mark, and 定期・欠け 2 when runs wer
 ## Changes
 
 How a scheduled run differs from the previous run of the same schedule with the same recipe
-(`#changes`, `#changes/<crawl id>`). Comparing and summarizing happen in
+(`#changes`, `#changes/<crawl id>`, `#changes/<crawl id>/<WACZ id of this run>`). Comparing and summarizing happen in
 [capture-ledger](https://github.com/uraitakahito/capture-ledger); this view only reads.
 
-![A run opened in the changes view. Under the note that Claude's summary is not evidence, each page shows the lines added and removed, Claude's line and quotes (a quote not in the diff in red), and ReplayWeb.page ↗ / Web Capture ↗ for before and after](../../assets/screens/changes.webp)
+The list's 始まった (started) column is when the run started. The list is in that order, and only a run that started a
+minute or more late adds its due time and the delay, as in （本来 11-08 04:00・2 日遅れ）. Clicking a row hides the list and
+opens the run; 「← 変化の一覧」 goes back.
 
+![A run opened in the changes view. Under the heading, the times of this run and the previous one and the note that Claude's summary is not evidence; on the left, the pages by weight (content, small, nothing that matters, the same); on the right, one page's diff, Claude's line and quotes, and ReplayWeb.page ↗ / Web Capture ↗ for before and after](../../assets/screens/changes.webp)
+
+- **Every page on the left, one page on the right.** The list holds every page the run compared, by weight (a
+  change of content, a small change, nothing that matters, a diff without a summary, a diff that could not be built),
+  then the pages that were the same (同じ). The first one opens. The rows and 「← 前のページ」 / 「次のページ →」 rewrite
+  the URL, so the browser's back button returns to the previous page and a shared URL opens the same page. When the
+  named page is not in the run (a WACZ you may not view, an old URL), the view says so and shows the first page. A
+  narrow window puts the list above the page.
 - **The diff comes from the evidence; the summary only makes it easier to read.** capture-ledger
-  builds the diff from the two WACZ files without Claude. Claude's line always carries
+  builds the diff from the two WACZ files without Claude. The run's summary carries
   「Claude の要約（証拠ではない）」 (Claude's summary, not evidence) with the model, the prompt version and
-  the cost. To check, open both with the two viewer links after 「前:」 and 「今:」.
-- **Three weights:** nothing that matters (only a time moved), a small change (a promotion swapped),
-  and a change of content (an article or a fact). Claude decides and can be wrong; the diff stays.
+  the cost, and each page's line from Claude carries （証拠ではない）. To check, open both with the two viewer links
+  after 「前:」 and 「今:」.
+- **Clicking a quote moves to its line.** A diff line holding a quote from Claude is marked on the left.
+- **Pages that were the same** (same text, or only blank lines and indentation changed) show only the viewer links.
+  Pages that were not compared (in only one run, withheld, without a text digest) are not listed.
+- **Three weights:** nothing that matters (only a time moved; green), a small change (a promotion swapped; amber),
+  and a change of content (an article or a fact; blue). Claude decides and can be wrong; the diff stays.
 - **Quotes that are not in the diff are marked** in red with （差分に無い）.
 - **A stalled summary shows on the band** — when the latest run's summary hits the monthly limit, or
   failed three times. A change of content itself never raises the band.

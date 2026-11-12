@@ -147,14 +147,17 @@ test("予定の 1 行は、capture-ledger の /api/schedules と同じ欄を持�
   }
 });
 
-/** capture-ledger の src/api/changes.ts の一覧の 1 行と、1 本の答え・ページの欄 (v0.93.0・CAPTURE-167)。 */
+/**
+ * capture-ledger の src/api/changes.ts の一覧の 1 行と、1 本の答え・ページの欄 (v0.93.0・CAPTURE-167)。v0.95.0 から
+ * 前の回は prev、1 本の答えに同じだったページの unchanged (CAPTURE-236)。
+ */
 const LEDGER_CHANGE_RUN_KEYS = [
   "crawlId",
   "scheduleId",
   "scheduleName",
   "startedAt",
   "scheduledFor",
-  "prevCrawlId",
+  "prev",
   "state",
   "pagesCompared",
   "pagesChanged",
@@ -176,15 +179,26 @@ const LEDGER_CHANGE_PAGE_KEYS = [
   "before",
   "after",
 ].sort();
+const LEDGER_CHANGE_PREV_KEYS = ["crawlId", "startedAt", "scheduledFor"].sort();
+const LEDGER_UNCHANGED_PAGE_KEYS = ["url", "stage", "before", "after"].sort();
 
 test("前回からの変化の答えは、capture-ledger の /api/changes・/api/crawls/:id/changes と同じ欄を持つ", () => {
   const runs = changeRuns(scenario);
   assert.ok(runs.length > 0);
-  for (const run of runs) assert.deepEqual(Object.keys(run).sort(), LEDGER_CHANGE_RUN_KEYS, run.crawlId);
-  const detail = changeDetail(scenario, runs[0].crawlId);
-  assert.deepEqual(Object.keys(detail).sort(), [...LEDGER_CHANGE_RUN_KEYS, "summary", "pages"].sort());
-  assert.equal(detail.summary.evidence, false);
-  for (const page of detail.pages) assert.deepEqual(Object.keys(page).sort(), LEDGER_CHANGE_PAGE_KEYS, page.url);
+  for (const run of runs) {
+    assert.deepEqual(Object.keys(run).sort(), LEDGER_CHANGE_RUN_KEYS, run.crawlId);
+    if (run.prev !== null) assert.deepEqual(Object.keys(run.prev).sort(), LEDGER_CHANGE_PREV_KEYS, run.crawlId);
+  }
+  const details = runs.map((run) => changeDetail(scenario, run.crawlId)).filter((detail) => detail !== undefined);
+  assert.ok(details.length > 1);
+  assert.equal(details[0].summary.evidence, false);
+  for (const detail of details) {
+    assert.deepEqual(Object.keys(detail).sort(), [...LEDGER_CHANGE_RUN_KEYS, "summary", "pages", "unchanged"].sort());
+    for (const page of detail.pages) assert.deepEqual(Object.keys(page).sort(), LEDGER_CHANGE_PAGE_KEYS, page.url);
+    for (const page of detail.unchanged) assert.deepEqual(Object.keys(page).sort(), LEDGER_UNCHANGED_PAGE_KEYS, page.url);
+    // 回の WACZ を全部見てよい代役では、違ったページと同じだったページを足すと比べた数
+    assert.equal(detail.pages.length + detail.unchanged.length, detail.pagesCompared, detail.crawlId);
+  }
   assert.equal(changeDetail(scenario, "5c0d0000-0000-4000-8000-000000000000"), undefined);
 });
 

@@ -467,13 +467,13 @@
           "startedAt": "2026-11-07T04:00:20.000Z",
           "finishedAt": "2026-11-07T04:01:00.000Z",
           "scheduleMissed": 0,
-          "pagesCaptured": 3,
+          "pagesCaptured": 4,
           "pagesFailed": 0,
           "error": null,
           "change": {
             "state": "summarized",
-            "pagesCompared": 2,
-            "pagesChanged": 2,
+            "pagesCompared": 4,
+            "pagesChanged": 3,
             "significance": "content",
             "headline": "お知らせに 11 月 7 日の記事が加わった"
           }
@@ -497,7 +497,7 @@
     }
   ],
   "changes": {
-    "//": "前回からの変化（CAPTURE-167）。runs は GET /api/changes の答え、details は GET /api/crawls/:id/changes の答え（クロールの id ごと）。欄は capture-ledger の src/api/changes.ts と同じ。予定の回の change は schedules の recentRuns に書く。",
+    "//": "前回からの変化（CAPTURE-167・目次と 1 ページは CAPTURE-236）。runs は GET /api/changes の答え、details は GET /api/crawls/:id/changes の答え（クロールの id ごと）。欄は capture-ledger の src/api/changes.ts と同じ（v0.95.0 から前の回は prev、詳細に同じだったページの unchanged）。予定の回の change は schedules の recentRuns に書く。",
     "runs": [
       {
         "crawlId": "5c0d0006-6a1e-4000-8000-000000000006",
@@ -505,10 +505,14 @@
         "scheduleName": "毎時の確認",
         "startedAt": "2026-11-07T04:00:20.000Z",
         "scheduledFor": "2026-11-07T04:00:00.000Z",
-        "prevCrawlId": "5c0d0007-6a1e-4000-8000-000000000007",
+        "prev": {
+          "crawlId": "5c0d0007-6a1e-4000-8000-000000000007",
+          "startedAt": "2026-11-07T03:00:12.000Z",
+          "scheduledFor": "2026-11-07T03:00:00.000Z"
+        },
         "state": "summarized",
-        "pagesCompared": 2,
-        "pagesChanged": 2,
+        "pagesCompared": 4,
+        "pagesChanged": 3,
         "significance": "content",
         "headline": "お知らせに 11 月 7 日の記事が加わった",
         "error": null,
@@ -520,7 +524,11 @@
         "scheduleName": "毎時の確認",
         "startedAt": "2026-11-07T03:00:12.000Z",
         "scheduledFor": "2026-11-07T03:00:00.000Z",
-        "prevCrawlId": "5c0d0008-6a1e-4000-8000-000000000008",
+        "prev": {
+          "crawlId": "5c0d0008-6a1e-4000-8000-000000000008",
+          "startedAt": "2026-11-07T02:00:09.000Z",
+          "scheduledFor": "2026-11-07T02:00:00.000Z"
+        },
         "state": "summarized",
         "pagesCompared": 2,
         "pagesChanged": 1,
@@ -535,7 +543,11 @@
         "scheduleName": "毎時の確認",
         "startedAt": "2026-11-07T02:00:09.000Z",
         "scheduledFor": "2026-11-07T02:00:00.000Z",
-        "prevCrawlId": "5c0d0009-6a1e-4000-8000-000000000009",
+        "prev": {
+          "crawlId": "5c0d0009-6a1e-4000-8000-000000000009",
+          "startedAt": "2026-11-07T01:00:07.000Z",
+          "scheduledFor": "2026-11-07T01:00:00.000Z"
+        },
         "state": "unchanged",
         "pagesCompared": 2,
         "pagesChanged": 0,
@@ -552,10 +564,14 @@
         "scheduleName": "毎時の確認",
         "startedAt": "2026-11-07T04:00:20.000Z",
         "scheduledFor": "2026-11-07T04:00:00.000Z",
-        "prevCrawlId": "5c0d0007-6a1e-4000-8000-000000000007",
+        "prev": {
+          "crawlId": "5c0d0007-6a1e-4000-8000-000000000007",
+          "startedAt": "2026-11-07T03:00:12.000Z",
+          "scheduledFor": "2026-11-07T03:00:00.000Z"
+        },
         "state": "summarized",
-        "pagesCompared": 2,
-        "pagesChanged": 2,
+        "pagesCompared": 4,
+        "pagesChanged": 3,
         "significance": "content",
         "headline": "お知らせに 11 月 7 日の記事が加わった",
         "error": null,
@@ -641,6 +657,127 @@
               "objectKey": "sandbox/top-0400.wacz",
               "sourceUrl": "https://sandbox.test/",
               "capturedAt": "2026-11-07T04:00:16.000Z",
+              "browserhiveVersion": "29.0.2"
+            }
+          },
+          {
+            "url": "https://sandbox.test/shop",
+            "stage": "after-behaviors",
+            "state": "diffed",
+            "added": 2,
+            "removed": 2,
+            "hunks": [
+              [
+                " 今週のおすすめ",
+                "-デスクランプ 3,980 円",
+                "+フロアランプ 6,480 円",
+                " 送料は 500 円です。"
+              ],
+              [
+                " お問い合わせ",
+                "-営業日: 月〜金",
+                "+営業日: 月〜土"
+              ]
+            ],
+            "significance": "minor",
+            "headline": "おすすめの品と営業日の表示が替わった",
+            "quotes": [
+              {
+                "text": "営業日: 月〜土",
+                "verified": true
+              }
+            ],
+            "before": {
+              "archiveId": "5c0d0b27-6a1e-4000-8000-000000000b27",
+              "objectKey": "sandbox/shop-0300.wacz",
+              "sourceUrl": "https://sandbox.test/shop",
+              "capturedAt": "2026-11-07T03:00:18.000Z",
+              "browserhiveVersion": "29.0.2"
+            },
+            "after": {
+              "archiveId": "5c0d0b26-6a1e-4000-8000-000000000b26",
+              "objectKey": "sandbox/shop-0400.wacz",
+              "sourceUrl": "https://sandbox.test/shop",
+              "capturedAt": "2026-11-07T04:00:19.000Z",
+              "browserhiveVersion": "29.0.2"
+            }
+          }
+        ],
+        "unchanged": [
+          {
+            "url": "https://sandbox.test/about",
+            "stage": "after-behaviors",
+            "before": {
+              "archiveId": "5c0d0b37-6a1e-4000-8000-000000000b37",
+              "objectKey": "sandbox/about-0300.wacz",
+              "sourceUrl": "https://sandbox.test/about",
+              "capturedAt": "2026-11-07T03:00:24.000Z",
+              "browserhiveVersion": "29.0.2"
+            },
+            "after": {
+              "archiveId": "5c0d0b36-6a1e-4000-8000-000000000b36",
+              "objectKey": "sandbox/about-0400.wacz",
+              "sourceUrl": "https://sandbox.test/about",
+              "capturedAt": "2026-11-07T04:00:25.000Z",
+              "browserhiveVersion": "29.0.2"
+            }
+          }
+        ]
+      },
+      "5c0d0008-6a1e-4000-8000-000000000008": {
+        "crawlId": "5c0d0008-6a1e-4000-8000-000000000008",
+        "scheduleId": "5c0d0a02-6a1e-4000-8000-000000000a02",
+        "scheduleName": "毎時の確認",
+        "startedAt": "2026-11-07T02:00:09.000Z",
+        "scheduledFor": "2026-11-07T02:00:00.000Z",
+        "prev": {
+          "crawlId": "5c0d0009-6a1e-4000-8000-000000000009",
+          "startedAt": "2026-11-07T01:00:07.000Z",
+          "scheduledFor": "2026-11-07T01:00:00.000Z"
+        },
+        "state": "unchanged",
+        "pagesCompared": 2,
+        "pagesChanged": 0,
+        "significance": null,
+        "headline": null,
+        "error": null,
+        "restricted": false,
+        "summary": null,
+        "pages": [],
+        "unchanged": [
+          {
+            "url": "https://sandbox.test/",
+            "stage": "after-behaviors",
+            "before": {
+              "archiveId": "5c0d0b19-6a1e-4000-8000-000000000b19",
+              "objectKey": "sandbox/top-0100.wacz",
+              "sourceUrl": "https://sandbox.test/",
+              "capturedAt": "2026-11-07T01:00:10.000Z",
+              "browserhiveVersion": "29.0.2"
+            },
+            "after": {
+              "archiveId": "5c0d0b18-6a1e-4000-8000-000000000b18",
+              "objectKey": "sandbox/top-0200.wacz",
+              "sourceUrl": "https://sandbox.test/",
+              "capturedAt": "2026-11-07T02:00:11.000Z",
+              "browserhiveVersion": "29.0.2"
+            }
+          },
+          {
+            "url": "https://sandbox.test/news",
+            "stage": "after-behaviors",
+            "before": {
+              "archiveId": "5c0d0b09-6a1e-4000-8000-000000000b09",
+              "objectKey": "sandbox/news-0100.wacz",
+              "sourceUrl": "https://sandbox.test/news",
+              "capturedAt": "2026-11-07T01:00:14.000Z",
+              "browserhiveVersion": "29.0.2"
+            },
+            "after": {
+              "archiveId": "5c0d0b08-6a1e-4000-8000-000000000b08",
+              "objectKey": "sandbox/news-0200.wacz",
+              "sourceUrl": "https://sandbox.test/news",
+              "capturedAt": "2026-11-07T02:00:15.000Z",
               "browserhiveVersion": "29.0.2"
             }
           }
