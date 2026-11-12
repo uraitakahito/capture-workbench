@@ -23,6 +23,8 @@ import {
   hasNocheck,
   INLINE_ROW,
   inlineDeclared,
+  keepsKey,
+  keyFor,
   liveOrder,
   marksOf,
   movedOrder,
@@ -1519,6 +1521,9 @@ const drawSource = () => {
   declaredChanged();
 };
 
+/** 送った「始める」の鍵（`start.js` の `keyFor`）。届いたか分からない間だけ持つ。 */
+let startKey;
+
 /**
  * 欄から 1 本始める。**送る前に検査しない** —— 読めない URL は capture-ledger が 400 で言う。
  * 答えは欄の下に 1 行で、capture-ledger の文は言い換えずに出す（`start.js` の `startAnswer`）。
@@ -1528,19 +1533,22 @@ const startCrawl = async (event) => {
   const body = startBodyNow();
   if (body.seeds.length === 0) return;
   $("start-go").disabled = true;
+  const text = JSON.stringify(body);
+  startKey = keyFor(startKey, text, () => crypto.randomUUID());
   let status = 0;
   let answer = {};
   try {
     const res = await fetch("/api/crawls", {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { "content-type": "application/json", "idempotency-key": startKey.key },
+      body: text,
     });
     status = res.status;
     answer = await res.json().catch(() => ({}));
   } catch (err) {
     answer = { error: failedText(err) };
   }
+  if (!keepsKey(status)) startKey = undefined;
   const said = startAnswer(status, answer);
   const line = $("start-answer");
   line.hidden = false;

@@ -51,6 +51,7 @@ import { cookieValue, createAuth, SESSION_COOKIE, sessionCookie, whoOf } from ".
 
 import {
   contentType,
+  forwardedHeaders,
   hostAllowed,
   isWriteRoute,
   optional,
@@ -97,7 +98,7 @@ class NotSignedIn extends Error {}
  * 鍵が変わり、まだ有効なはずのトークンが静かに通らなくなる。401 は、その両方（期限切れ・鍵替わり）を
  * 同じ形で言う。取り直しは refresh token で、それも通らなければサインインからやり直してもらう。
  */
-const toLedger = async (path, method = "GET", body = undefined, session = undefined) => {
+const toLedger = async (path, method = "GET", body = undefined, session = undefined, extra = {}) => {
   if (auth.tokenOf(session) === undefined) throw new NotSignedIn("サインインしていません");
   const send = async () => {
     try {
@@ -105,6 +106,7 @@ const toLedger = async (path, method = "GET", body = undefined, session = undefi
       return await fetch(LEDGER + path, {
         method,
         headers: {
+          ...extra,
           authorization: `Bearer ${auth.tokenOf(session)?.accessToken ?? ""}`,
           ...(body !== undefined && { "content-type": "application/json" }),
         },
@@ -329,7 +331,7 @@ const server = createServer((request, reply) => {
       return;
     }
     void readBody(request, WRITE_LIMIT)
-      .then((body) => toLedger(url, "POST", body, session))
+      .then((body) => toLedger(url, "POST", body, session, forwardedHeaders(url, request.headers)))
       .then((res) => relay(reply, res))
       .catch((err) => {
         failed(reply, err);

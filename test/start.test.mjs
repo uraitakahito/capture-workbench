@@ -19,6 +19,8 @@ import {
   defaultIds,
   hasNocheck,
   INLINE_ROW,
+  keepsKey,
+  keyFor,
   liveOrder,
   marksOf,
   movedOrder,
@@ -811,4 +813,21 @@ test("User-Agent の箱が空なら鍵ごと送らず、今までと同じ本文
   assert.deepEqual(startBody("https://site.test/", null, undefined, {}, " \n "), empty);
   assert.equal("userAgent" in empty, false);
   assert.equal(startBody("https://site.test/", null, undefined, {}, "{chrome} BrowserHive").userAgent, "{chrome} BrowserHive");
+});
+
+test("始める要求の鍵は、同じ本文なら同じ鍵を使い回す —— 応答が切れた後の押し直しで 2 本目を始めない", () => {
+  let n = 0;
+  const make = () => `k${String((n += 1))}`;
+  const first = keyFor(undefined, '{"seeds":["https://a.test/"]}', make);
+  assert.equal(first.key, "k1");
+  // 答えが届かなかった（0）ので持ったまま、もう 1 回押した
+  assert.equal(keepsKey(0), true);
+  assert.equal(keyFor(first, '{"seeds":["https://a.test/"]}', make).key, "k1");
+  // 欄を直してから押した → 本文が違うので新しい鍵（同じ鍵の違う本文は capture-ledger が 422 で断る）
+  assert.equal(keyFor(first, '{"seeds":["https://b.test/"]}', make).key, "k2");
+});
+
+test("確かな答え（202・4xx）の後は鍵を捨て、届いたか分からない間（0・5xx）だけ持つ", () => {
+  for (const status of [202, 400, 401, 409, 422]) assert.equal(keepsKey(status), false, String(status));
+  for (const status of [0, 500, 502, 503]) assert.equal(keepsKey(status), true, String(status));
 });

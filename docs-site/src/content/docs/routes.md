@@ -117,6 +117,13 @@ secret's value (it lives in a Windmill variable, and is neither in the form nor 
   stops a page from another site from making your browser send the POST (CSRF). It does not
   rely on Chrome's Private Network Access.
 - The access token is attached, and a 401 retried, the same way as for `/api/*` above.
+- **The page puts a key (`Idempotency-Key`) on "Start", and the server carries that header, and
+  only that one, to capture-ledger.** The browser makes the key when you press the button
+  (`crypto.randomUUID()`). While no answer has arrived (no connection, or a 5xx), pressing again
+  with the same body sends the same key. capture-ledger remembers the first answer for each key, so
+  pressing again after a dropped response returns the first crawl instead of starting a second one.
+  Editing the form changes the body, so the key is made again; after a 202 or a 4xx the next press
+  gets a new key. No other header is carried, and the other write routes get no key.
 
 | The ledger's answer | When |
 | --- | --- |

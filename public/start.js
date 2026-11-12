@@ -491,3 +491,17 @@ export const asTemplate = (source, fromId, name) => {
   });
   return { source: lines.join("\n"), changed };
 };
+
+/**
+ * クロールを始める要求の鍵（`Idempotency-Key`。CAPTURE-180）。**確かな答えを受け取るまで、同じ本文には同じ鍵**
+ * —— 応答が切れた後に押し直しても、capture-ledger は最初のクロールを返し、2 本目を始めない。本文が変われば
+ * 鍵を作り直す（capture-ledger は同じ鍵の違う本文を 422 で断る）。`held` は前に送った `{ body, key }`。
+ */
+export const keyFor = (held, body, make) =>
+  held !== undefined && held.body === body ? held : { body, key: make() };
+
+/**
+ * 答えの後も鍵を持ち続けるか。**届いたか分からない間だけ**（繋がらない＝0・5xx）。202 と 4xx は確かな答えで、
+ * 次に押したら新しい要求として送る。
+ */
+export const keepsKey = (status) => status === 0 || status >= 500;

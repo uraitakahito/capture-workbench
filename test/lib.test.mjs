@@ -11,6 +11,7 @@ import { Readable } from "node:stream";
 
 import {
   contentType,
+  forwardedHeaders,
   hostAllowed,
   isWriteRoute,
   optional,
@@ -169,4 +170,12 @@ test("書き込みのエンドポイントの本文は、上限ちょうどま�
 test("書き込みのエンドポイントの上限は、capture-ledger の POST /api/crawls と同じ 1 MiB", () => {
   // 片方だけを変えると、workbench が通すのに capture-ledger が 413 になる（capture-ledger の CRAWL_BODY_LIMIT）
   assert.equal(WRITE_LIMIT, 1024 * 1024);
+});
+
+test("中継で運ぶ見出しは、POST /api/crawls の Idempotency-Key だけ", () => {
+  const headers = { "idempotency-key": "k1", cookie: "s=1", authorization: "Bearer x" };
+  assert.deepEqual(forwardedHeaders("/api/crawls", headers), { "idempotency-key": "k1" });
+  // ほかの書き込みには運ばない・鍵が無ければ何も足さない
+  assert.deepEqual(forwardedHeaders("/api/schedules", headers), {});
+  assert.deepEqual(forwardedHeaders("/api/crawls", { cookie: "s=1" }), {});
 });
