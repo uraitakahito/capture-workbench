@@ -1805,6 +1805,23 @@ body[data-face="scripts"] main {
   white-space: nowrap;
 }
 
+/* 段を Windmill に送り直した印（CAPTURE-180）。状態の隣に小さく */
+.resend-mark {
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.resend-mark.warn {
+  color: var(--run);
+}
+
+.resend-mark.bad {
+  color: var(--bad);
+}
+
 .start-schedule {
   margin: 14px 0 0;
 }

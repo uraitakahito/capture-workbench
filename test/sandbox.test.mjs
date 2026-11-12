@@ -83,6 +83,8 @@ const LEDGER_CRAWL_KEYS = [
   "error",
   "waczCount",
   "lastJob",
+  // 一番新しい段を Windmill に投げた様子 (capture-ledger CAPTURE-180)
+  "dispatch",
   "replayBundle",
   "schedule",
   "scheduledFor",

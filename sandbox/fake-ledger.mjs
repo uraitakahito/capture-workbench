@@ -126,6 +126,8 @@ export const crawlRow = (c, now) => ({
   error: c.error ?? null,
   waczCount: c.waczCount ?? 0,
   lastJob: c.lastJobId === undefined ? null : { id: c.lastJobId, depth: c.lastJobDepth ?? 0 },
+  // 一番新しい段を Windmill に投げた様子 (capture-ledger CAPTURE-180)。台本に無い行は null (段の行を入れる前の形)
+  dispatch: c.dispatch ?? null,
   replayBundle: replayBundleOf(scenarioAt(c, now)),
   // 定期の回の欄 (capture-ledger CAPTURE-173)。手で始めた行は null と 0
   schedule: c.schedule ?? null,
@@ -191,7 +193,7 @@ const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [
 
 /**
  * /api/crawls/:id。capture-ledger はほかの欄 (上限など) も返すが、workbench が読むのは seeds・rules・finishedAt・
- * error・scripts・replayBundle・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に
+ * error・scripts・replayBundle・dispatch・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に
  * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ capture-ledger の既定。
  * `replayBundle` は一覧の行と同じ形 (capture-ledger も同じ関数で組む)。
  * `secrets` は capture-ledger v0.90.0 と同じく `{ name, path, editedAt, rotated, archive }` の列で、値は無い (`archive` は宣言の
@@ -208,6 +210,7 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   error: c.error ?? null,
   scripts: scripts.map(detailScript),
   replayBundle: replayBundleOf(c),
+  dispatch: c.dispatch ?? null,
   failures: (c.failures ?? []).map((f) => ({ url: f.url, depth: f.depth, reason: f.reason ?? null, page: f.page })),
   variables: values.variables,
   secrets: values.secrets,
@@ -1188,6 +1191,7 @@ export const submittedRow = (row, now) => {
     error: null,
     waczCount: 0,
     lastJob: null,
+    dispatch: null,
     // 受けた行は WACZ を持たないので、合本も無い
     replayBundle: null,
     schedule: null,
