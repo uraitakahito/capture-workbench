@@ -1944,8 +1944,10 @@ body[data-face="scripts"] main {
   cursor: pointer;
 }
 
+/* 全体の表の min-width（720px）を外す。継ぐと、右のページより広くなって切れる（幅 400 で長い行が右で切れた） */
 .change-diff .difflines {
   width: 100%;
+  min-width: 0;
   border-collapse: collapse;
   margin: 8px 0;
 }
