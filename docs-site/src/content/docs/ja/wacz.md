@@ -99,7 +99,9 @@ wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力�
   WARC を頭から歩いた 1 件 1 行で、200 件ずつ読み、種別で絞れます。
   ▪ は索引（CDXJ）が指すレコード、▫ は索引に無いものです。
   BrowserHive が残す「撮らなかった・撮れなかった」記録（`WARC-Type: metadata`）は、ここでしか見えません。
-  種別の「写し」（`WARC-Type: resource`）は、BrowserHive が検索前と検索後の画面を DOM のまま写した物で、サーバの応答ではありません（組の「記録」がそう言います）。
+  種別の「写し」（`WARC-Type: resource`）は、BrowserHive が読み込みの後と、スクリプトを走らせた後の取り込みのページを DOM のまま写した物で、サーバの応答ではありません（組の「記録」がそう言います）。
+  BrowserHive v30.2.0 からは、節目のスクリーンショット（同じ 2 つの時点の viewport の絵）も同じ `WARC-Type: resource` のレコードなので、一覧では同じ「写し」の名前で出ます。
+  見分けるのは URI で、DOM の写しは `urn:browserhive:snapshot:`、節目のスクリーンショットは `urn:browserhive:screenshot:` で始まります。
   一覧の上には、その WARC の warcinfo（WARC が自分自身を説明するレコード）の欄を、書かれた順に出します。
   欄の名前が Dublin Core の語か WARC 1.1 の warcinfo の欄なら、3 列目にそう出て、その定義へリンクします。
   どちらでもない名前（作り手が決めた名前）は空です。

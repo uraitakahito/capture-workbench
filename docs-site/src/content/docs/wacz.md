@@ -104,8 +104,12 @@ asks for it, the findings on that entry) and its contents.
   from the start, 200 at a time, filterable by type. ▪ marks a record the index (CDXJ) points
   to, ▫ one the index does not. The records BrowserHive leaves for what it did not or could not
   capture (`WARC-Type: metadata`) are only visible here. A record of type **snapshot** (写し; `WARC-Type:
-  resource`) is a copy BrowserHive made of the page's DOM before and after its scripts ran,
-  not a server response; the paired **metadata** (記録) record says so. Above the list, the
+  resource`) is a copy BrowserHive made of the captured page's DOM, after the page loaded and
+  after the capture's scripts ran, not a server response; the paired **metadata** (記録) record
+  says so. From BrowserHive v30.2.0, a stage screenshot (a picture of the viewport at the same two
+  stages) is a `WARC-Type: resource` record too, so the list shows it under the same name,
+  **snapshot** (写し). The URI tells them apart: a DOM snapshot's starts with
+  `urn:browserhive:snapshot:`, a stage screenshot's with `urn:browserhive:screenshot:`. Above the list, the
   WARC's warcinfo (the record in which a WARC describes itself) is shown field by field, in the
   order written. When a field's name is a Dublin Core term or a WARC 1.1 warcinfo field, the
   third column says so (`Dublin Core term` or `WARC 1.1 warcinfo field`, the daemon's words in the
