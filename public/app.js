@@ -101,6 +101,32 @@ import {
   parseLinksHash,
   splitOf,
 } from "/links.js";
+import {
+  KIND_TEXT,
+  NOTES_EAGER,
+  applyMetadata,
+  axisOf,
+  bodyKey,
+  consoleOf,
+  detailsOf,
+  marksOf as traceMarksOf,
+  parseTraceHash,
+  percentOf,
+  readRecords,
+  readsRecords,
+  recordPath,
+  scriptsOf,
+  secondsText,
+  settleOf,
+  statusText,
+  stepsOf,
+  stoppedStepOf,
+  tallyOf as traceTallyOf,
+  ticksOf,
+  traceHash,
+  tracePath,
+  traceReasonText,
+} from "/timeline.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "/fix.js";
 import {
   awaitsFinalBundle,
@@ -727,6 +753,14 @@ const pagesOf = (one) => {
     for (const viewer of VIEWERS) {
       const replay = replayBundleHref(settings[viewer.setting], one.replayBundle, page);
       if (replay !== undefined) said.append(" ", bundleLink(replay, viewerText(viewer), one));
+    }
+    // 取り込みの答えが在るページ（撮れた・取れなかった）には、経緯（#trace/…）への link。列は足さない
+    if (page.taskId !== null && page.taskId !== undefined) {
+      const trace = document.createElement("a");
+      trace.href = traceHash(one.crawlId, page.id);
+      trace.textContent = "経緯";
+      trace.className = "trace-link";
+      said.append(" ", trace);
     }
     outcome.append(said);
     const toggle = document.createElement("td");
@@ -3787,6 +3821,513 @@ $("links-fold").addEventListener("click", () => {
   drawLinksGraph();
 });
 
+// ── 経緯（#trace/<クロールの id>/<ページの id>・CAPTURE-270） ─────────────────────
+/**
+ * 取り込み 1 回の経緯。capture-ledger の `GET /api/crawls/:id/pages/:page/trace`（ページ・取り込みの欄・ログ）と、
+ * WACZ の中の WARC のレコードの一覧（`/wacz/<archive の id>/records`）を、1 本の時間軸に並べる。**何がいつ起きたかは
+ * BrowserHive が残した物で、ここは並べるだけ** —— 位置と字は `public/timeline.js`。
+ *
+ *   answer    経緯の答え。読んでいる間は undefined
+ *   read      レコードの一覧を読んだ結果（`{ files, error? }`）。読んでいる間は undefined、WACZ が無ければ null
+ *   marks     一覧から作った印（対・metadata だけの要求・写し）
+ *   bodies    読んだ metadata の本文（`bodyKey` → 文字）
+ *   selected  選んだ物（`{ row, index }`）
+ *   log       下のログの箱の状態（`drawLog` と同じ形）
+ */
+let traceView = { crawlId: undefined };
+
+/** status と本文の両方を受ける読み手。daemon は失敗を 400 と `{ code, message }` で返すので、status を捨てない。 */
+const fetchJson = async (path) => {
+  const res = await fetch(path);
+  let body;
+  try {
+    body = await res.json();
+  } catch {
+    body = {};
+  }
+  signInAgain(res, body);
+  return { status: res.status, body };
+};
+
+const traceAnswer = (text) => {
+  $("trace-answer").hidden = text === undefined;
+  $("trace-answer").textContent = text ?? "";
+};
+
+/** いま開いている取り込みか。遅れて届いた別の取り込みの答えは捨てる。 */
+const traceIs = (crawlId, pageId) => traceView.crawlId === crawlId && traceView.pageId === pageId;
+
+/** 印を、読んだ本文に当てた形。 */
+const traceMarks = () =>
+  traceView.marks === undefined ? undefined : applyMetadata(traceView.marks, traceView.bodies);
+
+const drawTraceHead = () => {
+  const { answer, crawlId } = traceView;
+  const head = $("trace-head");
+  head.replaceChildren();
+  const back = document.createElement("p");
+  back.className = "change-back";
+  const toList = document.createElement("a");
+  toList.href = "#crawls";
+  toList.textContent = "← クロールの一覧";
+  back.append(toList);
+  head.append(back);
+  const h2 = document.createElement("h2");
+  h2.append(tag("span", "経緯"), tag("span", crawlId.slice(0, 8), "mono"));
+  if (answer !== undefined) {
+    h2.append(tag("span", String(answer.page.url), "wide"));
+    const capture = answer.capture;
+    if (capture !== null) {
+      h2.append(tag("span", statusText(capture.status), `state ${capture.status === "success" ? "ok" : "bad"}`));
+    }
+  }
+  head.append(h2);
+  if (answer === undefined) return;
+  if (answer.reason !== null && answer.reason !== undefined) {
+    const said = tag("p", `${traceReasonText(answer.reason)} `, "muted");
+    said.append(tag("span", String(answer.reason), "mono"));
+    head.append(said);
+    return;
+  }
+  const capture = answer.capture;
+  const axis = axisOf(answer);
+  const facts = [
+    axis === undefined ? undefined : `全体 ${secondsText(axis.endMs)}`,
+    typeof capture.httpStatusCode === "number" ? `HTTP ${String(capture.httpStatusCode)}` : undefined,
+  ].filter((fact) => fact !== undefined);
+  const line = tag("p", facts.join("・"), "trace-facts");
+  const stopped = stoppedStepOf(answer);
+  if (stopped !== undefined) {
+    line.append("・止まった段 ", tag("span", stopped, "mono state bad"));
+    const why = capture.errorDetails?.message;
+    if (typeof why === "string") line.append(`（${why}）`);
+  }
+  if (answer.archive === null) {
+    line.append("・WACZ はありません（要求の並びは WACZ から読むので、出せません）");
+  } else {
+    const open = document.createElement("a");
+    open.href = waczHash(answer.archive.id);
+    open.textContent = "WACZ の画面で開く";
+    line.append("・", open);
+  }
+  head.append(line);
+};
+
+/** 帯の行。左に名前、右に軸。 */
+const traceRow = (label, children, className) => {
+  const row = document.createElement("div");
+  row.className = className === undefined ? "trace-row" : `trace-row ${className}`;
+  const track = document.createElement("div");
+  track.className = "trace-track";
+  track.append(...children);
+  row.append(tag("span", label, "lab"), track);
+  return row;
+};
+
+/** 軸の上の 1 つ。`from`〜`to` の帯か、`at` の印。押すと下の欄に出す。 */
+const traceMark = ({ row, index, fromMs, toMs, atMs, className, text, title }, endMs) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  const picked = traceView.selected?.row === row && traceView.selected.index === index;
+  b.className = picked ? `${className} sel` : className;
+  if (atMs !== undefined) {
+    b.style.left = `${String(percentOf(atMs, endMs))}%`;
+  } else {
+    const left = percentOf(fromMs, endMs);
+    b.style.left = `${String(left)}%`;
+    b.style.width = `${String(Math.max(0, percentOf(toMs, endMs) - left))}%`;
+  }
+  if (text !== undefined) b.textContent = text;
+  b.title = title;
+  b.setAttribute("aria-label", title);
+  b.addEventListener("click", () => {
+    traceView.selected = { row, index };
+    drawTraceChart();
+    drawTraceRequests();
+    drawTracePanel();
+  });
+  return b;
+};
+
+/** console の行の色の種類。 */
+const consoleKind = (level) => (level === "error" ? "bad" : level === "warn" ? "run" : "muted");
+
+/** metadata だけの要求の色の種類。 */
+const noteKind = (kind) => (kind === "failed" ? "bad" : kind === "incomplete" ? "run" : "muted");
+
+const drawTraceChart = () => {
+  const box = $("trace-chart");
+  box.replaceChildren();
+  const { answer } = traceView;
+  const axis = answer === undefined ? undefined : axisOf(answer);
+  if (axis === undefined) return;
+  const { endMs } = axis;
+  const lines = answer.log?.lines ?? [];
+  const chart = document.createElement("div");
+  chart.className = "trace-chart";
+  // 目盛り
+  const ticks = ticksOf(endMs).map((ms) => {
+    const t = tag("span", secondsText(ms).replace(" 秒", ""), "tick-label");
+    t.style.left = `${String(percentOf(ms, endMs))}%`;
+    return t;
+  });
+  chart.append(traceRow("秒", ticks, "axis"));
+  const steps = stepsOf(lines, endMs);
+  chart.append(
+    traceRow(
+      "取り込みの段",
+      steps.map((one, index) =>
+        traceMark({ row: "step", index, ...one, className: "bar step", text: one.step, title: `${one.step}（${secondsText(one.fromMs)} から ${secondsText(one.toMs - one.fromMs)}）` }, endMs),
+      ),
+    ),
+  );
+  const details = detailsOf(lines, endMs);
+  if (details.length > 0) {
+    chart.append(
+      traceRow(
+        "細部",
+        details.map((one, index) =>
+          traceMark({ row: "detail", index, ...one, className: "bar detail", text: one.text, title: `${one.text}（${secondsText(one.fromMs)} から ${secondsText(one.toMs - one.fromMs)}）` }, endMs),
+        ),
+      ),
+    );
+  }
+  const settle = settleOf(answer.capture?.settle, lines);
+  if (settle !== undefined) {
+    const marks = [
+      traceMark({ row: "settle", index: 0, fromMs: settle.fromMs, toMs: settle.toMs, className: "bar wait", text: "待ち", title: `読み込みの後の待ち（${secondsText(settle.toMs - settle.fromMs)}・${String(settle.endedBy)} で終わった）` }, endMs),
+    ];
+    const points = [
+      ["load", settle.loadMs],
+      ["通信が静まった", settle.networkQuietMs],
+      ["DOM が静まった", settle.domQuietMs],
+      ["CPU が静まった", settle.cpuQuietMs],
+    ];
+    points.forEach(([name, ms], i) => {
+      if (ms === undefined) return;
+      marks.push(traceMark({ row: "settle", index: i + 1, atMs: ms, className: "tick accent", title: `${name}（${secondsText(ms)}）` }, endMs));
+    });
+    chart.append(traceRow("待ち", marks));
+  }
+  const scripts = scriptsOf(lines, endMs);
+  if (scripts.length > 0) {
+    chart.append(
+      traceRow(
+        "スクリプト",
+        scripts.map((one, index) =>
+          traceMark({ row: "script", index, ...one, className: one.open ? "bar script open" : "bar script", text: one.script, title: `${one.script}（${secondsText(one.fromMs)} から ${one.open ? "終わりの行なし" : secondsText(one.toMs - one.fromMs)}）` }, endMs),
+        ),
+      ),
+    );
+  }
+  const consoles = consoleOf(lines);
+  if (consoles.length > 0) {
+    chart.append(
+      traceRow(
+        "console",
+        consoles.map((one, index) =>
+          traceMark({ row: "console", index, atMs: one.ms, className: `tick ${consoleKind(one.level)}`, title: `${one.level}（${secondsText(one.ms)}）${one.msg}` }, endMs),
+        ),
+      ),
+    );
+  }
+  const marks = traceMarks();
+  if (marks !== undefined) {
+    const requests = [
+      ...marks.exchanges.map((one, index) =>
+        traceMark({ row: "exchange", index, atMs: one.ms, className: "tick ok", title: `${String(one.status ?? "")} ${one.uri}（始まり ${secondsText(one.ms)}）` }, endMs),
+      ),
+      ...marks.notes.map((one, index) =>
+        traceMark({ row: "note", index, atMs: one.ms, className: `tick hollow ${noteKind(one.kind)}`, title: `${KIND_TEXT[one.kind] ?? one.kind} ${one.uri}（記録した時刻 ${secondsText(one.ms)}）` }, endMs),
+      ),
+    ];
+    chart.append(traceRow("要求", requests));
+    if (marks.snapshots.length > 0) {
+      chart.append(
+        traceRow(
+          "写し",
+          marks.snapshots.map((one, index) =>
+            traceMark({ row: "snapshot", index, atMs: one.ms, className: "tick content", title: `DOM の写し ${one.stage}（${secondsText(one.ms)}）` }, endMs),
+          ),
+        ),
+      );
+    }
+  }
+  box.append(chart);
+};
+
+/** 要求の並び。始まり（か記録した時刻）の順に 1 行ずつ。押すと下の欄に出す。 */
+const drawTraceRequests = () => {
+  const box = $("trace-requests");
+  box.replaceChildren();
+  const { answer, read } = traceView;
+  if (answer === undefined || answer.archive === null || answer.archive === undefined) return;
+  const axis = axisOf(answer);
+  if (axis === undefined) return;
+  if (read === undefined) {
+    box.append(tag("p", "要求を読み込み中…（WACZ の中の WARC のレコードの一覧）", "muted"));
+    return;
+  }
+  const marks = traceMarks();
+  const tally = traceTallyOf(marks);
+  const said = [
+    `要求 ${count(tally.exchanges)}（応答と対になった物）`,
+    tally.incomplete > 0 ? `終わらなかった ${count(tally.incomplete)}` : undefined,
+    tally.failed > 0 ? `失敗した ${count(tally.failed)}` : undefined,
+    tally.denied > 0 ? `止めた ${count(tally.denied)}` : undefined,
+    tally["not-archived"] > 0 ? `残さなかった ${count(tally["not-archived"])}` : undefined,
+    tally.unread > 0 ? `まだ読んでいない記録 ${count(tally.unread)}` : undefined,
+  ].filter((one) => one !== undefined);
+  const title = tag("p", said.join("・"), "trace-tally");
+  box.append(title);
+  if (read.error !== undefined) {
+    const why =
+      read.error.status === 404
+        ? "この WACZ を見る許可がありません（要求の並びは WACZ から読みます）"
+        : `WARC のレコードの一覧を読めません: ${read.error.message}`;
+    box.append(tag("p", why, "state warn"));
+  }
+  const rows = [
+    ...marks.exchanges.map((one, index) => ({ row: "exchange", index, one })),
+    ...marks.notes.map((one, index) => ({ row: "note", index, one })),
+  ].sort((a, b) => (a.one.ms ?? 0) - (b.one.ms ?? 0));
+  if (rows.length === 0) return;
+  const list = document.createElement("div");
+  list.className = "trace-reqs";
+  for (const { row, index, one } of rows) {
+    const b = document.createElement("button");
+    b.type = "button";
+    const picked = traceView.selected?.row === row && traceView.selected.index === index;
+    b.className = picked ? "trace-req sel" : "trace-req";
+    const state =
+      row === "exchange"
+        ? tag("span", String(one.status ?? "—"), `mono state ${typeof one.status === "number" && one.status >= 400 ? "bad" : "ok"}`)
+        : tag("span", KIND_TEXT[one.kind] ?? String(one.kind), `state ${noteKind(one.kind)}`);
+    const track = document.createElement("span");
+    track.className = "trace-track";
+    const mark = tag("i", "", row === "exchange" ? "tick ok" : `tick hollow ${noteKind(one.kind)}`);
+    mark.style.left = `${String(percentOf(one.ms, axis.endMs))}%`;
+    track.append(mark);
+    b.append(tag("span", secondsText(one.ms).replace(" 秒", ""), "num mono"), state, tag("span", String(one.uri), "mono url"), track);
+    b.addEventListener("click", () => {
+      traceView.selected = { row, index };
+      drawTraceChart();
+      drawTraceRequests();
+      drawTracePanel();
+      if (row === "note" && one.kind === "unread") void readTraceBodies([one]);
+    });
+    list.append(b);
+  }
+  box.append(list);
+};
+
+/** 選んだ物の欄。名前と値を 1 行ずつ。 */
+const drawTracePanel = () => {
+  const box = $("trace-panel");
+  box.replaceChildren();
+  const { answer, selected } = traceView;
+  if (answer === undefined || selected === undefined) return;
+  const axis = axisOf(answer);
+  if (axis === undefined) return;
+  const lines = answer.log?.lines ?? [];
+  const panel = document.createElement("dl");
+  panel.className = "trace-panel";
+  const put = (name, value, className) => {
+    if (value === undefined || value === null || value === "") return;
+    const dd = value instanceof Node ? document.createElement("dd") : tag("dd", String(value), className);
+    if (value instanceof Node) dd.append(value);
+    panel.append(tag("dt", name), dd);
+  };
+  const marks = traceMarks();
+  const { row, index } = selected;
+  if (row === "step") {
+    const one = stepsOf(lines, axis.endMs)[index];
+    if (one === undefined) return;
+    put("取り込みの段", one.step, "mono");
+    put("始まり", secondsText(one.fromMs));
+    put("長さ", secondsText(one.toMs - one.fromMs));
+  } else if (row === "detail") {
+    const one = detailsOf(lines, axis.endMs)[index];
+    if (one === undefined) return;
+    put("細部", one.text, "mono");
+    put("取り込みの段", one.step, "mono");
+    put("始まり", secondsText(one.fromMs));
+    put("長さ", secondsText(one.toMs - one.fromMs));
+  } else if (row === "settle") {
+    const settle = settleOf(answer.capture?.settle, lines);
+    if (settle === undefined) return;
+    put("待ち", `${secondsText(settle.fromMs)} から ${secondsText(settle.toMs - settle.fromMs)}`);
+    put("終わり方", settle.endedBy, "mono");
+    put("load", settle.loadMs === undefined ? undefined : secondsText(settle.loadMs));
+    put("通信が静まった", settle.networkQuietMs === undefined ? "静まらなかった" : secondsText(settle.networkQuietMs));
+    put("DOM が静まった", settle.domQuietMs === undefined ? "静まらなかった" : secondsText(settle.domQuietMs));
+    put("CPU が静まった", settle.cpuQuietMs === undefined ? "静まらなかった" : secondsText(settle.cpuQuietMs));
+  } else if (row === "script") {
+    const one = scriptsOf(lines, axis.endMs)[index];
+    if (one === undefined) return;
+    put("スクリプト", one.script, "mono");
+    put("始まり", secondsText(one.fromMs));
+    put("長さ", one.open ? "終わりの行がありません（止めた時点で走っていた）" : secondsText(one.toMs - one.fromMs));
+  } else if (row === "console") {
+    const one = consoleOf(lines)[index];
+    if (one === undefined) return;
+    put("console", `${one.level}（${one.source === "page" ? "取り込みのページ" : "スクリプト"}）`);
+    put("時刻", secondsText(one.ms));
+    put("文", one.msg);
+  } else if (row === "exchange" && marks !== undefined) {
+    const one = marks.exchanges[index];
+    if (one === undefined) return;
+    put("要求", one.uri, "mono url");
+    put("始まり", `${secondsText(one.ms)}（Chromium が送り出した時刻）`);
+    put("status", one.status, "mono");
+    put("MIME の種類", one.mime, "mono");
+    put("本文", one.bodyOmitted === undefined ? undefined : `残していません（${one.bodyOmitted}）`);
+  } else if (row === "note" && marks !== undefined) {
+    const one = marks.notes[index];
+    if (one === undefined) return;
+    put("要求", one.uri, "mono url");
+    put("記録", KIND_TEXT[one.kind] ?? one.kind);
+    put("記録した時刻", `${secondsText(one.ms)}（要求の始まりではありません）`);
+    put("理由", one.reason, "mono");
+    put("誤り", one.error, "mono");
+    put("当たった方針", one.pattern, "mono");
+    put("種類", one.resourceType, "mono");
+    put("method", one.method, "mono");
+  } else if (row === "snapshot" && marks !== undefined) {
+    const one = marks.snapshots[index];
+    if (one === undefined) return;
+    put("DOM の写し", one.stage, "mono");
+    put("時刻", secondsText(one.ms));
+    put("文書", one.documentUrl, "mono url");
+    const objectKey = answer.archive?.objectKey;
+    if (typeof objectKey === "string") {
+      const opens = document.createElement("span");
+      for (const viewer of VIEWERS) {
+        const hit = { stage: one.stage, objectKey, capturedAt: answer.page.capturedAt, url: one.uri };
+        opens.append(link(hitReplaywebHref(settings[viewer.setting], hit), viewerText(viewer)), " ");
+      }
+      put("開く", opens);
+    }
+  }
+  if (panel.childElementCount > 0) box.append(panel);
+};
+
+const drawTraceNotes = () => {
+  const box = $("trace-notes");
+  box.replaceChildren();
+  const { answer } = traceView;
+  if (answer === undefined || answer.capture === null || answer.capture === undefined) return;
+  const notes = [
+    "帯（取り込みの段・細部・console）は BrowserHive の時計、要求の印は Chromium の時計で置いています。2 つは別の時計で、少しずれることがあります。",
+    "「終わらなかった」「失敗した」「止めた」「残さなかった」の印は、記録した時刻の位置です。要求の始まりではありません（終わらなかった要求は、記録を止めた時刻に並びます）。",
+    "別サイトのフレームの文書と dedicated worker の script は、終わりを観測できないので「終わらなかった」に入ります。",
+    "この画面は、保管庫の .result.json と WACZ を読んで並べた物で、署名の下にありません。示すための正は、WACZ の中の記録です。",
+  ];
+  const list = document.createElement("ul");
+  list.className = "trace-notes";
+  for (const note of notes) list.append(tag("li", note));
+  box.append(list);
+};
+
+const drawTraceLog = () => {
+  const box = $("trace-log");
+  box.replaceChildren();
+  const { answer } = traceView;
+  if (answer === undefined || answer.capture === null || answer.capture === undefined) return;
+  box.append(tag("h3", "ログ"));
+  if (answer.log === null || answer.log === undefined) {
+    box.append(tag("p", "この取り込みにログはありません（BrowserHive v24.0.0 より前の取り込み）。", "muted"));
+    return;
+  }
+  // ページの表のログの箱と同じ描き方（絞り込みと、流した位置を覚える）
+  traceView.log ??= { answer: { page: answer.page, log: answer.log, reason: null }, filter: "all", scrollTop: 0, box: undefined };
+  box.append(logBoxOf(traceView.log));
+};
+
+const drawTrace = () => {
+  drawTraceHead();
+  drawTraceChart();
+  drawTraceRequests();
+  drawTracePanel();
+  drawTraceNotes();
+  drawTraceLog();
+};
+
+/** metadata の本文を読む（`record` を 1 本ずつ）。読めた分だけ印に当てる。 */
+const readTraceBodies = async (wanted) => {
+  const { crawlId, pageId, answer } = traceView;
+  const archiveId = answer?.archive?.id;
+  if (typeof archiveId !== "string") return;
+  await Promise.all(
+    wanted.map(async (at) => {
+      if (traceView.bodies.has(bodyKey(at))) return;
+      try {
+        const { status, body } = await fetchJson(recordPath(archiveId, at.path, at.offset, at.length));
+        if (status === 200 && body.body?.kind === "text" && traceIs(crawlId, pageId)) {
+          traceView.bodies.set(bodyKey(at), String(body.body.content));
+        }
+      } catch {
+        // 読めなかった記録は「読んでいない」のまま残す
+      }
+    }),
+  );
+  if (!traceIs(crawlId, pageId)) return;
+  drawTraceChart();
+  drawTraceRequests();
+  drawTracePanel();
+};
+
+const loadTrace = async (crawlId, pageId) => {
+  let answer;
+  try {
+    answer = await api(tracePath(crawlId, pageId));
+  } catch (err) {
+    if (traceIs(crawlId, pageId)) traceAnswer(`経緯を読めません: ${failedText(err)}`);
+    return;
+  }
+  if (!traceIs(crawlId, pageId)) return; // 別の取り込みを開いた・一覧へ戻った
+  traceAnswer(undefined);
+  traceView.answer = answer;
+  // WACZ の無い取り込み（時間切れ・失敗）と、答えの無いページでは、レコードを読みに行かない
+  if (!readsRecords(answer)) {
+    traceView.read = null;
+    drawTrace();
+    return;
+  }
+  const axis = axisOf(answer);
+  drawTrace();
+  let read;
+  try {
+    read = await readRecords(fetchJson, answer.archive.id);
+  } catch (err) {
+    read = { files: [], error: { status: 0, message: failedText(err) } };
+  }
+  if (!traceIs(crawlId, pageId)) return;
+  traceView.read = read;
+  traceView.marks = traceMarksOf(read.files, axis.originMs);
+  drawTrace();
+  // metadata の本文は、先に NOTES_EAGER 本まで。残りは、要求の並びで押したときに読む
+  const attached = traceView.marks.exchanges.filter((one) => one.attached !== undefined).map((one) => one.attached);
+  await readTraceBodies([...traceView.marks.notes, ...attached].slice(0, NOTES_EAGER));
+};
+
+const closeTrace = () => {
+  if (traceView.crawlId === undefined) return;
+  traceView = { crawlId: undefined };
+  $("trace-detail").hidden = true;
+  $("crawls-list").hidden = false;
+};
+
+const openTrace = (crawlId, pageId) => {
+  $("crawls-list").hidden = true;
+  $("trace-detail").hidden = false;
+  if (traceIs(crawlId, pageId)) return;
+  traceView = { crawlId, pageId, answer: undefined, read: undefined, marks: undefined, bodies: new Map(), selected: undefined, log: undefined };
+  traceAnswer(undefined);
+  drawTrace();
+  void loadTrace(crawlId, pageId);
+};
+
 // ── 画面の切り替え ───────────────────────────────────────────────────
 const FACES = ["crawls", "start", "schedules", "changes", "archives", "search", "scripts", "wacz"];
 
@@ -3800,11 +4341,14 @@ const show = (face) => {
 
 /**
  * URL が画面を決める。`#wacz/…` は WACZ の画面、`#scripts` と `#scripts/…` はスクリプト集の画面（読む所）、
- * `#search` と `#search/<語>` は検索の画面、それ以外はほかの画面のどれか。
+ * `#search` と `#search/<語>` は検索の画面、`#links/…` と `#trace/…` はクロールの画面の中（リンクの構成・経緯）、
+ * `#changes/…` は変化の画面、それ以外はほかの画面のどれか。
  */
 const route = () => {
-  // リンクの構成（#links/…）から出たら、クロールの画面を一覧に戻す
+  // リンクの構成（#links/…）と経緯（#trace/…）は、同じ一覧を隠す。**先に両方を閉じ、後から開く** —— 片方から
+  // もう片方へ移ったときに、閉じる側が一覧を出し直さないように（開く側は下の枝で、閉じた後に一覧を隠す）
   if (parseLinksHash(location.hash) === undefined) closeLinks();
+  if (parseTraceHash(location.hash) === undefined) closeTrace();
   const target = parseWaczHash(location.hash);
   if (target !== undefined) {
     void openWacz(target);
@@ -3821,6 +4365,12 @@ const route = () => {
   if (links !== undefined) {
     show("crawls");
     openLinks(links.crawlId, links.pageId);
+    return;
+  }
+  const trace = parseTraceHash(location.hash);
+  if (trace !== undefined) {
+    show("crawls");
+    openTrace(trace.crawlId, trace.pageId);
     return;
   }
   const changes = parseChangesHash(location.hash);

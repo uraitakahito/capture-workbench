@@ -81,8 +81,8 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 コンテナの組み立ては、`docker-compose.yml` の頭に書いてあります。
 
 何を見せるかは、台本（`sandbox/scenario.json`）と標本の WACZ（撮ったページをまとめたアーカイブ。`sandbox/samples/`）が決めます。
-標本は、検証の結論が分かっている corpus から写したものです。
-出どころと、それぞれが受けるはずの結論は `sandbox/samples/SOURCE.md` に在ります。
+標本は、検証の結論が分かっている corpus から写した 5 本と、経緯の画面を見るための BrowserHive の取り込みの 1 本（`trace-timeline.wacz`）です。
+出どころと、corpus の標本が受けるはずの結論は `sandbox/samples/SOURCE.md` に在ります。
 
 | したいこと | すること |
 | --- | --- |
@@ -96,6 +96,7 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | User-Agent の箱を試す | 新しいクロールの画面で「Headless を外す型を入れる」を押すか、字を打つ。代役は字の形を capture-ledger と同じ文で断り、受けた字を開いた行に出す |
 | 規則を試す | 新しいクロールの画面で「リンクを辿る」を選ぶ。代役は capture-ledger v0.62.0 と同じく規則を確かめる（同じ 3 つの 400 を同じ文で、`/api/crawl-rules/check` も同じ答え）し、`/api/crawls/:id/decisions` にも答える。台本のクロール `5b0c0007` は `rules`・`decisions`・`robots` を持ち、1 度も当たらない規則が 1 本ある。**`same-site` は近似**: 代役は Public Suffix List を持たず、ホスト名の最後の 2 ラベルをサイトとする。だから `example.co.jp` と `other.co.jp` を同じサイトと読む（capture-ledger は tldts で、そう読まない） |
 | ページとログを見る | 台本のクロールに `pages` を書く（ページの行と、BrowserHive の答えの形の `log`。`counts` は省けば行から数える）。代役は capture-ledger の `/api/crawls/:id/pages`（`after` と `limit`。続きは本文の `next`）と `/api/crawls/:id/pages/:page/log` に答え、`failures` の要素に `page` を付ける。`after` が数字だけでない・`limit` が範囲の外なら 400。`log` の無いページは、ログを読めない理由を返す（台本の `logReason`。省けば taskId の無いページは `not-captured`、在れば `no-log`）。台本のクロール `5b0c0009` は、時間切れのページ（warn と error の行）・捨てた行と途中で切った行を持つページ・robots.txt で撮らなかったページを持つ。`pages` の無い行は一覧が空。「続きを読む」を見るなら、行に capture-ledger の 1 回分より多いページを書く（代役の 1 回分は capture-ledger と同じ既定で、`sandbox/fake-ledger.mjs` の `pageList` に在る） |
+| 取り込みの経緯を見る | 台本のクロール `5b0c000b` を開き、ページの表の「経緯」を押す。ページ 1301 は標本の `trace-timeline.wacz` を指し、取り込みの欄（`capture`）とログは、その WACZ を作った取り込みの本物の答え —— 帯と待ちはログと答えから、要求の印は本物の daemon が読んだ WARC のレコードから出る。1302 は時間切れで WACZ が無く、止まった段が出る。代役は capture-ledger の `/api/crawls/:id/pages/:page/trace` に、台本のページの `capture`・`log`・`submittedAt`・`finishedAt` で答える。`capture` の無いページは、経緯を読めない理由を返す（台本の `traceReason`。省けば taskId の無いページは `not-captured`、在れば `no-manifest`）。`trace` はいつも null（capture-ledger v0.100.0 と同じ） |
 | 走らせたものの在る行を見る | 台本のクロールに `scripts` を書く（その場の物は `inline` つき）。同梱の台本には、その場の TS で完走した行と、compile の段で落ちた行が在る。代役も capture-ledger と同じく、1 本の詳しい所には source を載せず、「欄に戻す」は名前で引くエンドポイント（`/api/crawls/:id/inline/:name`）から取る。クロール `5b0c0008` の autoscroll の `sha256` はわざと登録済みの v1 と違えてあり、版の番号が使い回されたときに、クロールの「読む」が出す知らせを見られる |
 | 検索を試す | 検索の画面で語を打つ（同梱の台本では「ランプ」で 2 件）。代役は台本の `searchPages`（アーカイブごとのページ一覧の行。`stage` の無い行が文書の行）から、capture-ledger と同じ決まりで答える —— 写しの行が在るアーカイブでは写しの行だけを引き、`hidden` のアーカイブは出さない。**代役は OpenSearch を持たない**: 題か本文に語を含む行を拾うだけで、点数も分かち書きも無い。`q` が無い・空・ほかの欄があれば、capture-ledger の schema と同じ文で 400 |
 | クロールの合本を見る | 台本のクロール `5b0c0009` を開く。行の run ↗ の隣に ReplayWeb.page ↗・Web Capture ↗ が出て、ページの表では撮れたページの結末の後ろに ReplayWeb.page ↗・Web Capture ↗ が付く（行の `replayBundle` は r2、ページの `bundledRev` は 1 と 2）。時間切れのページと robots.txt で撮らなかったページには付かない。`5b0c0003` は r2 の次の版を書けなかった行（ReplayWeb.page ↗・Web Capture ↗ は r2 を開き、開いた行が理由を言う）、`5b0c0002` は 1 度も書けなかった行（ReplayWeb.page ↗・Web Capture ↗ が出ず、開いた行が理由を言う）。台本の行に `replayBundle`（`rev`・`pages`・`builtAt`・`error`。失敗だけの行は `rev` を省く）を、ページに `capturedAt` と `bundledRev` を書く。鍵は代役が capture-ledger と同じ形（`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`）に組む。**代役は合本を書かない** —— ReplayWeb.page ↗・Web Capture ↗ の先には何も無い |

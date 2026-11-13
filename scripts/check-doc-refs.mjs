@@ -193,7 +193,10 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // 2026-11-13 に全部の枠を 312 → 333 KB（CAPTURE-246 でリンクの構成の画面の絵 links を 1 枚足したとき。残りは 0.1 KB で、
 // 数の内訳の帯と図だけ・幅 632 の絵でも約 20 KB。上げずに収める手は「絵を載せない」しか無く、利用者が上げると決めた。
 // 1 枚の枠は上げていない）。
-const BUDGET = { one: 39 * 1024, all: 333 * 1024 };
+// 2026-11-13 に全部の枠を 333 → 359 KB（CAPTURE-270 で経緯の画面の絵 trace を 1 枚足したとき。trace は 21.6 KB。代役に
+// 経緯の見本のクロールと WACZ を 1 つずつ足したので、crawls が +2.9 KB・archives が +0.4 KB・「経緯」の link で
+// crawl-pages が +1.2 KB。全部で 358.1 KB。上げると決めたのは計画の既定で、1 枚の枠は上げていない）。
+const BUDGET = { one: 39 * 1024, all: 359 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);

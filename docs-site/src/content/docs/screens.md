@@ -170,7 +170,8 @@ the crawl's bundle.
   that never got a report as `pending` (whether it was captured is unknown), so in a crawl that has
   ended such a page reads `pending（報告なし —— クロールが先に終わった）` (no report: the crawl
   ended first) — a crawl that failed the type check captured nothing, and its seed would otherwise
-  look like it is still waiting. A page whose WACZ is in the bundle the ledger points at has
+  look like it is still waiting. A page that has a capture's answer (captured or failed) has 経緯
+  (trace) after its outcome, which opens [that one capture's trace](#one-captures-trace). A page whose WACZ is in the bundle the ledger points at has
   ReplayWeb.page ↗ / Web Capture ↗ after its outcome: it opens that page inside the crawl's bundle, at the time it was
   captured (`#view=replay&url=…&ts=…`). What decides it is the ledger's `bundledRev`, the first
   version of the bundle that the page's WACZ went into: the link appears when it is no later than
@@ -244,6 +245,73 @@ back. The numbers and outcomes are what the ledger kept, one row per link, at ea
 
 The layout and wording are in `public/links.js` (`layoutOf` and others), pinned by
 `test/links.test.mjs`.
+
+### One capture's trace
+
+経緯 (trace), after a page's outcome in the pages table, opens the trace of that one capture (the
+URL is `#trace/<crawl id>/<page id>`). The tab stays クロール; the view replaces the list, and
+← クロールの一覧 goes back. The link is there for pages that have a capture's answer (captured or
+failed), not for pages still waiting or skipped.
+
+It reads one route of the ledger, `GET /api/crawls/:id/pages/:page/trace`, and, for a capture
+that has a WACZ, the list of WARC records inside it ([`/wacz/:id/records`](/routes/)). The former
+is the `.result.json` BrowserHive wrote to the store with the capture's answer, read back by the
+ledger; the workbench only lays it out.
+
+![The trace of one page's capture: a figure on a time axis on top (rows for the capture's steps, their details, the wait, the requests and the snapshots), and the list of requests below. The axis is seconds from the start of the capture](../../assets/screens/trace.webp)
+
+① the bars of the capture's steps② the wait after loading, with marks where things went quiet③ the request marks (when Chromium sent each request)④ the list of requests (pressing one shows its fields below)
+
+- **The axis is seconds from the start of the capture.** Zero is when BrowserHive started the
+  capture: the time of the first log line minus that line's `ms`. A capture without a log uses
+  the time it ended (`timestamp`) minus its processing time (`captureProcessingTimeMs`). The
+  heading line gives the total seconds, the document's HTTP status and WACZ の画面で開く.
+- **The bars come from the lines BrowserHive wrote to the log.** 取り込みの段 (steps) runs from
+  the line written on entering a step (`step load-pages` and so on) to the next step's line. 細部
+  (details) runs from a mark inside a step (a debug line) to the next mark. スクリプト (scripts)
+  pairs a script's start line with its end line; a script with no end line runs to the end of the
+  axis. console marks the lines the captured page and the scripts wrote. A capture without a log
+  (BrowserHive before v24.0.0) has no bars.
+- **待ち (wait) is the time spent waiting for the page to go quiet after loading.** The bar runs
+  from the start of the wait to its end, and the marks are load, the network going quiet, the DOM
+  going quiet and the CPU going quiet (the answer's `settle`). What never went quiet has no mark,
+  and pressing the bar says 静まらなかった.
+- **The request marks come from the records inside the WACZ.** A filled mark is a request paired
+  with its response (a WARC request and response), placed at `WARC-Date` — when Chromium sent the
+  request. A hollow mark is the record of a request that was not paired (a WARC metadata): one of
+  終わらなかった (did not finish), 失敗した (failed), 止めた (denied) and 残さなかった (not
+  archived). **It is placed at the time BrowserHive wrote that record, not at the start of the
+  request** (a request that did not finish sits where recording stopped). Which of the four it
+  is, is written in the metadata's body, so the first 40 are read when the view opens and the
+  rest when pressed in the list (until then they say 読んでいない). The end of a request and how
+  long it took are not shown: today's WACZ has no record that says so.
+- **The list of requests is in time order.** One row has the seconds, the status (or the kind of
+  record), the URL and the position on the axis; pressing it shows fields below. A paired request
+  shows its MIME type and, when the body was not kept, why. An unpaired one shows the reason, the
+  error, the policy it matched, the resource type and the method (those the record has). The line
+  on top is the counts: 要求 N is the paired ones, counted the same way as the answer's
+  `waczStats.totalRecorded`.
+- **写し (snapshots) is when each DOM snapshot was taken.** Pressing one shows the snapshot's
+  stage and links that open it in replay (only when the WACZ may be viewed).
+- **Pressing a bar or a mark in the figure shows its fields below**: the start and length of a
+  bar, or the time of a mark, in seconds.
+- **There are two clocks.** The bars (steps, details, console) are placed by BrowserHive's clock
+  and the request marks by Chromium's. They are separate clocks and can differ a little (0.2 to
+  0.3 seconds, measured on a local stack).
+- **A capture that failed says which step it stopped in.** The answer of a timeout or a failure
+  does not carry the step's name. It is read from the last step line of the log, and the heading
+  line gives 止まった段 and the reason. A capture with no WACZ has no list of requests (requests
+  are read from the WACZ).
+- **A page whose trace cannot be read shows the ledger's reason**: no answer from a capture, no
+  recorded place for `.result.json`, nothing at that place in the store, or a file the contract
+  rejects. An identity that may not view the WACZ gets the bars and the log, not the requests.
+- **The same capture's log is listed below**, in the same box as ログ in the pages table, with
+  the same filter.
+- **This view is not under the signature.** It lays out what it read from `.result.json` in the
+  store and from the WACZ. What stands as the record is what is inside the WACZ.
+
+The arithmetic (axis, bars, marks, counts) is `public/timeline.js`, pinned by
+`test/timeline.test.mjs` against real answers from capturing capture-fixtures on a local stack.
 
 ### The state is worded together with stopReason
 

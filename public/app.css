@@ -488,7 +488,8 @@ tr.detail .logrow > td {
   padding: 0 0 8px;
 }
 
-tr.detail .logbox {
+tr.detail .logbox,
+#trace-detail .logbox {
   contain: inline-size;
   min-width: 600px;
   border: 1px solid var(--line);
@@ -497,22 +498,26 @@ tr.detail .logbox {
   padding: 0 10px 6px;
 }
 
-tr.detail .logbox .chips {
+tr.detail .logbox .chips,
+#trace-detail .logbox .chips {
   padding: 6px 0;
 }
 
-tr.detail .logscroll {
+tr.detail .logscroll,
+#trace-detail .logscroll {
   max-height: 320px;
   overflow: auto;
 }
 
-tr.detail .loglines {
+tr.detail .loglines,
+#trace-detail .loglines {
   width: auto;
   min-width: 0;
   border-collapse: collapse;
 }
 
-tr.detail .loglines td {
+tr.detail .loglines td,
+#trace-detail .loglines td {
   padding: 1px 12px 1px 0;
   border: 0;
   background: transparent;
@@ -520,13 +525,15 @@ tr.detail .loglines td {
 }
 
 /* 文は折り返す。改行は行のまま。data は文の後ろに続け、等幅の薄い字で分ける */
-tr.detail .loglines td.msg {
+tr.detail .loglines td.msg,
+#trace-detail .loglines td.msg {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--ink);
 }
 
-tr.detail .loglines .data {
+tr.detail .loglines .data,
+#trace-detail .loglines .data {
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
@@ -560,7 +567,8 @@ tr.detail .loglines .data {
 }
 
 /* 途中で切った行の印（BrowserHive が 1 行の上限で msg と data を切った） */
-tr.detail .loglines .cut {
+tr.detail .loglines .cut,
+#trace-detail .loglines .cut {
   margin-right: 8px;
   padding: 0 6px;
   border: 1px dashed var(--run);
@@ -2302,4 +2310,272 @@ body[data-face="scripts"] main {
   align-items: baseline;
   gap: 2px 10px;
   padding: 1px 0;
+}
+
+/*
+ * 経緯（#trace/<クロールの id>/<ページの id>・CAPTURE-270）。取り込み 1 回の間に起きたことを、1 本の時間軸に並べる。
+ * 上から、題・帯（取り込みの段・細部・待ち・スクリプト・console・要求・写し）・要求の並び・選んだ物・注記・ログ。
+ * 帯と印は、位置と幅を % で置いた button（押すと下の欄に出る）。色は全部 token から。全体の table の規則
+ * （min-width と nowrap）は継がない —— この画面の表はログの箱だけで、その規則は上（tr.detail と並べた所）に在る。
+ */
+#trace-detail {
+  margin: 4px 0 24px;
+  max-width: 1100px;
+}
+#trace-detail .muted {
+  color: var(--muted);
+}
+#trace-head h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+#trace-head h2 .wide {
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.trace-facts,
+.trace-tally {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.trace-tally {
+  margin: 12px 0 4px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.trace-chart {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 6px 10px 8px;
+}
+.trace-row {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
+}
+.trace-row > .lab {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.trace-track {
+  position: relative;
+  display: block;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--ground);
+}
+.trace-row.axis .trace-track {
+  height: 16px;
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+}
+.trace-track .tick-label {
+  position: absolute;
+  bottom: 1px;
+  padding-left: 3px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.2;
+}
+/* 帯。字は入るだけ出し、溢れは隠す（全部の字は title と、押した下の欄に在る） */
+.trace-track .bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  min-width: 3px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 2px;
+  overflow: hidden;
+  font: inherit;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.trace-track .bar.step {
+  background: var(--accent);
+  color: var(--surface);
+  box-shadow: inset -1px 0 0 var(--surface);
+}
+.trace-track .bar.detail {
+  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
+  color: var(--ink);
+  box-shadow: inset -1px 0 0 var(--surface);
+}
+.trace-track .bar.wait {
+  background: color-mix(in srgb, var(--content) 26%, var(--surface));
+  color: var(--ink);
+}
+.trace-track .bar.script {
+  background: color-mix(in srgb, var(--depth) 30%, var(--surface));
+  color: var(--ink);
+}
+.trace-track .bar.script.open {
+  border: 1px dashed var(--depth);
+  background: transparent;
+}
+/* 印。始まりの印は塗り、記録した時刻の印は中抜き */
+.trace-track .tick {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 1px;
+  background: currentColor;
+  cursor: pointer;
+}
+.trace-track .tick.hollow {
+  width: 7px;
+  margin-left: -3px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.trace-track .tick.ok {
+  color: var(--ok);
+}
+.trace-track .tick.bad {
+  color: var(--bad);
+}
+.trace-track .tick.run {
+  color: var(--run);
+}
+.trace-track .tick.muted {
+  color: var(--muted);
+}
+.trace-track .tick.content {
+  color: var(--content);
+}
+.trace-track .tick.accent {
+  color: var(--accent);
+}
+.trace-track .sel {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  z-index: 1;
+}
+.trace-track button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  z-index: 2;
+}
+/* 要求の並び。1 行 = 1 つの要求。左から、時刻（秒）・status か記録の種類・URL・軸の上の位置 */
+.trace-reqs {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+}
+.trace-req {
+  display: grid;
+  grid-template-columns: 3.6em 6.5em minmax(0, 1.4fr) minmax(90px, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 2px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.trace-req:last-child {
+  border-bottom: 0;
+}
+.trace-req.sel {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.trace-req:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.trace-req .num {
+  text-align: right;
+  color: var(--muted);
+}
+.trace-req .url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trace-req .trace-track {
+  height: 12px;
+}
+.trace-req .trace-track .tick {
+  cursor: inherit;
+}
+.trace-panel {
+  display: grid;
+  grid-template-columns: 8em minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 12.5px;
+}
+.trace-panel dt {
+  color: var(--muted);
+}
+.trace-panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.trace-notes {
+  margin: 12px 0 0;
+  padding-left: 1.2em;
+  color: var(--muted);
+  font-size: 12px;
+  max-width: 62em;
+}
+#trace-log h3 {
+  margin: 16px 0 6px;
+  font-size: 14px;
+}
+#trace-log .logbox {
+  min-width: 0;
+}
+/* 狭い窓では、文の欄を潰さずに、箱の中で横に流す */
+#trace-log .loglines td.msg {
+  min-width: 16em;
+}
+/* ページの表の結末の欄の「経緯」 */
+tr.detail .pagelist .outcome a.trace-link {
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .trace-row {
+    grid-template-columns: 4.6em minmax(0, 1fr);
+  }
+  .trace-req {
+    grid-template-columns: 3.2em 4.6em minmax(0, 1fr);
+    gap: 6px;
+  }
+  .trace-req .trace-track {
+    display: none;
+  }
+  .trace-panel {
+    grid-template-columns: 6em minmax(0, 1fr);
+  }
 }

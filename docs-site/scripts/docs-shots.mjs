@@ -252,13 +252,35 @@ const SHOTS = [
     ready: () =>
       document.querySelector("#crawls tr.detail .logbox .chip.on")?.textContent === "すべて 4" &&
       document.querySelectorAll("#crawls tr.detail .logbox .loglines tr").length === 4 &&
-      // 合本に入った 2 ページ × 2 つの再生（ReplayWeb.page ↗・Web Capture ↗）
-      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a").length === 4,
+      // 合本に入った 2 ページ × 2 つの再生（ReplayWeb.page ↗・Web Capture ↗）と、取り込みの答えが在る 3 ページの「経緯」
+      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a:not(.trace-link)").length === 4 &&
+      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a.trace-link").length === 3,
     marks: [
       { n: 1, at: "#crawls tr.detail .pagelist th:nth-child(2)" },
       { n: 2, at: "#crawls tr.detail .pagelist tr:nth-child(2) td:nth-child(3)" },
       { n: 3, at: "#crawls tr.detail .pagelist th:nth-child(5)" },
       { n: 4, at: "#crawls tr.detail .logbox .chips button:last-of-type", edge: "box" },
+    ],
+  },
+  {
+    name: "trace",
+    // 取り込み 1 回の経緯（CAPTURE-270）。代役の 5b0c000b のページ 1301 —— 置き場の trace-timeline.wacz（BrowserHive が
+    // capture-fixtures の /charset/ を撮った本物）と、同じ取り込みの答え。題の行から要求の並びまで（注記とログは写さない）。
+    // 時間軸は窓の幅いっぱいに伸びるので、表と同じく縮めて載せる（狭く切ると、軸の右が欠ける）
+    hash: "#trace/5b0c000b-6a1e-4000-8000-00000000000b/1301",
+    box: "#trace-head, #trace-chart, #trace-requests",
+    wide: true,
+    ready: () =>
+      // 帯はログから（段 5 本）、要求の印と並びは本物の daemon が読んだ WARC のレコードから（対 11 個）
+      document.querySelectorAll("#trace-chart .bar.step").length === 5 &&
+      document.querySelectorAll("#trace-chart .tick.ok").length === 11 &&
+      document.querySelectorAll("#trace-requests .trace-req").length === 11 &&
+      document.querySelector("#trace-requests .trace-tally")?.textContent.startsWith("要求 11") === true,
+    marks: [
+      { n: 1, at: "#trace-chart .trace-row:nth-child(2) .lab" },
+      { n: 2, at: "#trace-chart .trace-row:nth-child(4) .lab" },
+      { n: 3, at: "#trace-chart .trace-row:nth-child(5) .lab" },
+      { n: 4, at: "#trace-requests .trace-tally" },
     ],
   },
   {
