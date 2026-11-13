@@ -59,7 +59,13 @@
     "        書けた版が在ればクロールの行に再生のリンクが出て (失敗が在っても、前の版を開く)、失敗は開いた行の 1 行が言う。",
     "        ページの capturedAt と bundledRev は、WACZ の撮った時刻と、その WACZ が最初に入った版 (bundledRev ≤ rev のページに再生のリンク)。",
     "        5b0c0001 は走行中で、途中の版 r1 (replay r1（途中）↗)。5b0c0009 は r2 (ページ 1201 は r1、1203 は r2。WACZ の無い 1202・1204 には出ない)。5b0c0003 は r2 の次の版を書けなかった行、",
-    "        5b0c0002 は 1 度も書けなかった行 (再生のリンクが出ない)。代役は合本を書かない —— 再生のリンクの先には何も無い。"
+    "        5b0c0002 は 1 度も書けなかった行 (再生のリンクが出ない)。代役は合本を書かない —— 再生のリンクの先には何も無い。",
+    "crawls の pages の capture.screenshots・failureScreenshot: 経緯の答えの絵の欄 (CAPTURE-270 の第 4 部。BrowserHive v30.2.0 から)。capture.screenshots は",
+    "        節目のスクリーンショットの成り行きで、BrowserHive が書いたまま (絵の在る時点は url・date・record・bytes、無い時点は skipped の理由)。",
+    "        書かないページは、欄の無い取り込み (v30.1.0 以前)。絵そのものは、ページの archiveId が指す置き場の WACZ の中のレコード。",
+    "        failureScreenshot は失敗の時点の絵のファイル (sandbox/ からの相対。本物の .result.json では保管庫の場所)。代役は、経緯の答えでは",
+    "        在るかどうかの真偽にし、絵は GET /api/crawls/:id/pages/:page/trace/failure-screenshot で { contentType, base64 } にして返す。",
+    "        5b0c000b の 1304 は絵が 2 枚、1305 と 1306 は絵を残さなかった取り込み (withheld・secret)、1307 は文書が 503 を返して失敗の時点の絵が在る取り込み。"
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,
@@ -1184,25 +1190,35 @@
     },
     {
       "crawlId": "5b0c000b-6a1e-4000-8000-00000000000b",
-      "//": "経緯の画面（#trace/…。CAPTURE-270）の見本。ページ 1301 は置き場の trace-timeline.wacz を指し、取り込みの欄・ログ・trace は、その取り込み（BrowserHive v30.0.0）の本物の答え。1302 は時間切れで、WACZ は無いが trace は在る。1303 は 1301 と同じ取り込みを、trace の無い答えの形（v30.0.0 より前）にした物",
+      "//": "経緯の画面（#trace/…。CAPTURE-270）の見本。ページ 1301 は置き場の trace-timeline.wacz を指し、取り込みの欄・ログ・trace は、その取り込み（BrowserHive v30.0.0）の本物の答え。1302 は時間切れで、WACZ は無いが trace は在る。1303 は 1301 と同じ取り込みを、trace の無い答えの形（v30.0.0 より前）にした物。1304〜1307 は、節目のスクリーンショットと失敗の時点の絵の見本（BrowserHive v30.2.0 から）: 1304 は絵が 2 枚、1305 と 1306 は絵を残さなかった取り込み（理由は withheld と secret）、1307 は文書が 503 を返した取り込みで、失敗の時点の絵が在る",
       "state": "succeeded",
       "stopReason": "max_depth",
       "maxDepth": 0,
       "seeds": [
         "http://capture-fixtures.capture-ledger:8080/charset/",
-        "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000"
+        "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000",
+        "http://capture-fixtures-1-a.browserhive:8080/marked/search/public?tag=ss-bc7949de",
+        "http://capture-fixtures-2-a.browserhive:8080/marked/text/secret?tag=e12-mwf7b4uu",
+        "http://capture-fixtures-2-a.browserhive:8080/plain-html",
+        "http://capture-fixtures.capture-ledger:8080/fails-then-succeeds?failTimes=1&key=sandbox"
       ],
       "startedSecondsAgo": 9000,
       "tookSeconds": 70,
-      "pagesCaptured": 2,
+      "pagesCaptured": 5,
       "pagesDiscovered": 0,
-      "waczCount": 1,
+      "waczCount": 4,
       "failures": [
         {
           "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000",
           "depth": 0,
           "reason": "timeout: Navigation timeout of 30000 ms exceeded",
           "page": "1302"
+        },
+        {
+          "url": "http://capture-fixtures.capture-ledger:8080/fails-then-succeeds?failTimes=1&key=sandbox",
+          "depth": 0,
+          "reason": "http: HTTP 503: Service Unavailable",
+          "page": "1307"
         }
       ],
       "pages": [
@@ -2137,6 +2153,1135 @@
                 }
               }
             ]
+          }
+        },
+        {
+          "id": "1304",
+          "//": "節目のスクリーンショットが 2 枚在る取り込み（BrowserHive v30.2.0 の e2e。置き場の with-screenshots.wacz）。画面は、絵の位置を WACZ の索引から引き、絵を WACZ の中のレコードから出す。取り込みの欄のうち settle・completeness・document・screenshots と、ログ・trace の行は、WACZ の中（datapackage.json の browserhive:capture・logs/capture.jsonl・trace/events.jsonl）に在るまま。WACZ に無い欄は筋書きが組んだ: timestamp は WACZ を組んだ時刻（datapackage.json の created）、captureProcessingTimeMs はそこから軸の 0 を引いた値、httpStatusCode は文書の要求の行の status",
+          "url": "http://capture-fixtures-1-a.browserhive:8080/marked/search/public?tag=ss-bc7949de",
+          "depth": 0,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1304-7000-8000-000000001304",
+          "archiveId": "5e6d1ed0-c5b0-35a7-b71b-517fa8aa6b97",
+          "capturedAt": "2026-11-13T16:36:33.023Z",
+          "bundledRev": 1,
+          "submittedAt": "2026-11-13T16:36:32.786Z",
+          "finishedAt": "2026-11-13T16:36:34.756Z",
+          "capture": {
+            "status": "success",
+            "timestamp": "2026-11-13T16:36:34.756Z",
+            "captureProcessingTimeMs": 1970,
+            "httpStatusCode": 200,
+            "settle": {
+              "strategy": "fully-loaded",
+              "endedBy": "quiet",
+              "waitedMs": 478,
+              "devicePixelRatio": 1,
+              "limits": {
+                "minMs": 0,
+                "maxMs": 3000,
+                "quietMs": 200,
+                "networkConcurrency": 0
+              },
+              "load": {
+                "atMs": 67
+              },
+              "network": {
+                "quietAtMs": 270
+              },
+              "cpu": {
+                "quietAtMs": 376
+              },
+              "dom": {
+                "quietAtMs": 277
+              }
+            },
+            "completeness": {
+              "bodylessUrls": [],
+              "truncatedUrls": [],
+              "uninterceptedUrls": [],
+              "crashedTargets": [],
+              "complete": true
+            },
+            "document": {
+              "url": "http://capture-fixtures-1-a.browserhive:8080/marked/search/public/result?tag=ss-bc7949de"
+            },
+            "screenshots": [
+              {
+                "stage": "after-load",
+                "url": "urn:browserhive:screenshot:after-load:http://capture-fixtures-1-a.browserhive:8080/marked/search/public?tag=ss-bc7949de",
+                "date": "2026-11-13T16:36:33.845Z",
+                "record": "urn:uuid:6f3841a6-dc8b-42b7-b3f4-ceb528fb2403",
+                "bytes": 5624
+              },
+              {
+                "stage": "after-behaviors",
+                "url": "urn:browserhive:screenshot:after-behaviors:http://capture-fixtures-1-a.browserhive:8080/marked/search/public/result?tag=ss-bc7949de",
+                "date": "2026-11-13T16:36:34.517Z",
+                "record": "urn:uuid:80529e55-c548-44ed-9420-ceb5a09c59ff",
+                "bytes": 6656
+              }
+            ]
+          },
+          "log": {
+            "lines": [
+              {
+                "at": "2026-11-13T16:36:33.024Z",
+                "ms": 238,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step check-address",
+                "data": {
+                  "step": "check-address"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:33.078Z",
+                "ms": 292,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step start-recording",
+                "data": {
+                  "step": "start-recording"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:33.082Z",
+                "ms": 296,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step load-pages",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:33.084Z",
+                "ms": 298,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "navigation, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:33.202Z",
+                "ms": 416,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "settle, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:33.213Z",
+                "ms": 427,
+                "dpr": 1,
+                "source": "page",
+                "level": "error",
+                "msg": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+                "data": {
+                  "url": "http://capture-fixtures-1-a.browserhive:8080/favicon.ico"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:33.681Z",
+                "ms": 895,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "settled by quiet after 478ms",
+                "data": {
+                  "endedBy": "quiet",
+                  "waitedMs": 478
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:33.694Z",
+                "ms": 908,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "snapshot after-load, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:34.007Z",
+                "ms": 1221,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "behaviors, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:34.064Z",
+                "ms": 1278,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "script marked-search started",
+                "data": {
+                  "script": "marked-search",
+                  "index": 0
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:34.123Z",
+                "ms": 1337,
+                "dpr": 1,
+                "source": "script",
+                "script": "marked-search",
+                "level": "info",
+                "msg": "report",
+                "data": {
+                  "path": "/marked/search/public/result"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:34.123Z",
+                "ms": 1337,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "script marked-search finished after 59ms",
+                "data": {
+                  "script": "marked-search",
+                  "index": 0,
+                  "elapsedMs": 59
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:34.335Z",
+                "ms": 1549,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step write-formats",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:34.340Z",
+                "ms": 1554,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "page read",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:34.689Z",
+                "ms": 1903,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "web storage",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:34.695Z",
+                "ms": 1909,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step package-wacz",
+                "data": {
+                  "step": "package-wacz"
+                }
+              }
+            ],
+            "dropped": 0
+          },
+          "trace": {
+            "lines": [
+              {
+                "kind": "request",
+                "id": "AD0EB1F608566F88F196916048D7683A",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures-1-a.browserhive:8080/marked/search/public?tag=ss-bc7949de",
+                "method": "GET",
+                "resourceType": "Document",
+                "initiator": {
+                  "type": "other"
+                },
+                "startedAt": "2026-11-13T16:36:33.363Z",
+                "ms": 348,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 0
+                },
+                "durationMs": 50,
+                "encodedBytes": 1270,
+                "outcome": "finished",
+                "record": "urn:uuid:4dd3485b-4b24-4db3-b806-eb3d1bf2e5cf"
+              },
+              {
+                "kind": "request",
+                "id": "313.2",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures-1-a.browserhive:8080/favicon.ico",
+                "method": "GET",
+                "resourceType": "Other",
+                "initiator": {
+                  "type": "other"
+                },
+                "startedAt": "2026-11-13T16:36:33.431Z",
+                "ms": 417,
+                "response": {
+                  "status": 404,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 0
+                },
+                "durationMs": 9,
+                "encodedBytes": 261,
+                "outcome": "finished",
+                "record": "urn:uuid:f0cc3fe9-1ae2-451f-bb76-32b88062c875"
+              },
+              {
+                "kind": "request",
+                "id": "313.3",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures-1-a.browserhive:8080/marked/search/public/answer?tag=ss-bc7949de&q=lamp",
+                "method": "GET",
+                "resourceType": "Fetch",
+                "initiator": {
+                  "type": "script",
+                  "url": "http://capture-fixtures-1-a.browserhive:8080/marked/search/public?tag=ss-bc7949de",
+                  "line": 13
+                },
+                "startedAt": "2026-11-13T16:36:34.298Z",
+                "ms": 1283,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 1
+                },
+                "durationMs": 7,
+                "encodedBytes": 254,
+                "outcome": "finished",
+                "record": "urn:uuid:cda39f47-4f23-46e1-a38e-28e781ec39b8"
+              }
+            ],
+            "counts": {
+              "finished": 3,
+              "redirected": 0,
+              "failed": 0,
+              "pending": 0,
+              "notArchived": 0,
+              "denied": 0,
+              "evicted": 0
+            },
+            "dropped": 0
+          }
+        },
+        {
+          "id": "1305",
+          "//": "節目のスクリーンショットを残さなかった取り込み（理由は withheld: content-type の方針が文書を伏せた。置き場の without-screenshots-withheld.wacz）。画面は理由を 1 行で言い、絵のために WACZ を読まない。取り込みの欄のうち settle・completeness・document・screenshots と、ログ・trace の行は、WACZ の中（datapackage.json の browserhive:capture・logs/capture.jsonl・trace/events.jsonl）に在るまま。WACZ に無い欄は筋書きが組んだ: timestamp は WACZ を組んだ時刻（datapackage.json の created）、captureProcessingTimeMs はそこから軸の 0 を引いた値、httpStatusCode は文書の要求の行の status",
+          "url": "http://capture-fixtures-2-a.browserhive:8080/marked/text/secret?tag=e12-mwf7b4uu",
+          "depth": 0,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1305-7000-8000-000000001305",
+          "archiveId": "6aeeedef-be3e-2e35-8b72-fd30df9bf9c2",
+          "capturedAt": "2026-11-13T16:38:54.208Z",
+          "bundledRev": 1,
+          "submittedAt": "2026-11-13T16:38:53.973Z",
+          "finishedAt": "2026-11-13T16:38:55.388Z",
+          "capture": {
+            "status": "success",
+            "timestamp": "2026-11-13T16:38:55.388Z",
+            "captureProcessingTimeMs": 1415,
+            "httpStatusCode": 200,
+            "settle": {
+              "strategy": "fully-loaded",
+              "endedBy": "quiet",
+              "waitedMs": 414,
+              "devicePixelRatio": 1,
+              "limits": {
+                "minMs": 0,
+                "maxMs": 3000,
+                "quietMs": 200,
+                "networkConcurrency": 0
+              },
+              "load": {
+                "atMs": 102
+              },
+              "network": {
+                "quietAtMs": 307
+              },
+              "cpu": {
+                "quietAtMs": 311
+              },
+              "dom": {
+                "quietAtMs": 312
+              }
+            },
+            "completeness": {
+              "bodylessUrls": [],
+              "truncatedUrls": [],
+              "uninterceptedUrls": [],
+              "crashedTargets": [],
+              "complete": true
+            },
+            "document": {
+              "url": "http://capture-fixtures-2-a.browserhive:8080/marked/text/secret?tag=e12-mwf7b4uu",
+              "withheld": "content-type"
+            },
+            "screenshots": [
+              {
+                "stage": "after-load",
+                "skipped": "withheld"
+              },
+              {
+                "stage": "after-behaviors",
+                "skipped": "withheld"
+              }
+            ]
+          },
+          "log": {
+            "lines": [
+              {
+                "at": "2026-11-13T16:38:54.208Z",
+                "ms": 235,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step check-address",
+                "data": {
+                  "step": "check-address"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.261Z",
+                "ms": 288,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step start-recording",
+                "data": {
+                  "step": "start-recording"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.263Z",
+                "ms": 290,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step load-pages",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.264Z",
+                "ms": 291,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "navigation, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.383Z",
+                "ms": 410,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "settle, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.797Z",
+                "ms": 824,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "settled by quiet after 414ms",
+                "data": {
+                  "endedBy": "quiet",
+                  "waitedMs": 414
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.806Z",
+                "ms": 833,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "snapshot after-load, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.853Z",
+                "ms": 880,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "withheld the after-load snapshot and the page's console lines (content-type)",
+                "data": {
+                  "stage": "after-load",
+                  "url": "http://capture-fixtures-2-a.browserhive:8080/marked/text/secret?tag=e12-mwf7b4uu",
+                  "withheld": "content-type"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.854Z",
+                "ms": 881,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "behaviors, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:54.864Z",
+                "ms": 891,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "script autoscroll started",
+                "data": {
+                  "script": "autoscroll",
+                  "index": 0
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.080Z",
+                "ms": 1107,
+                "dpr": 1,
+                "source": "script",
+                "script": "autoscroll",
+                "level": "info",
+                "msg": "report",
+                "data": {
+                  "stopped": "bottom reached after 2 steps",
+                  "reachedBottom": true,
+                  "scrollSteps": 2
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.080Z",
+                "ms": 1107,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "script autoscroll finished after 216ms",
+                "data": {
+                  "script": "autoscroll",
+                  "index": 0,
+                  "elapsedMs": 216
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.083Z",
+                "ms": 1110,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "script autofetch started",
+                "data": {
+                  "script": "autofetch",
+                  "index": 1
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.087Z",
+                "ms": 1114,
+                "dpr": 1,
+                "source": "script",
+                "script": "autofetch",
+                "level": "info",
+                "msg": "report",
+                "data": {
+                  "candidates": 0,
+                  "elements": 0,
+                  "neverRequestedByTheBrowser": 0,
+                  "fromStyleSheets": 0,
+                  "fetched": 0
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.087Z",
+                "ms": 1114,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "script autofetch finished after 4ms",
+                "data": {
+                  "script": "autofetch",
+                  "index": 1,
+                  "elapsedMs": 4
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.293Z",
+                "ms": 1320,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step write-formats",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.337Z",
+                "ms": 1364,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "web storage",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.342Z",
+                "ms": 1369,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "withheld the page-derived artifacts and the page's console lines (content-type)",
+                "data": {
+                  "withheld": "content-type",
+                  "url": "http://capture-fixtures-2-a.browserhive:8080/marked/text/secret?tag=e12-mwf7b4uu"
+                }
+              },
+              {
+                "at": "2026-11-13T16:38:55.342Z",
+                "ms": 1369,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step package-wacz",
+                "data": {
+                  "step": "package-wacz"
+                }
+              }
+            ],
+            "dropped": 0
+          },
+          "trace": {
+            "lines": [
+              {
+                "kind": "request",
+                "id": "061C764C41A6E914BC94B92215C946A8",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures-2-a.browserhive:8080/marked/text/secret?tag=e12-mwf7b4uu",
+                "method": "GET",
+                "resourceType": "Document",
+                "initiator": {
+                  "type": "other"
+                },
+                "startedAt": "2026-11-13T16:38:54.318Z",
+                "ms": 347,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 0
+                },
+                "durationMs": 48,
+                "encodedBytes": 226,
+                "outcome": "finished",
+                "record": "urn:uuid:bcef8b86-0397-4796-8249-53c773125e17"
+              }
+            ],
+            "counts": {
+              "finished": 1,
+              "redirected": 0,
+              "failed": 0,
+              "pending": 0,
+              "notArchived": 0,
+              "denied": 0,
+              "evicted": 0
+            },
+            "dropped": 0
+          }
+        },
+        {
+          "id": "1306",
+          "//": "節目のスクリーンショットを残さなかった取り込み（理由は secret: 取り込みにシークレットを渡した。値は WARC の中で置き換えてある。置き場の without-screenshots-secret.wacz）。取り込みの欄のうち settle・completeness・document・screenshots と、ログ・trace の行は、WACZ の中（datapackage.json の browserhive:capture・logs/capture.jsonl・trace/events.jsonl）に在るまま。WACZ に無い欄は筋書きが組んだ: timestamp は WACZ を組んだ時刻（datapackage.json の created）、captureProcessingTimeMs はそこから軸の 0 を引いた値、httpStatusCode は文書の要求の行の status",
+          "url": "http://capture-fixtures-2-a.browserhive:8080/plain-html",
+          "depth": 0,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1306-7000-8000-000000001306",
+          "archiveId": "cdcbfcf5-aa82-248e-b90d-72abd8163faf",
+          "capturedAt": "2026-11-13T16:36:50.105Z",
+          "bundledRev": 1,
+          "submittedAt": "2026-11-13T16:36:49.867Z",
+          "finishedAt": "2026-11-13T16:36:51.546Z",
+          "capture": {
+            "status": "success",
+            "timestamp": "2026-11-13T16:36:51.546Z",
+            "captureProcessingTimeMs": 1679,
+            "httpStatusCode": 200,
+            "settle": {
+              "strategy": "fully-loaded",
+              "endedBy": "quiet",
+              "waitedMs": 422,
+              "devicePixelRatio": 1,
+              "limits": {
+                "minMs": 0,
+                "maxMs": 3000,
+                "quietMs": 200,
+                "networkConcurrency": 0
+              },
+              "load": {
+                "atMs": 105
+              },
+              "network": {
+                "quietAtMs": 309
+              },
+              "cpu": {
+                "quietAtMs": 318
+              },
+              "dom": {
+                "quietAtMs": 319
+              }
+            },
+            "completeness": {
+              "bodylessUrls": [],
+              "truncatedUrls": [],
+              "uninterceptedUrls": [],
+              "crashedTargets": [],
+              "complete": true
+            },
+            "document": {
+              "url": "http://capture-fixtures-2-a.browserhive:8080/plain-html"
+            },
+            "screenshots": [
+              {
+                "stage": "after-load",
+                "skipped": "secret"
+              },
+              {
+                "stage": "after-behaviors",
+                "skipped": "secret"
+              }
+            ]
+          },
+          "log": {
+            "lines": [
+              {
+                "at": "2026-11-13T16:36:50.105Z",
+                "ms": 238,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step check-address",
+                "data": {
+                  "step": "check-address"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:50.164Z",
+                "ms": 297,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step start-recording",
+                "data": {
+                  "step": "start-recording"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:50.168Z",
+                "ms": 301,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step load-pages",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:50.169Z",
+                "ms": 302,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "navigation, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:50.302Z",
+                "ms": 435,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "settle, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:50.725Z",
+                "ms": 858,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "settled by quiet after 422ms",
+                "data": {
+                  "endedBy": "quiet",
+                  "waitedMs": 422
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:50.738Z",
+                "ms": 871,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "snapshot after-load, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:50.897Z",
+                "ms": 1030,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "behaviors, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:50.959Z",
+                "ms": 1092,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "script sends-value started",
+                "data": {
+                  "script": "sends-value",
+                  "index": 0
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:51.027Z",
+                "ms": 1160,
+                "dpr": 1,
+                "source": "script",
+                "script": "sends-value",
+                "level": "info",
+                "msg": "report",
+                "data": {
+                  "done": true
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:51.028Z",
+                "ms": 1161,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "script sends-value finished after 69ms",
+                "data": {
+                  "script": "sends-value",
+                  "index": 0,
+                  "elapsedMs": 69
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:51.240Z",
+                "ms": 1373,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step write-formats",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:51.242Z",
+                "ms": 1375,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "page read",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:51.493Z",
+                "ms": 1626,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "web storage",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T16:36:51.501Z",
+                "ms": 1634,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step package-wacz",
+                "data": {
+                  "step": "package-wacz"
+                }
+              }
+            ],
+            "dropped": 0
+          },
+          "trace": {
+            "lines": [
+              {
+                "kind": "request",
+                "id": "B623E34D05D6A2C96D87EF766684B9F8",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures-2-a.browserhive:8080/plain-html",
+                "method": "GET",
+                "resourceType": "Document",
+                "initiator": {
+                  "type": "other"
+                },
+                "startedAt": "2026-11-13T16:36:50.220Z",
+                "ms": 355,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 1
+                },
+                "durationMs": 49,
+                "encodedBytes": 254,
+                "outcome": "finished",
+                "record": "urn:uuid:0a6ec6b4-e740-4dcb-b7ac-f01e39c5003e"
+              },
+              {
+                "kind": "request",
+                "id": "678.2",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures-2-a.browserhive:8080/echo/text?v=***",
+                "method": "GET",
+                "resourceType": "Fetch",
+                "initiator": {
+                  "type": "script",
+                  "url": "browserhive-script/0",
+                  "line": 3
+                },
+                "startedAt": "2026-11-13T16:36:50.961Z",
+                "ms": 1096,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 3,
+                  "receiveMs": 1
+                },
+                "durationMs": 58,
+                "encodedBytes": 296,
+                "outcome": "finished",
+                "record": "urn:uuid:316d28db-4842-491a-86f6-07862470a6c0"
+              }
+            ],
+            "counts": {
+              "finished": 2,
+              "redirected": 0,
+              "failed": 0,
+              "pending": 0,
+              "notArchived": 0,
+              "denied": 0,
+              "evicted": 0
+            },
+            "dropped": 0
+          }
+        },
+        {
+          "id": "1307",
+          "//": "文書が 503 を返した取り込み。WACZ は無く、失敗の時点の絵が在る（failureScreenshot は、代役の中の絵のファイル。capture-ledger の答えでは、在るかどうかの真偽になる）。**本物の取り込みの答えではない** —— BrowserHive v30.2.0 の http_error の答えの形に、筋書きが組んだ。絵は、capture-fixtures の /fails-then-succeeds が 503 と一緒に返す本文を、手元の Chrome（1280×800）で撮った WebP（出どころは sandbox/samples/SOURCE.md）",
+          "url": "http://capture-fixtures.capture-ledger:8080/fails-then-succeeds?failTimes=1&key=sandbox",
+          "depth": 0,
+          "state": "failed",
+          "reason": "http: HTTP 503: Service Unavailable",
+          "taskId": "019a5b0c-1307-7000-8000-000000001307",
+          "archiveId": null,
+          "submittedAt": "2026-11-13T16:40:12.234Z",
+          "finishedAt": "2026-11-13T16:40:13.004Z",
+          "failureScreenshot": "failure-screenshots/fails-then-succeeds-503.webp",
+          "capture": {
+            "status": "http_error",
+            "timestamp": "2026-11-13T16:40:12.962Z",
+            "captureProcessingTimeMs": 728,
+            "httpStatusCode": 503,
+            "errorDetails": {
+              "type": "http",
+              "message": "HTTP 503: Service Unavailable",
+              "httpStatusCode": 503,
+              "httpStatusText": "Service Unavailable"
+            }
+          },
+          "log": {
+            "lines": [
+              {
+                "at": "2026-11-13T16:40:12.470Z",
+                "ms": 236,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step check-address",
+                "data": {
+                  "step": "check-address"
+                }
+              },
+              {
+                "at": "2026-11-13T16:40:12.526Z",
+                "ms": 292,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step start-recording",
+                "data": {
+                  "step": "start-recording"
+                }
+              },
+              {
+                "at": "2026-11-13T16:40:12.530Z",
+                "ms": 296,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step load-pages",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:40:12.531Z",
+                "ms": 297,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "navigation, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T16:40:12.652Z",
+                "ms": 418,
+                "dpr": 1,
+                "source": "page",
+                "level": "error",
+                "msg": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+                "data": {
+                  "url": "http://capture-fixtures.capture-ledger:8080/fails-then-succeeds?failTimes=1&key=sandbox"
+                }
+              },
+              {
+                "at": "2026-11-13T16:40:12.960Z",
+                "ms": 726,
+                "source": "browserhive",
+                "level": "error",
+                "msg": "HTTP 503: Service Unavailable"
+              }
+            ],
+            "dropped": 0
+          },
+          "trace": {
+            "lines": [
+              {
+                "kind": "request",
+                "id": "5B0C1307000000000000000000000001",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/fails-then-succeeds?failTimes=1&key=sandbox",
+                "method": "GET",
+                "resourceType": "Document",
+                "initiator": {
+                  "type": "other"
+                },
+                "startedAt": "2026-11-13T16:40:12.584Z",
+                "ms": 350,
+                "response": {
+                  "status": 503,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 0
+                },
+                "durationMs": 48,
+                "encodedBytes": 271,
+                "outcome": "finished"
+              }
+            ],
+            "counts": {
+              "finished": 1,
+              "redirected": 0,
+              "failed": 0,
+              "pending": 0,
+              "notArchived": 0,
+              "denied": 0,
+              "evicted": 0
+            },
+            "dropped": 0
           }
         }
       ]

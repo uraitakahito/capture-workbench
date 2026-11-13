@@ -113,17 +113,26 @@ import {
   bodyKey,
   consoleOf,
   detailsOf,
+  failureScreenshotOf,
+  failureScreenshotPath,
   filterRequests,
+  hasFailureScreenshot,
   hasTrace,
+  locateScreenshots,
   marksOf as traceMarksOf,
   parseTraceHash,
   percentOf,
   readRecords,
   readsRecords,
+  readsScreenshots,
   recordPath,
   requestCountsOf,
   requestKindText,
   requestsOf,
+  screenshotSkipLines,
+  screenshotSkipText,
+  screenshotSrc,
+  screenshotsOf,
   scriptsOf,
   secondsText,
   settleOf,
@@ -4015,6 +4024,10 @@ $("links-fold").addEventListener("click", () => {
  *   read      レコードの一覧を読んだ結果（`{ files, error? }`）。読んでいる間は undefined、WACZ が無ければ null
  *   marks     一覧から作った印（対・metadata だけの要求・写し）
  *   bodies    読んだ metadata の本文（`bodyKey` → 文字）
+ *   shots     節目のスクリーンショットの位置を WACZ の索引から引いた結果（`{ places, error? }`）。引いている間は
+ *             undefined、引かない取り込み（絵の項目が無い・WACZ が無い・見てよくない WACZ）は null
+ *   failure   失敗の時点の絵（`{ src, bytes }` か `{ error }`）。受けている間は undefined、絵の無い取り込みは null
+ *   openShots 元の大きさで出している絵（`data-shot` の値）
  *   selected  選んだ物（`{ row, index }`）
  *   sort      要求の並べ方（`start`・`longest`）。答えが trace を持つ取り込みだけ
  *   only      要求の絞り込み（`all`・`trouble`）。同じ
@@ -4288,7 +4301,178 @@ const drawTraceChart = () => {
       ),
     );
   }
+  // 節目のスクリーンショットを撮り始めた時刻の印（絵そのものは、図の下に並べる）。絵の無い取り込みでは行ごと出さない
+  const shots = traceShots().filter((one) => typeof one.ms === "number");
+  if (shots.length > 0) {
+    chart.append(
+      traceRow(
+        t("trace.row.screenshots"),
+        shots.map((one) =>
+          traceMark({ row: "shot", index: one.index, atMs: one.ms, className: "tick depth", title: t("trace.shot.title", { stage: one.stage, at: secondsText(one.ms) }) }, endMs),
+        ),
+      ),
+    );
+  }
   box.append(chart);
+};
+
+/** 絵の小さい大きさ（CSS の画素）。BrowserHive の既定の viewport（1280×800）と同じ比。 */
+const SHOT_THUMB = { width: 240, height: 150 };
+
+/**
+ * 絵の 1 枚の箱。小さく出し、押すとその場で元の大きさにする（もう 1 度押すと戻す）。**`src` は呼ぶ側が確かめた物だけ**
+ * —— 同じオリジンの `/wacz/…/record/body` か、WebP と確かめた `data:`（`public/timeline.js` の `screenshotSrc` と
+ * `failureScreenshotSrc`）。`src` が無ければ、絵の所に `waiting` の文を出す。字は全部 textContent で入れる。
+ */
+const shotFigure = ({ key, src, alt, waiting, caption }) => {
+  const figure = document.createElement("figure");
+  figure.className = "trace-shot";
+  figure.dataset.shot = key;
+  if (src === undefined) {
+    figure.append(tag("p", waiting, "trace-shot-wait muted"));
+  } else {
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "trace-shot-open";
+    const img = document.createElement("img");
+    img.alt = alt;
+    img.width = SHOT_THUMB.width;
+    img.height = SHOT_THUMB.height;
+    img.decoding = "async";
+    img.src = src;
+    const sync = () => {
+      const opened = traceView.openShots.has(key);
+      figure.classList.toggle("open", opened);
+      open.setAttribute("aria-expanded", String(opened));
+      open.title = opened ? t("trace.shots.shrink") : t("trace.shots.enlarge");
+    };
+    open.addEventListener("click", () => {
+      if (traceView.openShots.has(key)) traceView.openShots.delete(key);
+      else traceView.openShots.add(key);
+      sync();
+    });
+    // 元の大きさの絵は窓より広いので、箱の中で流す（箱は button の外。button の中は流せない）
+    const view = document.createElement("div");
+    view.className = "trace-shot-view";
+    // 読めなかった絵（レコードを開けない・raster でない）は、割れた絵の印の代わりに文で言う
+    img.addEventListener("error", () => view.replaceWith(tag("p", t("trace.shots.imageFailed"), "trace-shot-wait state warn")), { once: true });
+    open.append(img);
+    view.append(open);
+    sync();
+    figure.append(view);
+  }
+  const said = document.createElement("figcaption");
+  said.append(...caption);
+  figure.append(said);
+  return figure;
+};
+
+/** 絵の在る時点（`kept`）。`index` は、この並びの中の番号（図の印と、選んだ物が使う）。 */
+const traceShots = () =>
+  (traceView.answer === undefined ? [] : (screenshotsOf(traceView.answer) ?? []))
+    .filter((one) => one.kept)
+    .map((one, index) => ({ ...one, index }));
+
+/** 図の印で選んだ絵に、枠を付ける。絵の箱は描き直さない（`<img>` を作り直すと、絵を引き直す）。 */
+const syncTraceShots = () => {
+  const { selected } = traceView;
+  for (const figure of document.querySelectorAll("#trace-shots .trace-shot")) {
+    figure.classList.toggle("sel", selected?.row === "shot" && figure.dataset.shot === `stage-${String(selected.index)}`);
+  }
+};
+
+/**
+ * 節目のスクリーンショット。絵の在る時点は、小さい絵と、その下に時点・撮り始めた時刻（軸の上の秒と、レコードの
+ * `WARC-Date`）・大きさ・同じ時点の写しを開くリンク。絵の無い時点は、理由を 1 行で言う。
+ * **欄の無い取り込み（BrowserHive v30.1.0 以前）には、何も足さない。**
+ */
+const drawTraceShots = () => {
+  const box = $("trace-shots");
+  box.replaceChildren();
+  const { answer, shots: read } = traceView;
+  if (answer === undefined || answer.capture === null || answer.capture === undefined) return;
+  const all = screenshotsOf(answer);
+  if (all === undefined) return;
+  box.append(tag("h3", t("trace.shots.title")));
+  const kept = traceShots();
+  if (kept.length > 0) {
+    // 引かなかった（見てよくない WACZ。capture-ledger が鍵を返さない）か、引けなかった
+    if (read === null) {
+      box.append(tag("p", t("trace.shots.forbidden"), "state warn"));
+    } else if (read !== undefined && read.error !== undefined) {
+      const why = read.error.status === 404 ? t("trace.shots.forbidden") : t("trace.shots.unreadable", { said: read.error.message });
+      box.append(tag("p", why, "state warn"));
+    }
+    const objectKey = answer.archive?.objectKey;
+    const row = document.createElement("div");
+    row.className = "trace-shots";
+    for (const one of kept) {
+      const place = read === undefined || read === null ? undefined : read.places.get(one.url);
+      const facts = [
+        typeof one.ms === "number" ? secondsText(one.ms) : undefined,
+        typeof one.bytes === "number" ? t("trace.shots.bytes", { n: one.bytes }) : undefined,
+      ].filter((fact) => fact !== undefined);
+      const caption = [tag("p", one.stage, "mono stage"), tag("p", facts.join(t("common.sep.dot"))), tag("p", one.date, "mono muted date")];
+      // 同じ時点の DOM の写しを replay で開く（WACZ を見てよいときだけ）。写しの URI は、絵の URI の文書の URL から組む ——
+      // 答えの document.url は最後の文書の URL で、スクリプトが文書を替えた取り込みでは、読み込みの後の時点の物と違う。
+      // その時点の写しを残したかどうかは答えに無いので、残さなかった取り込みでは、開いた先に写しが無い
+      if (typeof objectKey === "string" && one.snapshotUri !== undefined) {
+        const opens = tag("p", "", "opens");
+        opens.append(tag("span", t("trace.shots.snapshot"), "muted"));
+        for (const viewer of VIEWERS) {
+          const hit = { stage: one.stage, objectKey, capturedAt: answer.page.capturedAt, url: one.snapshotUri };
+          opens.append(" ", link(hitReplaywebHref(settings[viewer.setting], hit), viewerText(viewer)));
+        }
+        caption.push(opens);
+      }
+      row.append(
+        shotFigure({
+          key: `stage-${String(one.index)}`,
+          src: place === undefined ? undefined : screenshotSrc(answer.archive.id, place),
+          alt: one.documentUrl === undefined ? t("trace.shots.altNoUrl", { stage: one.stage }) : t("trace.shots.alt", { stage: one.stage, url: one.documentUrl }),
+          // 引いている間・索引を読めなかった（理由は上の行が言う）・索引に行が無い
+          waiting: read === undefined ? t("trace.shots.locating") : read === null || read.error !== undefined ? t("trace.shots.notLocated") : t("trace.shots.notIndexed"),
+          caption,
+        }),
+      );
+    }
+    box.append(row);
+  }
+  for (const one of screenshotSkipLines(all)) {
+    const why = screenshotSkipText(one.skipped);
+    box.append(tag("p", one.stage === undefined ? t("trace.shots.none", { why }) : t("trace.shots.noneAt", { stage: one.stage, why }), "trace-shots-none"));
+  }
+  if (kept.length > 0) box.append(tag("p", t("trace.shots.noteSigned"), "trace-shots-note muted"));
+  syncTraceShots();
+};
+
+/** 失敗の時点の絵。答えが「在る」と言う取り込みでだけ出す。 */
+const drawTraceFailure = () => {
+  const box = $("trace-failure");
+  box.replaceChildren();
+  const { answer, failure } = traceView;
+  if (answer === undefined || !hasFailureScreenshot(answer)) return;
+  box.append(tag("h3", t("trace.failureShot.title")));
+  if (failure !== undefined && failure !== null && failure.error !== undefined) {
+    box.append(tag("p", failure.error, "state warn"));
+  } else {
+    const src = failure === undefined || failure === null ? undefined : failure.src;
+    const line = tag("p", t("trace.failureShot.caption"));
+    if (src !== undefined) line.append(t("common.sep.dot"), t("trace.shots.bytes", { n: failure.bytes }));
+    const row = document.createElement("div");
+    row.className = "trace-shots";
+    row.append(
+      shotFigure({
+        key: "failure",
+        src,
+        alt: t("trace.failureShot.alt", { url: String(answer.page.url) }),
+        waiting: t("trace.failureShot.loading"),
+        caption: [line],
+      }),
+    );
+    box.append(row);
+  }
+  box.append(tag("p", t("trace.failureShot.note"), "trace-shots-note muted"));
 };
 
 /**
@@ -4465,6 +4649,7 @@ const drawTraceRequests = () => {
 const drawTracePanel = () => {
   const box = $("trace-panel");
   box.replaceChildren();
+  syncTraceShots(); // 選んだ物が替わるたびにここを通るので、絵の枠もここで合わせる
   const { answer, selected } = traceView;
   if (answer === undefined || selected === undefined) return;
   const axis = axisOf(answer);
@@ -4613,6 +4798,15 @@ const drawTracePanel = () => {
       }
       put(t("trace.panel.open"), opens);
     }
+  } else if (row === "shot") {
+    const one = traceShots()[index];
+    if (one === undefined) return;
+    put(t("trace.panel.screenshot"), one.stage, "mono");
+    put(t("trace.panel.time"), secondsText(one.ms));
+    put(t("trace.panel.takenAt"), t("trace.panel.takenAtNote", { at: one.date }));
+    put(t("trace.panel.size"), typeof one.bytes === "number" ? t("trace.shots.bytes", { n: one.bytes }) : undefined);
+    put(t("trace.panel.document"), one.documentUrl, "mono url");
+    put(t("trace.panel.recordId"), one.record, "mono");
   }
   if (panel.childElementCount > 0) box.append(panel);
 };
@@ -4650,6 +4844,8 @@ const drawTraceLog = () => {
 const drawTrace = () => {
   drawTraceHead();
   drawTraceChart();
+  drawTraceShots();
+  drawTraceFailure();
   drawTraceRequests();
   drawTracePanel();
   drawTraceNotes();
@@ -4680,6 +4876,33 @@ const readTraceBodies = async (wanted) => {
   drawTracePanel();
 };
 
+/** 節目のスクリーンショットの位置を、WACZ の索引から引く（ふつう 1 往復）。絵そのものは `<img>` が 1 枚ずつ引く。 */
+const loadTraceShots = async (crawlId, pageId, answer) => {
+  let read;
+  try {
+    read = await locateScreenshots(fetchJson, answer.archive.id, screenshotsOf(answer));
+  } catch (err) {
+    read = { places: new Map(), error: { status: 0, message: failedText(err) } };
+  }
+  if (!traceIs(crawlId, pageId)) return;
+  traceView.shots = read;
+  drawTraceShots();
+};
+
+/** 失敗の時点の絵を、capture-ledger から受ける（1 往復）。WebP と確かめた物だけを出す。 */
+const loadTraceFailure = async (crawlId, pageId) => {
+  let failure;
+  try {
+    const { status, body } = await fetchJson(failureScreenshotPath(crawlId, pageId));
+    failure = failureScreenshotOf(status, body);
+  } catch (err) {
+    failure = failureScreenshotOf(0, { error: failedText(err) });
+  }
+  if (!traceIs(crawlId, pageId)) return;
+  traceView.failure = failure;
+  drawTraceFailure();
+};
+
 const loadTrace = async (crawlId, pageId) => {
   let answer;
   try {
@@ -4691,6 +4914,11 @@ const loadTrace = async (crawlId, pageId) => {
   if (!traceIs(crawlId, pageId)) return; // 別の取り込みを開いた・一覧へ戻った
   traceAnswer(undefined);
   traceView.answer = answer;
+  // 絵は、要求の読みと並べて読む。**絵の項目が無い取り込みでは、WACZ へ行かない**（引く物が無い）
+  traceView.shots = readsScreenshots(answer) ? undefined : null;
+  traceView.failure = hasFailureScreenshot(answer) ? undefined : null;
+  if (traceView.shots === undefined) void loadTraceShots(crawlId, pageId, answer);
+  if (traceView.failure === undefined) void loadTraceFailure(crawlId, pageId);
   // WACZ の無い取り込み（時間切れ・失敗）と、答えの無いページでは、レコードを読みに行かない
   if (!readsRecords(answer)) {
     traceView.read = null;
@@ -4725,7 +4953,7 @@ const openTrace = (crawlId, pageId) => {
   $("crawls-list").hidden = true;
   $("trace-detail").hidden = false;
   if (traceIs(crawlId, pageId)) return;
-  traceView = { crawlId, pageId, answer: undefined, read: undefined, marks: undefined, bodies: new Map(), selected: undefined, sort: "start", only: "all", log: undefined };
+  traceView = { crawlId, pageId, answer: undefined, read: undefined, marks: undefined, bodies: new Map(), shots: undefined, failure: undefined, openShots: new Set(), selected: undefined, sort: "start", only: "all", log: undefined };
   traceAnswer(undefined);
   drawTrace();
   void loadTrace(crawlId, pageId);

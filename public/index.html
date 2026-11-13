@@ -86,13 +86,15 @@
         <!--
           経緯（#trace/<クロールの id>/<ページの id>・CAPTURE-270）。取り込み 1 回の間に起きたことを、1 本の時間軸に
           並べる。ページの表の結末の欄の「経緯」から開き、一覧と入れ替える（タブは「クロール」のまま）。上から、
-          戻るリンクと題・時間軸の帯・要求の並び・選んだ物・注記・ログ。中身は全部 app.js が組む（表もここには
-          書かない —— docs の絵の箱が、この画面の表を数えないように）。
+          戻るリンクと題・時間軸の帯・節目のスクリーンショット・失敗の時点の絵・要求の並び・選んだ物・注記・ログ。
+          中身は全部 app.js が組む（表もここには書かない —— docs の絵の箱が、この画面の表を数えないように）。
         -->
         <div id="trace-detail" hidden>
           <p id="trace-answer" class="start-answer" hidden></p>
           <div id="trace-head"></div>
           <div id="trace-chart"></div>
+          <div id="trace-shots"></div>
+          <div id="trace-failure"></div>
           <div id="trace-requests"></div>
           <div id="trace-panel"></div>
           <div id="trace-notes"></div>

@@ -214,6 +214,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
 ページの表の結末の後ろの「経緯」を押すと、そのページの取り込み 1 回の経緯が開きます（URL は `#trace/<クロールの id>/<ページの id>`）。タブは「クロール」のまま、一覧と入れ替わり、「← クロールの一覧」で戻ります。「経緯」が付くのは、取り込みの答えが在るページ（撮れた・取れなかった）です。まだ撮っていないページと、見送ったページには付きません。
 
 引くのは capture-ledger の `GET /api/crawls/:id/pages/:page/trace` の 1 本です。BrowserHive が取り込みの答えと一緒に保管庫へ書いた `.result.json` を capture-ledger が読んで返す物で、workbench は並べるだけです。答えが要求の行（`trace`）を持たない取り込み（BrowserHive v30.0.0 より前）では、WACZ の中の WARC のレコードの一覧（[`/wacz/:id/records`](/routes/)）も読みます。
+節目のスクリーンショットを残した取り込みでは、絵の位置を WACZ の索引（[`/wacz/:id/lines`](/routes/)）から引き、絵を [`/wacz/:id/record/body`](/routes/) から出します。失敗の時点の絵が在る取り込みでは、capture-ledger の `GET /api/crawls/:id/pages/:page/trace/failure-screenshot` も引きます。
 
 ![1 ページの取り込みの経緯。上に時間軸の図（取り込みの段・細部・待ち・要求・写しの行）、下に要求の並び。軸は取り込みの始まりからの秒](../../../assets/screens/trace.webp)
 
@@ -251,6 +252,29 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
 - **「写し」は、DOM の写しを撮った時刻。**
   `trace` の在る取り込みでは、BrowserHive が写しを取るときにログへ書く行の位置に置きます。無い取り込みでは、WACZ の中の写しのレコードの時刻です。
   押すと、写しの段の名前と、その写しを replay で開く link が出ます（WACZ を見てよいときだけ）。開く先の文書の URL は、取り込みの答えの `document.url`（リダイレクトの後の URL）です。
+- **図の下に、節目のスクリーンショットが並ぶ。**
+  BrowserHive v30.2.0 から、絵を撮る設定の BrowserHive は、DOM を写すのと同じ時点（読み込みの後の `after-load`・スクリプトの後の `after-behaviors`）に、取り込みのページの viewport の絵（WebP）を残します。取り込みの答えの `screenshots` が、時点ごとに、残した絵か、残さなかった理由を言います。
+  絵は小さく並び（時点の順。`after-load` が先）、押すとその場で元の大きさになります（もう 1 度押すと戻ります。窓より広い絵は、箱の中で横に流れます）。絵の下は、時点・撮り始めた時刻（軸の上の秒と、レコードの `WARC-Date`）・大きさ（バイト）と、同じ時点の DOM の写しを replay で開く link です（WACZ を見てよいときだけ。写しの URI は、絵の URI の文書の URL から組みます）。
+  図の「節目の絵」の行には、撮り始めた時刻の印が並びます。押すと、その絵に枠が付き、下に欄（時点・時刻・大きさ・文書の URL・レコードの ID）が出ます。
+  絵そのものは、WACZ の中の WARC の resource レコードです。位置は、WACZ の索引（CDXJ）を絵の URI と時刻で引いて決め（索引の行の窓を 1 つ。索引が 500 行より長いか、絵の行が長いときだけ、もう少し読みます）、絵は 1 枚ずつ `<img>` が引きます。**絵を 1 枚も残さなかった取り込みでは、絵のために WACZ を読みません。** WACZ を見る許可が無い名乗りには、絵を出さずにそう言います（capture-ledger が WACZ の鍵を返さないので、読みにも行きません）。
+- **絵を残さなかった時点は、理由を 1 行で言う。**
+  理由は BrowserHive が答えに書いた `skipped` で、5 つです。
+
+  | `skipped` | 画面の字が言うこと |
+  | --- | --- |
+  | `disabled` | BrowserHive が絵を撮る設定になっていない（`--stage-screenshots` が切） |
+  | `secret` | 取り込みにシークレットを渡した（値が写りうるので、絵を残さない） |
+  | `withheld` | 方針が文書・画像・メディアを伏せた（content-type の方針を持つ取り込みと、伏せた文書を含む） |
+  | `task-budget` | 絵を足すと、取り込みが残すバイトの上限（`maxTaskBytes`）を超える |
+  | `failed` | 撮れなかった（1 枚 2 秒の内に撮れなかったか、先の 1 枚を諦めた後で試さなかった） |
+
+  どの時点も同じ理由なら 1 行、時点ごとに理由が違うときと、絵の在る時点と混ざるときは、時点ごとに 1 行です。画面の知らない理由は、届いた字のまま出します。
+  答えに `screenshots` の欄が無い取り込み（BrowserHive v30.1.0 以前）では、何も出ません（「残さなかった」と「欄が無い」は別です）。
+- **失敗の時点の絵は、取れなかった取り込みのページが、そのとき見せていた物。**
+  絵を撮る設定の BrowserHive は、文書が 4xx・5xx を返した取り込みと、文書が届いた後で失敗した取り込みで、取り込みのページの絵を 1 枚残します。文書が届く前に読み込みが時間切れになった取り込みには、ありません。
+  取り込みの答え（capture-ledger の `capture.failureScreenshot`）は、在るかどうかだけを言います。在れば、capture-ledger の `GET /api/crawls/:id/pages/:page/trace/failure-screenshot` から絵を受けて、節目のスクリーンショットと同じ形で出します（押すと元の大きさ）。capture-ledger が言う形式が `image/webp` でない答えは、絵として出さずに、そう言います。
+- **節目のスクリーンショットは署名の下に在り、失敗の時点の絵は無い。**
+  節目のスクリーンショットは WACZ の中の記録なので、署名した WACZ では署名が覆います。失敗の時点の絵は WACZ の外のファイルで（取れなかった取り込みは WACZ を作りません）、署名の下にありません。どちらも、取り込みのページが見せていた物をそのまま持ちます。
 - **図の帯と印は、押すと下に欄が出る。**
   始まりと長さ（帯）か、時刻（印）を、秒で言います。
 - **取れなかった取り込みは、止まった段を言う。**
@@ -262,7 +286,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
 - **この画面は、署名の下にない。**
   保管庫の `.result.json`（と、`trace` の無い取り込みでは WACZ）を読んで並べた物です。要求の行は、WACZ の中にはありません。示すための正は、WACZ の中の記録です。
 
-計算（軸・帯・印・棒・数）は `public/timeline.js` で、`test/timeline.test.mjs` と `test/timeline-trace.test.mjs` が、手元の capture-fixtures を撮った本物の答えで固定しています。
+計算（軸・帯・印・棒・数・絵の位置）は `public/timeline.js` で、`test/timeline.test.mjs` と `test/timeline-trace.test.mjs` が、手元の capture-fixtures を撮った本物の答えで固定しています。絵の所は `test/timeline-shots.test.mjs` が、BrowserHive の取り込みが作った本物の WACZ（`sandbox/samples/`）で固定しています。
 
 ### 状態は stopReason と合わせて言う
 

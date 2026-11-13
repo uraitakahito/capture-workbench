@@ -24,6 +24,15 @@
  * - **始まりの印**: request と response の対。対の `WARC-Date` は要求の始まり。
  * - **記録した時刻の印**: metadata だけが在る要求（終わらなかった・失敗した・止めた・残さなかった）。この
  *   `WARC-Date` は BrowserHive がレコードを書いた時刻で、始まりではない（終わらなかった要求なら、記録を止めた時刻）。
+ *
+ * ## 絵は 2 種類
+ *
+ * **節目のスクリーンショット（BrowserHive v30.2.0 から）** は、答えの `capture.screenshots` が時点ごとに述べる。
+ * 絵そのものは WACZ の中の WARC の resource レコードで、位置は索引（CDXJ）を項目の `url` と `date` で引く。
+ * **引きに行くのは、絵の項目が在る取り込みだけ** —— 欄が無い答え・全部が「残さなかった」の答えでは、WACZ を読まない。
+ *
+ * **失敗の時点の絵** は WACZ の外のファイルで、答えは在るかどうか（`capture.failureScreenshot`）だけを言う。
+ * 中身は capture-ledger の別のエンドポイントから受け、WebP と確かめた物だけを `data:` の URL にする。
  */
 import { errorText, t } from "./i18n.js";
 
@@ -576,4 +585,245 @@ export const snapshotsFromLog = (lines, capture) => {
     });
   }
   return out;
+};
+
+// ── 節目のスクリーンショットと、失敗の時点の絵（BrowserHive v30.2.0 から）────────────
+
+/** 絵を撮る時点。並びは取り込みの順（読み込みの後 → スクリプトの後）。 */
+export const SCREENSHOT_STAGES = ["after-load", "after-behaviors"];
+
+const SCREENSHOT_URN = "urn:browserhive:screenshot:";
+
+/** 絵の形式。BrowserHive が残す絵は WebP だけで、画面はほかの形式を `<img>` に渡さない。 */
+export const SCREENSHOT_MIME = "image/webp";
+
+/**
+ * 答えの `capture.screenshots`（BrowserHive が書いたまま。時点ごとの成り行き）を、時点の順に並べた物。
+ *
+ * **欄の無い答え（BrowserHive v30.1.0 以前）は undefined** —— 「絵を残さなかった」と「欄が無い」は別で、欄が無ければ
+ * 画面は何も足さない。並びは `SCREENSHOT_STAGES` の順（知らない時点は後ろ。同じ時点は届いた順）。
+ *
+ * - 絵の在る項目: `{ stage, kept: true, url, date, bytes, record, documentUrl, snapshotUri, ms }`。`url` は絵のレコードの
+ *   URI（`urn:browserhive:screenshot:<時点>:<文書の URL>`）、`date` は撮り始めた時刻（レコードの `WARC-Date`）。
+ *   `documentUrl` はその URI の文書の URL、`snapshotUri` は同じ時点の DOM の写しの URI、`ms` は軸の上の位置
+ *   （`date` − 軸の 0。軸を組めなければ無い）
+ * - 無い項目: `{ stage, kept: false, skipped }`。`skipped` は残さなかった理由（`SCREENSHOT_SKIPS`）
+ */
+export const screenshotsOf = (answer) => {
+  const items = answer?.capture?.screenshots;
+  if (!Array.isArray(items)) return undefined;
+  const originMs = axisOf(answer)?.originMs;
+  const rank = (stage) => {
+    const at = SCREENSHOT_STAGES.indexOf(stage);
+    return at < 0 ? SCREENSHOT_STAGES.length : at;
+  };
+  return items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item !== null && typeof item === "object" && typeof item.stage === "string")
+    .sort((a, b) => rank(a.item.stage) - rank(b.item.stage) || a.index - b.index)
+    .map(({ item }) => {
+      const { stage } = item;
+      if (typeof item.url !== "string" || typeof item.date !== "string") {
+        return { stage, kept: false, skipped: typeof item.skipped === "string" ? item.skipped : "" };
+      }
+      const prefix = `${SCREENSHOT_URN}${stage}:`;
+      const documentUrl = item.url.startsWith(prefix) ? item.url.slice(prefix.length) : undefined;
+      const at = epoch(item.date);
+      return {
+        stage,
+        kept: true,
+        url: item.url,
+        date: item.date,
+        ...(typeof item.bytes === "number" && { bytes: item.bytes }),
+        ...(typeof item.record === "string" && { record: item.record }),
+        ...(documentUrl !== undefined && { documentUrl, snapshotUri: `urn:browserhive:snapshot:${stage}:${documentUrl}` }),
+        ...(at !== undefined && originMs !== undefined && { ms: at - originMs }),
+      };
+    });
+};
+
+/**
+ * 絵のレコードの位置を、WACZ へ引きに行くか。**絵の項目が 1 つも無い取り込み（欄が無い・全部 `skipped`）では
+ * 行かない** —— 理由を言うのに WACZ は要らない。WACZ の無い取り込みと、見てよくない WACZ（capture-ledger が鍵
+ * `objectKey` を返さない）でも行かない —— 行っても、capture-ledger が 404 で断る。
+ */
+export const readsScreenshots = (answer) =>
+  typeof answer?.archive?.id === "string" &&
+  typeof answer.archive.objectKey === "string" &&
+  (screenshotsOf(answer) ?? []).some((shot) => shot.kept);
+
+const SCREENSHOT_SKIP_TEXT = {
+  disabled: () => t("trace.shots.skipped.disabled"),
+  secret: () => t("trace.shots.skipped.secret"),
+  withheld: () => t("trace.shots.skipped.withheld"),
+  "task-budget": () => t("trace.shots.skipped.taskBudget"),
+  failed: () => t("trace.shots.skipped.failed"),
+};
+
+/** 絵を残さなかった理由（`skipped`）。並びは、BrowserHive が 2 つ以上当たるときに先に書く順。 */
+export const SCREENSHOT_SKIPS = Object.keys(SCREENSHOT_SKIP_TEXT);
+
+/** 残さなかった理由の字。知らない理由は届いた字のまま、理由の無い項目は「書かれていない」。 */
+export const screenshotSkipText = (skipped) => {
+  if (Object.hasOwn(SCREENSHOT_SKIP_TEXT, skipped)) return SCREENSHOT_SKIP_TEXT[skipped]();
+  return skipped === "" || skipped === undefined ? t("trace.shots.skipped.unsaid") : String(skipped);
+};
+
+/**
+ * 絵の無い時点を、言う行にまとめる。**理由が全部同じで、絵が 1 枚も無ければ 1 行**（`stage` は無い）。理由が時点ごとに
+ * 違うか、絵の在る時点と混ざるときは、時点ごとに 1 行。絵の無い時点が無ければ空。
+ */
+export const screenshotSkipLines = (shots) => {
+  const skipped = (shots ?? []).filter((shot) => !shot.kept);
+  if (skipped.length === 0) return [];
+  const same = skipped.every((shot) => shot.skipped === skipped[0].skipped);
+  if (same && skipped.length === shots.length) return [{ skipped: skipped[0].skipped }];
+  return skipped.map((shot) => ({ stage: shot.stage, skipped: shot.skipped }));
+};
+
+/** WACZ の索引（CDXJ）の名前。BrowserHive は、圧縮しない 1 本をここに書く。 */
+export const INDEX_PATH = "indexes/index.cdxj";
+
+/** 索引を 1 回に読む行の数（daemon の行の窓の上限）。 */
+export const INDEX_COUNT = 500;
+
+/** 索引を読む窓の数の上限。超えたら、見つかった分と理由を返す。 */
+export const INDEX_WINDOWS_MAX = 20;
+
+/** 索引の行の窓のエンドポイント（workbench の `/wacz/`）。 */
+export const indexLinesPath = (archiveId, from) =>
+  `/wacz/${encodeURIComponent(archiveId)}/lines?path=${encodeURIComponent(INDEX_PATH)}&from=${String(from)}&count=${String(INDEX_COUNT)}`;
+
+/** 索引の 1 行を丸ごと読むエンドポイント。窓が切った長い行（1 行 2 KiB まで）のため。 */
+export const indexLinePath = (archiveId, n) =>
+  `/wacz/${encodeURIComponent(archiveId)}/line?path=${encodeURIComponent(INDEX_PATH)}&n=${String(n)}`;
+
+/** CDXJ の時刻（14 桁。秒まで）。読めない時刻は undefined。 */
+export const cdxjTimestamp = (date) => {
+  const ms = epoch(date);
+  return ms === undefined ? undefined : new Date(ms).toISOString().replace(/[-:T]/g, "").slice(0, 14);
+};
+
+/**
+ * 絵の項目を引く、索引の行の頭（`<鍵> <時刻> `）。BrowserHive は絵の行の鍵を、絵の URI のまま書く（SURT にしない）
+ * ので、項目の `url` と `date` がそのまま鍵と時刻になる（WACZ Profile の #archive-files）。
+ */
+export const screenshotIndexKey = (shot) => `${shot.url} ${String(cdxjTimestamp(shot.date))} `;
+
+/**
+ * 索引の 1 行（`<鍵> <時刻> <JSON>`）から、絵のレコードの位置を読む。`filename` は `archive/` からの相対（WACZ の
+ * 慣習）。**`mime` が WebP でない行・位置が揃わない行は undefined** —— 絵でない物を `<img>` に渡さない。
+ */
+export const screenshotPlaceOf = (line, shot) => {
+  const head = screenshotIndexKey(shot);
+  if (typeof line !== "string" || !line.startsWith(head)) return undefined;
+  let fields;
+  try {
+    fields = JSON.parse(line.slice(head.length));
+  } catch {
+    return undefined;
+  }
+  if (fields === null || typeof fields !== "object" || fields.mime !== SCREENSHOT_MIME) return undefined;
+  const offset = Number(fields.offset);
+  const length = Number(fields.length);
+  const { filename } = fields;
+  if (typeof filename !== "string" || filename === "" || filename.includes("/")) return undefined;
+  if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(length) || length <= 0) return undefined;
+  return { path: `archive/${filename}`, offset, length };
+};
+
+/**
+ * 絵のレコードの位置を、WACZ の索引から引く。`fetchJson(path)` は `{ status, body }` を返す関数（画面は `fetch`、
+ * 試験は偽物を渡す）。答えは `{ places, error? }` で、`places` は絵の URI → `{ path, offset, length }`。
+ *
+ * **往復は、ふつう 1 回**（索引の行の窓を 1 つ）。絵の項目が無ければ 0 回。増えるのは 2 つの場合だけ:
+ * 索引が `INDEX_COUNT` 行より長く、まだ見つかっていない絵が在る（次の窓）／絵の行が窓の 1 行の上限より長い
+ * （その行だけ丸ごと読む。文書の URL が長いとき）。全部見つかったら、そこで止める。
+ */
+export const locateScreenshots = async (fetchJson, archiveId, shots) => {
+  const wanted = (shots ?? []).filter((shot) => shot.kept);
+  const places = new Map();
+  if (wanted.length === 0) return { places };
+  const missing = () => wanted.filter((shot) => !places.has(shot.url));
+  const take = (text) => {
+    for (const shot of missing()) {
+      const place = screenshotPlaceOf(text, shot);
+      if (place !== undefined) places.set(shot.url, place);
+    }
+  };
+  let from = 0;
+  for (let n = 0; n < INDEX_WINDOWS_MAX; n += 1) {
+    const { status, body } = await fetchJson(indexLinesPath(archiveId, from));
+    if (status !== 200) return { places, error: { status, message: errorText(body) ?? `HTTP ${String(status)}` } };
+    for (const line of body.lines ?? []) {
+      if (line.binary === true || typeof line.text !== "string") continue;
+      if (line.cut !== true) {
+        take(line.text);
+        continue;
+      }
+      // 切られた行は JSON が閉じていない。頭が欲しい絵の鍵に合う（か、鍵の途中で切れている）行だけ、丸ごと読む
+      const maybe = missing().some((shot) => {
+        const head = screenshotIndexKey(shot);
+        return line.text.startsWith(head) || head.startsWith(line.text);
+      });
+      if (!maybe) continue;
+      const whole = await fetchJson(indexLinePath(archiveId, line.n));
+      if (whole.status === 200 && typeof whole.body?.text === "string" && whole.body.cut !== true) take(whole.body.text);
+    }
+    if (missing().length === 0 || typeof body.next !== "number") return { places };
+    from = body.next;
+  }
+  return {
+    places,
+    error: { status: 0, message: t("trace.shots.indexTooLong", { n: INDEX_WINDOWS_MAX * INDEX_COUNT }) },
+  };
+};
+
+/**
+ * 絵の `<img>` に渡す URL。**同じオリジンの `/wacz/…/record/body` だけ** —— 取り込みのページの中身なので、daemon が
+ * raster の画像と確かめ、`nosniff` と `sandbox` を付けて返す道を通す。
+ */
+export const screenshotSrc = (archiveId, place) =>
+  `/wacz/${encodeURIComponent(archiveId)}/record/body?path=${encodeURIComponent(place.path)}&offset=${String(place.offset)}&length=${String(place.length)}`;
+
+/** 答えが、失敗の時点の絵が在ると言うか（`capture.failureScreenshot`。場所は返らない）。 */
+export const hasFailureScreenshot = (answer) => answer?.capture?.failureScreenshot === true;
+
+/** 失敗の時点の絵のエンドポイント（capture-ledger）。 */
+export const failureScreenshotPath = (crawlId, pageId) => `${tracePath(crawlId, pageId)}/failure-screenshot`;
+
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * 失敗の時点の絵のエンドポイントの答え（`{ contentType, base64 }`）を、`<img>` に渡す `data:` の URL にする。
+ * **`contentType` が WebP でない答え・base64 でない字は undefined**（出さない）—— 絵は取り込みのページの中身で、
+ * 形式を確かめずに `data:` に組むと、絵でない物（SVG・HTML）を画面のオリジンで開くことになる。
+ */
+export const failureScreenshotSrc = (body) => {
+  if (body === null || typeof body !== "object" || body.contentType !== SCREENSHOT_MIME) return undefined;
+  if (typeof body.base64 !== "string" || !BASE64.test(body.base64)) return undefined;
+  return `data:${SCREENSHOT_MIME};base64,${body.base64}`;
+};
+
+/** base64 の字から、元のバイト数。 */
+export const base64Bytes = (base64) => {
+  const text = String(base64);
+  const pad = text.endsWith("==") ? 2 : text.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((text.length * 3) / 4) - pad);
+};
+
+/**
+ * 失敗の時点の絵のエンドポイントの答えを、画面が出す物にする。出せれば `{ src, bytes }`、出せなければ `{ error }`
+ * （言う文）。404 は「絵が無い」、`contentType` が WebP でない答えと base64 でない字は「出さない」。
+ */
+export const failureScreenshotOf = (status, body) => {
+  if (status === 404) return { error: t("trace.failureShot.missing") };
+  if (status !== 200) {
+    return { error: t("trace.failureShot.unreadable", { said: errorText(body) ?? `HTTP ${String(status)}` }) };
+  }
+  const src = failureScreenshotSrc(body);
+  if (src !== undefined) return { src, bytes: base64Bytes(body.base64) };
+  return body?.contentType === SCREENSHOT_MIME
+    ? { error: t("trace.failureShot.invalid") }
+    : { error: t("trace.failureShot.notWebp", { type: String(body?.contentType).slice(0, 80) }) };
 };

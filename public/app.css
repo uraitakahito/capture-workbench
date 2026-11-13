@@ -2314,7 +2314,8 @@ body[data-face="scripts"] main {
 
 /*
  * 経緯（#trace/<クロールの id>/<ページの id>・CAPTURE-270）。取り込み 1 回の間に起きたことを、1 本の時間軸に並べる。
- * 上から、題・帯（取り込みの段・細部・待ち・スクリプト・console・要求・写し）・要求の並び・選んだ物・注記・ログ。
+ * 上から、題・帯（取り込みの段・細部・待ち・スクリプト・console・要求・写し・節目の絵）・節目のスクリーンショット・
+ * 失敗の時点の絵・要求の並び・選んだ物・注記・ログ。
  * 帯と印は、位置と幅を % で置いた button（押すと下の欄に出る）。色は全部 token から。全体の table の規則
  * （min-width と nowrap）は継がない —— この画面の表はログの箱だけで、その規則は上（tr.detail と並べた所）に在る。
  */
@@ -2465,6 +2466,9 @@ body[data-face="scripts"] main {
 .trace-track .tick.accent {
   color: var(--accent);
 }
+.trace-track .tick.depth {
+  color: var(--depth);
+}
 .trace-track .sel {
   outline: 2px solid var(--ink);
   outline-offset: 1px;
@@ -2587,6 +2591,113 @@ body[data-face="scripts"] main {
 .trace-panel dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+/*
+ * 節目のスクリーンショットと、失敗の時点の絵。小さい絵（240×150。BrowserHive の既定の viewport と同じ比）を横に並べ、
+ * 押すとその場で元の大きさにする（窓より広い絵は、箱の中で流す）。絵の下に、時点・時刻・大きさ・写しを開くリンク。
+ * 絵の無い時点は、理由を 1 行で言う。
+ */
+#trace-shots h3,
+#trace-failure h3 {
+  margin: 14px 0 6px;
+  font-size: 14px;
+}
+.trace-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.trace-shot {
+  width: 242px;
+  max-width: 100%;
+  margin: 0;
+  font-size: 12.5px;
+}
+.trace-shot.open {
+  width: 100%;
+}
+.trace-shot-view {
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--ground);
+}
+.trace-shot.open .trace-shot-view {
+  max-height: 80vh;
+  overflow: auto;
+}
+.trace-shot.sel .trace-shot-view,
+.trace-shot.sel .trace-shot-wait {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.trace-shot-open {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 0;
+  cursor: zoom-in;
+}
+.trace-shot.open .trace-shot-open {
+  max-width: none;
+  cursor: zoom-out;
+}
+.trace-shot-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* 小さい絵は、比を保って箱に収める（左上を合わせる）。開いた絵は、絵そのものの大きさ */
+.trace-shot-open img {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  height: 150px;
+  object-fit: contain;
+  object-position: left top;
+}
+.trace-shot.open .trace-shot-open img {
+  width: auto;
+  max-width: none;
+  height: auto;
+}
+.trace-shot-wait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 242px;
+  max-width: 100%;
+  height: 152px;
+  margin: 0;
+  padding: 8px;
+  border: 1px dashed var(--line);
+  border-radius: 2px;
+  text-align: center;
+}
+.trace-shot figcaption p {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+.trace-shot figcaption .stage {
+  font-weight: 600;
+}
+.trace-shot figcaption .date {
+  font-size: 11px;
+}
+.trace-shot figcaption .opens > span {
+  display: block;
+}
+.trace-shots-none,
+.trace-shots-note {
+  max-width: 62em;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.trace-shots-note {
+  font-size: 12px;
 }
 .trace-notes {
   margin: 12px 0 0;
