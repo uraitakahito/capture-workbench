@@ -9,19 +9,20 @@
  * - `POST /api/crawls/:id/inline/:name/fix` —— その場の TS の直し方を Claude に訊く。**検査に通った案だけ**が
  *   200 で返り、Claude を呼んだ答えには回数と費用が載る
  *
- * capture-ledger の文（`error`）は言い換えない。状態の数と一緒に、そのまま出す。字は辞書（`i18n/*.json`）に在る。
+ * capture-ledger の句（`error`）は、辞書に在れば訳し（`errorText`）、状態の数と一緒に出す。字は辞書（`i18n/*.json`）に在る。
  */
 import { errorText, t } from "./i18n.js";
 
 /** 失敗の文が、型の検査で落ちたことを言うか（capture-scheduler の compile の段の文 `compile 422 CompileFailed: …`）。 */
 export const failedOnTypes = (error) => typeof error === "string" && /(?:^|\]\s*)compile 422 /.test(error);
 
-/** capture-ledger の答えの文。無ければそう言う。 */
+/** capture-ledger の答えの文（句は辞書に在れば訳す。`errorText`）。無ければそう言う。 */
 const saidOf = (body) => errorText(body) ?? t("common.noText");
 
 /**
  * エンドポイントが無い 404 か（Fastify の既定の文は "Route GET:… not found"）。行が無い・見えない 404 は "not found" で、
  * こちらは capture-ledger がそのエンドポイントを出していない —— どちらのエンドポイントも、capture-ledger の設定が無ければエンドポイントごと出さない。
+ * 見るのは Fastify の `message` で、capture-ledger の句（`error`）ではない —— 句の文は `errorText` の 1 通りだけ。
  */
 const routeMissing = (status, body) =>
   status === 404 && typeof body?.message === "string" && body.message.startsWith("Route ");
@@ -80,7 +81,7 @@ const spentOf = (body) => {
 };
 
 /**
- * 直し方の答え（`POST …/fix`）の 1 行。200 は直した版が描けるので `kind: "ok"`、ほかは capture-ledger の文をそのまま。
+ * 直し方の答え（`POST …/fix`）の 1 行。200 は直した版が描けるので `kind: "ok"`、ほかは capture-ledger の句（辞書に在れば訳す）。
  * 上限（429）は、この月に使った額と上限を添える。
  */
 export const fixAnswer = (status, body) => {

@@ -94,7 +94,7 @@ test("202 は始めた 1 本を、409 は塞いでいる 1 本を、決めた文
   assert.doesNotMatch(startAnswer(409, { error: "a crawl is already in progress" }).text, /（crawl /);
 });
 
-test("capture-ledger の文は言い換えず、hint があれば添える", () => {
+test("capture-ledger の句は訳し、hint があれば添える（鍵の無い hint は届いた字のまま）", () => {
   const empty = startAnswer(400, {
     error: "no scripts are registered",
     hint: "pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])",
@@ -102,9 +102,9 @@ test("capture-ledger の文は言い換えず、hint があれば添える", () 
   assert.equal(empty.kind, "bad");
   assert.equal(
     empty.text,
-    "400 —— no scripts are registered（pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])）",
+    "400 —— 登録済みのスクリプトがありません（pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])）",
   );
-  assert.equal(startAnswer(404, { error: "not found" }).text, "404 —— not found");
+  assert.equal(startAnswer(404, { error: "not found" }).text, "404 —— 見つかりません");
 });
 
 test("Fastify の答えは message を拾う —— error には \"Not Found\" しか無い", () => {
@@ -318,11 +318,11 @@ test("名前の綴りは検査しない —— 読めない名前も、そのま
 test("capture-ledger が名指した ids を、文の後に添える", () => {
   assert.equal(
     startAnswer(400, { error: "unknown script ids", ids: ["typo-scroll"] }).text,
-    "400 —— unknown script ids: typo-scroll",
+    "400 —— 知らないスクリプトの id です: typo-scroll",
   );
   assert.equal(
     startAnswer(400, { error: "duplicate script ids", ids: ["inline-a", "autofetch"] }).text,
-    "400 —— duplicate script ids: inline-a, autofetch",
+    "400 —— スクリプトの id が重なっています: inline-a, autofetch",
   );
 });
 
@@ -433,7 +433,7 @@ test("宣言の答えは、欄の宣言と、欄が出ない理由の 1 行に�
   );
   assert.deepEqual(inlineDeclared(503, { error: "ts-compile unreachable" }), {
     params: [],
-    note: "宣言を確かめられません（503 —— ts-compile unreachable）",
+    note: "宣言を確かめられません（503 —— ts-compile-service に届きません）",
   });
   // エンドポイントを出していない capture-ledger（Fastify の文）。本文の形が違う 200 も、読めたことにしない
   assert.equal(
@@ -534,10 +534,10 @@ test("startBody は変数が 1 つでも在るときだけ variables を持つ",
 });
 
 test("変数とシークレットの 400 は、capture-ledger が名指した名前（シークレットは Windmill の path も）を文の後に添える", () => {
-  assert.equal(startAnswer(400, { error: "missing variables", names: ["query"] }).text, "400 —— missing variables: query");
+  assert.equal(startAnswer(400, { error: "missing variables", names: ["query"] }).text, "400 —— 必須の変数が渡されていません: query");
   assert.equal(
     startAnswer(400, { error: "unknown variables", names: ["qeury", "waitms"] }).text,
-    "400 —— unknown variables: qeury, waitms",
+    "400 —— 知らない変数です: qeury, waitms",
   );
   assert.equal(
     startAnswer(400, {
@@ -545,30 +545,30 @@ test("変数とシークレットの 400 は、capture-ledger が名指した名
       secrets: [{ name: "api_token", path: "f/waggle_secrets/api_token", declaredBy: ["inline-probe"] }],
       hint: "wmill variable add f/waggle_secrets/api_token --value … --secret",
     }).text,
-    "400 —— unknown secrets: api_token（f/waggle_secrets/api_token）" +
+    "400 —— Windmill に無いシークレットです: api_token（f/waggle_secrets/api_token）" +
       "（wmill variable add f/waggle_secrets/api_token --value … --secret）",
   );
   assert.equal(
     startAnswer(400, { error: "not a secret variable", secrets: [{ name: "api_token" }] }).text,
-    "400 —— not a secret variable: api_token",
+    "400 —— Windmill の変数が secret ではありません: api_token",
   );
   assert.equal(
     startAnswer(400, { error: "secrets cannot be passed as variables", names: ["api_token"] }).text,
-    "400 —— secrets cannot be passed as variables: api_token",
+    "400 —— シークレットは変数として渡せません: api_token",
   );
   // 宣言の形が読めないその場の TS は、id と理由（hint）
   assert.equal(
     startAnswer(400, { error: "invalid params", script: "inline-probe", hint: "同じ名前が 2 度: q" }).text,
-    "400 —— invalid params: inline-probe（同じ名前が 2 度: q）",
+    "400 —— params の宣言を読めません: inline-probe（同じ名前が 2 度: q）",
   );
-  assert.equal(startAnswer(503, { error: "windmill unreachable" }).text, "503 —— windmill unreachable");
+  assert.equal(startAnswer(503, { error: "windmill unreachable" }).text, "503 —— Windmill に届きません");
 });
 
 test("シークレットの 400（capture-ledger v0.90.0）: 残すかの食い違いは名前を、隠せない形式は名前と hint を添える —— 形式は hint の中", () => {
   // 本文は capture-ledger の src/crawl/values.ts の checkValues と formatsRefusal の形
   assert.equal(
     startAnswer(400, { error: "conflicting params", names: ["api_token"] }).text,
-    "400 —— conflicting params: api_token",
+    "400 —— 同じ名前の宣言が食い違っています: api_token",
   );
   const refused = startAnswer(400, {
     error: "formats that cannot hide secrets",
@@ -581,7 +581,7 @@ test("シークレットの 400（capture-ledger v0.90.0）: 残すかの食い�
   assert.equal(refused.kind, "bad");
   assert.equal(
     refused.text,
-    "400 —— formats that cannot hide secrets: api_token, session" +
+    "400 —— いまの形式では隠せないシークレットがあります: api_token, session" +
       "（CAPTURE_LEDGER_CAPTURE_FORMATS の png・html は値を置き換えられない (BrowserHive が断る)。" +
       '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く）',
   );
@@ -791,15 +791,15 @@ test("深さと枚数が空なら capture-ledger の既定と言い、始めら�
 test("規則の 400 は、名指した行と起点を文の後に添える", () => {
   assert.equal(
     startAnswer(400, { error: "rules that can never match", rules: [{ rule: 2, coveredBy: 1 }] }).text,
-    "400 —— rules that can never match: 2 行目（1 行目に覆われる）",
+    "400 —— 当たることのない規則があります: 2 行目（1 行目に覆われる）",
   );
   assert.equal(
     startAnswer(400, { error: "invalid rule patterns", rules: [{ rule: 3, pattern: "ADS.site.test" }] }).text,
-    "400 —— invalid rule patterns: 3 行目（ADS.site.test）",
+    "400 —— 読めない規則があります: 3 行目（ADS.site.test）",
   );
   assert.equal(
     startAnswer(400, { error: "seeds the rules do not follow", seeds: ["https://ads.site.test/"] }).text,
-    "400 —— seeds the rules do not follow: https://ads.site.test/",
+    "400 —— 規則が辿らない起点があります: https://ads.site.test/",
   );
 });
 
@@ -897,22 +897,22 @@ test("英語: 始められない理由と行ごとの印", () => {
   ]);
 });
 
-test("英語: 始めた答え —— capture-ledger の文は訳さず、繋ぐ形だけが英語になる", () => {
+test("英語: 始めた答え —— capture-ledger の句は辞書で訳し、鍵の無い hint は届いた字のまま", () => {
   const answer = (status, body) => inEnglish(() => startAnswer(status, body).text);
   assert.equal(answer(202, { crawlId: "9072b625-1111-4000-8000-000000000000" }), "Crawl started (crawl 9072b625).");
   assert.equal(answer(409, {}), "A crawl is running. The next one cannot start until it ends.");
   assert.equal(
     answer(400, { error: "rules that can never match", rules: [{ rule: 2, coveredBy: 1 }, { rule: 3, pattern: "ADS.site.test" }] }),
-    "400 — rules that can never match: row 2 (covered by row 1), row 3 (ADS.site.test)",
+    "400 — Rules that can never match: row 2 (covered by row 1), row 3 (ADS.site.test)",
   );
   assert.equal(
     answer(400, { error: "unknown secrets", secrets: [{ name: "api_token", path: "f/waggle_secrets/api_token" }], hint: "wmill variable add" }),
-    "400 — unknown secrets: api_token (f/waggle_secrets/api_token) (wmill variable add)",
+    "400 — Unknown secrets: api_token (f/waggle_secrets/api_token) (wmill variable add)",
   );
   assert.equal(answer(0, {}), "The workbench itself cannot be reached (The answer has no message)");
   assert.equal(
     inEnglish(() => inlineDeclared(503, { error: "ts-compile unreachable" }).note),
-    "Cannot check the declarations (503 — ts-compile unreachable)",
+    "Cannot check the declarations (503 — ts-compile-service cannot be reached)",
   );
 });
 

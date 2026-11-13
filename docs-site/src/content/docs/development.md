@@ -79,13 +79,17 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
   `public/vendor/intl-messageformat.js` ([The bundles](#the-bundles)).
 - **A key is `<view>.<group>.<meaning>`.** The view is its name in the code (`crawls`, `start`,
   `schedules`, `changes`, `archives`, `search`, `scripts`, `wacz`, `links`, `trace`), `common` is
-  for what every view shows, and `workbench.error.<phrase>` is for the errors of the workbench's
-  own server ([What failures look like](/routes/#what-failures-look-like)). **Write a key out as a
+  for what every view shows, `workbench.error.<phrase>` is for the errors of the workbench's
+  own server ([What failures look like](/routes/#what-failures-look-like)), and
+  `ledger.error.<phrase>`, `ledger.hint.<key>` and `ledger.list.*` are for the ledger's refusals
+  (below). **Write a key out as a
   string; never assemble one.** The check compares the keys the code names with the dictionaries,
   and it cannot see a key that is put together at run time. A table from a value to its words is
   written as a function that returns the words (`actionText` in `public/start.js`), not as a table
   of keys. Where a key does have to be written outside `t()` (a phrase that arrives as data and is
-  looked up with `phraseText`), wrap it in `key("…")` so that the check counts it.
+  looked up with `phraseText`), wrap it in `key("…")` so that the check counts it. The keys
+  under `ledger.` are the one exception: `public/i18n.js` puts them together from the ledger's
+  answer, so the code names none of them.
 - **In JavaScript, `t("key", { values })`.** For a sentence with an element in it,
   `tNodes("key", { code: (text) => element })` returns strings and elements to hand to `append`.
   No API that takes HTML is used, for the dictionaries either. **In `public/index.html`, write no
@@ -104,16 +108,48 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
   `error`. Where it is shown, `phraseText` looks the phrase up (`crawls.reason.<phrase>`); a
   phrase that is not in the dictionary, such as one stored before or written by another system,
   is shown as it arrived.
-- **What is not translated:** what the ledger, BrowserHive, Windmill and the daemon return
-  (states such as `captured`, step names, log lines, failure reasons), proper names
+- **What is not translated:** what was stored, or written by another system, and arrives as
+  data: states such as `captured`, step names, log lines, and stored failure reasons (a crawl's
+  `error`, the reason of a schedule's run, the reason a bundle could not be written; only the
+  phrases the workbench itself sent are looked up, as above). Also proper names
   (ReplayWeb.page ↗, run ↗, WACZ, User-Agent), units (`ms`, `KiB`) and Claude's summaries, which
-  the ledger has written in Japanese (the changes view says so in English).
+  the ledger has written in Japanese (the changes view says so in English). The validation
+  report is not the workbench's to translate either: the daemon writes it in the language the
+  page asks for ([WACZ](/wacz/)). What the ledger says when it refuses a request is translated
+  (the ledger's refusals, below).
 - **Dates follow the language, machine-like forms do not.** `dateTime()` writes `2026/1/5 4:00:00`
   in Japanese (the form the workbench has always shown) and `Jan 5, 2026, 4:00:00 AM` in English.
   Grouped digits (`1,234`), `11-08 04:00`, `2026-11-13` and `1m 40s` are the same in both.
 - **An error from the server is a phrase and its values, not a sentence.** `errorText()` in
-  `public/i18n.js` is the one place that decides what to show: a phrase of the workbench's server
-  through the dictionary, otherwise the ledger's `message`, otherwise its `error`.
+  `public/i18n.js` is the one place that decides what to show, in this order: a phrase of the
+  workbench's server through the dictionary (`workbench.error.<phrase>`); a phrase of the ledger,
+  when the dictionary has `ledger.error.<phrase>`; the answer's `message`; its `error`, as it
+  arrived. A stock Fastify answer (a body the schema rejects, a route the ledger does not serve)
+  has the name of the status in `error` (`Bad Request`) and what went wrong in `message`, so it
+  is the `message` that is shown. That is why no status name may be a key under `ledger.error.`.
+- **The ledger's refusals are translated with the dictionary.** The ledger refuses with a phrase
+  in `error` and, from capture-ledger v0.102.0, its reasons in `hints`: a list of
+  `{ key?, params?, text }`, next to the sentence it has always sent in `hint`.
+  `ledger.error.<phrase>` is the sentence for a phrase. It embeds no values and ends without a
+  full stop, because the caller appends what the ledger named (ids, names) and the reasons.
+  `ledger.hint.<key>` is the sentence for one reason, filled from its `params` (`hintText`,
+  `hintsText`), and `ledger.list.*` are the separators that join a list of values and several
+  reasons. The reasons a fix was rejected (`refusalHints`) are read the same way
+  (`refusalTexts`). What cannot be translated is shown as it arrived: a phrase or a key the
+  dictionary does not have (a ledger newer than the workbench), a reason without a key (a command
+  to run, a list of script ids), a reason whose values are missing, and the `hint` of an older
+  ledger that sends no `hints`. **The Japanese `ledger.hint.*` is, character for character, the
+  sentence the ledger writes,** so the Japanese screen reads the same whether or not the ledger
+  sends `hints`.
+- **When the ledger adds a phrase or a key,** add it here. A phrase goes into both dictionaries
+  as `ledger.error.<phrase>`. A key goes into `HINT_KEYS` in `sandbox/fake-ledger.mjs` (the copy
+  of the ledger's list of keys, with the names of the values each one embeds) and into both
+  dictionaries as `ledger.hint.<key>`, the Japanese in the same characters as the ledger's
+  sentence, together with a sample of the ledger's answer for it in `test/ledger-text.test.mjs`.
+  That test fails when the copy and the dictionaries differ in either direction, when a sentence
+  embeds other values than the copy lists, and when the Japanese built from a sample is not the
+  ledger's sentence. Nothing lists the ledger's phrases, so a phrase that is missing from the
+  dictionaries is not caught: it shows in English, as it arrived.
 
 `npm run check:i18n` (part of `npm run check`) keeps it that way. It fails when:
 
@@ -122,7 +158,9 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
    cannot be parsed;
 3. the code or `public/index.html` names a key that is in no dictionary, a key in the dictionaries
    is used nowhere, or the first argument of `t()`, `tNodes()` or `key()` is not a string. The keys
-   under `workbench.error.` are compared with `ERROR_PHRASES` in `src/lib.mjs`, in both directions;
+   under `workbench.error.` are compared with `ERROR_PHRASES` in `src/lib.mjs`, in both directions.
+   The keys under `ledger.` come from the ledger's answers, so they are left out of "used
+   nowhere" (`test/ledger-text.test.mjs` compares `ledger.hint.*` with the copy of the ledger's keys);
 4. there is Japanese text outside comments in `public/*.js` or `public/index.html` (full-width
    punctuation included). One line is enough.
 
@@ -200,7 +238,7 @@ in `sandbox/samples/SOURCE.md`.
 | list other WACZ files | `SANDBOX_WACZ_DIR=<dir> npm run sandbox` (relative to this repository, for example `../wacz-validator/samples`). The stand-in and the daemon both get the same directory |
 | put an updated wacz-validator into the daemon | `npm run sandbox:build`. `npm run sandbox` only builds the image when there is none |
 | try the new crawl view | Start a crawl from the new crawl view. The stand-in runs each crawl it accepts for the scenario's `submit.runsSeconds` seconds, then completes it. Pressing again while it runs gives a 409; a URL that cannot be read gives a 400. It takes `scripts` (ticked registered scripts and a script of your own) the way the ledger does, answers an unknown script id, the same id twice, a misspelt name, a site script that fits no seed, or an empty default (no scripts at all, or nothing that fits the seeds) with the ledger's 400, refuses a key the ledger's schema does not have with the ledger's wording (`body must NOT have additional properties`), and lists what ran when you open the row. 読む (read) next to a checkbox opens the script in the right column (the stand-in's autoscroll is v2, with options; egov-law-search cannot be ticked without a laws.e-gov.go.jp seed, but can be read) |
-| try per-crawl values | Seed `https://laws.e-gov.go.jp/` and tick egov-law-search: the field for the required variable `query` appears. Its value is sent as `variables` and shows under 渡した値 (values passed) when you open the row. Writing `defineParams` in your own script makes a field appear too: the stand-in answers `POST /api/scripts/check` by reading the source with a regular expression (only the stand-in takes this shortcut; the real reader walks the syntax tree in ts-compile-service, and the stand-in's `diagnostics` are limited to `BH0002` and `BH0004`, because it does not type-check). The stand-in answers in the ledger's (v0.90.0) order and wording: a required variable missing (`missing variables`, before any other check on the values), one name declared with two kinds or two shapes, or as both kept in and hidden from the WARC (`conflicting params`), a secret's name passed as a variable (`secrets cannot be passed as variables`), a variable no script declared (`unknown variables`), a value that does not fit its declaration (`invalid variables`, with the reasons in `hint`), a required secret missing from Windmill (`unknown secrets`, with name, path and a `hint`), a variable there that is not a secret (`not a secret variable`), and a hidden secret sent while the deployment's formats cannot have its value replaced (`formats that cannot hide secrets`, with the names and a `hint`). The scenario's `captureFormats` stands in for the deployment's formats (by default `["wacz"]`, as in the ledger; add `"png"` or the like to see that 400). The shape of a script of your own's declarations gets the ledger's schema wording; `inline.params` takes secrets only (with `"archive": "keep"` to keep a value in the WARC), and a variable there or a name declared twice gets `invalid params`. The scenario's `windmillSecrets` (names of existing secret variables) and `windmillVariables` (names that exist but are not secret) stand in for Windmill. Declaring a secret can only be tried by sending `inline.params` of a script of your own straight to the ledger's API (the view has no field for it). Crawl `5b0c0007` in the scenario carries the variable `query`, the hidden secret `api_token` and the kept secret `login` (`archive: "keep"`), so its opened row shows 渡した値 and 使ったシークレット with whether the WARC hides or keeps each. The stand-in, like the ledger, writes a secret's value nowhere |
+| try per-crawl values | Seed `https://laws.e-gov.go.jp/` and tick egov-law-search: the field for the required variable `query` appears. Its value is sent as `variables` and shows under 渡した値 (values passed) when you open the row. Writing `defineParams` in your own script makes a field appear too: the stand-in answers `POST /api/scripts/check` by reading the source with a regular expression (only the stand-in takes this shortcut; the real reader walks the syntax tree in ts-compile-service, and the stand-in's `diagnostics` are limited to `BH0002` and `BH0004`, because it does not type-check). The stand-in answers in the ledger's (v0.90.0) order and wording: a required variable missing (`missing variables`, before any other check on the values), one name declared with two kinds or two shapes, or as both kept in and hidden from the WARC (`conflicting params`), a secret's name passed as a variable (`secrets cannot be passed as variables`), a variable no script declared (`unknown variables`), a value that does not fit its declaration (`invalid variables`, with the reasons in `hint`), a required secret missing from Windmill (`unknown secrets`, with name, path and a `hint`), a variable there that is not a secret (`not a secret variable`), and a hidden secret sent while the deployment's formats cannot have its value replaced (`formats that cannot hide secrets`, with the names and a `hint`). Beside each `hint` the stand-in sends `hints` in the ledger's shape (the keys are the copy `HINT_KEYS` in `sandbox/fake-ledger.mjs`), so the English screen shows these reasons in English. The scenario's `captureFormats` stands in for the deployment's formats (by default `["wacz"]`, as in the ledger; add `"png"` or the like to see that 400). The shape of a script of your own's declarations gets the ledger's schema wording; `inline.params` takes secrets only (with `"archive": "keep"` to keep a value in the WARC), and a variable there or a name declared twice gets `invalid params`. The scenario's `windmillSecrets` (names of existing secret variables) and `windmillVariables` (names that exist but are not secret) stand in for Windmill. Declaring a secret can only be tried by sending `inline.params` of a script of your own straight to the ledger's API (the view has no field for it). Crawl `5b0c0007` in the scenario carries the variable `query`, the hidden secret `api_token` and the kept secret `login` (`archive: "keep"`), so its opened row shows 渡した値 and 使ったシークレット with whether the WARC hides or keeps each. The stand-in, like the ledger, writes a secret's value nowhere |
 | try the User-Agent box | Press Headless を外す型を入れる in the new crawl view, or type your own text. The stand-in refuses the wrong form of the text with the ledger's wording and shows the text in the opened row |
 | try the rules | Choose リンクを辿る in the new crawl view. The stand-in checks the rules the way the ledger v0.62.0 does — the same three 400s with the same wording, the same answer from `/api/crawl-rules/check` — and answers `/api/crawls/:id/decisions`. Crawl `5b0c0007` in the scenario carries `rules`, `decisions` and `robots`, with one rule that never matched. **`same-site` is approximated**: the stand-in has no Public Suffix List and takes the last two labels of the host name as the site, so it reads `example.co.jp` and `other.co.jp` as one site (the ledger, with tldts, does not) |
 | see pages and logs | Give a crawl in the scenario `pages`: page rows, each with a `log` in the shape of BrowserHive's answer (`counts` may be left out; it is then counted from the lines). The stand-in answers the ledger's `/api/crawls/:id/pages` (`after` and `limit`; the body's `next` says where it continues) and `/api/crawls/:id/pages/:page/log`, and gives each entry of `failures` a `page`. An `after` that is not all digits, or a `limit` out of range, gets a 400. For a page without `log`, it answers why the log cannot be read (the scenario's `logReason`; otherwise `not-captured` for a page without a taskId, `no-log` for one with). Crawl `5b0c0009` in the scenario has a page that timed out (with warn and error lines), a page with dropped and cut-short lines, and a page robots.txt kept the crawl from taking. A crawl without `pages` lists none. To see 続きを読む (read on), give a crawl more pages than one batch of the ledger (the stand-in's batch is the ledger's default, in `pageList` in `sandbox/fake-ledger.mjs`) |

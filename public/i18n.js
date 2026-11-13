@@ -20,6 +20,14 @@
  * 照らすため。値から字への対応は、鍵の表ではなく、字を返す関数で書く（`start.js` の `actionText`）。
  * 届いたデータの句を引く所（`phraseText`）のように `t()` の外に鍵を書くときは、`key("…")` で包む（中身は
  * そのまま返す。鍵だと分かる印で、検査が「使っている鍵」に数える）。
+ *
+ * ## capture-ledger の断りの文
+ *
+ * capture-ledger の答えの句（`error`）と理由の文（`hints` の組）は、辞書の `ledger.error.<句>` と `ledger.hint.<鍵>` で
+ * 訳す（`errorText`・`hintText`・`hintsText`・`refusalTexts`）。鍵は届いた答えから組むので、コードは名指さない ——
+ * `check:i18n` は `ledger.` で始まる鍵を「使っているか」から外し、鍵の一覧は試験（`test/ledger-text.test.mjs`）が
+ * 代役の写し（`sandbox/fake-ledger.mjs` の `HINT_KEYS`）と照らす。**日本語の `ledger.hint.*` は、capture-ledger の文と
+ * 同じ字にする** —— 日本語の画面は、`hints` を返す capture-ledger でも返さない capture-ledger でも同じ字を出す。
  */
 import { IntlMessageFormat } from "./vendor/intl-messageformat.js";
 import ja from "./i18n/ja.json" with { type: "json" };
@@ -193,26 +201,107 @@ export const timeOfDay = (date) =>
  *
  *   1. capture-workbench の server の句（`{ error: 句, params }`。`src/lib.mjs` の `ERROR_PHRASES`）は、
  *      辞書の `workbench.error.<句>` で訳す
- *   2. `message`。capture-ledger の検査の答え（Fastify の 400 など）は、`error` が「Bad Request」のような
- *      状態の名前で、中身は `message` に在る
- *   3. `error`。capture-ledger の英語の句
+ *   2. capture-ledger の句（`{ error: 句 }`。capture-ledger が自分で書く断り）は、辞書に `ledger.error.<句>` が
+ *      在れば訳す。値は埋めない —— 名指した物（`ids`・`names`）と理由（`hints`）は、呼び手が文の後ろに添える
+ *   3. `message`。capture-ledger の検査の答え（Fastify の 400 など）は、`error` が「Bad Request」のような
+ *      状態の名前で、中身は `message` に在る。**状態の名前は `ledger.error.` に入れない**（入れると 2 で止まり、
+ *      中身が出ない。`test/ledger-text.test.mjs` が見る）
+ *   4. `error`。辞書に無い句（新しい capture-ledger の句・ほかのシステムの文）は、届いた字のまま
  *
  * どれも無ければ undefined —— 何を読めなかったかは、呼び手が言う。
  */
 export const errorText = (body) => {
   if (body === null || typeof body !== "object") return undefined;
   if (typeof body.error === "string") {
-    const name = `workbench.error.${body.error}`;
-    if (has(name)) {
+    const own = `workbench.error.${body.error}`;
+    if (has(own)) {
       try {
-        return t(name, body.params ?? {});
+        return t(own, body.params ?? {});
       } catch {
         return body.error; // 値の足りない答え（古い server）。句のまま出す
       }
     }
+    const theirs = `ledger.error.${body.error}`;
+    if (has(theirs)) return t(theirs);
   }
   if (typeof body.message === "string") return body.message;
   return typeof body.error === "string" ? body.error : undefined;
+};
+
+/**
+ * capture-ledger の断りの文に埋める値のうち、並び（string[]）を繋ぐ区切り。**値の名前で決める** —— capture-ledger が
+ * 文を組むときの繋ぎ方と同じにすると、日本語の文が capture-ledger の文（`text`）と 1 字も違わない:
+ * 選べる値と形式（`values`・`formats`）は `・`、ほかの並び（`keys` など）は `, `。
+ */
+const VALUE_LISTS = new Set(["values", "formats"]);
+const separatorOf = (name) => (VALUE_LISTS.has(name) ? t("ledger.list.values") : t("ledger.list.names"));
+
+/** 文に埋められる値か。capture-ledger の決まりは string・number・string[]（`src/types/hint.ts` の `HintValue`）。 */
+const fillable = (value) =>
+  typeof value === "string" ||
+  typeof value === "number" ||
+  (Array.isArray(value) && value.every((part) => typeof part === "string"));
+
+/**
+ * capture-ledger の断りの文 1 つ（`{ key?, params?, text }`。capture-ledger の `src/types/hint.ts` の `Hint`）を、
+ * いまの言語の文にする。`key` が辞書に在れば（`ledger.hint.<key>`）`params` を埋めて訳し、訳せなければ
+ * 届いた文（`text`。日本語）をそのまま返す:
+ *
+ *   - `key` が無い —— 命令の例やスクリプトの id の並びのように、訳す物でない文
+ *   - 辞書に無い `key` —— この workbench より新しい capture-ledger が足した文
+ *   - 値が足りない・値の形が違う —— 文にできない
+ *
+ * `text` も無ければ undefined。
+ */
+export const hintText = (hint) => {
+  if (hint === null || typeof hint !== "object") return undefined;
+  const text = typeof hint.text === "string" ? hint.text : undefined;
+  if (typeof hint.key !== "string") return text;
+  const name = `ledger.hint.${hint.key}`;
+  if (!has(name)) return text;
+  const params = hint.params ?? {};
+  if (typeof params !== "object" || !Object.values(params).every(fillable)) return text;
+  try {
+    return t(
+      name,
+      Object.fromEntries(
+        Object.entries(params).map(([part, value]) => [part, Array.isArray(value) ? value.join(separatorOf(part)) : value]),
+      ),
+    );
+  } catch {
+    return text; // 値が足りない。届いた文のまま出す
+  }
+};
+
+/** 訳せる組か（`key` が辞書に在る）。 */
+const known = (hint) => typeof hint?.key === "string" && has(`ledger.hint.${hint.key}`);
+
+/**
+ * capture-ledger の断りの答えから、理由の文（今までの `hint`）を作る。無ければ undefined。
+ *
+ *   - `hints`（文ごとの組）に訳せる組が 1 つでも在れば、組ごとに `hintText` で文にして繋ぐ。区切りは
+ *     capture-ledger が `hint` を組むときと同じ字（辞書の `ledger.list.hints`）—— 日本語は `hint` と同じ字になる
+ *   - 訳せる組が無ければ `hint`（string）をそのまま。`hints` を返さない古い capture-ledger の答えと、命令の例だけの
+ *     答え。**後者を `hints` から繋ぎ直さない** —— capture-ledger は、終わりの案内（`(run nothing on purpose: …)`）を
+ *     空白 1 つで繋いで `hint` にしているので、繋ぎ直すと字が変わる
+ *   - `hint` も無ければ、`hints` の文（`text`）を繋ぐ
+ */
+export const hintsText = (body) => {
+  if (body === null || typeof body !== "object") return undefined;
+  const hints = Array.isArray(body.hints) ? body.hints : [];
+  if (!hints.some(known) && typeof body.hint === "string") return body.hint;
+  const texts = hints.map(hintText).filter((text) => text !== undefined);
+  return texts.length === 0 ? undefined : texts.join(t("ledger.list.hints"));
+};
+
+/**
+ * 直し方の答え（422 `no fix passed the checks`）の、案を断った理由の並び。`refusalHints`（`refusals` と同じ並びの組）が
+ * 在れば組ごとに訳し、無ければ（古い capture-ledger）`refusals` の文のまま。どちらも無ければ空。
+ */
+export const refusalTexts = (body) => {
+  const refusals = Array.isArray(body?.refusals) ? body.refusals.map(String) : [];
+  if (!Array.isArray(body?.refusalHints) || body.refusalHints.length === 0) return refusals;
+  return body.refusalHints.map((hint, i) => hintText(hint) ?? refusals[i]).filter((text) => text !== undefined);
 };
 
 /** 辞書の文のタグのうち、HTML の側（`data-i18n`）で要素にする物。 */

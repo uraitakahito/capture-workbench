@@ -9,7 +9,7 @@
  * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
  * `outerHTML` のようなほかの API は見ない。
  */
-import { applyI18n, dateTime, errorText, key, langOf, phraseText, switchLang, t, timeOfDay, tNodes } from "/i18n.js";
+import { applyI18n, dateTime, errorText, key, langOf, phraseText, refusalTexts, switchLang, t, timeOfDay, tNodes } from "/i18n.js";
 import { checkVerdict, count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
@@ -415,8 +415,12 @@ const fixOf = (crawlId, script) => {
       tag("span", t("crawls.fix.onlyTypes"), "muted"),
     );
     box.append(notes, diffBoxOf(state.body.edits), back);
-  } else if (Array.isArray(state.body.refusals) && state.body.refusals.length > 0) {
-    box.append(tag("p", t("crawls.fix.refusals", { list: state.body.refusals.join(t("common.sep.slash")) }), "muted"));
+  } else {
+    // 案を断った理由。capture-ledger が組（`refusalHints`）を返せば訳し、無ければ届いた文（`refusals`）のまま
+    const refusals = refusalTexts(state.body);
+    if (refusals.length > 0) {
+      box.append(tag("p", t("crawls.fix.refusals", { list: refusals.join(t("common.sep.slash")) }), "muted"));
+    }
   }
   return [ask, box];
 };
@@ -1698,7 +1702,7 @@ let startKey;
 
 /**
  * 欄から 1 本始める。**送る前に検査しない** —— 読めない URL は capture-ledger が 400 で言う。
- * 答えは欄の下に 1 行で、capture-ledger の文は言い換えずに出す（`start.js` の `startAnswer`）。
+ * 答えは欄の下に 1 行で、capture-ledger の句と理由の文は辞書に在れば訳して出す（`start.js` の `startAnswer`）。
  */
 const startCrawl = async (event) => {
   event.preventDefault();

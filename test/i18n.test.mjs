@@ -170,7 +170,7 @@ test("日時: 日本語はいままでと同じ字（月や日が 1 桁でも 0 
   assert.equal(inEnglish(() => timeOfDay(at)).replace(/ /gu, " "), "4:00:00 AM");
 });
 
-test("誤りの文を読む順: server の句 → message → error。どれも無ければ undefined", () => {
+test("誤りの文を読む順: server の句 → capture-ledger の句 → message → error。どれも無ければ undefined", () => {
   // capture-workbench の server の句は、値を埋めて訳す
   const unreachable = { error: "ledger unreachable", params: { url: "http://127.0.0.1:7070", cause: "fetch failed" } };
   assert.equal(
@@ -189,8 +189,9 @@ test("誤りの文を読む順: server の句 → message → error。どれも�
     errorText({ statusCode: 400, error: "Bad Request", message: "body/seeds must be array" }),
     "body/seeds must be array",
   );
-  // capture-ledger の句は、そのまま
-  assert.equal(errorText({ error: "invalid cron", hint: "…" }), "invalid cron");
+  // capture-ledger の句は、辞書に在れば訳す（細かい場面は test/ledger-text.test.mjs）。無ければ、届いた字のまま
+  assert.equal(errorText({ error: "invalid cron", hint: "…" }), "cron の式を読めません");
+  assert.equal(errorText({ error: "a phrase from a newer ledger" }), "a phrase from a newer ledger");
   assert.equal(errorText({}), undefined);
   assert.equal(errorText(undefined), undefined);
   assert.equal(errorText("text"), undefined);

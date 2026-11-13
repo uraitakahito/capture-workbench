@@ -37,6 +37,10 @@
  * `replayBundle` (台本の行の `replayBundle` から。鍵は capture-ledger と同じ形に組む) と、ページの行の `capturedAt`・`bundledRev`
  * (台本のページから)。**代役は合本を書かない** —— 保管庫も replay も無いので、再生のリンクの先には何も無い。
  *
+ * 断りの答えの `hints` (CAPTURE-294 の段 5。capture-ledger が `hints` を足した版) も返す —— 人に見せる文 (`hint`。今までと同じ字) に
+ * 並べて、文ごとの鍵と値の組 (`{ key?, params?, text }`)。workbench は鍵で自分の辞書 (`ledger.hint.<鍵>`) を引いて訳す。
+ * 鍵の一覧は下の `HINT_KEYS` (capture-ledger の表の写し)。
+ *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -766,6 +770,74 @@ const DEFAULT_FORMATS = ["wacz"];
 const FORMATS_WITHOUT_REPLACEMENT = ["png", "webp", "html", "mhtml"];
 
 /**
+ * 断りの文の鍵 → その文に埋める値の名前。**capture-ledger の `src/types/hint.ts` の `HINT_KEYS` の写し** ——
+ * CAPTURE-294 の段 5 (hints を足した版。枝 `feat/c294-hint-keys` の commit `736a6f7`) から写した。
+ * 鍵と値の名前は capture-ledger との約束で、workbench の辞書 (`public/i18n/*.json` の `ledger.hint.<鍵>`) はこの一覧と
+ * 両方向で一致する (`test/ledger-text.test.mjs`)。capture-ledger が鍵を足したら、ここと辞書の両方に足す。
+ * 代役が実際に返すのは、このうち `variables.*`・`formats.cannotHideSecrets`・`inlineParams.secretsOnly`・
+ * `params.duplicateName` (ほかの宣言の誤りは代役では schema の 400 になり、直し方の案は Claude を呼ばないので断らない)。
+ */
+export const HINT_KEYS = Object.freeze({
+  // 宣言 (`params`) の読み
+  "params.notArray": [],
+  "params.tooMany": ["max"],
+  "params.entryNotObject": [],
+  "params.invalidName": ["name", "max"],
+  "params.invalidKind": ["name", "kind"],
+  "params.requiredNotBoolean": ["name"],
+  "params.summaryNotString": ["name"],
+  "params.summaryEmpty": ["name"],
+  "params.unknownKeys": ["name", "keys"],
+  "params.duplicateName": ["name"],
+  "params.schemaOnlyForVariable": ["name"],
+  "params.archiveOnlyForSecret": ["name"],
+  "params.invalidArchive": ["name", "value"],
+  // 変数の値の形 (`schema`) の読み
+  "params.schemaMissing": ["name"],
+  "params.schemaUnknownKeys": ["name", "keys"],
+  "params.schemaTypeNotString": ["name"],
+  "params.schemaInvalidLength": ["name"],
+  "params.schemaInvalidEnum": ["name"],
+  // 頼みの変数の値が、宣言の形に合わない
+  "variables.notInEnum": ["name", "values"],
+  "variables.tooShort": ["name", "min"],
+  "variables.tooLong": ["name", "max"],
+  // 隠すシークレットと、値を置き換えられない形式
+  "formats.cannotHideSecrets": ["formats"],
+  // その場の TS の `params` に変数の宣言
+  "inlineParams.secretsOnly": [],
+  // 直し方の案を断る理由
+  "fix.noEdits": [],
+  "fix.invalidRange": ["from", "to"],
+  "fix.outOfRange": ["line", "lines"],
+  "fix.overlappingEdits": ["firstFrom", "firstTo", "secondFrom", "secondTo"],
+  "fix.suppressedCheck": [],
+  "fix.usedAny": [],
+  "fix.addedModuleSyntax": [],
+  "fix.tooManyLines": ["lines", "max"],
+  "fix.unreadableAnswer": [],
+});
+
+/**
+ * 鍵つきの組を作る (capture-ledger の `hint()`)。値を埋めない文は `params` の欄ごと付けない。表に無い鍵・表と違う値の
+ * 名前は投げる (capture-ledger は型で落とす)。
+ */
+const hintOf = (key, text, params) => {
+  const names = HINT_KEYS[key];
+  const given = Object.keys(params ?? {});
+  if (names === undefined || given.length !== names.length || !names.every((name) => given.includes(name))) {
+    throw new Error(`hint ${key}: 鍵か値の名前が HINT_KEYS と違う (${given.join(", ")})`);
+  }
+  return { key, ...(params === undefined ? {} : { params }), text };
+};
+
+/** 鍵の付かない組 (命令の例やスクリプトの id の並びのように、訳す物でない文)。 */
+const plainHints = (texts) => texts.map((text) => ({ text }));
+
+/** スクリプトを省いた頼みを断る文の終わりに添える案内 (capture-ledger の `RUN_NOTHING_ON_PURPOSE`)。 */
+const RUN_NOTHING_ON_PURPOSE = "(run nothing on purpose: send scripts: [])";
+
+/**
  * Fastify が schema の誤りで返す本文の形 (capture-ledger の 400 と同じ。workbench は `message` を出す)。
  * 文は capture-ledger v0.58.0 の実物から写した —— 要素は鍵が 1 つの object なので、誤りの場所だけが出る。
  */
@@ -835,29 +907,25 @@ const paramsRefusal = (params, at) => {
 
 /**
  * その場の TS の宣言を、capture-ledger の handler (schema の後) と同じく読む。`params` に書けるのはシークレットだけで、変数なら 400、
- * 同じ名前が 2 度あれば 400 (どちらも `{ error: "invalid params", script, hint }`。文は capture-ledger と同じ)。
+ * 同じ名前が 2 度あれば 400 (どちらも `{ error: "invalid params", script, hint, hints }`。文と鍵は capture-ledger と同じ)。
  * 通れば、省いた required を false にした宣言。`archive` は書いたときだけ写す (capture-ledger の readParams。写し忘れると、
  * 残すつもりの値が黙って隠れる)。
  */
 const paramsReading = (inline) => {
   if (inline.params === undefined) return { params: undefined };
+  const refuse = (refused) => ({
+    status: 400,
+    body: { error: "invalid params", script: `inline-${inline.name}`, hint: refused.text, hints: [refused] },
+  });
   if (inline.params.some((p) => p.kind === "variable")) {
-    return {
-      status: 400,
-      body: {
-        error: "invalid params",
-        script: `inline-${inline.name}`,
-        hint: "params に書けるのはシークレットだけ。変数は source の defineParams で宣言する",
-      },
-    };
+    return refuse(
+      hintOf("inlineParams.secretsOnly", "params に書けるのはシークレットだけ。変数は source の defineParams で宣言する"),
+    );
   }
   const out = [];
   for (const p of inline.params) {
     if (out.some((q) => q.name === p.name)) {
-      return {
-        status: 400,
-        body: { error: "invalid params", script: `inline-${inline.name}`, hint: `params に ${p.name} が 2 度ある` },
-      };
+      return refuse(hintOf("params.duplicateName", `params に ${p.name} が 2 度ある`, { name: p.name }));
     }
     out.push({
       name: p.name,
@@ -948,12 +1016,21 @@ export const checkInline = (body) => {
   };
 };
 
-/** 値が宣言の形に合わないなら、人に見せる文 (capture-ledger の `crawl/values.ts` の `shapeProblem`)。長さは code point で数える。 */
+/**
+ * 値が宣言の形に合わないなら、人に見せる文と鍵と値の組 (capture-ledger の `crawl/values.ts` の `shapeProblem`)。
+ * 長さは code point で数える。
+ */
 const shapeProblem = (name, value, schema) => {
   const length = [...value].length;
-  if (schema.enum !== undefined && !schema.enum.includes(value)) return `${name} は ${schema.enum.join("・")} のどれか`;
-  if (schema.minLength !== undefined && length < schema.minLength) return `${name} は ${String(schema.minLength)} 字以上`;
-  if (schema.maxLength !== undefined && length > schema.maxLength) return `${name} は ${String(schema.maxLength)} 字まで`;
+  if (schema.enum !== undefined && !schema.enum.includes(value)) {
+    return hintOf("variables.notInEnum", `${name} は ${schema.enum.join("・")} のどれか`, { name, values: schema.enum });
+  }
+  if (schema.minLength !== undefined && length < schema.minLength) {
+    return hintOf("variables.tooShort", `${name} は ${String(schema.minLength)} 字以上`, { name, min: schema.minLength });
+  }
+  if (schema.maxLength !== undefined && length > schema.maxLength) {
+    return hintOf("variables.tooLong", `${name} は ${String(schema.maxLength)} 字まで`, { name, max: schema.maxLength });
+  }
   return undefined;
 };
 
@@ -1027,7 +1104,8 @@ const resolveValues = (variables = {}, run, windmill, formats = DEFAULT_FORMATS)
     return refuse({
       error: "invalid variables",
       names: misfits.map((m) => m.name),
-      hint: misfits.map((m) => m.problem).join(" / "),
+      hint: misfits.map((m) => m.problem.text).join(" / "),
+      hints: misfits.map((m) => m.problem),
     });
   }
   if (secretNames.length > 32) return refuse({ error: "too many secrets", count: secretNames.length, max: 32 });
@@ -1043,10 +1121,13 @@ const resolveValues = (variables = {}, run, windmill, formats = DEFAULT_FORMATS)
   const plain = absent.filter((s) => windmill.variables.includes(s.name));
   const unknownSecrets = absent.filter((s) => s.required && !windmill.variables.includes(s.name));
   if (unknownSecrets.length > 0) {
+    // 命令の例は訳す物でないので、組に鍵を付けない (capture-ledger の `resolveSecrets`)
+    const commands = unknownSecrets.map((s) => `wmill variable add <value> ${s.path} --secret`);
     return refuse({
       error: "unknown secrets",
       secrets: unknownSecrets.map(named),
-      hint: unknownSecrets.map((s) => `wmill variable add <value> ${s.path} --secret`).join(" / "),
+      hint: commands.join(" / "),
+      hints: plainHints(commands),
     });
   }
   if (plain.length > 0) return refuse({ error: "not a secret variable", secrets: plain.map(named) });
@@ -1057,13 +1138,18 @@ const resolveValues = (variables = {}, run, windmill, formats = DEFAULT_FORMATS)
   const hidden = secrets.filter((s) => s.archive !== "keep").map((s) => s.name);
   const asked = FORMATS_WITHOUT_REPLACEMENT.filter((format) => formats.includes(format));
   if (hidden.length > 0 && asked.length > 0) {
+    const withheld = hintOf(
+      "formats.cannotHideSecrets",
+      `CAPTURE_LEDGER_CAPTURE_FORMATS の ${asked.join("・")} は値を置き換えられない (BrowserHive が断る)。` +
+        `形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く`,
+      { formats: asked },
+    );
     return refuse({
       error: "formats that cannot hide secrets",
       formats: asked,
       names: hidden,
-      hint:
-        `CAPTURE_LEDGER_CAPTURE_FORMATS の ${asked.join("・")} は値を置き換えられない (BrowserHive が断る)。` +
-        `形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く`,
+      hint: withheld.text,
+      hints: [withheld],
     });
   }
   return { variables, secrets };
@@ -1126,12 +1212,14 @@ const resolveRun = (scripts, versions, hosts) => {
   );
   const offsite = run.filter((s) => !onSeed(s.sites ?? [], hosts));
   if (offsite.length > 0) {
+    const theirSites = offsite.map((s) => `${s.id}: ${s.sites.join(", ")}`);
     return {
       status: 400,
       body: {
         error: "site scripts need a seed on their site",
         ids: offsite.map((s) => s.id),
-        hint: offsite.map((s) => `${s.id}: ${s.sites.join(", ")}`).join(" / "),
+        hint: theirSites.join(" / "),
+        hints: plainHints(theirSites),
       },
     };
   }
@@ -1141,25 +1229,29 @@ const resolveRun = (scripts, versions, hosts) => {
 /**
  * 既定を頼まれたのに、既定が空。文は capture-ledger v0.61.3 の src/api/crawls.ts と同じ —— スクリプトは在るのに
  * 全部が別のサイト用なら、「スクリプトが無い」とは言わない (取り込み直しても直らない)。
+ * `hints` は capture-ledger の `crawl/prepare.ts` と同じ形: 鍵の無い組で、終わりの案内も 1 つの組。**`hint` は終わりの
+ * 案内を空白 1 つで繋ぐ**ので、`hints` を ` / ` で繋いだ字とは違う。
  */
 const emptyDefault = (versions) => {
   const enabled = latestEnabled(versions);
   if (enabled.length > 0) {
+    const theirSites = enabled.map((s) => `${s.id}: ${s.sites.join(", ")}`);
     return {
       status: 400,
       body: {
         error: "no default scripts for these seeds",
-        hint:
-          enabled.map((s) => `${s.id}: ${s.sites.join(", ")}`).join(" / ") +
-          " (run nothing on purpose: send scripts: [])",
+        hint: `${theirSites.join(" / ")} ${RUN_NOTHING_ON_PURPOSE}`,
+        hints: plainHints([...theirSites, RUN_NOTHING_ON_PURPOSE]),
       },
     };
   }
+  const command = "pnpm run scripts import .upstream/capture-scripts";
   return {
     status: 400,
     body: {
       error: "no scripts are registered",
-      hint: "pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])",
+      hint: `${command} ${RUN_NOTHING_ON_PURPOSE}`,
+      hints: plainHints([command, RUN_NOTHING_ON_PURPOSE]),
     },
   };
 };
@@ -1491,14 +1583,18 @@ const schedulesIn = (s) =>
     .filter((row) => !deletedSchedules.has(row.id))
     .map((row) => ({ ...row, ...scheduleEdits.get(row.id) }));
 
-/** `POST /api/schedules`。cron の確かめは capture-ledger の決まりの写しで、欄の数と周期の下限だけを見る。 */
+/**
+ * `POST /api/schedules`。cron の確かめは capture-ledger の決まりの写しで、欄の数と周期の下限だけを見る。
+ * `invalid cron` の理由は英語の決まった文 (capture-ledger では cron の library の文のこともある) で、組に鍵は付かない。
+ */
 export const createSchedule = (rows, body, now = Date.now()) => {
   if (typeof body?.name !== "string" || body.name.trim() === "") {
     return { status: 400, body: { error: "name must not be blank" } };
   }
   const cron = String(body.cron ?? "").trim();
   if (cron.split(/\s+/).length !== 5) {
-    return { status: 400, body: { error: "invalid cron", hint: "cron must have 5 fields" } };
+    const reason = "cron must have 5 fields";
+    return { status: 400, body: { error: "invalid cron", hint: reason, hints: plainHints([reason]) } };
   }
   if (cron.startsWith("*/")) {
     return { status: 400, body: { error: "cron runs too often", gapMinutes: 5, minIntervalMinutes: 60 } };

@@ -247,17 +247,20 @@ test("作った答えの 1 行", () => {
     "間隔が短すぎます（5 分。下限は 60 分です）",
   );
   // 頼みの中身の断りは始めるエンドポイントと同じ文
-  assert.match(createAnswer(400, { error: "every seed must be an http(s) URL" }).text, /every seed/);
+  assert.equal(
+    createAnswer(400, { error: "every seed must be an http(s) URL" }).text,
+    "400 —— 起点はどれも http(s) の URL でなければなりません",
+  );
 });
 
-test("操作の答えの 1 行。断られたら capture-ledger の文をそのまま", () => {
+test("操作の答えの 1 行。断られたら、始めるエンドポイントと同じ文", () => {
   assert.equal(actionAnswer("pause", 200, {}).kind, "ok");
   assert.equal(actionAnswer("run", 202, {}).kind, "ok");
   assert.equal(actionAnswer("delete", 200, {}).text, "消しました。");
   assert.equal(actionAnswer("close", 200, { closed: true }).text, "締めました。");
   const refused = actionAnswer("repin", 400, { error: "unknown script ids", ids: ["gone"] });
   assert.equal(refused.kind, "bad");
-  assert.match(refused.text, /unknown script ids/);
+  assert.equal(refused.text, "400 —— 知らないスクリプトの id です: gone");
 });
 
 test("cron の見本は、式を言葉にした字を引くときに作る", () => {
@@ -341,7 +344,7 @@ test("英語の回の結果・撮り方・クロールの行の印（単数と�
   assert.equal(mark(0, null).title, 'A run of the schedule "毎朝" (Run now)');
 });
 
-test("英語の答え。capture-ledger の句と hint は届いた字のまま", () => {
+test("英語の答え。鍵の無い hint は届いた字のまま", () => {
   assert.equal(
     inEnglish(() => createAnswer(201, { nextRunAt: "2026-11-07T19:00:00.000Z", timezone: "Asia/Tokyo" }).text),
     "Schedule made. The next run is at 11-08 04:00.",

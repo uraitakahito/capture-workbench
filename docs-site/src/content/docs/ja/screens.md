@@ -40,7 +40,8 @@ WACZ の画面のタブは、アーカイブの行の「開く」で入るまで
   順は、URL の `?lang=ja`・`?lang=en`（その回だけ。覚えた選びは変えません）、切り替えで覚えた選び、ブラウザの言語の並びで最初に当たる日本語か英語、どれも無ければ英語です。
   選びを覚えられないブラウザでは、切り替えが選びを `?lang=` に書いて運びます。
 - **訳さない字が在る。**
-  capture-ledger・BrowserHive・Windmill・daemon が返す字（`captured` のような状態・段の名前・ログの行・失敗の理由）と固有の名前は、届いたまま出します。
+  保存された字と、capture-ledger・BrowserHive・Windmill・daemon がデータとして返す字（`captured` のような状態・段の名前・ログの行・クロールや定期実行の回に残った失敗の理由）と固有の名前は、届いたまま出します。
+  capture-ledger が頼みを断るときの文は別です。句と理由の文が workbench の辞書に在れば画面の言語で出し、無ければ届いたまま出します（workbench より新しい capture-ledger の答え・schema の検査の文・打つ命令の例）。
   変化の画面の Claude の要約は、capture-ledger が日本語で書かせた物なので、英語の画面でも日本語のままです。
   英語の画面では、変化の画面が `The summary is written in Japanese.` と添えます。
 - **検証の報告は、画面の言語で返る。**
@@ -139,7 +140,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   答えには、理由・置き換えた行（消した行と足した行を、行番号つきで）・往復の回数・費用と、「直した版を欄に戻す」が出ます。
   「直した版を欄に戻す」は「欄に戻す」と同じ動きで、source だけが直した版です（名前と phase は元のまま）。
   確かめたのは型だけです。差分を読み、撮って動きを確かめてください。
-  ほかの答え（直す物が無い・通る直しが無い・この月の上限に届いた・capture-ledger にエンドポイント（HTTP の method と path の組）が無い）は、capture-ledger の文のまま 1 行で出ます。
+  ほかの答え（直す物が無い・通る直しが無い・この月の上限に届いた・capture-ledger にエンドポイント（HTTP の method と path の組）が無い）は、状態の数と capture-ledger の句の 1 行で出ます。句は、辞書に在れば画面の言語に訳し、無ければ届いたまま出します。案を断った理由の並びも同じです。
 - **開いた行には、規則が何を決めたかも出る。**
   capture-ledger の `/api/crawls/:id/decisions` を、詳しい所と一緒に引きます。
   まず規則ごとに、当たった別々の URL の数を段ごとに数えて足した物（2 つの段で見つかった URL は 2 度数えます）。1 度も当たらなかった規則には「当たっていません」と添えます。当たらない規則は、たいてい書いた人の意図と違うことを言っています。
@@ -310,7 +311,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   「Headless を外す型を入れる」を押すと `{chrome} BrowserHive` が入ります。`{chrome}` は BrowserHive がブラウザの字から Headless を外した物に置き換えるので、Headless を断るサイトも撮れ、ブラウザを上げても字が古くなりません。
   たとえば[首相官邸の公式サイト](https://www.kantei.go.jp/)は、`HeadlessChrome` を含む字に HTTP 404 を返します。欄を空のまま「このページだけ」で始めると、ページの結末が `failed: http_error: HTTP 404: Not Found` になり、1 枚も撮れず ReplayWeb.page ↗・Web Capture ↗ も出ません。ボタンで `{chrome} BrowserHive` を入れて始めると撮れて、ReplayWeb.page ↗・Web Capture ↗ で開けます（2026-11-07 に確かめました。相手のサイトの答えは変わることがあります）。
   `BrowserHive` の語を含めるかは打つ人が決めます。含むと、相手のサイトに BrowserHive が撮っていると分かり、robots.txt もその名前の規則で読みます。含まなければ `*` の規則だけを読みます。
-  workbench は字を検査しません。形（印字可能な ASCII・512 字以下）に合わない字は capture-ledger が 400 で断り、その文をそのまま出します。
+  workbench は字を検査しません。形（印字可能な ASCII・512 字以下）に合わない字は capture-ledger が 400 で断り、左の列の下に `400 —— User-Agent は、表示できる ASCII で 512 字までです` と出ます。
   始めた後も、字は変数やスクリプトと同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は WACZ の `settings.userAgent` で読めます。
 - **チェックしたスクリプトやその場の TS が値を宣言していれば、「クロールごとの値」の欄が出る。**
   スクリプトは読む変数を、ソースの `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))` で宣言します。[capture-scripts](https://github.com/uraitakahito/capture-scripts) のスクリプトは `catalog.json` の `params` にも同じ宣言があり、capture-ledger は版ごとに持ち、`GET /api/scripts` が運びます。
@@ -318,13 +319,13 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   変数（`kind: variable`）の宣言は、名前と説明と値の欄の 1 行になります（`z.enum` の宣言は選択の欄）。上の絵の `query` は `egov-law-search` が法令名の検索語として宣言した物です。必須の宣言（`.optional()` の無い物）には「必須」の印が付きます。
   値を書いた欄だけを `variables` で送ります。任意の欄が空なら送らず、スクリプトは `undefined` を読みます。
   書いた値は覚えていて、202 の後も、チェックを外して欄が消えても残り、付け直せば欄に戻ります。
-  workbench は値を検査しません。名前の綴り（英小文字で始め、英小文字・数字・`_` で 64 字まで）・1 クロール 32 個・値は 4,096 字まで・スクリプトが宣言した形は capture-ledger の決まりです。必須の欄が空のときと、どのスクリプトも宣言していない名前のときと、形に合わない値のときは、capture-ledger が行を立てる前に 400 で名前を名指します（左の列の下に `400 —— missing variables: query` のように出ます）。
-  その場の TS の宣言を読めないときと、capture-ledger に訊けないときは、箱の下に赤で理由が出ます。`BH0002`（走らせずに読める形でない）、`BH0004`（「遷移の前」のスクリプトには変数を読む先が無い）、「宣言を確かめられません」と capture-ledger の文、のどれかです。ふつうの型の誤りはここには出ません。走らせたときに compile の段が言います。
+  workbench は値を検査しません。名前の綴り（英小文字で始め、英小文字・数字・`_` で 64 字まで）・1 クロール 32 個・値は 4,096 字まで・スクリプトが宣言した形は capture-ledger の決まりです。必須の欄が空のときと、どのスクリプトも宣言していない名前のときと、形に合わない値のときは、capture-ledger が行を立てる前に 400 で名前を名指します（左の列の下に `400 —— 必須の変数が渡されていません: query` のように出ます）。
+  その場の TS の宣言を読めないときと、capture-ledger に訊けないときは、箱の下に赤で理由が出ます。`BH0002`（走らせずに読める形でない）、`BH0004`（「遷移の前」のスクリプトには変数を読む先が無い）、「宣言を確かめられません」と状態の数と capture-ledger の答え（句は、辞書に在れば訳します）、のどれかです。ふつうの型の誤りはここには出ません。走らせたときに compile の段が言います。
   シークレット（`kind: secret`）の宣言は「使うシークレット」として名前だけが並び、値の欄はありません。名前の横に、WARC で隠すか残すか（宣言の `archive`。省けば隠す）が出ます。
   値は Windmill の変数 `f/waggle_secrets/<名前>` に人が置きます。capture-ledger が在るかを確かめ（無ければ 400 で名前と path を名指します）、クロールのたびに Windmill の中で解いてスクリプトに渡します。値は workbench にも capture-ledger にも残りません。
   WACZ では、隠すシークレットの値は WARC の中で `***` に置き換わり、`archive: "keep"` と宣言した物は値のまま残ります。どちらも写し・ページの文字と題・ログからは消えます。隠す値は 8 字以上が要り、短い値を渡した取り込みは BrowserHive が断ります（capture-scripts の README の「WARC に残すか」）。
-  隠すシークレットを使うのに、配備の形式（capture-ledger の `CAPTURE_LEDGER_CAPTURE_FORMATS`）に PNG・WebP・HTML・MHTML のどれかがあると、値を置き換えられないので capture-ledger が行を立てる前に 400 で断ります。左の列の下に `400 —— formats that cannot hide secrets: api_token（CAPTURE_LEDGER_CAPTURE_FORMATS の png は値を置き換えられない …）` のように、名前と直し方が出ます。
-  同じ名前を、残す宣言と隠す宣言の両方ですると `400 —— conflicting params: api_token` です。
+  隠すシークレットを使うのに、配備の形式（capture-ledger の `CAPTURE_LEDGER_CAPTURE_FORMATS`）に PNG・WebP・HTML・MHTML のどれかがあると、値を置き換えられないので capture-ledger が行を立てる前に 400 で断ります。左の列の下に `400 —— いまの形式では隠せないシークレットがあります: api_token（CAPTURE_LEDGER_CAPTURE_FORMATS の png は値を置き換えられない …）` のように、名前と直し方が出ます。括弧の中は capture-ledger の理由の文で、英語の画面では英語になります（v0.102.0 より前の capture-ledger は日本語の文しか返さないので、英語の画面でも日本語のまま出ます）。
+  同じ名前を、残す宣言と隠す宣言の両方ですると `400 —— 同じ名前の宣言が食い違っています: api_token` です。
   同梱のスクリプトにシークレットを宣言する物は無く、この画面から渡せるのは変数だけです。その場の TS がシークレットを宣言する（`inline.params`）のは、capture-ledger の API に直に送るときだけです。
 - **既定では走らないスクリプトは、外れた状態で並ぶ。**
   名前の横に「既定では走らない」と出ます（上の絵では autofetch）。[capture-scripts](https://github.com/uraitakahito/capture-scripts) の `catalog.json` に `"default": false` と書いたスクリプトで、capture-ledger はその全部の版を無効にして持ちます。何も名指さないクロールでは走りません。
@@ -361,7 +362,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 - **202 と 409 は、クロールの画面へ移る。**
   受理されたら始めた行に、走行中のクロールがあれば塞いでいる行に印が付きます（capture-ledger は全体で 1 本しか走らせません）。
   受理されたので、足元は 2 秒ごとに引くようになります。
-  それ以外（400・413・届かない）はこの画面に残り、左の列の下に capture-ledger の文をそのまま出します。
+  それ以外（400・413・届かない）はこの画面に残り、左の列の下に、状態の数と理由を 1 行で出します。capture-ledger の断りは、句と理由の文が辞書に在れば画面の言語に訳し、無ければ届いたまま出します。
 - **202 の後、起点の URL は消え、その場の TS と変数の値は残る。**
   直して撮り直すことが多いからです。
 - **「欄に戻す」で、この画面に戻る。**

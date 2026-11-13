@@ -7,7 +7,7 @@
  * **起点の URL は検査しない。** 読めない URL は capture-ledger が 400 で言う。規則を 2 か所に持つと、
  * 片方だけが変わった日に、workbench が通すのに capture-ledger が断る（または逆）形になる。
  */
-import { errorText, t } from "./i18n.js";
+import { errorText, hintsText, t } from "./i18n.js";
 
 /** 走らせるものの欄が、何も選んでいない形（登録済みのスクリプトが無く、その場の TS も無い）。 */
 const NOTHING_CHOSEN = {
@@ -434,12 +434,12 @@ export const summaryOf = (answer, follow) => {
 };
 
 /**
- * 答えを 1 行で言う。**capture-ledger の文は言い換えない** —— `message` を先に、無ければ `error` を拾い、
- * 名指した `ids` と `hint` があれば添える。
+ * 答えを 1 行で言う。capture-ledger の句（`error`）と理由の文（`hints`）は、辞書に在れば訳し（`errorText`・
+ * `hintsText`）、無ければ届いた字のまま。名指した `ids` などは文の後に添える。
  *
- * `message` が先なのは、Fastify が自分で返す答え（route が無い 404、schema の 400）が
- * `error: "Not Found"` と `message: "Route POST:/api/crawls not found"` の両方を持ち、
- * 言いたいことは `message` の側に在るから。capture-ledger が自分で書く答えは `error` だけ。
+ * Fastify が自分で返す答え（route が無い 404、schema の 400）は `error: "Not Found"` と
+ * `message: "Route POST:/api/crawls not found"` の両方を持ち、言いたいことは `message` の側に在る
+ * （読む順は `errorText`）。capture-ledger が自分で書く答えは `error` だけ。
  *
  * `status` が 0 なのは、workbench のサーバ自身に届かなかったとき（fetch が投げた）。
  */
@@ -476,7 +476,7 @@ export const startAnswer = (status, answer) => {
               : [];
   // 名指した物の並びは、言語に依らず ", " で繋ぐ（id・名前・URL の並び）
   const list = named.join(", ");
-  const hint = typeof answer.hint === "string" ? answer.hint : undefined;
+  const hint = hintsText(answer);
   return {
     kind: "bad",
     text:

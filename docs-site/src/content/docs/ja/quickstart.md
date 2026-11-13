@@ -66,7 +66,7 @@ pnpm run idp:grant    # 1 度だけ
 
 許可は名前ではなく、利用者の `sub`（Floci が付けた ID）に付きます。
 `dev:up` はこれを `grant` の段でするので、capture-ledger のクイックスタートをたどったなら、そこで済んでいます。
-許可が無いと、画面の上に赤で `not found` と出て、一覧は空のままです。
+許可が無いと、画面の上に赤で `見つかりません` と出て、一覧は空のままです。
 capture-ledger は、許可の無い名乗りにクロールの一覧を空で返し、スクリプトには 404 を返します。
 workbench はその 404 を受けて、一覧を描かずに止まります。
 
@@ -75,11 +75,11 @@ workbench はその 404 を受けて、一覧を描かずに止まります。
 画面に出る文は、日本語か英語です（画面の右上で切り替えます。[画面](/screens/#言語)）。下の表は、日本語の画面の文を引いています。
 `/login` と `/callback` の文は、言語を選ぶ workbench のページを通らずにブラウザへ直に出ます。
 なので、英語と日本語を並べて書いてあります（` / ` で区切るか、2 行に分ける）。この 2 つは、日本語の側を引いています。
-capture-ledger が返す文（`not found`・`Route POST:/api/crawls not found`）は、どちらの画面でも届いたまま出ます。端末に出る 2 つの文は、日本語だけです。
+capture-ledger の断りは、句が workbench の辞書に在れば訳します（`not found` は、日本語の画面で `見つかりません`、英語の画面で `Not found`）。辞書に無い文（Fastify の `Route POST:/api/crawls not found` など）は、どちらの画面でも届いたまま出ます。端末に出る 2 つの文は、日本語だけです。
 
 | どこに | 出る文 | 直し方 |
 | --- | --- | --- |
-| 画面の上（赤） | `not found` | 名乗りに許可が無い。上の `idp:grant` |
+| 画面の上（赤） | `見つかりません` | 名乗りに許可が無い。上の `idp:grant` |
 | `/login` | `サインインの設定が無い —— WORKBENCH_OIDC_ISSUER と WORKBENCH_OIDC_CLIENT_ID を書く …` | サインインの設定なしで起こした。設定を書く（[設定](/configuration/)）か、`dev:up` に起こさせる |
 | `/login`・画面の上（赤） | `… / … に届かない (…)。capture-ledger で pnpm run dev:status の IdP の行を見る` | Floci が答えない。`dev:status` の IdP の行を見る |
 | `/login`・画面の上（赤） | `… / … の discovery が … —— Floci のプールが作り直されたなら、capture-ledger で pnpm run dev:up --from idp` | Floci は答えるが、この issuer には答えない。プールが作り直された。言われたとおりに打つ |
@@ -91,7 +91,7 @@ capture-ledger が返す文（`not found`・`Route POST:/api/crawls not found`�
 | 名乗りの欄 | `workbench 自身に届きません` | workbench のサーバが止まっている。起こし直す |
 | 足元 | `取りに行けませんでした（上の表は最後に描けたもの）` | 理由は画面の上の赤い文。表は最後に描けたものを残している |
 | スクリプト集の画面（赤） | `登録済みのスクリプトがありません。…` | 走らせるスクリプトが登録されていない。赤い文の中のコマンドで取り込む |
-| 新しいクロールの画面の「始める」の下 | `404 —— not found` | 名乗りにクロールを始める許可が無い。上の `idp:grant` |
+| 新しいクロールの画面の「始める」の下 | `404 —— 見つかりません` | 名乗りにクロールを始める許可が無い。上の `idp:grant` |
 | 新しいクロールの画面の「始める」の下 | `404 —— Route POST:/api/crawls not found` | capture-ledger がクロールの投げ先（Windmill）を知らない。`dev:up` のスタックなら在る |
 | クロールの画面（移る） | 走行中の行に印 | 409。走っているのは全体で 1 本まで。印の付いた行が終わるのを待つ |
 | 端末 | `127.0.0.1:7080 は、既に動いている workbench です (pid …)。` | 開くだけでよい。起こし直すなら `pnpm run dev:up --from workbench` |

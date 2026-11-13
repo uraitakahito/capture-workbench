@@ -74,6 +74,8 @@ export const hitReplaywebHref = (origin, hit) => {
 /**
  * 引けなかったときの文。capture-ledger の文は `message` を先に（Fastify の 400 は `error` が「Bad Request」で、中身は
  * `message` に在る）。503 は OpenSearch が答えない、404 は capture-ledger に検索のエンドポイントが無い（設定の無い古い capture-ledger）。
+ * 503 の句（`search unavailable`）は、辞書（`ledger.error.*`）に入れていない —— 答えが `message`（直す命令つき）も持ち、
+ * 句を訳すと `errorText` がそこで止まって `message` が出なくなる。
  */
 export const searchFailure = (status, body) => {
   const said = errorText(body) ?? t("common.noText");
