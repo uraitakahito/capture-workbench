@@ -11,7 +11,8 @@
  *   3. **コードと HTML が名指す鍵が辞書に在り、辞書の鍵はどこかで使われている。** 鍵は文字列をそのまま書く
  *      （`t("crawls.state.running")`）。組み立てた鍵は照らせないので、`t()`・`tNodes()`・`key()` の最初の引数が
  *      文字列でなければ赤。`workbench.error.*` は server の句の一覧（`src/lib.mjs` の `ERROR_PHRASES`）と両方向で
- *      照らす。`ledger.*` は capture-ledger の答えから来る鍵なので、「使われているか」からは外す
+ *      照らす。`ledger.*` は capture-ledger の答えから来る鍵なので、「使われているか」からは外す（断りの文の鍵
+ *      `ledger.hint.*` は、試験 `test/ledger-text.test.mjs` が capture-ledger の鍵の一覧の写しと両方向で照らす）
  *   4. **`public/` の JS と `index.html` の、コメントの外に日本語の字が無い**（全角の句読点も）。1 行でも在れば赤
  */
 import { readdirSync, readFileSync } from "node:fs";

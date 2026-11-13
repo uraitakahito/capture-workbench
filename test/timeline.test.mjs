@@ -410,7 +410,7 @@ test("「entry は無い」でない 400 は終わりの合図にせず、理由
   assert.equal(calls.length, 1);
   // 見てよくない WACZ（capture-ledger の 404）も理由
   const denied = await readRecords(fakeFetch(() => ({ status: 404, body: { error: "not found" } })).fetchJson, "a1");
-  assert.deepEqual(denied.error, { status: 404, message: "not found" });
+  assert.deepEqual(denied.error, { status: 404, message: "見つかりません" });
 });
 
 test("WARC の本が上限を超えたら、読めた分と理由を返す（理由の字は、読んだときの言語）", async () => {

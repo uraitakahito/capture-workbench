@@ -65,11 +65,12 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
   字として書く波括弧は `'` で囲みます（`'{'chrome'}'`）。
   文にするのは、同梱した `public/vendor/intl-messageformat.js` です（[同梱した束](#同梱した束)）。
 - **鍵は `<画面>.<まとまり>.<意味>`。**
-  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`archives`・`search`・`scripts`・`wacz`・`links`・`trace`）、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。
+  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`archives`・`search`・`scripts`・`wacz`・`links`・`trace`）、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。capture-ledger の断りの文は `ledger.error.<句>`・`ledger.hint.<鍵>`・`ledger.list.*` です（下に書きます）。
   **鍵は文字列をそのまま書き、組み立てません。**
   検査は、コードが名指す鍵と辞書を照らします。走らせたときに組み立てる鍵は、検査から見えません。
   値から字への対応は、鍵の表ではなく、字を返す関数で書きます（`public/start.js` の `actionText`）。
   データとして届いた句を `phraseText` で引く所のように、`t()` の外に鍵を書くときは `key("…")` で包みます（検査が、使っている鍵に数えます）。
+  `ledger.` で始まる鍵だけは別です。`public/i18n.js` が capture-ledger の答えから組むので、コードは 1 つも名指しません。
 - **JS は `t("鍵", { 値 })`。**
   要素が挟まる文は `tNodes("鍵", { code: (字) => 要素 })` が字と要素の並びを返すので、`append` に渡します。
   HTML を受ける API は、辞書の文にも使いません。
@@ -85,19 +86,36 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
   定期実行の画面から走ったままの行を締めるときの理由は、クロールの `error` に残ります。
   出す所で `phraseText` が句を引きます（`crawls.reason.<句>`）。辞書に無い句（前に保存した字や、ほかのシステムが書いた字）は、届いたまま出します。
 - **訳さない物。**
-  capture-ledger・BrowserHive・Windmill・daemon が返す字（`captured` のような状態・段の名前・ログの行・失敗の理由）、固有の名前（ReplayWeb.page ↗・run ↗・WACZ・User-Agent）、単位（`ms`・`KiB`）、Claude の要約です。要約は capture-ledger が日本語で書かせた物なので、英語の画面では、変化の画面がそう断ります。
+  保存された字と、ほかのシステムが書いてデータとして届く字です。`captured` のような状態、段の名前、ログの行、保存された失敗の理由（クロールの `error`・定期実行の回の理由・合本を書けなかった理由。上のとおり、引くのは workbench が自分で送った句だけです）が当たります。
+  固有の名前（ReplayWeb.page ↗・run ↗・WACZ・User-Agent）、単位（`ms`・`KiB`）、Claude の要約も訳しません。要約は capture-ledger が日本語で書かせた物なので、英語の画面では、変化の画面がそう断ります。
+  検証の報告も workbench は訳しません。daemon が、画面の頼んだ言語で書いて返します（[WACZ](/wacz/)）。
+  capture-ledger が頼みを断るときの文は訳します（下の「capture-ledger の断りの文」）。
 - **日時は言語で変え、機械向けの形は変えない。**
   `dateTime()` は、日本語なら今までと同じ `2026/1/5 4:00:00`、英語なら `Jan 5, 2026, 4:00:00 AM` と書きます。
   桁区切り（`1,234`）・`11-08 04:00`・`2026-11-13`・`1m 40s` は、どちらの言語でも同じです。
 - **サーバの誤りは文ではなく、句と値で届く。**
-  画面に出す文を決めるのは、`public/i18n.js` の `errorText()` の 1 か所です。workbench のサーバの句は辞書で訳し、ほかは capture-ledger の `message`、無ければ `error` を出します。
+  画面に出す文を決めるのは、`public/i18n.js` の `errorText()` の 1 か所です。読む順は、workbench のサーバの句（辞書の `workbench.error.<句>` で訳す）、capture-ledger の句（辞書に `ledger.error.<句>` が在れば訳す）、答えの `message`、届いたままの `error` です。
+  Fastify の定型の答え（schema に合わない本文・capture-ledger が出していないエンドポイント）は、`error` が状態の名前（`Bad Request`）で、中身は `message` に在ります。なので、出るのは `message` です。状態の名前を `ledger.error.` の鍵にしないのは、このためです。
+- **capture-ledger の断りの文は、辞書で訳す。**
+  capture-ledger は、断るときに句を `error` に書きます。capture-ledger v0.102.0 からは、理由を `hints`（`{ key?, params?, text }` の並び）でも返します。今までの `hint`（文）も並べて返します。
+  `ledger.error.<句>` は句の文です。値を埋めず、終わりに句点を付けません。呼び手が、capture-ledger の名指した物（id や名前）と理由を後ろに繋ぐからです。
+  `ledger.hint.<鍵>` は理由 1 つの文で、`params` の値を埋めます（`hintText`・`hintsText`）。`ledger.list.*` は、値の並びと、いくつかの理由を繋ぐ区切りです。
+  直し方の案を断った理由（`refusalHints`）も、同じ読み方です（`refusalTexts`）。
+  訳せない物は、届いた字のまま出します。辞書に無い句と鍵（workbench より新しい capture-ledger）、鍵の無い理由（打つ命令の例・スクリプトの id の並び）、値の足りない理由、`hints` を返さない古い capture-ledger の `hint` です。
+  **日本語の `ledger.hint.*` は、capture-ledger の文と同じ字にします。** だから日本語の画面は、capture-ledger が `hints` を返しても返さなくても、同じ字を出します。
+- **capture-ledger が句や鍵を足したら、ここにも足す。**
+  句は、両方の辞書に `ledger.error.<句>` で足します。
+  鍵は、`sandbox/fake-ledger.mjs` の `HINT_KEYS`（capture-ledger の鍵の一覧の写し。鍵ごとに、埋める値の名前を持ちます）と、両方の辞書の `ledger.hint.<鍵>` に足します。日本語は capture-ledger の文と同じ字にし、`test/ledger-text.test.mjs` に、その鍵の capture-ledger の答えの見本も足します。
+  この試験は、写しと辞書がどちらの向きにでも食い違うとき、文が埋める値の名前が写しと違うとき、見本から組んだ日本語が capture-ledger の文と違うときに赤になります。
+  capture-ledger の句の一覧はどこにも無いので、辞書に足し忘れた句は検査に掛かりません。届いた英語の句のまま出ます。
 
 この形は `npm run check:i18n` が守ります（`npm run check` の中で走ります）。赤になるのは次のときです。
 
 1. 片方の辞書にしか無い鍵が在る
 2. 鍵の埋め込みの名前が、言語の間で違う（`{n}` と `{m}`）。文として読めない文が在る
 3. コードか `public/index.html` が名指す鍵が辞書に無い。辞書の鍵が、どこにも使われていない。`t()`・`tNodes()`・`key()` の最初の引数が文字列でない。
-   `workbench.error.` の鍵は、`src/lib.mjs` の `ERROR_PHRASES` と両方向で照らします
+   `workbench.error.` の鍵は、`src/lib.mjs` の `ERROR_PHRASES` と両方向で照らします。
+   `ledger.` の鍵は capture-ledger の答えから来るので、「使われているか」からは外します（`ledger.hint.*` は、`test/ledger-text.test.mjs` が capture-ledger の鍵の一覧の写しと照らします）
 4. `public/*.js` か `public/index.html` の、コメントの外に日本語の字が在る（全角の句読点も）。1 行でも赤です
 
 試験は、流す機械の言語の設定に関わらず、日本語で走ります。
@@ -170,7 +188,7 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | 別の WACZ を並べる | `SANDBOX_WACZ_DIR=<dir> npm run sandbox`（相対なら、この repo から。例: `../wacz-validator/samples`）。代役と daemon の両方に同じ置き場が入る |
 | wacz-validator の更新を daemon に入れる | `npm run sandbox:build`。`npm run sandbox` は、image が無いときにしか建てない |
 | 新しいクロールの画面を試す | 新しいクロールの画面から始める。代役は受けた行を台本の `submit.runsSeconds` 秒だけ走らせてから完走にする。走っている間にもう 1 度押すと 409、読めない URL は 400。走らせるもの（スクリプトのチェックとその場の TS）も capture-ledger と同じ形で受け、知らないスクリプトの id・同じ id の重ね・名前の綴り・起点に合わないサイト用のスクリプトの名指し・既定が空（登録済みのスクリプトが無いか、全部が別のサイト用）は capture-ledger と同じ文で 400。capture-ledger の schema に無い鍵も capture-ledger と同じ文（`body must NOT have additional properties`）で 400。行を開くと走らせたものが出る。チェックの横の「読む」は右の列に開く（代役の autoscroll は v2 で設定つき、egov-law-search は起点に laws.e-gov.go.jp が無いと押せないが読める） |
-| クロールごとの値を試す | 起点に `https://laws.e-gov.go.jp/` を書いて egov-law-search を選ぶと、必須の変数 `query` の欄が出る。書いた値は `variables` で送られ、行を開くと「渡した値」に出る。その場の TS に `defineParams` を書いても欄が出る —— 代役は `POST /api/scripts/check` に、source を正規表現で読んで答える（代役だけの近道で、本物は ts-compile-service が構文木を歩く。型を検査しないので、`diagnostics` は `BH0002` と `BH0004` だけ）。代役は capture-ledger v0.90.0 と同じ順と文で 400 を言う —— 必須の変数が無い（`missing variables`。ほかの値の誤りより先）・同じ名前を別の種類か別の形で宣言している、または WARC に残すか（`archive`）が食い違う（`conflicting params`）・シークレットの名前を変数で渡している（`secrets cannot be passed as variables`）・どのスクリプトも宣言していない変数（`unknown variables`）・宣言の形に合わない値（`invalid variables`。理由は `hint`）・宣言した必須のシークレットが Windmill に無い（`unknown secrets`。名前と path と `hint`）・在るが secret でない（`not a secret variable`）・隠すシークレットを送るのに、配備の形式が値を置き換えられない（`formats that cannot hide secrets`。名前と `hint`）。配備の形式の代わりは台本の `captureFormats`（既定は capture-ledger と同じ `["wacz"]`。`"png"` などを足すと、この 400 を見られる）。その場の TS の宣言の形は capture-ledger の schema と同じ文で、`inline.params` に書けるのはシークレットだけで、値を WARC に残すなら `"archive": "keep"`。変数を書くか、同じ名前が 2 度あれば `invalid params`。Windmill の代わりは台本の `windmillSecrets`（在る secret 変数の名前）と `windmillVariables`（在るが secret でない名前）。シークレットの宣言は、その場の TS の `inline.params` を capture-ledger の API に直に送るときだけ試せる（画面には欄が無い）。台本のクロール `5b0c0007` は変数 `query` と、隠すシークレット `api_token`・残すシークレット `login`（`archive: "keep"`）を持ち、開いた行に「渡した値」と「使ったシークレット」（WARC で隠すか残すか）が出る。値は代役もどこにも書かない |
+| クロールごとの値を試す | 起点に `https://laws.e-gov.go.jp/` を書いて egov-law-search を選ぶと、必須の変数 `query` の欄が出る。書いた値は `variables` で送られ、行を開くと「渡した値」に出る。その場の TS に `defineParams` を書いても欄が出る —— 代役は `POST /api/scripts/check` に、source を正規表現で読んで答える（代役だけの近道で、本物は ts-compile-service が構文木を歩く。型を検査しないので、`diagnostics` は `BH0002` と `BH0004` だけ）。代役は capture-ledger v0.90.0 と同じ順と文で 400 を言う —— 必須の変数が無い（`missing variables`。ほかの値の誤りより先）・同じ名前を別の種類か別の形で宣言している、または WARC に残すか（`archive`）が食い違う（`conflicting params`）・シークレットの名前を変数で渡している（`secrets cannot be passed as variables`）・どのスクリプトも宣言していない変数（`unknown variables`）・宣言の形に合わない値（`invalid variables`。理由は `hint`）・宣言した必須のシークレットが Windmill に無い（`unknown secrets`。名前と path と `hint`）・在るが secret でない（`not a secret variable`）・隠すシークレットを送るのに、配備の形式が値を置き換えられない（`formats that cannot hide secrets`。名前と `hint`）。代役は `hint` に並べて、capture-ledger と同じ形の `hints` も返す（鍵は `sandbox/fake-ledger.mjs` の写し `HINT_KEYS`）ので、英語の画面ではこれらの理由が英語で出る。配備の形式の代わりは台本の `captureFormats`（既定は capture-ledger と同じ `["wacz"]`。`"png"` などを足すと、この 400 を見られる）。その場の TS の宣言の形は capture-ledger の schema と同じ文で、`inline.params` に書けるのはシークレットだけで、値を WARC に残すなら `"archive": "keep"`。変数を書くか、同じ名前が 2 度あれば `invalid params`。Windmill の代わりは台本の `windmillSecrets`（在る secret 変数の名前）と `windmillVariables`（在るが secret でない名前）。シークレットの宣言は、その場の TS の `inline.params` を capture-ledger の API に直に送るときだけ試せる（画面には欄が無い）。台本のクロール `5b0c0007` は変数 `query` と、隠すシークレット `api_token`・残すシークレット `login`（`archive: "keep"`）を持ち、開いた行に「渡した値」と「使ったシークレット」（WARC で隠すか残すか）が出る。値は代役もどこにも書かない |
 | User-Agent の箱を試す | 新しいクロールの画面で「Headless を外す型を入れる」を押すか、字を打つ。代役は字の形を capture-ledger と同じ文で断り、受けた字を開いた行に出す |
 | 規則を試す | 新しいクロールの画面で「リンクを辿る」を選ぶ。代役は capture-ledger v0.62.0 と同じく規則を確かめる（同じ 3 つの 400 を同じ文で、`/api/crawl-rules/check` も同じ答え）し、`/api/crawls/:id/decisions` にも答える。台本のクロール `5b0c0007` は `rules`・`decisions`・`robots` を持ち、1 度も当たらない規則が 1 本ある。**`same-site` は近似**: 代役は Public Suffix List を持たず、ホスト名の最後の 2 ラベルをサイトとする。だから `example.co.jp` と `other.co.jp` を同じサイトと読む（capture-ledger は tldts で、そう読まない） |
 | ページとログを見る | 台本のクロールに `pages` を書く（ページの行と、BrowserHive の答えの形の `log`。`counts` は省けば行から数える）。代役は capture-ledger の `/api/crawls/:id/pages`（`after` と `limit`。続きは本文の `next`）と `/api/crawls/:id/pages/:page/log` に答え、`failures` の要素に `page` を付ける。`after` が数字だけでない・`limit` が範囲の外なら 400。`log` の無いページは、ログを読めない理由を返す（台本の `logReason`。省けば taskId の無いページは `not-captured`、在れば `no-log`）。台本のクロール `5b0c0009` は、時間切れのページ（warn と error の行）・捨てた行と途中で切った行を持つページ・robots.txt で撮らなかったページを持つ。`pages` の無い行は一覧が空。「続きを読む」を見るなら、行に capture-ledger の 1 回分より多いページを書く（代役の 1 回分は capture-ledger と同じ既定で、`sandbox/fake-ledger.mjs` の `pageList` に在る） |

@@ -111,7 +111,7 @@ workbench のサーバが持つ書き込みのエンドポイントの 1 つで�
 | capture-ledger の答え | いつ |
 | --- | --- |
 | 202 `{"crawlId": …}` | 受理した（完了は待たない） |
-| 400 `{"error": …}` | 読めない起点の URL や、登録済みのスクリプトが無いとき（`hint` つき）、知らないスクリプトの id や同じ id の重ね（`ids` つき）、必須の変数が無い・宣言に無い変数（`names` つき）、宣言したシークレットが Windmill に無い・secret でない（`secrets` に名前と path）、隠すシークレットを送るのに配備の形式が値を置き換えられない（`names` と `hint` つき）など |
+| 400 `{"error": …}` | 読めない起点の URL や、登録済みのスクリプトが無いとき（`hint` つき）、知らないスクリプトの id や同じ id の重ね（`ids` つき）、必須の変数が無い・宣言に無い変数（`names` つき）、宣言したシークレットが Windmill に無い・secret でない（`secrets` に名前と path）、隠すシークレットを送るのに配備の形式が値を置き換えられない（`names` と `hint` つき）など。capture-ledger v0.102.0 からは、`hint` の在る答えに `hints` も載る（同じ理由を `{ key?, params?, text }` の並びにした物で、ページが画面の言語の文にするために読む） |
 | 404 | 名乗りにクロールを始める許可が無い（`{"error":"not found"}`）か、capture-ledger にクロールの投げ先の設定が無く、エンドポイントごと無い |
 | 409 `{"error": …, "crawlId": …}` | 走行中のクロールがある（全体で 1 本）。`crawlId` が塞いでいる 1 本 |
 | 503 `{"error": "windmill unreachable"}` | 宣言したシークレットが在るかを Windmill に訊けない（flow も動かないので、capture-ledger はクロールを始めない） |
@@ -144,7 +144,7 @@ workbench のサーバが持つ書き込みのエンドポイントの 1 つで�
   操作は `pause`・`resume`・`run`・`repin`・`delete` の 5 つで、id は 16 進の数字とハイフンです。
   形は `src/lib.mjs` の `isWriteRoute` に在ります。
 - **消すのも POST です。** 中継の書き込みのエンドポイントは POST だけなので、capture-ledger のエンドポイントもその形にしてあります。
-- 判断は capture-ledger がします。cron の式も頼みの中身も、断る文は capture-ledger の物をそのまま出します。
+- 判断は capture-ledger がします。cron の式も頼みの中身も、断るのは capture-ledger です。ページは、句と理由の文が辞書に在れば画面の言語に訳し（`ledger.error.<句>`・`ledger.hint.<鍵>`）、無ければ届いたまま出します。
 
 ## POST /api/crawls/:id/inline/:name/fix —— その場の TS の直し方を訊く
 
@@ -210,6 +210,7 @@ daemon の `date` や `connection` は、workbench の応答に混ぜません�
 **workbench のサーバ自身の JSON の失敗は、文ではなく、句と値です**（`{"error":"<句>","params":{…}}`）。
 句は `src/lib.mjs` の `ERROR_PHRASES` に在ります。
 ページが、句を自分の言語の文にします（辞書の鍵は `workbench.error.<句>`。[開発](/development/#画面の文言)）。どう直すかの 1 文も、辞書の側に在ります。
+capture-ledger が自分で書いた断りは、capture-ledger の本文のまま通します。ページは、それも同じ辞書で読みます（鍵は `ledger.error.<句>` と `ledger.hint.<鍵>`）。辞書に無い句と理由は、届いたまま出します。
 ページを通らずにブラウザへ直に出る答え（`/login`・`/callback`・405 の text）は言語を選べないので、英語と日本語を並べて書いてあります（` / ` で区切るか、2 行に分ける）。
 
 | 状態 | いつ | 本文 |

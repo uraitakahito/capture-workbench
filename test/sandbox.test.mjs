@@ -216,7 +216,11 @@ test("同梱の台本は、定期実行の見本を 3 つ出す（失敗・順�
 
 test("予定を作るエンドポイントは、capture-ledger と同じ文で断る", () => {
   assert.equal(createSchedule([], { name: " ", cron: "0 4 * * *" }).body.error, "name must not be blank");
-  assert.equal(createSchedule([], { name: "a", cron: "0 0 4 * * *" }).body.error, "invalid cron");
+  assert.deepEqual(createSchedule([], { name: "a", cron: "0 0 4 * * *" }).body, {
+    error: "invalid cron",
+    hint: "cron must have 5 fields",
+    hints: [{ text: "cron must have 5 fields" }],
+  });
   assert.equal(createSchedule([], { name: "a", cron: "*/5 * * * *" }).body.error, "cron runs too often");
   assert.equal(createSchedule([{ name: "a" }], { name: "a", cron: "0 4 * * *" }).status, 409);
   const made = createSchedule([], { name: " a ", cron: "0 4 * * *", request: { seeds: ["https://site.test/"] } });
@@ -616,6 +620,7 @@ test("起点に合わないサイト用のスクリプトを名指すと、captu
       error: "site scripts need a seed on their site",
       ids: ["egov-law-search"],
       hint: "egov-law-search: laws.e-gov.go.jp",
+      hints: [{ text: "egov-law-search: laws.e-gov.go.jp" }],
     },
   });
   // 起点のどれかが合えば通る（ポートは見ない）
@@ -630,6 +635,8 @@ test("既定が空なら 400 —— 登録済みのスクリプトが無いの�
     body: {
       error: "no scripts are registered",
       hint: "pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])",
+      // 鍵の無い組。終わりの案内も 1 つの組（capture-ledger の crawl/prepare.ts と同じ）
+      hints: [{ text: "pnpm run scripts import .upstream/capture-scripts" }, { text: "(run nothing on purpose: send scripts: [])" }],
     },
   });
   const onlySite = versions.filter((v) => v.id === "egov-law-search");
@@ -638,6 +645,7 @@ test("既定が空なら 400 —— 登録済みのスクリプトが無いの�
     body: {
       error: "no default scripts for these seeds",
       hint: "egov-law-search: laws.e-gov.go.jp (run nothing on purpose: send scripts: [])",
+      hints: [{ text: "egov-law-search: laws.e-gov.go.jp" }, { text: "(run nothing on purpose: send scripts: [])" }],
     },
   });
   // 「何も走らせない」は書ける
@@ -840,7 +848,7 @@ test("値は宣言に照らして capture-ledger と同じ順と文で 400 —�
     status: 400,
     body: { error: "secrets cannot be passed as variables", names: ["api_token"] },
   });
-  // 形に合わない値。全部を名指し、理由は hint に
+  // 形に合わない値。全部を名指し、理由は hint に、文ごとの鍵と値の組は hints に（hint は組の文を " / " で繋いだ字）
   const typed = declaring("a", 'level: z.enum(["low", "high"]), word: z.string().min(2).max(3), code: z.string().length(2)');
   assert.deepEqual(post({ scripts: [typed], variables: { level: "mid", word: "x", code: "abc" } }), {
     status: 400,
@@ -848,6 +856,11 @@ test("値は宣言に照らして capture-ledger と同じ順と文で 400 —�
       error: "invalid variables",
       names: ["code", "level", "word"],
       hint: "code は 2 字まで / level は low・high のどれか / word は 2 字以上",
+      hints: [
+        { key: "variables.tooLong", params: { name: "code", max: 2 }, text: "code は 2 字まで" },
+        { key: "variables.notInEnum", params: { name: "level", values: ["low", "high"] }, text: "level は low・high のどれか" },
+        { key: "variables.tooShort", params: { name: "word", min: 2 }, text: "word は 2 字以上" },
+      ],
     },
   });
   assert.deepEqual(post({ scripts: [typed], variables: { level: "low", word: "abcd", code: "ab" } }).body.hint, "word は 3 字まで");
@@ -863,6 +876,8 @@ test("その場の TS の params に変数は書けない。宣言の形の誤�
       error: "invalid params",
       script: "inline-probe",
       hint: "params に書けるのはシークレットだけ。変数は source の defineParams で宣言する",
+      // 値を埋めない文は、params の欄ごと無い
+      hints: [{ key: "inlineParams.secretsOnly", text: "params に書けるのはシークレットだけ。変数は source の defineParams で宣言する" }],
     },
   });
   assert.equal(
@@ -879,7 +894,12 @@ test("その場の TS の params に変数は書けない。宣言の形の誤�
   );
   assert.deepEqual(post({ scripts: [probe([{ name: "q", kind: "secret" }, { name: "q", kind: "secret" }])] }), {
     status: 400,
-    body: { error: "invalid params", script: "inline-probe", hint: "params に q が 2 度ある" },
+    body: {
+      error: "invalid params",
+      script: "inline-probe",
+      hint: "params に q が 2 度ある",
+      hints: [{ key: "params.duplicateName", params: { name: "q" }, text: "params に q が 2 度ある" }],
+    },
   });
 });
 
@@ -949,6 +969,7 @@ test("宣言したシークレットは Windmill の代わりに照らす ——
       error: "unknown secrets",
       secrets: [{ name: "nope", path: "f/waggle_secrets/nope", declaredBy: ["inline-probe"] }],
       hint: "wmill variable add <value> f/waggle_secrets/nope --secret",
+      hints: [{ text: "wmill variable add <value> f/waggle_secrets/nope --secret" }],
     },
   });
   assert.deepEqual(post([secret("plain_token")]), {
@@ -1002,6 +1023,15 @@ test("隠すシークレットを送るのに配備の形式が値を置き換�
       hint:
         "CAPTURE_LEDGER_CAPTURE_FORMATS の png・mhtml は値を置き換えられない (BrowserHive が断る)。" +
         '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く',
+      hints: [
+        {
+          key: "formats.cannotHideSecrets",
+          params: { formats: ["png", "mhtml"] },
+          text:
+            "CAPTURE_LEDGER_CAPTURE_FORMATS の png・mhtml は値を置き換えられない (BrowserHive が断る)。" +
+            '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く',
+        },
+      ],
     },
   });
   assert.equal(rows.length, 0, "断った頼みは行にしない");

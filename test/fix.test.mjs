@@ -49,17 +49,17 @@ test("取り直した誤りを、スクリプト・どこ・code・文の行に�
   ]);
 });
 
-test("誤りが無ければ通ると言い、エンドポイントの無い 404 と行の無い 404 を言い分け、ほかは capture-ledger の文のまま", () => {
+test("誤りが無ければ通ると言い、エンドポイントの無い 404 と行の無い 404 を言い分け、ほかは capture-ledger の句を訳して出す", () => {
   assert.deepEqual(diagnosisOf(200, { typescript: "6.0.3", hostTypes: "v0.6.0", diagnostics: [] }), {
     kind: "clean",
     typescript: "6.0.3",
   });
   const noRoute = diagnosisOf(404, { message: "Route GET:/api/crawls/x/diagnostics not found", error: "Not Found" });
   assert.match(noRoute.text, /CAPTURE_LEDGER_TS_COMPILE_URL/);
-  assert.deepEqual(diagnosisOf(404, { error: "not found" }), { kind: "trouble", text: "404 —— not found" });
+  assert.deepEqual(diagnosisOf(404, { error: "not found" }), { kind: "trouble", text: "404 —— 見つかりません" });
   assert.deepEqual(diagnosisOf(503, { error: "ts-compile unreachable" }), {
     kind: "trouble",
-    text: "503 —— ts-compile unreachable",
+    text: "503 —— ts-compile-service に届きません",
   });
   assert.equal(diagnosisOf(0, { error: "fetch failed" }).kind, "trouble");
 });
@@ -106,24 +106,24 @@ test("200 は、何の検査に通った直しかと、回数と費用を言う"
   assert.deepEqual(said, { kind: "ok", text: "TypeScript 6.0.3・受け皿の型 v0.6.0 の検査に通った直し（1 往復・$0.0304）" });
 });
 
-test("429 は、この月に使った額と上限を添える。ほかは capture-ledger の文に、回数と費用があれば添える", () => {
+test("429 は、この月に使った額と上限を添える。ほかは capture-ledger の句を訳した文に、回数と費用があれば添える", () => {
   assert.deepEqual(fixAnswer(429, { error: "claude budget exhausted", spentUsd: 5.0123, budgetUsd: 5 }), {
     kind: "bad",
-    text: "429 —— claude budget exhausted（この月 $5.0123・上限 $5。Claude は呼んでいません）",
+    text: "429 —— Claude の月の上限に達しました（この月 $5.0123・上限 $5。Claude は呼んでいません）",
   });
   assert.deepEqual(fixAnswer(422, { error: "no fix passed the checks", rounds: 2, usage: { usd: 0.0612 } }), {
     kind: "bad",
-    text: "422 —— no fix passed the checks（2 往復・$0.0612）",
+    text: "422 —— 検査に通る直し方がありませんでした（2 往復・$0.0612）",
   });
   assert.deepEqual(fixAnswer(409, { error: "scripts compile", typescript: "6.0.3", hostTypes: "v0.6.0" }), {
     kind: "warn",
-    text: "409 —— scripts compile",
+    text: "409 —— スクリプトは型を通ります",
   });
-  assert.deepEqual(fixAnswer(503, { error: "ts-compile unreachable" }), { kind: "bad", text: "503 —— ts-compile unreachable" });
+  assert.deepEqual(fixAnswer(503, { error: "ts-compile unreachable" }), { kind: "bad", text: "503 —— ts-compile-service に届きません" });
   // 鍵の無い capture-ledger はエンドポイントごと出さない（Fastify の 404）。行やその場の TS が無い 404 とは言い分ける
   const noRoute = fixAnswer(404, { message: "Route POST:/api/crawls/x/inline/y/fix not found", error: "Not Found" });
   assert.match(noRoute.text, /CAPTURE_LEDGER_ANTHROPIC_API_KEY/);
-  assert.deepEqual(fixAnswer(404, { error: "not found" }), { kind: "bad", text: "404 —— not found" });
+  assert.deepEqual(fixAnswer(404, { error: "not found" }), { kind: "bad", text: "404 —— 見つかりません" });
   assert.equal(fixAnswer(0, { error: "fetch failed" }).kind, "bad");
 });
 
@@ -175,15 +175,15 @@ test("英語: 直しの 1 行は、往復の単数と複数を言い分け、括
   assert.equal(inEnglish(() => fixAnswer(200, {}).text), "A fix that passed the type check");
 });
 
-test("英語: 状態の数と capture-ledger の文は「 — 」で繋ぎ、capture-ledger の文は訳さない", () => {
-  assert.equal(inEnglish(() => diagnosisOf(503, { error: "ts-compile unreachable" }).text), "503 — ts-compile unreachable");
+test("英語: 状態の数と capture-ledger の句は「 — 」で繋ぎ、句は辞書に在れば訳す", () => {
+  assert.equal(inEnglish(() => diagnosisOf(503, { error: "ts-compile unreachable" }).text), "503 — ts-compile-service cannot be reached");
   assert.equal(
     inEnglish(() => fixAnswer(422, { error: "no fix passed the checks", rounds: 2, usage: { usd: 0.0612 } }).text),
-    "422 — no fix passed the checks (2 rounds · $0.0612)",
+    "422 — No fix passed the checks (2 rounds · $0.0612)",
   );
   assert.equal(
     inEnglish(() => fixAnswer(429, { error: "claude budget exhausted", spentUsd: 5.0123, budgetUsd: 5 }).text),
-    "429 — claude budget exhausted (this month $5.0123, limit $5; Claude was not called)",
+    "429 — The Claude budget is exhausted (this month $5.0123, limit $5; Claude was not called)",
   );
   assert.equal(inEnglish(() => fixAnswer(0, {}).text), "The workbench itself cannot be reached (The answer has no message)");
   assert.equal(diagnosisOf(0, {}).text, "workbench 自身に届きません（答えに文がありません）");

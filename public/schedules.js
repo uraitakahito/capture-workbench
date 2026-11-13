@@ -6,7 +6,7 @@
  * 帯を出すのは 3 つの語と、読めないときだけ。順番待ち（`blocked`）は待っているだけなので出さない。頁の一部だけ失敗した回は
  * 回の欄に「一部失敗」と出し、帯には出さない —— 同じサイトが毎日落ちると帯が出続け、誰も見なくなる。
  */
-import { t } from "./i18n.js";
+import { hintsText, t } from "./i18n.js";
 import { startAnswer } from "./start.js";
 
 export const SCHEDULES_PATH = "/api/schedules";
@@ -208,7 +208,13 @@ export const markOf = (crawl) => {
 /** 予定を作る本文。`request` は始める欄の本文（`startBody`）そのもの。 */
 export const createBody = (name, cron, request) => ({ name: name.trim(), cron: cron.trim(), request });
 
-/** 作った答えの 1 行。頼みの中身の断りは、始めるエンドポイントと同じ文にする（`startAnswer`）。 */
+/**
+ * 作った答えの 1 行。頼みの中身の断りは、始めるエンドポイントと同じ文にする（`startAnswer`）。
+ *
+ * cron の 2 つの断り（`invalid cron`・`cron runs too often`）は、欄の下に出す専用の文（状態の数を付けず、理由と数を
+ * 括弧で添える）。**文の頭は、同じ句の `ledger.error.<句>` と同じ字にしてある** —— 同じ句から 2 通りの言い方が出ない
+ * ように、試験（`test/ledger-text.test.mjs`）が照らす。
+ */
 export const createAnswer = (status, answer) => {
   if (status === 201) {
     return {
@@ -218,7 +224,7 @@ export const createAnswer = (status, answer) => {
   }
   if (status === 409) return { kind: "bad", text: t("schedules.create.sameName") };
   if (answer.error === "invalid cron") {
-    return { kind: "bad", text: t("schedules.create.invalidCron", { hint: String(answer.hint ?? "") }) };
+    return { kind: "bad", text: t("schedules.create.invalidCron", { hint: hintsText(answer) ?? "" }) };
   }
   if (answer.error === "cron runs too often") {
     return {
@@ -242,7 +248,7 @@ const DONE = {
   close: () => t("schedules.done.close"),
 };
 
-/** 操作の答えの 1 行。断られたら、capture-ledger の文をそのまま出す。 */
+/** 操作の答えの 1 行。断られたら、始めるエンドポイントと同じ文にする（`startAnswer`）。 */
 export const actionAnswer = (action, status, answer) => {
   if (status >= 200 && status < 300) return { kind: "ok", text: DONE[action]?.() ?? t("schedules.done.other") };
   return startAnswer(status, answer);

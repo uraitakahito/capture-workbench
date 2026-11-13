@@ -129,7 +129,7 @@ secret's value (it lives in a Windmill variable, and is neither in the form nor 
 | The ledger's answer | When |
 | --- | --- |
 | 202 `{"crawlId": …}` | accepted (it does not wait for the crawl to finish) |
-| 400 `{"error": …}` | a seed URL that cannot be read, no registered scripts (with a `hint`), an unknown script id or the same id twice (with `ids`), a required variable missing or a variable no script declared (with `names`), a declared secret that is missing from Windmill or is not a secret there (with `secrets`: name and path), a hidden secret sent while the deployment's formats cannot have its value replaced (with `names` and a `hint`), and so on |
+| 400 `{"error": …}` | a seed URL that cannot be read, no registered scripts (with a `hint`), an unknown script id or the same id twice (with `ids`), a required variable missing or a variable no script declared (with `names`), a declared secret that is missing from Windmill or is not a secret there (with `secrets`: name and path), a hidden secret sent while the deployment's formats cannot have its value replaced (with `names` and a `hint`), and so on. From capture-ledger v0.102.0, an answer with a `hint` also carries `hints`: the same reasons as a list of `{ key?, params?, text }`, which the page reads to show them in its language |
 | 404 | the identity may not start crawls (`{"error":"not found"}`), or the ledger has nowhere to send crawls configured and does not serve the route at all |
 | 409 `{"error": …, "crawlId": …}` | a crawl is already running (one at a time, overall); `crawlId` is the one in the way |
 | 503 `{"error": "windmill unreachable"}` | the ledger could not ask Windmill whether a declared secret exists (the flow would not run either, so it does not start the crawl) |
@@ -166,7 +166,9 @@ through like any other read.
 - **Only exactly these shapes are relayed.** The actions are `pause`, `resume`, `run`, `repin` and
   `delete`, and the id is hex digits and hyphens. The shapes are in `isWriteRoute` in `src/lib.mjs`.
 - **Deleting is a POST too.** The relay only writes with POST, so the ledger's route has that shape.
-- The ledger decides. For the cron expression and the request alike, the refusal is the ledger's words.
+- The ledger decides. For the cron expression and the request alike, the refusal is the ledger's: the
+  page shows its phrase and its reasons in the screen's language when its dictionary has them
+  (`ledger.error.<phrase>`, `ledger.hint.<key>`), and as they arrived when it does not.
 
 ## POST /api/crawls/:id/inline/:name/fix — asking how to fix an inline script
 
@@ -233,7 +235,10 @@ A failure says what is missing. "You may not see it" and "it is not running" are
 `{"error":"<phrase>","params":{…}}`. The phrases are `ERROR_PHRASES` in `src/lib.mjs`. The page
 turns a phrase into a sentence in its own language with its dictionary (the key
 `workbench.error.<phrase>`, see [Development](/development/#the-text-on-the-screen)), so the
-sentence that says how to fix it is in the dictionary too. An answer that the browser shows
+sentence that says how to fix it is in the dictionary too. A refusal the ledger wrote itself is
+passed on with the ledger's body, and the page reads it with the same dictionary (the keys
+`ledger.error.<phrase>` and `ledger.hint.<key>`); a phrase or a reason the dictionary does not
+have is shown as it arrived. An answer that the browser shows
 without the page (`/login`, `/callback`, and the 405 text) cannot choose a language, so it is
 written in English and Japanese side by side, separated by ` / ` or on two lines.
 

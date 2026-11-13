@@ -219,7 +219,10 @@ export const versionNote = (page) => {
   return before !== null && after !== null && before !== after ? `BrowserHive ${before} → ${after}` : "";
 };
 
-/** 読み取りの失敗の字。404 は古い capture-ledger（変化のエンドポイントが無い）。 */
+/**
+ * 読み取りの失敗の字。404 は古い capture-ledger（変化のエンドポイントが無い）。capture-ledger が自分で書く 404（行が無い・
+ * 見えない。句は `not found`）は別で、句を見るのはその見分けのためだけ —— 出す文は `errorText` の 1 通り。
+ */
 export const changesError = (status, body) =>
   status === 404 && body?.error !== "not found"
     ? t("changes.error.noRoute")

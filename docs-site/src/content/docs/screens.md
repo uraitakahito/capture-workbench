@@ -51,9 +51,13 @@ language ([Development](/development/#the-text-on-the-screen)).
   remembered, the first of the browser's languages that is Japanese or English, and English when
   none of them says. A browser that will not store the choice gets it carried in `?lang=`
   instead.
-- **Some text is not translated.** What capture-ledger, BrowserHive, Windmill and the daemon return
-  is shown as it arrived (states such as `captured`, step names, log lines, failure reasons), and
-  so are proper names. Claude's summaries in the changes view are in Japanese, because
+- **Some text is not translated.** What was stored, or written by capture-ledger, BrowserHive,
+  Windmill or the daemon as data, is shown as it arrived (states such as `captured`, step names,
+  log lines, the failure reason kept with a crawl or with a schedule's run), and so are proper
+  names. What capture-ledger says when it refuses a request is different: its phrase and its
+  reasons are shown in the screen's language when the workbench's dictionary has them, and as
+  they arrived when it does not (an answer from a ledger newer than the workbench, the text of a
+  schema check, a command to run). Claude's summaries in the changes view are in Japanese, because
   capture-ledger had them written in Japanese; on the English screen the view adds
   `The summary is written in Japanese.`
 - **The validation report follows the screen.** The workbench hands the screen's language to the
@@ -178,7 +182,9 @@ the crawl's bundle.
   **Put the fixed version in the form** (直した版を欄に戻す), which works like **Back to the form** with the fixed
   source (the name and phase stay as they were). Only the types were checked: read the diff, and
   capture once to see that the script still does what it did. Any other answer (nothing to fix, no fix
-  passed, this month's limit reached, a ledger without the route) is one line, in the ledger's words.
+  passed, this month's limit reached, a ledger without the route) is one line: the status and the
+  ledger's phrase, in the screen's language when the dictionary has it and as it arrived when it does not.
+  The reasons a fix was rejected are listed the same way.
 - **An opened row also shows what the crawl's rules decided** (the ledger's
   `/api/crawls/:id/decisions`, fetched together with the detail). First, per rule, the distinct URLs it
   matched, counted per level and added up (a URL found on two levels counts twice); a rule that never matched is marked **Never matched** (当たっていません),
@@ -430,7 +436,7 @@ a window for reading a registered script, and, while **Follow links** is chosen,
   site answers can change). Whether to include the word `BrowserHive` is up to whoever types: with it, a site can tell that BrowserHive took the page and
   robots.txt is read under that name; without it, only the `*` rules are read. The workbench does not check the text:
   the ledger refuses text of the wrong form (printable ASCII, at most 512 characters) with a 400, and the workbench
-  shows its sentence as it is. The text stays in the box after starting, like the variables and the
+  shows it under the left column (`400 — The User-Agent must be printable ASCII, at most 512 characters`). The text stays in the box after starting, like the variables and the
   script. The opened row of the crawls view shows the text as typed; the value actually sent is in the WACZ's
   `settings.userAgent`.
 - **When a ticked script or your own script declares values, the Per-crawl values (クロールごとの値) box
@@ -451,10 +457,11 @@ a window for reading a registered script, and, while **Follow links** is chosen,
   per crawl, values up to 4,096 characters and the shape the script declared are the ledger's rules. When a
   required field is empty, a name no script declared is sent or a value does not fit, the ledger answers
   400 naming it before it creates a row (under the left column you read something like
-  `400 — missing variables: query`). When your own script's declaration cannot be read, or the ledger
+  `400 — Required variables are missing: query`). When your own script's declaration cannot be read, or the ledger
   cannot be asked, the reason is under the box in red: `BH0002` (the form cannot be read without running it),
   `BH0004` (a script that runs before navigation has nowhere to read a variable), or `Cannot check the declarations`
-  (宣言を確かめられません) with the ledger's sentence. Ordinary type errors are not shown
+  (宣言を確かめられません) with the status and what the ledger said (its phrase is translated when the
+  dictionary has it). Ordinary type errors are not shown
   there; the compile step reports them when the crawl runs. A secret (`kind: secret`) is
   listed under **Secrets used** (使うシークレット) by name only, with no field, and beside the name whether
   the WARC hides or keeps it (the declaration's `archive`; left out, it hides): its value is put by a
@@ -467,9 +474,9 @@ a window for reading a registered script, and, while **Follow links** is chosen,
   capture-scripts README). When a hidden secret is used while the deployment's formats (the ledger's
   `CAPTURE_LEDGER_CAPTURE_FORMATS`) include PNG, WebP, HTML or MHTML, none of which can have the value
   replaced, the ledger refuses with a 400 before it creates a row, naming the secrets and how to fix it
-  (under the left column: `400 — formats that cannot hide secrets: api_token (CAPTURE_LEDGER_CAPTURE_FORMATS の png は値を置き換えられない …)`; the part in parentheses is the ledger's hint, which the ledger writes in Japanese).
+  (under the left column: `400 — Secrets the formats cannot hide: api_token (png in CAPTURE_LEDGER_CAPTURE_FORMATS cannot replace the values …)`; the part in parentheses is the ledger's reason. A ledger from before v0.102.0 sends it only as a Japanese sentence, and it is then shown in Japanese).
   Declaring one name as kept in one script and hidden in another gives
-  `400 — conflicting params: api_token`. No bundled script declares a secret,
+  `400 — Conflicting params: api_token`. No bundled script declares a secret,
   so this view passes variables only; your own script can declare a secret (`inline.params`) only when
   calling the ledger's API directly.
 - **A script left out of the default is listed unticked.** It reads **Does not run by default**
@@ -556,8 +563,9 @@ a window for reading a registered script, and, while **Follow links** is chosen,
 - **A 202 or a 409 takes you to the crawls view.** When the crawl is accepted, its row gets a mark;
   if a crawl is already running, the row in the way gets the mark (the ledger runs one crawl at a
   time, overall). An accepted crawl is running, so the footer starts polling every 2 seconds.
-  Anything else (a 400, a 413, an unreachable server) stays in this view, in the ledger's own words
-  under the left column.
+  Anything else (a 400, a 413, an unreachable server) stays in this view, as one line under the
+  left column: the status and the reason. A refusal from the ledger is shown in the screen's
+  language when the dictionary has its phrase and its reasons, and as it arrived when it does not.
 - **After a 202 the seed URLs are cleared; your script and the values of the variables are kept,**
   since the usual next step is to fix it and run again.
 - **Back to the form brings you back here.** Open a row in the crawls view and press

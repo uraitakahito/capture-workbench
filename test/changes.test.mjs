@@ -97,7 +97,7 @@ describe("前回からの変化（CAPTURE-167）", () => {
 
   it("404 のうち、変化のエンドポイントが無い古い capture-ledger は、そう言う", () => {
     assert.match(changesError(404, { message: "Route GET:/api/changes not found" }), /v0.93.0 より前/);
-    assert.equal(changesError(404, { error: "not found" }), "404 —— not found");
+    assert.equal(changesError(404, { error: "not found" }), "404 —— 見つかりません");
   });
 
   it("ページの Claude の 1 行にも「証拠ではない」を添える", () => {
@@ -252,7 +252,7 @@ describe("前回からの変化の英語の字（CAPTURE-294）", () => {
       'Schedule "毎朝": the summary of the change since the previous run failed',
     ]);
     assert.match(inEnglish(() => changesError(404, {})), /before v0\.93\.0/);
-    assert.equal(inEnglish(() => changesError(404, { error: "not found" })), "404 — not found");
+    assert.equal(inEnglish(() => changesError(404, { error: "not found" })), "404 — Not found");
     assert.equal(inEnglish(() => changesError(500, {})), "500 — Could not be read");
     assert.equal(changesError(500, {}), "500 —— 読めませんでした");
   });
