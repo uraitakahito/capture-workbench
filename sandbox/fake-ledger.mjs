@@ -468,7 +468,8 @@ const CAPTURE_FIELDS = [
  * 鍵は、置き場に在る名前の id のときだけ (ほかの id は null。capture-ledger の「見てよくない」と同じ形)。
  * 取り込みの欄は台本の `capture` から。**`capture` の無いページは読めない** —— 理由は台本の `traceReason`、省けば
  * taskId の無いページは not-captured、在れば no-manifest (代役の省略)。`trace` は BrowserHive v30.0.0 から載る欄で、
- * capture-ledger v0.100.0 と同じくいつも null。`log` の無い取り込みは `log: null` で、取り込みの欄は返す。
+ * capture-ledger v0.101.0 と同じく、台本のページが持てば書かれたまま返し、持たなければ null。`log` の無い取り込みは
+ * `log: null` で、取り込みの欄は返す。
  */
 export const pageTrace = (c, raw, names = []) => {
   if (!DIGITS.test(raw)) return schemaError('params/page must match pattern "^[0-9]+$"');
@@ -486,7 +487,7 @@ export const pageTrace = (c, raw, names = []) => {
   }
   const capture = Object.fromEntries(CAPTURE_FIELDS.filter((key) => p.capture[key] !== undefined).map((key) => [key, p.capture[key]]));
   const log = p.log === undefined ? null : { lines: p.log.lines, counts: countsOf(p.log), dropped: p.log.dropped ?? 0 };
-  return { status: 200, body: { page, archive, capture, log, trace: null, reason: null } };
+  return { status: 200, body: { page, archive, capture, log, trace: p.trace ?? null, reason: null } };
 };
 
 /**

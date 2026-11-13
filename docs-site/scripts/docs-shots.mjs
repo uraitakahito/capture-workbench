@@ -264,17 +264,18 @@ const SHOTS = [
   },
   {
     name: "trace",
-    // 取り込み 1 回の経緯（CAPTURE-270）。代役の 5b0c000b のページ 1301 —— 置き場の trace-timeline.wacz（BrowserHive が
-    // capture-fixtures の /charset/ を撮った本物）と、同じ取り込みの答え。題の行から要求の並びまで（注記とログは写さない）。
+    // 取り込み 1 回の経緯（CAPTURE-270）。代役の 5b0c000b のページ 1301 —— BrowserHive v30.0.0 が capture-fixtures の
+    // /charset/ を撮った本物の答え（取り込みの欄・ログ・要求の行）。題の行から要求の並びまで（注記とログは写さない）。
     // 時間軸は窓の幅いっぱいに伸びるので、表と同じく縮めて載せる（狭く切ると、軸の右が欠ける）
     hash: "#trace/5b0c000b-6a1e-4000-8000-00000000000b/1301",
     box: "#trace-head, #trace-chart, #trace-requests",
     wide: true,
     ready: () =>
-      // 帯はログから（段 5 本）、要求の印と並びは本物の daemon が読んだ WARC のレコードから（対 11 個）
+      // 帯はログから（段 5 本）、要求の印と並びは答えの trace の行から（11 行。どれも読み終えていて、棒になる）
       document.querySelectorAll("#trace-chart .bar.step").length === 5 &&
       document.querySelectorAll("#trace-chart .tick.ok").length === 11 &&
       document.querySelectorAll("#trace-requests .trace-req").length === 11 &&
+      document.querySelectorAll("#trace-requests .trace-req .bar.req").length === 11 &&
       document.querySelector("#trace-requests .trace-tally")?.textContent.startsWith("要求 11") === true,
     marks: [
       { n: 1, at: "#trace-chart .trace-row:nth-child(2) .lab" },

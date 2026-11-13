@@ -20,7 +20,7 @@ import { readdirSync, readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
 import { outcomeOf } from "../public/pages.js";
-import { axisOf, settleOf, stepsOf, stoppedStepOf } from "../public/timeline.js";
+import { axisOf, hasTrace, readsRecords, requestCountsOf, requestsOf, settleOf, snapshotsFromLog, stepsOf, stoppedStepOf } from "../public/timeline.js";
 import { isPartialBundle, replayBundleHref } from "../public/replayweb.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
@@ -1452,8 +1452,9 @@ test("経緯の答えは { page, archive, capture, log, trace, reason } で、pa
       const { submittedAt, finishedAt, ...row } = answer.body.page;
       assert.deepEqual(row, pageRow(p));
       assert.deepEqual([submittedAt, finishedAt], [p.submittedAt ?? null, p.finishedAt ?? null]);
-      // BrowserHive v30.0.0 から載る欄。capture-ledger v0.100.0 と同じく、いつも null
-      assert.equal(answer.body.trace, null);
+      // BrowserHive v30.0.0 から載る欄。台本のページが持てば書かれたまま、持たなければ null（capture-ledger v0.101.0 と同じ）
+      assert.deepEqual(answer.body.trace, p.trace ?? null);
+      if (answer.body.capture === null) assert.equal(answer.body.trace, null);
       // 読めたか読めないかのどちらか: 取り込みの欄が在れば理由は null、無ければ理由が在り、ログも無い
       assert.equal(answer.body.capture === null, answer.body.reason !== null, `${c.crawlId} ${p.id}`);
       if (answer.body.capture === null) {
@@ -1507,6 +1508,36 @@ test("台本の 5b0c000b の答えから、画面は軸・段・待ちを組め�
   assert.equal(timedOut.capture.errorDetails.timeoutMs, 30000);
   assert.equal(stoppedStepOf(timedOut), "load-pages");
   assert.ok(timedOut.log.lines.some((line) => line.level === "error"));
+});
+
+test("台本の 5b0c000b の 1301 と 1302 は trace を持ち、画面は要求を行から読む。1303 は同じ取り込みを trace の無い形で持つ", () => {
+  const c = crawlOf("5b0c000b");
+  const done = pageTrace(c, "1301", SAMPLE_NAMES).body;
+  // 行の形は BrowserHive の契約のまま（代役は選び直さない）
+  assert.deepEqual(Object.keys(done.trace), ["lines", "counts", "dropped"]);
+  assert.equal(hasTrace(done), true);
+  assert.equal(readsRecords(done), false);
+  const requests = requestsOf(done.trace, axisOf(done).endMs);
+  // 行の数は、同じ取り込みの記録の数（waczStats）と合う。どれも読み終えていて、棒になる
+  assert.equal(requests.length, done.capture.waczStats.totalRecorded);
+  assert.deepEqual([...new Set(requests.map((one) => `${one.kind} ${one.shape}`))], ["finished bar"]);
+  assert.equal(requestCountsOf(done.trace).total, requests.length);
+  // 写しの印は、ログの行から置ける（文書の URL は取り込みの答えの物）
+  assert.deepEqual(snapshotsFromLog(done.log.lines, done.capture).map((one) => [one.stage, one.documentUrl]), [["after-load", done.capture.document.url]]);
+
+  // 時間切れ: WACZ は無いが、行は在る。文書の要求が終わっていない
+  const timedOut = pageTrace(c, "1302", SAMPLE_NAMES).body;
+  assert.equal(timedOut.archive, null);
+  assert.deepEqual(requestsOf(timedOut.trace, axisOf(timedOut).endMs).map((one) => [one.kind, one.shape]), [["pending", "open"]]);
+  assert.equal(readsRecords(timedOut), false);
+
+  // 1303: 同じ WACZ・同じ取り込みの欄とログで、trace だけが無い（BrowserHive v30.0.0 より前の答えの形）
+  const before = pageTrace(c, "1303", SAMPLE_NAMES).body;
+  assert.equal(before.trace, null);
+  assert.deepEqual(before.archive, done.archive);
+  assert.deepEqual(before.capture, done.capture);
+  assert.deepEqual(before.log, done.log);
+  assert.equal(readsRecords(before), true);
 });
 
 test("経緯を読めないページは capture: null と理由 —— taskId の無いページは not-captured、capture の無いページは no-manifest", () => {

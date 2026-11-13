@@ -294,17 +294,18 @@ URL is `#trace/<crawl id>/<page id>`). The tab stays **Crawls**; the view replac
 **← Crawl list** goes back. The link is there for pages that have a capture's answer (captured or
 failed), not for pages still waiting or skipped.
 
-It reads one route of the ledger, `GET /api/crawls/:id/pages/:page/trace`, and, for a capture
-that has a WACZ, the list of WARC records inside it ([`/wacz/:id/records`](/routes/)). The former
-is the `.result.json` BrowserHive wrote to the store with the capture's answer, read back by the
-ledger; the workbench only lays it out.
+It reads one route of the ledger, `GET /api/crawls/:id/pages/:page/trace`: the `.result.json`
+BrowserHive wrote to the store with the capture's answer, read back by the ledger. The workbench
+only lays it out. For a capture whose answer has no request lines (`trace`; BrowserHive before
+v30.0.0), it also reads the list of WARC records inside the WACZ
+([`/wacz/:id/records`](/routes/)).
 
 ![The trace of one page's capture: a figure on a time axis on top (rows for the capture's steps, their details, the wait, the requests and the snapshots), and the list of requests below. The axis is seconds from the start of the capture](../../assets/screens/trace.webp)
 
 ① the bars of the capture's steps\
 ② the wait after loading, with marks where things went quiet\
-③ the request marks (when Chromium sent each request)\
-④ the list of requests (pressing one shows its fields below)
+③ the marks where each request starts\
+④ the list of requests (one bar a row; pressing one shows its fields below)
 
 - **The axis is seconds from the start of the capture.** Zero is when BrowserHive started the
   capture: the time of the first log line minus that line's `ms`. A capture without a log uses
@@ -320,42 +321,71 @@ ledger; the workbench only lays it out.
   from the start of the wait to its end, and the marks are load, the network going quiet, the DOM
   going quiet and the CPU going quiet (the answer's `settle`). What never went quiet has no mark,
   and pressing the bar lists it as `never` (静まらなかった).
-- **The request marks come from the records inside the WACZ.** A filled mark is a request paired
-  with its response (a WARC request and response), placed at `WARC-Date` — when Chromium sent the
-  request. A hollow mark is the record of a request that was not paired (a WARC metadata): one of
-  **Did not finish** (終わらなかった), **Failed** (失敗した), **Denied** (止めた) and **Not archived**
-  (残さなかった). **It is placed at the time BrowserHive wrote that record, not at the start of the
-  request** (a request that did not finish sits where recording stopped). Which of the four it
-  is, is written in the metadata's body, so the first 40 are read when the view opens and the
-  rest when pressed in the list (until then they say **Not read yet**, 読んでいない). The end of a request and how
-  long it took are not shown: today's WACZ has no record that says so.
-- **The list of requests is in time order.** One row has the seconds, the status (or the kind of
-  record), the URL and the position on the axis; pressing it shows fields below. A paired request
-  shows its MIME type and, when the body was not kept, why. An unpaired one shows the reason, the
-  error, the policy it matched, the resource type and the method (those the record has). The line
-  on top is the counts: `Requests N` (要求 N) is the paired ones, counted the same way as the answer's
-  `waczStats.totalRecorded`.
-- **Snapshots (写し) is when each DOM snapshot was taken.** Pressing one shows the snapshot's
-  stage and links that open it in replay (only when the WACZ may be viewed).
+- **Requests are drawn from the lines BrowserHive put in its answer (`trace`).** From BrowserHive
+  v30.0.0, the answer of a capture that asked for a WACZ carries what happened to each request,
+  one line per exchange. The **Requests** (要求) row of the figure holds a mark where each request
+  starts, and the list below draws one bar a row. A bar runs from the start of the request to its
+  end. **A request that did not finish is a dashed bar running to the end of the axis** (it has no
+  end). A line with no length is only a start mark (a hollow circle): **Not archived** (残さなかった), **Denied** (止めた), **Stopped tracking** (追うのをやめた) and **End not observable** (終わりを観測できない) — the end is not known, so no length is drawn. A position is the line's `ms`,
+  on the same axis as the step bars (BrowserHive wrote it by fitting Chromium's clock to its own
+  axis). A length includes the time BrowserHive held the request and the response (matching
+  policies, reading the body).
+- **The list of requests can be ordered and narrowed.** One row has the start in seconds, the
+  status (or the outcome, for a line that has not finished or has no response), the length, the
+  URL and the bar. The order is **By start** (始まりの順) or **Longest first** (長い順); the filter is
+  **Only failed and unfinished** (失敗と終わらなかった物だけ). The line on top is the count for each
+  outcome. It comes from the counts that arrive with the lines (`trace.counts`), which include
+  lines dropped at the limit (2,000 lines a capture); when lines were dropped, their number is
+  shown too.
+- **Pressing a request shows the breakdown of its length and its initiator.** The fields are the
+  URL, method, resource type, outcome, start, the time Chromium sent it, length, breakdown,
+  initiator, status, protocol, bytes received and the ID of the record that was written (those
+  the line has). The breakdown is DNS lookup, connect, TLS, send, wait for the response and
+  receive, plus **Other** (ほか): what is left of the length after those six — time queued before
+  Chromium sent the request, and time held by BrowserHive. The initiator is the kind of thing
+  that caused the request (`parser`, `script` and so on) with its URL and line.
+- **End not observable (終わりを観測できない) is not "did not finish".** The end event of a
+  cross-site frame's document, and of a dedicated worker's script, does not reach the captured
+  page's side. BrowserHive marks such a line to tell it from one that did not finish. The view
+  draws no length for it and leaves it out of the **Did not finish** (終わらなかった) count and of the filter.
+- **Without a `trace`, the request marks come from the records inside the WACZ.** That is a
+  capture by BrowserHive before v30.0.0, or one that did not ask for a WACZ. Requests are marks
+  only, not bars (the WACZ has no record that says when a request ended). A filled mark is a
+  request paired with its response (a WARC request and response), placed at `WARC-Date` — when
+  Chromium sent the request. The bars are placed by BrowserHive's clock and these marks by
+  Chromium's, so they can differ a little (0.2 to 0.3 seconds, measured on a local stack). A
+  hollow mark is the record of a request that was not paired (a WARC metadata): one of
+  **Did not finish** (終わらなかった), **Failed** (失敗した), **Denied** (止めた) and **Not archived** (残さなかった). **It is placed at the time BrowserHive wrote that record, not at the start of the
+  request.** Which of the four it is, is written in the metadata's body, so the first 40 are read
+  when the view opens and the rest when pressed in the list (until then they say **Not read yet**, 読んでいない).
+  A request whose end cannot be observed counts as **Did not finish** in this reading. `Requests N` (要求 N) on the
+  top line is the paired ones, counted the same way as the answer's `waczStats.totalRecorded`.
+- **Snapshots (写し) is when each DOM snapshot was taken.** With a `trace`, the mark sits at the
+  log line BrowserHive writes when it takes the snapshot; without one, at the time of the
+  snapshot's record inside the WACZ. Pressing one shows the snapshot's stage and links that open
+  it in replay (only when the WACZ may be viewed). The document URL it opens is the answer's
+  `document.url` (the URL after any redirect).
 - **Pressing a bar or a mark in the figure shows its fields below**: the start and length of a
   bar, or the time of a mark, in seconds.
-- **There are two clocks.** The bars (steps, details, console) are placed by BrowserHive's clock
-  and the request marks by Chromium's. They are separate clocks and can differ a little (0.2 to
-  0.3 seconds, measured on a local stack).
 - **A capture that failed says which step it stopped in.** The answer of a timeout or a failure
   does not carry the step's name. It is read from the last step line of the log, and the heading
-  line gives `stopped in step` (止まった段) with the step's name, and the reason. A capture with no WACZ has no list of requests (requests
-  are read from the WACZ).
+  line gives `stopped in step` (止まった段) with the step's name, and the reason. With a `trace`, the list of requests is shown even when
+  there is no WACZ (after a timeout, the request that did not finish stays as a dashed bar).
+  Without one there is no list (requests are read from the WACZ).
 - **A page whose trace cannot be read shows the ledger's reason**: no answer from a capture, no
   recorded place for `.result.json`, nothing at that place in the store, or a file the contract
-  rejects. An identity that may not view the WACZ gets the bars and the log, not the requests.
+  rejects. An identity that may not view the WACZ still gets the list of requests when the
+  capture has a `trace` (the lines are part of the capture's answer, not of the WACZ); without
+  one it gets the bars and the log.
 - **The same capture's log is listed below**, in the same box as **Log** in the pages table, with
   the same filter.
 - **The signature does not cover this view.** It lays out what it read from `.result.json` in the
-  store and from the WACZ. The records to show as evidence are the ones inside the WACZ.
+  store (and from the WACZ, for a capture without a `trace`). The request lines are not inside
+  the WACZ. The records to show as evidence are the ones inside the WACZ.
 
-The arithmetic (axis, bars, marks, counts) is `public/timeline.js`, pinned by
-`test/timeline.test.mjs` against real answers from capturing capture-fixtures on a local stack.
+The arithmetic (axis, bars, marks, request bars, counts) is `public/timeline.js`, pinned by
+`test/timeline.test.mjs` and `test/timeline-trace.test.mjs` against real answers from capturing
+capture-fixtures on a local stack.
 
 ### The state is worded together with stopReason
 

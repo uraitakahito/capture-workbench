@@ -33,12 +33,14 @@ corpus は Unlicense（public domain）。
 
 | ファイル | 何か | sha256 |
 | --- | --- | --- |
-| `trace-timeline.wacz` | BrowserHive **v29.1.0** が、[capture-fixtures](https://github.com/uraitakahito/capture-fixtures) の `/charset/` を 2026-11-13 に撮った WACZ（署名なし・要求と応答の対が 11 個・WARC は `archive/data-000.warc.gz` の 1 本） | `c2204c88f06ad3b7d1d21cfed3985fb90b435fd94bb61c18aafe9e79471c57ed` |
+| `trace-timeline.wacz` | BrowserHive **v30.0.0** が、[capture-fixtures](https://github.com/uraitakahito/capture-fixtures) の `/charset/` を 2026-11-13 に撮った WACZ（署名なし・要求と応答の対が 11 個・WARC は `archive/data-000.warc.gz` の 1 本） | `16ae219d159f2e9b535cfa0c7b685cbd928f7bdd0c0fe70db1de5982365ec22c` |
 
-経緯の画面（`#trace/…`。CAPTURE-270）が、レコードの `WARC-Date` を時間軸に置くのを見るための物。corpus の標本は
-BrowserHive の取り込みではないので、ログと時刻の合うレコードを持たない。台本（`sandbox/scenario.json`）のクロール
-`5b0c000b` のページ 1301 が、このファイルの id（ファイル名から決まる）と、同じ取り込みの答え（取り込みの欄とログ）を持つ。
-**3 つは同じ 1 回の取り込みの物なので、WACZ を差し替えるなら、台本の答えも同じ取り込みの物に替える。**
+経緯の画面（`#trace/…`。CAPTURE-270）を見るための物。corpus の標本は BrowserHive の取り込みではないので、ログと時刻の合う
+レコードを持たない。台本（`sandbox/scenario.json`）のクロール `5b0c000b` のページ 1301 が、このファイルの id（ファイル名から
+決まる）と、同じ取り込みの答え（取り込みの欄・ログ・要求の行 `trace`）を持つ。画面は、1301 では要求を `trace` の行から
+棒にし、WACZ のレコードは読まない。ページ 1303 は、同じ取り込みを `trace` の無い答えの形（BrowserHive v30.0.0 より前）に
+した物で、画面はこの WACZ のレコードの `WARC-Date` から要求の印を置く。
+**WACZ と答えは同じ 1 回の取り込みの物なので、WACZ を差し替えるなら、台本の 1301 と 1303 の答えも同じ取り込みの物に替える。**
 
 中に在るのは capture-fixtures の頁だけ（手元のスタックの中の名前 `capture-fixtures.capture-ledger:8080` で撮った）。
 capture-fixtures は Unlicense（public domain）。
