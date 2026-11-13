@@ -20,7 +20,21 @@ import { readdirSync, readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
 import { outcomeOf } from "../public/pages.js";
-import { axisOf, hasTrace, readsRecords, requestCountsOf, requestsOf, settleOf, snapshotsFromLog, stepsOf, stoppedStepOf } from "../public/timeline.js";
+import {
+  axisOf,
+  failureScreenshotSrc,
+  hasFailureScreenshot,
+  hasTrace,
+  readsRecords,
+  readsScreenshots,
+  requestCountsOf,
+  requestsOf,
+  screenshotsOf,
+  settleOf,
+  snapshotsFromLog,
+  stepsOf,
+  stoppedStepOf,
+} from "../public/timeline.js";
 import { isPartialBundle, replayBundleHref } from "../public/replayweb.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
@@ -43,6 +57,7 @@ import {
   inlineSource,
   latestEnabled,
   pageList,
+  pageFailureScreenshot,
   pageLog,
   pageRow,
   pageTrace,
@@ -62,6 +77,7 @@ import {
   linkGraphOf,
   pageLinksOf,
 } from "../sandbox/fake-ledger.mjs";
+import { zipEntry } from "./wacz-entry.mjs";
 
 const scenario = JSON.parse(readFileSync(new URL("../sandbox/scenario.json", import.meta.url), "utf8"));
 /** 台本のスクリプト（版の並び。source は sandbox/catalog の写し —— capture-scripts のファイル）。 */
@@ -1438,6 +1454,9 @@ const LEDGER_CAPTURE_KEYS = new Set([
   "completeness",
   "document",
   "windowsNotOpened",
+  // CAPTURE-270 の第 4 部: 節目のスクリーンショットの成り行き（BrowserHive v30.2.0 から）と、失敗の時点の絵が在るか
+  "screenshots",
+  "failureScreenshot",
 ]);
 const TRACE_SAMPLE = "trace-timeline.wacz";
 const SAMPLE_NAMES = readdirSync(new URL("../sandbox/samples/", import.meta.url)).filter((name) => name.endsWith(".wacz"));
@@ -1540,6 +1559,93 @@ test("台本の 5b0c000b の 1301 と 1302 は trace を持ち、画面は要求
   assert.equal(readsRecords(before), true);
 });
 
+// ── 節目のスクリーンショットと、失敗の時点の絵（CAPTURE-270 の第 4 部。BrowserHive v30.2.0 から）──────
+/** 筋書きのページと、その取り込みが作った置き場の WACZ（BrowserHive v30.2.0 の e2e の実物）。 */
+const SHOT_SAMPLES = [
+  ["1304", "with-screenshots.wacz"],
+  ["1305", "without-screenshots-withheld.wacz"],
+  ["1306", "without-screenshots-secret.wacz"],
+];
+
+test("筋書きの 5b0c000b の 1304〜1306 の答えは、置き場の WACZ の中に在るまま（絵の成り行き・ログ・trace の行）", () => {
+  const c = crawlOf("5b0c000b");
+  for (const [pageId, name] of SHOT_SAMPLES) {
+    assert.ok(SAMPLE_NAMES.includes(name), `置き場に ${name} が在る`);
+    const answer = pageTrace(c, pageId, SAMPLE_NAMES).body;
+    // id はファイル名から決まる。名前を変えたら、筋書きの archiveId も変える
+    assert.deepEqual(answer.archive, { id: idOf(name), objectKey: `sandbox/${name}` });
+    const wacz = readFileSync(new URL(`../sandbox/samples/${name}`, import.meta.url));
+    const inside = JSON.parse(zipEntry(wacz, "datapackage.json").toString("utf8"))["browserhive:capture"];
+    const linesOf = (path) =>
+      zipEntry(wacz, path).toString("utf8").split("\n").filter((line) => line !== "").map((line) => {
+        const { profile: _profile, ...rest } = JSON.parse(line);
+        return rest;
+      });
+    // BrowserHive は、同じ成り行きを答えと datapackage.json の両方に書く
+    assert.deepEqual(answer.capture.screenshots, inside.screenshots, pageId);
+    for (const key of ["settle", "completeness", "document"]) assert.deepEqual(answer.capture[key], inside[key], `${pageId} ${key}`);
+    assert.deepEqual(answer.log.lines, linesOf("logs/capture.jsonl"), pageId);
+    assert.deepEqual(answer.trace.lines, linesOf("trace/events.jsonl"), pageId);
+    assert.equal(requestCountsOf(answer.trace).total, answer.trace.lines.length);
+    assert.equal(answer.capture.failureScreenshot, false);
+    assert.equal(stoppedStepOf(answer), undefined);
+  }
+});
+
+test("筋書きの 1304 は絵が 2 枚、1305 と 1306 は理由つきで絵が無く、欄の無い 1301 には何も無い", () => {
+  const c = crawlOf("5b0c000b");
+  const answerOf = (pageId) => pageTrace(c, pageId, SAMPLE_NAMES).body;
+  assert.deepEqual(screenshotsOf(answerOf("1304")).map((shot) => [shot.stage, shot.kept]), [["after-load", true], ["after-behaviors", true]]);
+  assert.equal(readsScreenshots(answerOf("1304")), true);
+  // 絵を残さなかった取り込み: 画面は理由を言い、絵のために WACZ を読まない
+  assert.deepEqual(screenshotsOf(answerOf("1305")).map((shot) => [shot.stage, shot.kept, shot.skipped]), [["after-load", false, "withheld"], ["after-behaviors", false, "withheld"]]);
+  assert.deepEqual(screenshotsOf(answerOf("1306")).map((shot) => [shot.stage, shot.kept, shot.skipped]), [["after-load", false, "secret"], ["after-behaviors", false, "secret"]]);
+  assert.equal(readsScreenshots(answerOf("1305")), false);
+  assert.equal(readsScreenshots(answerOf("1306")), false);
+  // 伏せた文書（content-type の方針）と、渡したシークレットが、理由の出どころ
+  assert.equal(answerOf("1305").capture.document.withheld, "content-type");
+  // BrowserHive v30.0.0 の取り込み（1301）と、その trace の無い形（1303）: 絵の欄そのものが無い
+  for (const pageId of ["1301", "1303"]) {
+    assert.equal("screenshots" in answerOf(pageId).capture, false);
+    assert.equal(screenshotsOf(answerOf(pageId)), undefined);
+    assert.equal(answerOf(pageId).capture.failureScreenshot, false);
+  }
+});
+
+test("筋書きの 1307 は文書が 503 を返した取り込みで、失敗の時点の絵が在る。答えは真偽だけを言い、絵は別のエンドポイントが返す", () => {
+  const c = crawlOf("5b0c000b");
+  const failed = pageTrace(c, "1307", SAMPLE_NAMES).body;
+  // 失敗の時点の絵が在るのは、文書が届いた後の失敗（ここでは文書の 5xx）。WACZ は無い
+  assert.deepEqual([failed.capture.status, failed.capture.httpStatusCode, failed.capture.errorDetails.type], ["http_error", 503, "http"]);
+  assert.equal(failed.archive, null);
+  assert.equal(stoppedStepOf(failed), "load-pages");
+  assert.equal(failed.page.reason, `http: ${failed.capture.errorDetails.message}`);
+  // 答えは、在るかどうかだけ（場所は返さない）
+  assert.equal(failed.capture.failureScreenshot, true);
+  assert.equal(hasFailureScreenshot(failed), true);
+  assert.equal("screenshots" in failed.capture, false);
+  // 絵そのもの: 1280×800 の WebP（VP8X の頭の、幅 − 1 と高さ − 1）
+  const picture = pageFailureScreenshot(c, "1307");
+  assert.equal(picture.status, 200);
+  assert.deepEqual(Object.keys(picture.body), ["contentType", "base64"]);
+  assert.equal(picture.body.contentType, "image/webp");
+  const bytes = Buffer.from(picture.body.base64, "base64");
+  assert.equal(`${bytes.subarray(0, 4).toString("latin1")} ${bytes.subarray(8, 16).toString("latin1")}`, "RIFF WEBPVP8X");
+  assert.deepEqual([bytes.readUIntLE(24, 3) + 1, bytes.readUIntLE(27, 3) + 1], [1280, 800]);
+  assert.equal(typeof failureScreenshotSrc(picture.body), "string");
+  // 文書が届く前の時間切れ（1302）には、絵が無い
+  const timedOut = pageTrace(c, "1302", SAMPLE_NAMES).body;
+  assert.equal(timedOut.capture.failureScreenshot, false);
+  assert.deepEqual(pageFailureScreenshot(c, "1302"), { status: 404, body: { error: "not found" } });
+  // 断り方は経緯のエンドポイントと同じ: 数字でない id は 400、行かページが無ければ 404
+  assert.equal(pageFailureScreenshot(c, "13a").status, 400);
+  assert.deepEqual(pageFailureScreenshot(c, "1201"), { status: 404, body: { error: "not found" } });
+  assert.deepEqual(pageFailureScreenshot(undefined, "1307"), { status: 404, body: { error: "not found" } });
+  // 絵のファイルは、筋書きのページが名指す（読み手を差し替えられる）
+  const read = (file) => Buffer.from(`read:${file}`);
+  assert.equal(Buffer.from(pageFailureScreenshot(c, "1307", read).body.base64, "base64").toString(), `read:${c.pages.find((p) => p.id === "1307").failureScreenshot}`);
+});
+
 test("経緯を読めないページは capture: null と理由 —— taskId の無いページは not-captured、capture の無いページは no-manifest", () => {
   const skipped = pageTrace(crawlOf("5b0c0009"), "1204", SAMPLE_NAMES).body;
   assert.deepEqual([skipped.capture, skipped.log, skipped.reason], [null, null, "not-captured"]);
@@ -1553,7 +1659,7 @@ test("経緯を読めないページは capture: null と理由 —— taskId �
   assert.deepEqual(pageTrace(old, "1").body, {
     page: { ...pageRow(old.pages[0]), submittedAt: null, finishedAt: null },
     archive: null,
-    capture: { status: "success", timestamp: "2026-10-12T08:40:00.000Z", captureProcessingTimeMs: 900 },
+    capture: { status: "success", timestamp: "2026-10-12T08:40:00.000Z", captureProcessingTimeMs: 900, failureScreenshot: false },
     log: null,
     trace: null,
     reason: null,

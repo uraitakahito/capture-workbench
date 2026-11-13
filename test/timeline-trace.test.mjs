@@ -19,13 +19,18 @@ import {
   axisOf,
   filterRequests,
   hasTrace,
+  indexLinesPath,
   isTroubledRequest,
   lengthText,
+  locateScreenshots,
+  readRecords,
   readsRecords,
+  readsScreenshots,
   requestCountsOf,
   requestKindOf,
   requestKindText,
   requestsOf,
+  screenshotsOf,
   snapshotsFromLog,
   sortRequests,
   stepsOf,
@@ -44,6 +49,27 @@ const traceOf = (lines, over = {}) => {
   return { lines, counts, dropped: 0, ...over };
 };
 
+/**
+ * 画面（`public/app.js` の `loadTrace`）と同じ決め方で、答え 1 つのために WACZ へ送る読みを数える: レコードの一覧は
+ * `readsRecords` のときだけ、絵の位置（索引）は `readsScreenshots` のときだけ。偽の読み手は、WARC の本を 1 冊（レコード
+ * なし）、索引を空で返す。
+ */
+const waczReadsFor = async (answer) => {
+  const calls = [];
+  const fetchJson = async (path) => {
+    calls.push(path);
+    if (path.includes("/records?")) {
+      return path.includes("data-000")
+        ? { status: 200, body: { records: [], next: null, total: 0 } }
+        : { status: 400, body: { code: "badRequest", message: "no entry: archive/data-001.warc.gz" } };
+    }
+    return { status: 200, body: { lines: [], next: null, gunzipped: false } };
+  };
+  if (readsRecords(answer)) await readRecords(fetchJson, answer.archive.id);
+  if (readsScreenshots(answer)) await locateScreenshots(fetchJson, answer.archive.id, screenshotsOf(answer));
+  return calls;
+};
+
 test("trace を持つ答えでは、WACZ のレコードを読みに行かない。持たない答え（v30.0.0 より前）は読む", () => {
   // 実物: 撮れた取り込みで、WACZ も trace も在る
   assert.equal(hasTrace(fetch), true);
@@ -56,6 +82,25 @@ test("trace を持つ答えでは、WACZ のレコードを読みに行かない
   assert.equal(hasTrace({ ...fetch, trace: null }), false);
   assert.equal(hasTrace({ ...fetch, trace: { counts: {} } }), false);
   assert.equal(readsRecords({ ...fetch, trace: null }), true);
+});
+
+test("trace を持つ答えで WACZ へ行くのは、節目のスクリーンショットの項目が在るときだけ（索引を 1 回）。絵が無ければ往復は 0", async () => {
+  const answerWith = (screenshots) => ({ ...fetch, capture: { ...fetch.capture, screenshots } });
+  // 実物（BrowserHive v30.0.0）: 絵の欄が無い。WACZ は在るが、1 度も読まない
+  assert.equal("screenshots" in fetch.capture, false);
+  assert.deepEqual(await waczReadsFor(fetch), []);
+  // 欄は在るが、どの時点も残さなかった: 理由を言うのに WACZ は要らない
+  assert.deepEqual(await waczReadsFor(answerWith([{ stage: "after-load", skipped: "disabled" }, { stage: "after-behaviors", skipped: "disabled" }])), []);
+  assert.deepEqual(await waczReadsFor(answerWith([])), []);
+  // 時間切れ（WACZ が無い）: 絵の項目が在っても行かない
+  assert.deepEqual(await waczReadsFor({ ...timeout, capture: { ...timeout.capture, screenshots: [{ stage: "after-load", skipped: "failed" }] } }), []);
+  // 絵が 1 枚でも在れば、索引の窓を 1 つ読む（レコードの一覧は読まない）
+  const kept = { stage: "after-load", url: `urn:browserhive:screenshot:after-load:${fetch.capture.document.url}`, date: fetch.capture.timestamp, record: "urn:uuid:0", bytes: 9344 };
+  assert.deepEqual(await waczReadsFor(answerWith([kept, { stage: "after-behaviors", skipped: "failed" }])), [indexLinesPath(fetch.archive.id, 0)]);
+  // 対照: trace の無い答え（v30.0.0 より前）は、レコードの一覧を読む（本が尽きるまで）。絵の欄は無いので、索引は読まない
+  const old = await waczReadsFor(v29.charset.answer);
+  assert.equal(old.length, 2);
+  assert.equal(old.every((path) => path.includes("/records?")), true);
 });
 
 test("遅い fetch の行は、始まりから長さぶんの棒。長さは capture-fixtures が待たせた時間以上", () => {

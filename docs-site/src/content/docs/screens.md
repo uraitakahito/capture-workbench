@@ -298,7 +298,10 @@ It reads one route of the ledger, `GET /api/crawls/:id/pages/:page/trace`: the `
 BrowserHive wrote to the store with the capture's answer, read back by the ledger. The workbench
 only lays it out. For a capture whose answer has no request lines (`trace`; BrowserHive before
 v30.0.0), it also reads the list of WARC records inside the WACZ
-([`/wacz/:id/records`](/routes/)).
+([`/wacz/:id/records`](/routes/)). For a capture that kept stage screenshots, it looks up where
+they are in the WACZ's index ([`/wacz/:id/lines`](/routes/)) and shows them from
+[`/wacz/:id/record/body`](/routes/). For a capture that has a screenshot at the failure, it also
+reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
 
 ![The trace of one page's capture: a figure on a time axis on top (rows for the capture's steps, their details, the wait, the requests and the snapshots), and the list of requests below. The axis is seconds from the start of the capture](../../assets/screens/trace.webp)
 
@@ -365,6 +368,52 @@ v30.0.0), it also reads the list of WARC records inside the WACZ
   snapshot's record inside the WACZ. Pressing one shows the snapshot's stage and links that open
   it in replay (only when the WACZ may be viewed). The document URL it opens is the answer's
   `document.url` (the URL after any redirect).
+- **Stage screenshots (節目のスクリーンショット) are listed below the figure.** From BrowserHive
+  v30.2.0, a BrowserHive server set to take screenshots keeps a picture (WebP) of the captured page's viewport
+  at the same stages it snapshots the DOM: `after-load` (after loading) and `after-behaviors`
+  (after the scripts). The answer's `screenshots` says, for each stage, the picture it kept or why
+  it kept none. The pictures are shown small, in stage order (`after-load` first); pressing one
+  shows it at full size in place, and pressing again makes it small (a picture wider than the
+  window scrolls inside its box). Under each picture are the stage, when it was taken (seconds on
+  the axis, and the record's `WARC-Date`), its size in bytes, and links that open the DOM snapshot
+  of the same stage in replay (only when the WACZ may be viewed; the snapshot's URI is built from
+  the document URL in the screenshot's URI). The **Screenshots** (節目の絵) row of the figure has a
+  mark where each was taken; pressing a mark outlines that picture and shows its fields below
+  (stage, time, size, document URL, record ID). A picture itself is a WARC resource record inside
+  the WACZ. Its place is found by looking up the WACZ's index (CDXJ) by the screenshot's URI and
+  time (one window of index lines; a little more only when the index is longer than 500 lines or
+  the screenshot's line is long), and each picture is then fetched by its `<img>`. **For a capture
+  that kept no screenshot, the WACZ is not read for screenshots at all.** An identity that may not
+  view the WACZ is told so instead of shown the pictures (the ledger gives it no key for the WACZ,
+  so the view does not try to read it).
+- **A stage with no screenshot says why, in one line.** The reason is the `skipped` BrowserHive
+  wrote in its answer, one of five:
+
+  | `skipped` | What the view says |
+  | --- | --- |
+  | `disabled` | BrowserHive is not set to take screenshots (`--stage-screenshots` is off) |
+  | `secret` | the capture was given a secret (its value could show, so no screenshot is kept) |
+  | `withheld` | a policy withheld a document, an image or media (this includes a capture that has content-type policies, and a withheld document) |
+  | `task-budget` | keeping the screenshot would put the capture over its byte limit (`maxTaskBytes`) |
+  | `failed` | it could not be taken (not within 2 seconds, or not tried after an earlier screenshot was given up) |
+
+  When every stage has the same reason there is one line; when the reasons differ by stage, or
+  some stages have a picture, there is a line per stage. A reason the view does not know is shown
+  as it arrived. A capture whose answer has no `screenshots` field (BrowserHive v30.1.0 or
+  earlier) gets nothing here: "kept none" and "has no such field" are different.
+- **The screenshot at the failure (失敗の時点の絵) is what the captured page was showing when the
+  capture failed.** A BrowserHive server set to take screenshots keeps one picture of the captured page for a
+  capture whose document answered 4xx or 5xx, and for one that failed after its document had
+  arrived. A capture whose load timed out before the document arrived has none. The capture's
+  answer (the ledger's `capture.failureScreenshot`) only says whether there is one. When there
+  is, the view gets it from the ledger's
+  `GET /api/crawls/:id/pages/:page/trace/failure-screenshot` and shows it the way it shows a
+  stage screenshot (pressing it shows the full size). An answer whose type the ledger does not
+  give as `image/webp` is not shown as a picture; the view says so instead.
+- **The signature covers stage screenshots, not the screenshot at the failure.** Stage
+  screenshots are records inside the WACZ, so in a signed WACZ the signature covers them. The
+  screenshot at the failure is a file outside the WACZ (a failed capture builds no WACZ), and the
+  signature does not cover it. Both hold what the captured page was showing, as it was.
 - **Pressing a bar or a mark in the figure shows its fields below**: the start and length of a
   bar, or the time of a mark, in seconds.
 - **A capture that failed says which step it stopped in.** The answer of a timeout or a failure
@@ -383,9 +432,11 @@ v30.0.0), it also reads the list of WARC records inside the WACZ
   store (and from the WACZ, for a capture without a `trace`). The request lines are not inside
   the WACZ. The records to show as evidence are the ones inside the WACZ.
 
-The arithmetic (axis, bars, marks, request bars, counts) is `public/timeline.js`, pinned by
-`test/timeline.test.mjs` and `test/timeline-trace.test.mjs` against real answers from capturing
-capture-fixtures on a local stack.
+The arithmetic (axis, bars, marks, request bars, counts, where the screenshots are) is
+`public/timeline.js`, pinned by `test/timeline.test.mjs` and `test/timeline-trace.test.mjs` against
+real answers from capturing capture-fixtures on a local stack. The screenshot part is pinned by
+`test/timeline-shots.test.mjs` against real WACZ files made by BrowserHive captures
+(`sandbox/samples/`).
 
 ### The state is worded together with stopReason
 

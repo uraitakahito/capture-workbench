@@ -1,6 +1,6 @@
 # サンドボックスの WACZ の標本
 
-出どころは 2 つ: 検証の結果を見るための 5 本（corpus から）と、経緯の画面を見るための 1 本（BrowserHive の取り込み）。
+出どころは 3 つ: 検証の結果を見るための 5 本（corpus から）、経緯の画面を見るための 1 本（BrowserHive の取り込み）、節目のスクリーンショットを見るための 3 本（BrowserHive の e2e の取り込み）。
 
 ## corpus から写した 5 本
 
@@ -20,7 +20,7 @@ corpus の LFS の pointer と同じ中身かは、次で確かめられる（co
 
 ```sh
 for f in sandbox/samples/*.wacz; do
-  [ "$(basename "$f")" = trace-timeline.wacz ] && continue  # corpus の物ではない（下の節）
+  case "$(basename "$f")" in trace-timeline.wacz|with-screenshots.wacz|without-screenshots-*.wacz) continue ;; esac  # corpus の物ではない（下の節）
   want=$(git -C ../wacz-validator-corpus show "v0.3.0:fixtures/$(basename "$f")" | sed -n 's/^oid sha256://p')
   got=$(shasum -a 256 "$f" | cut -d' ' -f1)
   [ "$want" = "$got" ] && echo "ok  $f" || echo "NG  $f"
@@ -44,3 +44,35 @@ corpus は Unlicense（public domain）。
 
 中に在るのは capture-fixtures の頁だけ（手元のスタックの中の名前 `capture-fixtures.capture-ledger:8080` で撮った）。
 capture-fixtures は Unlicense（public domain）。
+
+## BrowserHive の e2e の取り込みの 3 本（節目のスクリーンショット）
+
+BrowserHive **v30.2.0** の e2e（絵を撮る設定のスタック。WACZ の `software` は `browserhive/30.1.0+1.g1ba36b06` ——
+v30.2.0 になった変更を、タグを打つ前に建てた build）が、capture-fixtures を 2026-11-13 に撮った WACZ。どれも署名なしで、WARC は
+`archive/data-000.warc.gz` の 1 本。e2e が保管庫に置いた物を、名前だけ替えて写した。
+
+| ファイル | 何か | sha256 |
+| --- | --- | --- |
+| `with-screenshots.wacz` | `/marked/search/public` を、検索するスクリプト（`marked-search`）つきで撮った物。節目のスクリーンショットが 2 枚（`after-load` は検索の前、`after-behaviors` は検索の後。WebP・1280×800）。絵は WARC の resource レコードで、索引（`indexes/index.cdxj`）に絵の URI を鍵にした行が在る | `abe9294ee7f514682ec22a609f69c1d014e7950b96c1149e0cfa91f21e39a965` |
+| `without-screenshots-withheld.wacz` | `/marked/text/secret` を、content-type の方針（`text/plain` を `no-body`）つきで撮った物。文書を伏せたので、どの時点の絵も残していない（`skipped: withheld`） | `2db7f5a6c32632f3dce76dac204408da5b6ddbdd282b9f7b9f4afa1825595c2f` |
+| `without-screenshots-secret.wacz` | `/plain-html` を、シークレット（`token`。隠す）を渡して撮った物。どの時点の絵も残していない（`skipped: secret`）。シークレットの値は、WARC の中で `***` に置き換えてある | `5c6c28c2bbd2fd14600f89f9ff1401f0341f6563f97c2840f84f0bb34f21954d` |
+
+経緯の画面の、節目のスクリーンショットを見るための物（CAPTURE-270 の第 4 部）。筋書き（`sandbox/scenario.json`）のクロール
+`5b0c000b` のページ 1304・1305・1306 が、この順にファイルの id（ファイル名から決まる）を持つ。ページの答えのうち、絵の成り行き
+（`capture.screenshots`）・`settle`・`completeness`・`document` と、ログ・`trace` の行は、WACZ の中（`datapackage.json` の
+`browserhive:capture`・`logs/capture.jsonl`・`trace/events.jsonl`）に在るまま —— `test/sandbox.test.mjs` が照らす。
+WACZ に無い欄（`status`・`timestamp`・`captureProcessingTimeMs`・`httpStatusCode`）は、筋書きが組んだ
+（`timestamp` は `datapackage.json` の `created`）。**WACZ を差し替えるなら、筋書きの答えも同じ取り込みの物に替える。**
+
+名前を `with-`・`without-` で始めてあるのは、アーカイブの画面の並び（名前の順）で corpus の標本の後ろに置くため
+（docs の絵 `archives` は表の頭から決まった高さまでを写す）。
+
+中に在るのは capture-fixtures の頁だけ（e2e のスタックの中の名前 `capture-fixtures-N-a.browserhive:8080` で撮った）。
+
+## 失敗の時点の絵
+
+`sandbox/failure-screenshots/fails-then-succeeds-503.webp` は、筋書きのページ 1307（文書が 503 を返した取り込み）の
+失敗の時点の絵。**BrowserHive が置いた `.failure.webp` ではない** —— capture-fixtures の `/fails-then-succeeds` が
+503 と一緒に返す本文（題と見出しが `retry` の HTML）を、手元の Chrome（1280×800・DPR 1・ライトの配色）に描かせ、BrowserHive と同じ
+設定（WebP・quality 80）で撮った物。1307 の答え（取り込みの欄・ログ・`trace`）も本物の取り込みの物ではなく、
+BrowserHive v30.2.0 の `http_error` の答えの形に筋書きが組んだ。

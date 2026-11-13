@@ -37,6 +37,11 @@
  * `replayBundle` (台本の行の `replayBundle` から。鍵は capture-ledger と同じ形に組む) と、ページの行の `capturedAt`・`bundledRev`
  * (台本のページから)。**代役は合本を書かない** —— 保管庫も replay も無いので、再生のリンクの先には何も無い。
  *
+ * 経緯の答えの絵の欄 (CAPTURE-270 の第 4 部。BrowserHive v30.2.0 から) も返す —— 取り込みの欄の `screenshots` (節目の
+ * スクリーンショットの成り行き。筋書きの `capture` に書かれたまま) と `failureScreenshot` (失敗の時点の絵が在るかの真偽)。
+ * 失敗の時点の絵そのもの (`GET /api/crawls/:id/pages/:page/trace/failure-screenshot`) は、筋書きのページの
+ * `failureScreenshot` が名指す sandbox/ の下の WebP を、`{ contentType, base64 }` で返す。
+ *
  * 断りの答えの `hints` (CAPTURE-294 の段 5。capture-ledger が `hints` を足した版) も返す —— 人に見せる文 (`hint`。今までと同じ字) に
  * 並べて、文ごとの鍵と値の組 (`{ key?, params?, text }`)。workbench は鍵で自分の辞書 (`ledger.hint.<鍵>`) を引いて訳す。
  * 鍵の一覧は下の `HINT_KEYS` (capture-ledger の表の写し)。
@@ -447,6 +452,10 @@ export const pageLog = (c, raw) => {
 /**
  * 取り込みの欄。capture-ledger の `captureOf` (src/api/trace.ts。v0.100.0) が `.result.json` から選ぶ 10 個と同じ名前で、
  * 台本に無い欄は鍵ごと出さない。下位の object は台本に書かれたまま。
+ *
+ * `screenshots` (節目のスクリーンショットの成り行き。CAPTURE-270 の第 4 部) は、BrowserHive v30.2.0 からの答えが持つ欄で、
+ * それより前の取り込みのページには書かない (鍵ごと出ない)。`failureScreenshot` はここに並べない —— `.result.json` では
+ * 絵の場所で、capture-ledger は場所を返さずに真偽にする (下の `pageTrace`)。
  */
 const CAPTURE_FIELDS = [
   "status",
@@ -459,7 +468,11 @@ const CAPTURE_FIELDS = [
   "completeness",
   "document",
   "windowsNotOpened",
+  "screenshots",
 ];
+
+/** 失敗の時点の絵の形式。BrowserHive が置くのは WebP だけ。 */
+const FAILURE_SCREENSHOT_TYPE = "image/webp";
 
 /**
  * /api/crawls/:id/pages/:page/trace (capture-ledger v0.100.0。CAPTURE-270)。断り方はログのエンドポイントと同じ。
@@ -470,6 +483,9 @@ const CAPTURE_FIELDS = [
  * taskId の無いページは not-captured、在れば no-manifest (代役の省略)。`trace` は BrowserHive v30.0.0 から載る欄で、
  * capture-ledger v0.101.0 と同じく、台本のページが持てば書かれたまま返し、持たなければ null。`log` の無い取り込みは
  * `log: null` で、取り込みの欄は返す。
+ *
+ * 取り込みの欄の `failureScreenshot` は、失敗の時点の絵が在るかの真偽 (筋書きのページが `failureScreenshot` で
+ * 絵のファイルを名指していれば true)。場所は返さない。
  */
 export const pageTrace = (c, raw, names = []) => {
   if (!DIGITS.test(raw)) return schemaError('params/page must match pattern "^[0-9]+$"');
@@ -485,9 +501,25 @@ export const pageTrace = (c, raw, names = []) => {
     const reason = p.traceReason ?? (p.taskId === undefined || p.taskId === null ? "not-captured" : "no-manifest");
     return { status: 200, body: { page, archive, capture: null, log: null, trace: null, reason } };
   }
-  const capture = Object.fromEntries(CAPTURE_FIELDS.filter((key) => p.capture[key] !== undefined).map((key) => [key, p.capture[key]]));
+  const capture = {
+    ...Object.fromEntries(CAPTURE_FIELDS.filter((key) => p.capture[key] !== undefined).map((key) => [key, p.capture[key]])),
+    failureScreenshot: typeof p.failureScreenshot === "string",
+  };
   const log = p.log === undefined ? null : { lines: p.log.lines, counts: countsOf(p.log), dropped: p.log.dropped ?? 0 };
   return { status: 200, body: { page, archive, capture, log, trace: p.trace ?? null, reason: null } };
+};
+
+/**
+ * /api/crawls/:id/pages/:page/trace/failure-screenshot (CAPTURE-270 の第 4 部)。失敗の時点の絵を
+ * `{ contentType: "image/webp", base64 }` で返す。断り方は経緯のエンドポイントと同じ (ページの id が数字だけでなければ 400、
+ * 行かページが無ければ 404) で、絵の無いページも 404。絵は、筋書きのページの `failureScreenshot` が名指すファイル
+ * (sandbox/ からの相対)。`read` はファイルを Buffer で読む関数 (試験が偽物を渡せるように)。
+ */
+export const pageFailureScreenshot = (c, raw, read = (file) => readFileSync(new URL(`./${file}`, SCENARIO))) => {
+  if (!DIGITS.test(raw)) return schemaError('params/page must match pattern "^[0-9]+$"');
+  const p = (c?.pages ?? []).find((x) => x.id === raw);
+  if (p === undefined || typeof p.failureScreenshot !== "string") return { status: 404, body: { error: "not found" } };
+  return { status: 200, body: { contentType: FAILURE_SCREENSHOT_TYPE, base64: read(p.failureScreenshot).toString("base64") } };
 };
 
 /**
@@ -1798,6 +1830,13 @@ const handle = (req, res, raw) => {
     const mine = submitted.find((row) => row.crawlId === decided[1]);
     const c = mine ?? s.crawls.find((x) => x.crawlId === decided[1]);
     send(res, c === undefined ? 404 : 200, c === undefined ? { error: "not found" } : decisionsOf(mine === undefined ? c : { crawlId: mine.crawlId }, c.rules));
+    return;
+  }
+  // 失敗の時点の絵 (CAPTURE-270 の第 4 部)。受けた行は何も撮っていないので 404
+  const pictured = /^\/api\/crawls\/([^/]+)\/pages\/([^/]+)\/trace\/failure-screenshot$/.exec(pathname);
+  if (req.method === "GET" && pictured !== null) {
+    const answer = pageFailureScreenshot(s.crawls.find((x) => x.crawlId === pictured[1]), decodeURIComponent(pictured[2]));
+    send(res, answer.status, answer.body);
     return;
   }
   // ページの一覧と、1 ページのログ (CAPTURE-18)・経緯 (CAPTURE-270)。受けた行は何も撮っていないので、一覧は空
