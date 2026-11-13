@@ -10,14 +10,16 @@
  *
  * ## 言語を決めるのは、読み込みのときに 1 度だけ
  *
- * URL の `?lang=ja`・`?lang=en` が在ればそれ、無ければ日本語。画面を描いた後に言語が変わることは無いので、
- * 描く側は「いまの言語」を気にせずに `t()` を呼ぶ。試験は `setLang()` で固定する（`test/lang-ja.mjs`）。
+ * 順は `chooseLang`: URL の `?lang=`（その回だけ）→ 画面の切り替えで覚えた選び（`localStorage`）→ ブラウザの言語
+ * → 英語。画面を描いた後に言語が変わることは無いので、描く側は「いまの言語」を気にせずに `t()` を呼ぶ。
+ * 切り替え（`switchLang`）は、選びを覚えて頁を読み直す。試験は `setLang()` で固定する（`test/lang-ja.mjs`）。
  *
  * ## 鍵は、文字列をそのまま書く
  *
  * `t("crawls.state.running")` のように書き、組み立てない —— `check:i18n` が、コードが名指す鍵と辞書を両方向で
- * 照らすため。列挙値から鍵への対応表のように `t()` の外に鍵を書く所は、`key("…")` で包む（中身はそのまま返す。
- * 鍵だと分かる印）。
+ * 照らすため。値から字への対応は、鍵の表ではなく、字を返す関数で書く（`start.js` の `actionText`）。
+ * 届いたデータの句を引く所（`phraseText`）のように `t()` の外に鍵を書くときは、`key("…")` で包む（中身は
+ * そのまま返す。鍵だと分かる印で、検査が「使っている鍵」に数える）。
  */
 import { IntlMessageFormat } from "./vendor/intl-messageformat.js";
 import ja from "./i18n/ja.json" with { type: "json" };
@@ -27,17 +29,52 @@ import en from "./i18n/en.json" with { type: "json" };
 export const LANGS = Object.freeze(["ja", "en"]);
 const DICTS = { ja, en };
 
-/** URL の `?lang=`。知らない値と、`location` の無い所（試験）は undefined。 */
-const askedLang = () => {
+/** 画面の切り替えで覚えた選びを置く、`localStorage` の名前。 */
+export const LANG_STORAGE = "workbench.lang";
+
+/**
+ * 言語を選ぶ。順は:
+ *
+ *   1. URL の `?lang=`（その回だけ。覚えた選びは変えない）
+ *   2. 画面の切り替えで覚えた選び
+ *   3. ブラウザの言語の並び（`navigator.languages`）で、最初に当たる物（`ja-JP` は `ja`）
+ *   4. 英語
+ *
+ * 知らない値は、無いのと同じ。
+ */
+export const chooseLang = ({ query, stored, languages = [] } = {}) => {
+  if (LANGS.includes(query)) return query;
+  if (LANGS.includes(stored)) return stored;
+  for (const tag of languages) {
+    const primary = String(tag).toLowerCase().split("-")[0];
+    if (LANGS.includes(primary)) return primary;
+  }
+  return "en";
+};
+
+/** 読めなければ undefined（`localStorage` は、設定によっては触るだけで投げる）。 */
+const read = (fn) => {
   try {
-    const asked = new URLSearchParams(globalThis.location?.search ?? "").get("lang");
-    return LANGS.includes(asked) ? asked : undefined;
+    return fn() ?? undefined;
   } catch {
     return undefined;
   }
 };
 
-let lang = askedLang() ?? "ja";
+/**
+ * ブラウザが言っていること。**頁の無い所（試験の node）では何も読まない** —— node にも `navigator.languages` が
+ * 在り、機械ごとに値が違う。
+ */
+const browserSays = () =>
+  globalThis.document === undefined || globalThis.location === undefined
+    ? {}
+    : {
+        query: read(() => new URLSearchParams(globalThis.location.search).get("lang")),
+        stored: read(() => globalThis.localStorage.getItem(LANG_STORAGE)),
+        languages: read(() => globalThis.navigator.languages),
+      };
+
+let lang = chooseLang(browserSays());
 /** 文にする器（`IntlMessageFormat`）の控え。鍵は「言語 + 改行 + 辞書の鍵」。 */
 const compiled = new Map();
 
@@ -53,7 +90,35 @@ export const setLang = (next) => {
   lang = next;
 };
 
-/** 鍵だと分かる印。`t()` の外に鍵を書く所（対応表）で包む。中身はそのまま返す。 */
+/**
+ * 切り替えた後に開く URL。`?lang=` を外す —— 残すと、覚えた選びより `?lang=` が勝って、言語が変わらない。
+ * 選びを覚えられなかったとき（`remembered` が false）は、`?lang=` に書いて運ぶ。
+ */
+export const switchedUrl = (href, next, remembered) => {
+  const url = new URL(href);
+  if (remembered) url.searchParams.delete("lang");
+  else url.searchParams.set("lang", next);
+  return url.href;
+};
+
+/**
+ * 画面の切り替え。選びを覚え、頁を読み直す（描いた字は描き直さないので、読み直しが要る）。
+ * 書きかけを確かめるのは呼び手（`app.js`）。
+ */
+export const switchLang = (next) => {
+  if (!LANGS.includes(next)) throw new Error(`unknown language: ${String(next)}`);
+  let remembered = true;
+  try {
+    globalThis.localStorage.setItem(LANG_STORAGE, next);
+  } catch {
+    remembered = false;
+  }
+  // hash だけが違う URL へ移っても、頁は読み直されない。URL を書き換えてから、読み直す
+  globalThis.history.replaceState(null, "", switchedUrl(globalThis.location.href, next, remembered));
+  globalThis.location.reload();
+};
+
+/** 鍵だと分かる印。`t()` の外に鍵を書く所で包む。中身はそのまま返す。 */
 export const key = (name) => name;
 
 /** 辞書にその鍵が在るか。届いた句（誤りの `error`）を訳せるかを、引く前に見る。 */
@@ -97,6 +162,15 @@ export const tNodes = (name, parts = {}) => {
   );
   const out = format.format(wrapped);
   return Array.isArray(out) ? out : [out];
+};
+
+/**
+ * 届いたデータの句（保存された失敗の理由など）を、辞書に在れば訳す。無ければ届いた字のまま ——
+ * ほかのシステムが書いた字と、辞書を足す前に保存された字は、言い換えずに出す。`prefix` は鍵の頭。
+ */
+export const phraseText = (prefix, phrase) => {
+  const name = `${prefix}.${String(phrase)}`;
+  return typeof phrase === "string" && has(name) ? t(name) : phrase;
 };
 
 /**

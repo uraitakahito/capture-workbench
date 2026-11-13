@@ -175,15 +175,15 @@ test("英語: 直しの 1 行は、往復の単数と複数を言い分け、括
   assert.equal(inEnglish(() => fixAnswer(200, {}).text), "A fix that passed the type check");
 });
 
-test("英語: 状態の数と capture-ledger の文は「:」で繋ぎ、capture-ledger の文は訳さない", () => {
-  assert.equal(inEnglish(() => diagnosisOf(503, { error: "ts-compile unreachable" }).text), "503: ts-compile unreachable");
+test("英語: 状態の数と capture-ledger の文は「 — 」で繋ぎ、capture-ledger の文は訳さない", () => {
+  assert.equal(inEnglish(() => diagnosisOf(503, { error: "ts-compile unreachable" }).text), "503 — ts-compile unreachable");
   assert.equal(
     inEnglish(() => fixAnswer(422, { error: "no fix passed the checks", rounds: 2, usage: { usd: 0.0612 } }).text),
-    "422: no fix passed the checks (2 rounds · $0.0612)",
+    "422 — no fix passed the checks (2 rounds · $0.0612)",
   );
   assert.equal(
     inEnglish(() => fixAnswer(429, { error: "claude budget exhausted", spentUsd: 5.0123, budgetUsd: 5 }).text),
-    "429: claude budget exhausted (this month $5.0123, limit $5; Claude was not called)",
+    "429 — claude budget exhausted (this month $5.0123, limit $5; Claude was not called)",
   );
   assert.equal(inEnglish(() => fixAnswer(0, {}).text), "The workbench itself cannot be reached (The answer has no message)");
   assert.equal(diagnosisOf(0, {}).text, "workbench 自身に届きません（答えに文がありません）");

@@ -6,7 +6,8 @@ description: The web app you open locally while developing Web Capture — one r
 capture-workbench is the web app you open locally while developing
 [Web Capture](https://uraitakahito.github.io/capture-ledger/#web-capture) (the set of repositories
 that captures web pages into archives you can check later). **It shows one crawl as one row.** You
-can also start a new crawl and read the contents of a captured WACZ.
+can also start a new crawl and read the contents of a captured WACZ. The screen is in Japanese
+or English ([Screens](/screens/#language)).
 
 A crawl is started by [capture-ledger](https://github.com/uraitakahito/capture-ledger) (the ledger
 that decides which URLs get captured and records what came back), run by

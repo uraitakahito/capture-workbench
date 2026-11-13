@@ -17,6 +17,17 @@ import {
   standingOf,
   TYPES_HASH,
 } from "../public/reading.js";
+import { setLang, t } from "../public/i18n.js";
+
+/** 英語で 1 度だけ呼ぶ。終わったら日本語に戻す（ほかの試験は日本語を期待している）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 test("URL は書いて読むと元に戻る（版を省く・版・版と sha の頭と行・型の 4 つの形）", () => {
   const forms = [
@@ -129,4 +140,75 @@ test("読む窓のタブの名前は id と版（型は host.d.ts）。URL か�
   assert.equal(labelOf(parseReading("#scripts/autoscroll@2")), "autoscroll v2");
   assert.equal(labelOf(parseReading("#scripts/autofetch")), "autofetch");
   assert.equal(labelOf(parseReading(TYPES_HASH)), "host.d.ts");
+});
+
+test("英語の見出しの文: 行とバイトは単数と複数を分け、桁を区切る。日付の形は変えない", () => {
+  const doc = (lines, bytes) => ({
+    phase: "behavior",
+    source: "x\n".repeat(lines),
+    bytes,
+    sha256: "c9956819ffeadf3aa1cd138247330e1662372c2d47d4416bfefd4848e1bedc03",
+    createdAt: "2026-10-14T12:26:38.656Z",
+  });
+  assert.deepEqual(inEnglish(() => metaOf(doc(1, 1))), [
+    "behavior",
+    "1 line",
+    "1 byte",
+    "sha256 c9956819ffea…",
+    "imported 2026-10-14",
+  ]);
+  assert.deepEqual(inEnglish(() => metaOf(doc(2, 2695)).slice(1, 3)), ["2 lines", "2,695 bytes"]);
+  assert.deepEqual(inEnglish(() => metaOf(doc(6061, 0)).slice(1, 3)), ["6,061 lines", "0 bytes"]);
+  // 日本語も同じ桁区切り
+  assert.deepEqual(metaOf(doc(6061, 12345)).slice(1, 3), ["6,061 行", "12,345 バイト"]);
+});
+
+test("英語の渡す値: 空の {} は字として出る（埋め込みと読まない）", () => {
+  assert.equal(inEnglish(() => optionsText({})), "options {} (the defaults written in the code)");
+  assert.equal(inEnglish(() => optionsText({ maxSteps: 60 })), 'options {"maxSteps":60}');
+});
+
+test("英語の、既定の顔ぶれとの関係（5 通り）", () => {
+  const said = (doc, defaultVersion) => inEnglish(() => standingOf(doc, defaultVersion));
+  assert.deepEqual(said({ version: 2, enabled: true, sites: [] }, 2), {
+    text: "The version that runs by default",
+    kind: "ok",
+  });
+  assert.deepEqual(said({ version: 1, enabled: true, sites: ["site.test", "www.site.test"] }, 1), {
+    text: "Runs by default when a seed is on site.test · www.site.test",
+    kind: "ok",
+  });
+  assert.deepEqual(said({ version: 1, enabled: true, sites: [] }, 2), {
+    text: "v2 is the version that runs by default",
+    kind: "muted",
+  });
+  assert.deepEqual(said({ version: 1, enabled: true, sites: [] }, undefined), {
+    text: "Not in the default set",
+    kind: "warn",
+  });
+  assert.deepEqual(said({ version: 1, enabled: false, sites: [] }, 2), {
+    text: "Disabled (does not run by default)",
+    kind: "warn",
+  });
+  // 日本語の 4 つ目（既定に入らない id の、有効な版）
+  assert.equal(standingOf({ version: 1, enabled: true, sites: [] }, undefined).text, "既定には入っていない");
+});
+
+test("画面（app.js）が引く字: 版のリンクの印・書きかけの確認の行の数・下敷きの文の繋ぎ", () => {
+  assert.equal(t("scripts.chip.default", { version: 2 }), "v2（既定）");
+  assert.equal(t("scripts.chip.disabled", { version: 1 }), "v1（無効）");
+  assert.equal(inEnglish(() => t("scripts.chip.default", { version: 2 })), "v2 (default)");
+  assert.equal(inEnglish(() => t("scripts.chip.disabled", { version: 1 })), "v1 (disabled)");
+  assert.equal(t("scripts.replace.ask", { n: 1234 }), "新しいクロールの欄に書きかけの TS（1,234 行）があります。");
+  const ask = (n) => inEnglish(() => t("scripts.replace.ask", { n }));
+  assert.equal(ask(1), "The form in the new crawl view holds an unfinished script (1 line).");
+  assert.equal(ask(1234), "The form in the new crawl view holds an unfinished script (1,234 lines).");
+  // 文と文の間: 日本語は詰め、英語は空白
+  const told = () =>
+    [
+      t("scripts.template.copied", { id: "autoscroll", version: 2 }),
+      t("scripts.template.changedLine", { line: 33, name: "my-autoscroll" }),
+    ].join(t("common.sep.sentence"));
+  assert.equal(told(), "下敷き: autoscroll v2 を写しました。33 行目の id を inline-my-autoscroll に替えました。");
+  assert.equal(inEnglish(told), "Template: copied autoscroll v2. Changed the id on line 33 to inline-my-autoscroll.");
 });

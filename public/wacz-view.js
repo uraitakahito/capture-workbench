@@ -4,7 +4,11 @@
  * 木の組み方と罫線は wacz-validator の tui（`render/tree.ts`）と同じ入力・同じ
  * 出力。試験入力も向こうと同じものを置いてある。1 行を field に割るのは daemon の
  * 仕事（`readLine` の `fields`）で、ここには無い。
+ *
+ * 字は辞書（`i18n/*.json` の `wacz.*`）に在り、ここは鍵を選んで `t()` に渡す。単位（B・KiB・MiB）、
+ * `binary`・`STORE`・`DEFLATE`、entry の名前と罫線は、どの言語でも同じ字。
  */
+import { t } from "./i18n.js";
 
 // ── 木 ─────────────────────────────────────────────────────────────
 /** flat な entries を "/" で分割して木にする（path で決定的に並べる）。 */
@@ -54,17 +58,17 @@ const worst = (issues) => {
   return undefined;
 };
 
-/** present:false の file が「なぜ期待されるか」を一語で。§5.2 MUST を datapackage より優先。 */
-const missingReason = (entry) => {
-  if (entry.expectedBy.includes("wacz-spec")) return "§5.2 が要求";
-  if (entry.expectedBy.includes("datapackage")) return "datapackage が宣言";
-  return "無い";
+/** present:false の file の印。「なぜ期待されるか」を添える。§5.2 MUST を datapackage より優先。 */
+const missingGlyph = (entry) => {
+  if (entry.expectedBy.includes("wacz-spec")) return t("wacz.tree.missing.spec");
+  if (entry.expectedBy.includes("datapackage")) return t("wacz.tree.missing.datapackage");
+  return t("wacz.tree.missing.unknown");
 };
 
 /** file の最悪 severity（と present）からマーカーを決める。dir は none。 */
 export const entryMarker = (entry) => {
   if (entry === undefined) return { glyph: "", tone: "none" };
-  if (!entry.present) return { glyph: `(無い — ${missingReason(entry)})`, tone: "error" };
+  if (!entry.present) return { glyph: missingGlyph(entry), tone: "error" };
   const tone = worst(entry.issues);
   if (tone === "error") return { glyph: "✗", tone: "error" };
   if (tone === "warning") return { glyph: "⚠", tone: "warning" };
@@ -85,9 +89,9 @@ export const codecName = (method) => (method === 0 ? "STORE" : method === 8 ? "D
 /** expectedBy → 「なぜ要るか」。両方該当も表現する。空（= ZIP に実在するだけ）は "—"。 */
 export const expectedLabel = (expectedBy, section) => {
   const parts = [];
-  if (expectedBy.includes("datapackage")) parts.push("datapackage が宣言");
-  if (expectedBy.includes("wacz-spec")) parts.push(`§${section ?? "5.2"} が要求`);
-  return parts.length > 0 ? parts.join("、") : "—";
+  if (expectedBy.includes("datapackage")) parts.push(t("wacz.expected.datapackage"));
+  if (expectedBy.includes("wacz-spec")) parts.push(t("wacz.expected.spec", { section: section ?? "5.2" }));
+  return parts.length > 0 ? parts.join(t("common.sep.comma")) : "—";
 };
 
 /** WARC はレコードの一覧で開く。 */
@@ -96,14 +100,22 @@ export const isWarc = (path) => path.endsWith(".warc.gz") || path.endsWith(".war
 /** 一覧の 1 行の言い方。binary は大きさだけ、cut は末尾に印。 */
 export const lineLabel = (line) => {
   if (line.binary) return `(binary · ${formatBytes(line.bytes)})`;
-  return line.cut ? `${line.text} …（${formatBytes(line.bytes)}。一覧は 2 KiB まで）` : line.text;
+  return line.cut ? t("wacz.lines.cut", { text: line.text, size: formatBytes(line.bytes) }) : line.text;
 };
 
-// resource は BrowserHive が組んだ写し（検索前と検索後の DOM の写し。BrowserHive WARC Profile 1.1.0 の #snapshots）
-const TYPE_NAMES = { response: "応答", request: "要求", metadata: "記録", resource: "写し", warcinfo: "warcinfo" };
-
-/** レコードの種別の言い方。知らない種別はそのまま。 */
-export const typeName = (type) => TYPE_NAMES[type] ?? type;
+/**
+ * レコードの種別（WARC-Type）の言い方。知らない種別と warcinfo はそのまま。
+ *
+ * resource は BrowserHive が組んだ写し（検索前と検索後の DOM の写し。BrowserHive WARC Profile 1.1.0 の #snapshots）。
+ * 日本語の「記録」は metadata の言い直しで、英語は WARC-Type の名前のまま（レコードの record と同じ字にしない）。
+ */
+export const typeName = (type) => {
+  if (type === "response") return t("wacz.type.response");
+  if (type === "request") return t("wacz.type.request");
+  if (type === "metadata") return t("wacz.type.metadata");
+  if (type === "resource") return t("wacz.type.resource");
+  return type;
+};
 
 /** 一覧の 1 レコードの列（種別・状態・content-type・URI）。 */
 export const recordCells = (row) => ({
@@ -123,23 +135,26 @@ export const warcinfoOf = (report, entryPath) => (report.warcinfo ?? []).filter(
 
 /** warcinfo の枠の見出し。本の何件目の記録で、いつ書かれたか。 */
 export const warcinfoTag = (record) =>
-  `warcinfo · ${String(record.index)} 件目のレコード${record.date === undefined ? "" : ` · ${record.date}`}`;
+  record.date === undefined
+    ? t("wacz.warcinfo.tag", { n: record.index })
+    : t("wacz.warcinfo.tagDated", { n: record.index, date: record.date });
 
 /**
  * 本文を欄に分けなかった記録の言い方（分けた記録は undefined）。分けるのは、`Content-Type` が
  * `application/warc-fields` で、大きすぎない本文だけ（どこまでが大きすぎないかは検証器が決める）。
  */
-export const warcinfoNote = (record) =>
-  record.fields !== undefined
-    ? undefined
-    : `本文は欄に分けていません（Content-Type: ${record.contentType ?? "無し"}）。` +
-      "分けるのは application/warc-fields の、大きすぎない本文だけです";
+export const warcinfoNote = (record) => {
+  if (record.fields !== undefined) return undefined;
+  return record.contentType === undefined || record.contentType === null
+    ? t("wacz.warcinfo.notSplitNoType")
+    : t("wacz.warcinfo.notSplit", { contentType: record.contentType });
+};
 
 /** 本文の言い方（text は本文そのものなので、ここでは扱わない）。 */
 export const bodyLabel = (body) => {
   if (body.kind === "image") return `${body.mime} · ${formatBytes(body.byteLength)}`;
   if (body.kind === "binary") return `(binary${body.mime === undefined ? "" : ` · ${body.mime}`} · ${formatBytes(body.byteLength)})`;
-  return body.truncated ? "…（64 KiB で切った）" : "";
+  return body.truncated ? t("wacz.record.bodyCut") : "";
 };
 
 /**

@@ -2,13 +2,14 @@
  * スクリプト集の画面（読む所）の部品。**workbench から切り出してあるのは、ここだけ試験から呼べるようにするため。**
  *
  * ブラウザは `/reading.js` として読み、試験は `node --test` から import する —— 同じファイルを
- * 両方が読むので、写しが腐ることがない。import を持たない（`/format.js` のような根からの path は、
- * node では fs の根になる）。読み込んだときに DOM に触らない。
+ * 両方が読むので、写しが腐ることがない。import は隣の `./i18n.js` だけ（`/format.js` のような根からの path は、
+ * node では fs の根になる）。読み込んだときに DOM に触らず、字も作らない（字は、呼ばれたときに辞書から引く）。
  *
  * 読む物は 2 種類: スクリプトの 1 版（`GET /api/scripts/:id/versions/:version`）と、受け皿 `__bh` の型
  * （`GET /api/host-types`）。どちらも JS にする前の TypeScript で、走った JS（アーカイブの
  * `behaviors/custom.jsonl`）とは行が合わない。
  */
+import { t } from "./i18n.js";
 
 /** 受け皿の型の URL。スクリプトの id は encodeURIComponent してから載せるので `/` を含まず、取り違えない */
 export const TYPES_HASH = "#scripts/types/host.d.ts";
@@ -55,19 +56,17 @@ export const linesOf = (source) => {
   return lines;
 };
 
-/** 3 桁ずつ区切る（画面のほかの数と同じ）。 */
-const count = (n) => n.toLocaleString("en-US");
-
 /**
  * 見出しの下の 1 行の、事実の部分。`behavior · 55 行 · 2,695 バイト · sha256 c9956819ffea… ·
- * 2026-10-14 取り込み`。型は phase を持たないので、その欄が無い。日付は手元の暦（画面のほかの時刻と同じ）。
+ * 2026-10-14 取り込み`。型は phase を持たないので、その欄が無い。数は 3 桁ずつ区切る（辞書の `{n, number}`。
+ * 画面のほかの数と同じ）。日付は手元の暦（画面のほかの時刻と同じ）で、形は言語で変えない。
  */
 export const metaOf = (doc) => [
   ...(doc.phase === undefined ? [] : [doc.phase]),
-  `${count(linesOf(doc.source).length)} 行`,
-  `${count(doc.bytes)} バイト`,
+  t("scripts.meta.lines", { n: linesOf(doc.source).length }),
+  t("scripts.meta.bytes", { n: doc.bytes }),
   `sha256 ${doc.sha256.slice(0, 12)}…`,
-  `${new Date(doc.createdAt).toLocaleDateString("sv-SE")} 取り込み`,
+  t("scripts.meta.imported", { date: new Date(doc.createdAt).toLocaleDateString("sv-SE") }),
 ];
 
 /**
@@ -76,8 +75,8 @@ export const metaOf = (doc) => [
  */
 export const optionsText = (options) =>
   Object.keys(options ?? {}).length === 0
-    ? "設定 {}（既定のまま。値はコードの中）"
-    : `設定 ${JSON.stringify(options)}`;
+    ? t("scripts.options.defaults")
+    : t("scripts.options.given", { json: JSON.stringify(options) });
 
 /**
  * その id で既定の顔ぶれに入る版。`latest` は `GET /api/scripts` の答え（id ごとに 1 行。既定に入らない id も
@@ -94,12 +93,12 @@ export const defaultVersionOf = (latest, id) => {
  * 走るのは、起点のどれかが対象サイトのホストにあるときだけ。
  */
 export const standingOf = (doc, defaultVersion) => {
-  if (doc.enabled === false) return { text: "無効（既定では走らない）", kind: "warn" };
+  if (doc.enabled === false) return { text: t("scripts.standing.disabled"), kind: "warn" };
   if (defaultVersion === doc.version) {
     return doc.sites.length === 0
-      ? { text: "既定で走る版", kind: "ok" }
-      : { text: `起点に ${doc.sites.join("・")} があれば既定で走る版`, kind: "ok" };
+      ? { text: t("scripts.standing.default"), kind: "ok" }
+      : { text: t("scripts.standing.defaultOnSites", { sites: doc.sites.join(t("common.sep.dot")) }), kind: "ok" };
   }
-  if (defaultVersion === undefined) return { text: "既定には入っていない", kind: "warn" };
-  return { text: `既定で走るのは v${String(defaultVersion)}`, kind: "muted" };
+  if (defaultVersion === undefined) return { text: t("scripts.standing.notDefault"), kind: "warn" };
+  return { text: t("scripts.standing.other", { version: defaultVersion }), kind: "muted" };
 };

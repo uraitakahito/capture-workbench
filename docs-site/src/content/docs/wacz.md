@@ -3,8 +3,8 @@ title: Inspecting a WACZ
 description: From an archive row, check whether the capture conforms to the WACZ spec and open its contents — without adding a key anywhere
 ---
 
-An archive row offers two things. 検証 (validate) checks whether the capture conforms to the WACZ
-spec (WACZ is the archive format that packs captured pages into one ZIP), and 開く (open) takes
+An archive row offers two things. **Validate** (検証) checks whether the capture conforms to the WACZ
+spec (WACZ is the archive format that packs captured pages into one ZIP), and **Open** (開く) takes
 you inside the WACZ. Both are answered by the daemon of
 [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a
 WACZ rule by rule). capture-workbench only hands the daemon a URL that the ledger has signed.
@@ -40,7 +40,7 @@ the daemon (the routes are listed in [Routes](/routes/)).
   404 and never reaches the daemon. The narrowing is done by the side that owns authorization.
 - **The signed URL never leaves this server.** It is not in the response, not in the logs and not
   in an error message (if the daemon throws an error containing the URL, it is masked as
-  `(署名付き URL)`). Exposing it would undo what authorization closed: until it expires, anyone
+  `(signed URL)`). Exposing it would undo what authorization closed: until it expires, anyone
   holding the URL can read the archive. The `source` in the report is the identity the daemon
   derived by dropping the query, so it is safe to return.
 - **The signature is fetched again for every call.** Keeping it would mean the workbench holds a
@@ -48,7 +48,7 @@ the daemon (the routes are listed in [Routes](/routes/)).
 
 ## The validation report
 
-Pressing 検証 on an archive row opens that archive's report under the row.
+Pressing **Validate** on an archive row opens that archive's report under the row.
 
 - The number of passed rules, and the verdict (failures, warnings, or no problems). The workbench
   never shows only the passes, because 0 warnings and 3 warnings are different states, and both
@@ -57,15 +57,16 @@ Pressing 検証 on an archive row opens that archive's report under the row.
   `profile <name>`), and how long it took. The count of WARC records (WARC is the file that records the captured
   requests and responses in order) and the hosts appear only when the
   report has statistics (they are best-effort and can be missing for a broken WACZ).
-- One finding per rule: severity, rule name, message, and a link to the spec (仕様 ↗).
-- The entries of the ZIP. An entry that should be there but is not is marked 無い (missing).
+- One finding per rule: severity, rule name, message, and a link to the spec (**spec ↗**; 仕様 ↗).
+- The entries of the ZIP. An entry that should be there but is not is marked **missing** (無い).
 
-The verdict also stays in the row's 仕様どおりか (conforms?) cell, until you reload the page.
+The verdict also stays in the row's **Conforms?** (仕様どおりか) cell, until you reload the page.
 
 **The workbench owns no wording of the report.** Messages and the spec links all come back
 from the daemon already resolved, and are shown as they are. If the workbench rephrased a rule, it
 would quietly drift from what the validator has started to say. All the workbench sends is
-`locale`, the language of the page (`ja` or `en`), and the daemon answers in that language.
+`locale`, the language of the page (`ja` or `en`), and the daemon answers in that language: the
+report is in English on the English screen and in Japanese on the Japanese one.
 
 ### It validates with the spec profile
 
@@ -84,7 +85,7 @@ checkout. To restart it, run `pnpm run dev:up --from validator` in capture-ledge
 
 ## The WACZ view
 
-開く on an archive row enters the view for that archive. The URL is `#wacz/<archiveId>`, and
+**Open** on an archive row enters the view for that archive. The URL is `#wacz/<archiveId>`, and
 the selected entry and line are part of it too, so you can point at
 `#wacz/<archiveId>/indexes%2Findex.cdxj:66`.
 
@@ -102,12 +103,13 @@ asks for it, the findings on that entry) and its contents.
 - **Record list**: this is what you get for a `.warc.gz`. One row per record, walking the WARC
   from the start, 200 at a time, filterable by type. ▪ marks a record the index (CDXJ) points
   to, ▫ one the index does not. The records BrowserHive leaves for what it did not or could not
-  capture (`WARC-Type: metadata`) are only visible here. A record of type 写し (`WARC-Type:
+  capture (`WARC-Type: metadata`) are only visible here. A record of type **snapshot** (写し; `WARC-Type:
   resource`) is a copy BrowserHive made of the page's DOM before and after its scripts ran,
-  not a server response; the paired 記録 (`metadata`) record says so. Above the list, the
+  not a server response; the paired **metadata** (記録) record says so. Above the list, the
   WARC's warcinfo (the record in which a WARC describes itself) is shown field by field, in the
   order written. When a field's name is a Dublin Core term or a WARC 1.1 warcinfo field, the
-  third column says so (Dublin Core の語, or WARC 1.1 の warcinfo の欄) and links to its
+  third column says so (`Dublin Core term` or `WARC 1.1 warcinfo field`, the daemon's words in the
+  screen's language; Dublin Core の語 and WARC 1.1 の warcinfo の欄 on the Japanese screen) and links to its
   definition; a name that is neither (one the producer chose) leaves it empty. wacz-validator
   tells them apart; the workbench only draws the `warcinfo` of the validation report.
 - **One record**: the WARC headers, the HTTP status line and headers, and the body. The body is

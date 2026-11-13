@@ -7,8 +7,11 @@
  * 1 行には「証拠ではない」を必ず添える。正は 2 本の WACZ と差分で、差分は Claude なしで作った物。
  *
  * 回の詳細は、左に回の全ページの目次、右に選んだ 1 ページ（CAPTURE-236）。ページは今回の WACZ の id で名指す。
+ *
+ * 字は辞書（`i18n/*.json` の `changes.*`）に在り、ここは鍵を選んで `t()` に渡す。**Claude の要約と 1 行は、
+ * capture-ledger が日本語で書かせた物をそのまま出す**（訳さない）。日本語でない画面には、その断りを添える（`japaneseNote`）。
  */
-import { errorText } from "./i18n.js";
+import { errorText, langOf, t } from "./i18n.js";
 import { runDelay, shortTime } from "./schedules.js";
 
 export const CHANGES_PATH = "/api/changes";
@@ -28,8 +31,15 @@ export const parseChangesHash = (hash) => {
 export const changesHash = (crawlId, pageId) =>
   pageId === undefined || pageId === null ? `#changes/${crawlId}` : `#changes/${crawlId}/${pageId}`;
 
-/** 重さの字。 */
-export const SIGNIFICANCE_TEXT = { none: "意味のある変化なし", minor: "小さい変化", content: "中身の変化" };
+/** 重さの字。知らない重さは、届いた字のまま。 */
+export const significanceText = (significance) =>
+  significance === "none"
+    ? t("changes.significance.none")
+    : significance === "minor"
+      ? t("changes.significance.minor")
+      : significance === "content"
+        ? t("changes.significance.content")
+        : significance;
 
 /**
  * 重さの色。色の種類は `.state` の `ok`・`warn`・`content`。中身の変化は青で目立たせる（悪いわけではないので bad にしない。
@@ -43,29 +53,30 @@ const SIGNIFICANCE_KIND = { none: "ok", minor: "warn", content: "content" };
  */
 export const changeOf = (change) => {
   if (change === null || change === undefined) return { kind: "", text: "—" };
-  const n = `${String(change.pagesChanged)} / ${String(change.pagesCompared)} ページ`;
+  /** 違ったページの数と、比べたページの数。 */
+  const pages = { changed: change.pagesChanged, compared: change.pagesCompared };
   switch (change.state) {
     case "comparing":
-      return { kind: "run", text: "比べています" };
+      return { kind: "run", text: t("changes.state.comparing") };
     case "no_previous":
-      return { kind: "", text: "初回（前の回が無い）" };
+      return { kind: "", text: t("changes.state.noPrevious") };
     case "unchanged":
-      return { kind: "ok", text: `変化なし（${String(change.pagesCompared)} ページ）` };
+      return { kind: "ok", text: t("changes.state.unchanged", { n: change.pagesCompared }) };
     case "diffed":
-      return { kind: "warn", text: `差分あり ${n}（要約なし）` };
+      return { kind: "warn", text: t("changes.state.diffed", pages) };
     case "summarizing":
-      return { kind: "run", text: `差分あり ${n}（要約しています）` };
+      return { kind: "run", text: t("changes.state.summarizing", pages) };
     case "budget_wait":
-      return { kind: "bad", text: `差分あり ${n}（要約が月の上限で止まっています）` };
+      return { kind: "bad", text: t("changes.state.budgetWait", pages) };
     case "failed":
-      return { kind: "bad", text: `差分あり ${n}（要約に失敗しました）` };
+      return { kind: "bad", text: t("changes.state.failed", pages) };
     case "summarized": {
       if (change.significance === null || change.significance === undefined) {
-        return { kind: "", text: change.headline ?? "要約なし" };
+        return { kind: "", text: change.headline ?? t("changes.state.noSummary") };
       }
       return {
         kind: SIGNIFICANCE_KIND[change.significance] ?? "",
-        text: `${SIGNIFICANCE_TEXT[change.significance] ?? change.significance}（${n}）`,
+        text: t("changes.state.summarized", { significance: significanceText(change.significance), ...pages }),
       };
     }
     default:
@@ -83,19 +94,29 @@ export const changeBandLines = (schedules) =>
     if (change === null || change === undefined || !CHANGE_BAND.has(change.state)) return [];
     return [
       change.state === "budget_wait"
-        ? `定期実行「${schedule.name}」: 前回からの変化の要約が、月の上限で止まっています`
-        : `定期実行「${schedule.name}」: 前回からの変化の要約に失敗しました`,
+        ? t("changes.band.budgetWait", { name: schedule.name })
+        : t("changes.band.failed", { name: schedule.name }),
     ];
   });
 
 /** 要約の添え書き。**必ず**「証拠ではない」と言う。 */
 export const summaryLine = (summary) =>
   summary === null || summary === undefined
-    ? "要約はありません（差分だけ）"
-    : `Claude の要約（証拠ではない）・${String(summary.model)}・${String(summary.promptVersion)}・$${Number(summary.usd).toFixed(4)}`;
+    ? t("changes.summary.none")
+    : t("changes.summary.line", {
+        model: String(summary.model),
+        promptVersion: String(summary.promptVersion),
+        usd: Number(summary.usd).toFixed(4),
+      });
 
 /** ページの Claude の 1 行。**必ず**「証拠ではない」と言う。 */
-export const pageClaudeLine = (headline) => `Claude の 1 行（証拠ではない）: ${String(headline)}`;
+export const pageClaudeLine = (headline) => t("changes.page.claudeLine", { headline: String(headline) });
+
+/**
+ * Claude の字（回の要約・ページの 1 行）が日本語のままだという断り。**日本語の画面では出さない**（undefined）——
+ * 書かせているのは capture-ledger で、画面の言語に依らず日本語で届く。
+ */
+export const japaneseNote = () => (langOf() === "ja" ? undefined : t("changes.claude.japaneseNote"));
 
 /**
  * 回の時刻の字（CAPTURE-235）。始まった時刻で言い、本来の時刻から 1 分以上遅れた回にだけ本来の時刻と遅れを添える。
@@ -104,7 +125,9 @@ export const pageClaudeLine = (headline) => `Claude の 1 行（証拠ではな�
 export const runTimeText = (run, timeZone) => {
   const started = shortTime(run.startedAt, timeZone);
   const delay = runDelay(run);
-  return delay === "" ? started : `${started}（本来 ${shortTime(run.scheduledFor, timeZone)}・${delay}）`;
+  return delay === ""
+    ? started
+    : t("changes.run.delayed", { started, due: shortTime(run.scheduledFor, timeZone), delay });
 };
 
 /** 目次の並び（小さいほど上）。重さの順に、要約の無い差分、差分を作れなかったページ、同じだったページ。 */
@@ -113,10 +136,10 @@ const rankOf = (page) =>
   page.state === "prev_missing" ? 5 : (RANK[page.significance] ?? 4);
 const rowText = (page) =>
   page.state === "prev_missing"
-    ? { kind: "bad", text: "差分を作れなかった" }
+    ? { kind: "bad", text: t("changes.page.prevMissing") }
     : page.significance === null || page.significance === undefined
-      ? { kind: "", text: "差分あり（要約なし）" }
-      : { kind: SIGNIFICANCE_KIND[page.significance] ?? "", text: SIGNIFICANCE_TEXT[page.significance] ?? page.significance };
+      ? { kind: "", text: t("changes.page.diffOnly") }
+      : { kind: SIGNIFICANCE_KIND[page.significance] ?? "", text: significanceText(page.significance) };
 const byUrl = (a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0);
 
 /**
@@ -141,7 +164,7 @@ export const tocOf = (detail) => {
     rank: 6,
     size: 0,
     kind: "",
-    text: "同じ",
+    text: t("changes.page.same"),
     page,
   }));
   return [...changed, ...same].sort(
@@ -199,5 +222,5 @@ export const versionNote = (page) => {
 /** 読み取りの失敗の字。404 は古い capture-ledger（変化のエンドポイントが無い）。 */
 export const changesError = (status, body) =>
   status === 404 && body?.error !== "not found"
-    ? "この capture-ledger は前回からの変化を返しません（v0.93.0 より前）"
-    : `${String(status)} —— ${errorText(body) ?? "読めませんでした"}`;
+    ? t("changes.error.noRoute")
+    : t("changes.error.statusSaid", { status: String(status), said: errorText(body) ?? t("changes.error.unreadable") });

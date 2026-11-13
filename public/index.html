@@ -19,7 +19,13 @@
         <button type="button" id="tab-scripts" data-face="scripts" data-i18n="common.tab.scripts"></button>
         <button type="button" id="tab-wacz" data-face="wacz" hidden>WACZ</button>
       </nav>
-      <p class="who"><span id="who" data-i18n="common.who.checking"></span> <a href="/logout" data-i18n="common.who.signOut"></a></p>
+      <p class="who"><span id="who" data-i18n="common.who.checking"></span> <a href="/logout" data-i18n="common.who.signOut"></a>
+        <!-- 言語の切り替え。押すと選びを覚えて頁を読み直す（i18n.js の switchLang）。いまの言語の側は押せない -->
+        <span id="lang" class="lang" role="group" data-i18n-aria-label="common.lang.label"
+          ><button type="button" data-lang="ja" lang="ja" data-i18n="common.lang.ja"></button> /
+          <button type="button" data-lang="en" lang="en" data-i18n="common.lang.en"></button
+        ></span>
+      </p>
     </header>
 
     <!--

@@ -12,14 +12,9 @@
  *      （`t("crawls.state.running")`）。組み立てた鍵は照らせないので、`t()`・`tNodes()`・`key()` の最初の引数が
  *      文字列でなければ赤。`workbench.error.*` は server の句の一覧（`src/lib.mjs` の `ERROR_PHRASES`）と両方向で
  *      照らす。`ledger.*` は capture-ledger の答えから来る鍵なので、「使われているか」からは外す
- *   4. **`public/` の JS と `index.html` の、コメントの外に日本語の字が無い**（全角の句読点も）。移している間は、
- *      ファイルごとの行数の控え（`scripts/i18n-baseline.json`）と比べる: 控えより多ければ赤（直書きが増えた）、
- *      少なければ「控えを減らす」と言って赤（控えに余りを残さない）。控えに無いファイルは 0 行でなければならない
- *
- * 4 の控えは「ファイルごとの行数」なので、まだ移していないファイルの中の「1 行足して 1 行移す」は見分けられない。
- * 全部を移し終えたら控えを消し、1 行でも在れば赤にする。
+ *   4. **`public/` の JS と `index.html` の、コメントの外に日本語の字が無い**（全角の句読点も）。1 行でも在れば赤
  */
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -174,7 +169,7 @@ export const argsOf = (IntlMessageFormat, text) => {
 };
 
 /**
- * 4 つの検査。`input` は辞書・JS と HTML の中身・server の句の一覧・控え。返すのは、赤にする理由の並び
+ * 4 つの検査。`input` は辞書・JS と HTML の中身・server の句の一覧。返すのは、赤にする理由の並び
  * （空なら緑）。ファイルを読む所と分けてあるのは、試験が壊した見本を渡して、赤になることを確かめるため。
  *
  * @param {{
@@ -183,10 +178,9 @@ export const argsOf = (IntlMessageFormat, text) => {
  *   scripts: Record<string, string>,
  *   html: Record<string, string>,
  *   phrases: readonly string[],
- *   baseline: Record<string, number> | undefined,
  * }} input
  */
-export const problemsOf = ({ IntlMessageFormat, dicts, scripts, html, phrases, baseline }) => {
+export const problemsOf = ({ IntlMessageFormat, dicts, scripts, html, phrases }) => {
   const out = [];
   const langs = Object.keys(dicts);
   const [first, ...rest] = langs;
@@ -263,20 +257,9 @@ export const problemsOf = ({ IntlMessageFormat, dicts, scripts, html, phrases, b
   for (const [file, src] of Object.entries(scripts)) counts[file] = jaLines(stripComments(src));
   for (const [file, src] of Object.entries(html)) counts[file] = jaLines(stripHtmlComments(src));
   for (const [file, lines] of Object.entries(counts)) {
-    const allowed = baseline?.[file] ?? 0;
-    if (lines.length > allowed) {
-      const where = lines.slice(0, 5).map((n) => `${file}:${String(n)}`).join(" ");
-      out.push(
-        allowed === 0
-          ? `直書きの日本語: ${String(lines.length)} 行（${where}${lines.length > 5 ? " …" : ""}）。字は辞書に置き、鍵で引く`
-          : `直書きの日本語が増えた: ${file} は ${String(lines.length)} 行（控えは ${String(allowed)} 行）。足した字は辞書に置く`,
-      );
-    } else if (lines.length < allowed) {
-      out.push(`控えを減らす: ${file} は ${String(lines.length)} 行（控えは ${String(allowed)} 行）。scripts/i18n-baseline.json を直す`);
-    }
-  }
-  for (const file of Object.keys(baseline ?? {})) {
-    if (file !== "//" && counts[file] === undefined) out.push(`控えに、見ていないファイルが在る: ${file}`);
+    if (lines.length === 0) continue;
+    const where = lines.slice(0, 5).map((n) => `${file}:${String(n)}`).join(" ");
+    out.push(`直書きの日本語: ${String(lines.length)} 行（${where}${lines.length > 5 ? " …" : ""}）。字は辞書に置き、鍵で引く`);
   }
   return out;
 };
@@ -292,14 +275,12 @@ export const readInput = async (root) => {
       .sort()
       .map((name) => [`public/${name}`, read(`public/${name}`)]),
   );
-  const baselinePath = "scripts/i18n-baseline.json";
   return {
     IntlMessageFormat,
     dicts: { ja: JSON.parse(read("public/i18n/ja.json")), en: JSON.parse(read("public/i18n/en.json")) },
     scripts,
     html: { "public/index.html": read("public/index.html") },
     phrases: ERROR_PHRASES,
-    baseline: existsSync(join(root, baselinePath)) ? JSON.parse(read(baselinePath)) : undefined,
   };
 };
 
@@ -309,10 +290,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const problems = problemsOf(input);
   for (const problem of problems) console.error(problem);
   const keys = Object.keys(input.dicts.ja).length;
-  const left = Object.entries(input.baseline ?? {}).reduce((sum, [file, n]) => (file === "//" ? sum : sum + n), 0);
   console.log(
-    `check:i18n: 辞書 ${String(keys)} 鍵 × ${String(Object.keys(input.dicts).length)} 言語、` +
-      `まだ移していない直書き ${String(left)} 行（控え）、${String(problems.length)} 件`,
+    `check:i18n: 辞書 ${String(keys)} 鍵 × ${String(Object.keys(input.dicts).length)} 言語、${String(problems.length)} 件`,
   );
   if (problems.length > 0) process.exit(1);
 }
