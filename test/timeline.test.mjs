@@ -435,5 +435,8 @@ test("軸の上の位置と目盛り", () => {
   assert.equal(percentOf(4000, 3100), 100);
   assert.equal(percentOf(undefined, 3100), 0);
   assert.deepEqual(ticksOf(3100), [0, 500, 1000, 1500, 2000, 2500, 3000]);
-  assert.deepEqual(ticksOf(30348), [0, 5000, 10000, 15000, 20000, 25000, 30000]);
+  // 軸の終わりに近すぎる目盛りは置かない（字が軸の外へ出る）: 全体が 3.04 秒の「3.00」・30.3 秒の「30.0」
+  assert.deepEqual(ticksOf(3040), [0, 500, 1000, 1500, 2000, 2500]);
+  assert.deepEqual(ticksOf(30348), [0, 5000, 10000, 15000, 20000, 25000]);
+  assert.deepEqual(ticksOf(1), [0]);
 });

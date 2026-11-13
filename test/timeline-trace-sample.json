@@ -1,0 +1,1244 @@
+{
+ "fetch": {
+  "page": {
+   "id": "972",
+   "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=1537",
+   "depth": 0,
+   "state": "captured",
+   "reason": null,
+   "taskId": "7fee3be9-00a0-4308-9790-8016f4cf5411",
+   "archiveId": "363afa49-ae3d-4a41-9728-779dc7845135",
+   "capturedAt": "2026-11-13T08:12:04.155Z",
+   "bundledRev": 1,
+   "logCounts": {
+    "info": 7,
+    "warn": 0,
+    "debug": 8,
+    "error": 1,
+    "dropped": 0
+   },
+   "submittedAt": "2026-11-13T08:12:00.202Z",
+   "finishedAt": "2026-11-13T08:12:04.187Z"
+  },
+  "archive": {
+   "id": "363afa49-ae3d-4a41-9728-779dc7845135",
+   "objectKey": "fetch.wacz"
+  },
+  "capture": {
+   "status": "success",
+   "timestamp": "2026-11-13T08:12:04.155Z",
+   "captureProcessingTimeMs": 3632,
+   "httpStatusCode": 200,
+   "settle": {
+    "strategy": "fully-loaded",
+    "endedBy": "quiet",
+    "waitedMs": 2972,
+    "devicePixelRatio": 1,
+    "limits": {
+     "minMs": 1000,
+     "maxMs": 3000,
+     "quietMs": 1000,
+     "networkConcurrency": 0
+    },
+    "load": {
+     "atMs": 76
+    },
+    "network": {
+     "quietAtMs": 2865
+    },
+    "cpu": {
+     "quietAtMs": 1113
+    },
+    "dom": {
+     "quietAtMs": 2013
+    }
+   },
+   "waczStats": {
+    "totalRecorded": 3,
+    "totalBlocked": 0,
+    "totalDenied": 0,
+    "totalSkippedContentType": 0,
+    "totalSkippedUrlPolicy": 0,
+    "totalTruncatedTooLarge": 0,
+    "totalTruncatedTaskCap": 0,
+    "totalNotIntercepted": 0,
+    "totalSkippedSecret": 0,
+    "totalFailed": 0,
+    "totalIncomplete": 0,
+    "totalBodyBytes": 332
+   },
+   "completeness": {
+    "bodylessUrls": [],
+    "truncatedUrls": [],
+    "uninterceptedUrls": [],
+    "crashedTargets": [],
+    "complete": true
+   },
+   "document": {
+    "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=1537"
+   },
+   "windowsNotOpened": 0
+  },
+  "log": {
+   "lines": [
+    {
+     "at": "2026-11-13T08:12:00.523Z",
+     "ms": 278,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step check-address",
+     "data": {
+      "step": "check-address"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:00.578Z",
+     "ms": 333,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step start-recording",
+     "data": {
+      "step": "start-recording"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:00.587Z",
+     "ms": 342,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step load-pages",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:00.589Z",
+     "ms": 344,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "navigation, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:00.737Z",
+     "ms": 492,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "settle, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:00.748Z",
+     "ms": 503,
+     "dpr": 1,
+     "source": "page",
+     "level": "error",
+     "msg": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+     "data": {
+      "url": "http://capture-fixtures.capture-ledger:8080/favicon.ico"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:03.711Z",
+     "ms": 3466,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "settled by quiet after 2972ms",
+     "data": {
+      "endedBy": "quiet",
+      "waitedMs": 2972
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:03.725Z",
+     "ms": 3480,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "snapshot after-load, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:03.900Z",
+     "ms": 3655,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "behaviors, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:03.900Z",
+     "ms": 3655,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step write-formats",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:03.906Z",
+     "ms": 3661,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "links",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:03.920Z",
+     "ms": 3675,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "page read",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:04.044Z",
+     "ms": 3799,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "put links",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:04.062Z",
+     "ms": 3817,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "took 0 links from the page and 0 same-origin frames",
+     "data": {
+      "links": 0,
+      "frames": {
+       "read": 0,
+       "unreadable": 0,
+       "withheld": 0
+      }
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:04.062Z",
+     "ms": 3817,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "web storage",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:04.070Z",
+     "ms": 3825,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step package-wacz",
+     "data": {
+      "step": "package-wacz"
+     }
+    }
+   ],
+   "counts": {
+    "debug": 8,
+    "info": 7,
+    "warn": 0,
+    "error": 1
+   },
+   "dropped": 0
+  },
+  "trace": {
+   "lines": [
+    {
+     "kind": "request",
+     "id": "4625814538CED60FA1DAFC7E25872549",
+     "hop": 0,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=1537",
+     "method": "GET",
+     "resourceType": "Document",
+     "initiator": {
+      "type": "other"
+     },
+     "startedAt": "2026-11-13T08:12:00.641Z",
+     "ms": 400,
+     "response": {
+      "status": 200,
+      "protocol": "http/1.1"
+     },
+     "timing": {
+      "dnsMs": 0,
+      "connectMs": 0,
+      "tlsMs": 0,
+      "sendMs": 0,
+      "waitMs": 4,
+      "receiveMs": 1
+     },
+     "durationMs": 60,
+     "encodedBytes": 363,
+     "outcome": "finished",
+     "record": "urn:uuid:65b47450-437d-47d6-9c7a-635deba13213"
+    },
+    {
+     "kind": "request",
+     "id": "377.2",
+     "hop": 0,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/favicon.ico",
+     "method": "GET",
+     "resourceType": "Other",
+     "initiator": {
+      "type": "other"
+     },
+     "startedAt": "2026-11-13T08:12:00.735Z",
+     "ms": 494,
+     "response": {
+      "status": 404,
+      "protocol": "http/1.1"
+     },
+     "timing": {
+      "dnsMs": 0,
+      "connectMs": 0,
+      "tlsMs": 0,
+      "sendMs": 0,
+      "waitMs": 2,
+      "receiveMs": 0
+     },
+     "durationMs": 10,
+     "encodedBytes": 261,
+     "outcome": "finished",
+     "record": "urn:uuid:29d4e125-992a-4c37-bc18-cd061159a141"
+    },
+    {
+     "kind": "request",
+     "id": "377.3",
+     "hop": 0,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=1537",
+     "method": "GET",
+     "resourceType": "Fetch",
+     "initiator": {
+      "type": "script",
+      "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=1537",
+      "line": 4
+     },
+     "startedAt": "2026-11-13T08:12:01.032Z",
+     "ms": 791,
+     "response": {
+      "status": 200,
+      "protocol": "http/1.1"
+     },
+     "timing": {
+      "dnsMs": 0,
+      "connectMs": 0,
+      "tlsMs": 0,
+      "sendMs": 0,
+      "waitMs": 1544,
+      "receiveMs": 1
+     },
+     "durationMs": 1551,
+     "encodedBytes": 185,
+     "outcome": "finished",
+     "record": "urn:uuid:7aa8dc19-9707-475c-a2b7-21661bbf702e"
+    }
+   ],
+   "counts": {
+    "finished": 3,
+    "redirected": 0,
+    "failed": 0,
+    "pending": 0,
+    "notArchived": 0,
+    "denied": 0,
+    "evicted": 0
+   },
+   "dropped": 0
+  },
+  "reason": null
+ },
+ "hang": {
+  "page": {
+   "id": "973",
+   "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=0&takesMs=120000",
+   "depth": 0,
+   "state": "captured",
+   "reason": null,
+   "taskId": "9db5f65d-58f5-4639-a985-e0ea56a06ec3",
+   "archiveId": "bc901016-6cea-40c2-931c-ef3b503e433a",
+   "capturedAt": "2026-11-13T08:12:09.333Z",
+   "bundledRev": 1,
+   "logCounts": {
+    "info": 7,
+    "warn": 0,
+    "debug": 8,
+    "error": 0,
+    "dropped": 0
+   },
+   "submittedAt": "2026-11-13T08:12:05.418Z",
+   "finishedAt": "2026-11-13T08:12:09.367Z"
+  },
+  "archive": {
+   "id": "bc901016-6cea-40c2-931c-ef3b503e433a",
+   "objectKey": "hang.wacz"
+  },
+  "capture": {
+   "status": "success",
+   "timestamp": "2026-11-13T08:12:09.333Z",
+   "captureProcessingTimeMs": 3686,
+   "httpStatusCode": 200,
+   "settle": {
+    "strategy": "fully-loaded",
+    "endedBy": "deadline",
+    "waitedMs": 3116,
+    "devicePixelRatio": 1,
+    "limits": {
+     "minMs": 1000,
+     "maxMs": 3000,
+     "quietMs": 1000,
+     "networkConcurrency": 0
+    },
+    "load": {
+     "atMs": 96
+    },
+    "network": {},
+    "cpu": {
+     "quietAtMs": 1114
+    },
+    "dom": {
+     "quietAtMs": 2016
+    }
+   },
+   "waczStats": {
+    "totalRecorded": 1,
+    "totalBlocked": 0,
+    "totalDenied": 0,
+    "totalSkippedContentType": 0,
+    "totalSkippedUrlPolicy": 0,
+    "totalTruncatedTooLarge": 0,
+    "totalTruncatedTaskCap": 0,
+    "totalNotIntercepted": 0,
+    "totalSkippedSecret": 0,
+    "totalFailed": 0,
+    "totalIncomplete": 1,
+    "totalBodyBytes": 213
+   },
+   "completeness": {
+    "bodylessUrls": [],
+    "truncatedUrls": [],
+    "uninterceptedUrls": [],
+    "crashedTargets": [],
+    "complete": true
+   },
+   "document": {
+    "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=0&takesMs=120000"
+   },
+   "windowsNotOpened": 0
+  },
+  "log": {
+   "lines": [
+    {
+     "at": "2026-11-13T08:12:05.648Z",
+     "ms": 219,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step check-address",
+     "data": {
+      "step": "check-address"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:05.708Z",
+     "ms": 279,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step start-recording",
+     "data": {
+      "step": "start-recording"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:05.711Z",
+     "ms": 282,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step load-pages",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:05.713Z",
+     "ms": 284,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "navigation, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:05.779Z",
+     "ms": 350,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "settle, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:08.895Z",
+     "ms": 3466,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "settled by deadline after 3116ms",
+     "data": {
+      "endedBy": "deadline",
+      "waitedMs": 3116
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:08.910Z",
+     "ms": 3481,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "snapshot after-load, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:09.122Z",
+     "ms": 3693,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "behaviors, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:09.122Z",
+     "ms": 3693,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step write-formats",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:09.127Z",
+     "ms": 3698,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "links",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:09.133Z",
+     "ms": 3704,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "page read",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:09.246Z",
+     "ms": 3817,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "put links",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:09.258Z",
+     "ms": 3829,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "took 0 links from the page and 0 same-origin frames",
+     "data": {
+      "links": 0,
+      "frames": {
+       "read": 0,
+       "unreadable": 0,
+       "withheld": 0
+      }
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:09.259Z",
+     "ms": 3830,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "web storage",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:09.265Z",
+     "ms": 3836,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step package-wacz",
+     "data": {
+      "step": "package-wacz"
+     }
+    }
+   ],
+   "counts": {
+    "debug": 8,
+    "info": 7,
+    "warn": 0,
+    "error": 0
+   },
+   "dropped": 0
+  },
+  "trace": {
+   "lines": [
+    {
+     "kind": "request",
+     "id": "2DB62B5E0A64147F171AE86C085CD198",
+     "hop": 0,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=0&takesMs=120000",
+     "method": "GET",
+     "resourceType": "Document",
+     "initiator": {
+      "type": "other"
+     },
+     "startedAt": "2026-11-13T08:12:05.762Z",
+     "ms": 334,
+     "response": {
+      "status": 200,
+      "protocol": "http/1.1"
+     },
+     "timing": {
+      "dnsMs": 0,
+      "connectMs": 0,
+      "tlsMs": 0,
+      "sendMs": 0,
+      "waitMs": 2,
+      "receiveMs": 0
+     },
+     "durationMs": 5,
+     "encodedBytes": 363,
+     "outcome": "finished",
+     "record": "urn:uuid:ba4843df-cb99-4db5-abdd-e6a70ccd4320"
+    },
+    {
+     "kind": "request",
+     "id": "512.2",
+     "hop": 0,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=120000",
+     "method": "GET",
+     "resourceType": "Fetch",
+     "initiator": {
+      "type": "script",
+      "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=0&takesMs=120000",
+      "line": 4
+     },
+     "startedAt": "2026-11-13T08:12:05.775Z",
+     "ms": 347,
+     "outcome": "pending"
+    }
+   ],
+   "counts": {
+    "finished": 1,
+    "redirected": 0,
+    "failed": 0,
+    "pending": 1,
+    "notArchived": 0,
+    "denied": 0,
+    "evicted": 0
+   },
+   "dropped": 0
+  },
+  "reason": null
+ },
+ "redirect": {
+  "page": {
+   "id": "974",
+   "url": "http://capture-fixtures.capture-ledger:8080/server-redirect-chain/2",
+   "depth": 0,
+   "state": "captured",
+   "reason": null,
+   "taskId": "64b3c493-eb6f-474c-999b-5a8970848f7c",
+   "archiveId": "729c749b-722b-4801-9265-83aaa3004125",
+   "capturedAt": "2026-11-13T08:12:14.271Z",
+   "bundledRev": 1,
+   "logCounts": {
+    "info": 7,
+    "warn": 0,
+    "debug": 8,
+    "error": 0,
+    "dropped": 0
+   },
+   "submittedAt": "2026-11-13T08:12:11.417Z",
+   "finishedAt": "2026-11-13T08:12:14.306Z"
+  },
+  "archive": {
+   "id": "729c749b-722b-4801-9265-83aaa3004125",
+   "objectKey": "redirect.wacz"
+  },
+  "capture": {
+   "status": "success",
+   "timestamp": "2026-11-13T08:12:14.271Z",
+   "captureProcessingTimeMs": 2630,
+   "httpStatusCode": 200,
+   "settle": {
+    "strategy": "fully-loaded",
+    "endedBy": "quiet",
+    "waitedMs": 2119,
+    "devicePixelRatio": 1,
+    "limits": {
+     "minMs": 1000,
+     "maxMs": 3000,
+     "quietMs": 1000,
+     "networkConcurrency": 0
+    },
+    "load": {
+     "atMs": 109
+    },
+    "network": {
+     "quietAtMs": 2004
+    },
+    "cpu": {
+     "quietAtMs": 1109
+    },
+    "dom": {
+     "quietAtMs": 2011
+    }
+   },
+   "waczStats": {
+    "totalRecorded": 4,
+    "totalBlocked": 0,
+    "totalDenied": 0,
+    "totalSkippedContentType": 0,
+    "totalSkippedUrlPolicy": 0,
+    "totalTruncatedTooLarge": 0,
+    "totalTruncatedTaskCap": 0,
+    "totalNotIntercepted": 0,
+    "totalSkippedSecret": 0,
+    "totalFailed": 0,
+    "totalIncomplete": 0,
+    "totalBodyBytes": 112
+   },
+   "completeness": {
+    "bodylessUrls": [],
+    "truncatedUrls": [],
+    "uninterceptedUrls": [],
+    "crashedTargets": [],
+    "complete": true
+   },
+   "document": {
+    "url": "http://capture-fixtures.capture-ledger:8080/redirect-target"
+   },
+   "windowsNotOpened": 0
+  },
+  "log": {
+   "lines": [
+    {
+     "at": "2026-11-13T08:12:11.641Z",
+     "ms": 215,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step check-address",
+     "data": {
+      "step": "check-address"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:11.691Z",
+     "ms": 265,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step start-recording",
+     "data": {
+      "step": "start-recording"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:11.694Z",
+     "ms": 268,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step load-pages",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:11.695Z",
+     "ms": 269,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "navigation, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:11.785Z",
+     "ms": 359,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "settle, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:13.904Z",
+     "ms": 2478,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "settled by quiet after 2119ms",
+     "data": {
+      "endedBy": "quiet",
+      "waitedMs": 2119
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:13.912Z",
+     "ms": 2486,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "snapshot after-load, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:14.066Z",
+     "ms": 2640,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "behaviors, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:14.066Z",
+     "ms": 2640,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step write-formats",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:14.070Z",
+     "ms": 2644,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "links",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:14.076Z",
+     "ms": 2650,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "page read",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:14.183Z",
+     "ms": 2757,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "put links",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:14.192Z",
+     "ms": 2766,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "took 0 links from the page and 0 same-origin frames",
+     "data": {
+      "links": 0,
+      "frames": {
+       "read": 0,
+       "unreadable": 0,
+       "withheld": 0
+      }
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:14.192Z",
+     "ms": 2766,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "web storage",
+     "data": {
+      "step": "write-formats"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:14.198Z",
+     "ms": 2772,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step package-wacz",
+     "data": {
+      "step": "package-wacz"
+     }
+    }
+   ],
+   "counts": {
+    "debug": 8,
+    "info": 7,
+    "warn": 0,
+    "error": 0
+   },
+   "dropped": 0
+  },
+  "trace": {
+   "lines": [
+    {
+     "kind": "request",
+     "id": "8B877D6D55101ED4276792A611DCC01D",
+     "hop": 0,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/server-redirect-chain/2",
+     "method": "GET",
+     "resourceType": "Document",
+     "initiator": {
+      "type": "other"
+     },
+     "startedAt": "2026-11-13T08:12:11.749Z",
+     "ms": 324,
+     "response": {
+      "status": 302,
+      "protocol": "http/1.1"
+     },
+     "timing": {
+      "dnsMs": 0,
+      "connectMs": 0,
+      "tlsMs": 0,
+      "sendMs": 0,
+      "waitMs": 3,
+      "receiveMs": 2
+     },
+     "durationMs": 8,
+     "outcome": "redirected",
+     "record": "urn:uuid:9aa34ae9-ea68-446d-b8f9-b4c76f76ebd6"
+    },
+    {
+     "kind": "request",
+     "id": "8B877D6D55101ED4276792A611DCC01D",
+     "hop": 1,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/server-redirect-chain/1",
+     "method": "GET",
+     "resourceType": "Document",
+     "initiator": {
+      "type": "other"
+     },
+     "startedAt": "2026-11-13T08:12:11.757Z",
+     "ms": 332,
+     "response": {
+      "status": 302,
+      "protocol": "http/1.1"
+     },
+     "timing": {
+      "dnsMs": 0,
+      "connectMs": 0,
+      "tlsMs": 0,
+      "sendMs": 0,
+      "waitMs": 1,
+      "receiveMs": 2
+     },
+     "durationMs": 6,
+     "outcome": "redirected",
+     "record": "urn:uuid:72d652ae-f762-4766-9e65-83b8abbbe535"
+    },
+    {
+     "kind": "request",
+     "id": "8B877D6D55101ED4276792A611DCC01D",
+     "hop": 2,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/server-redirect-chain/0",
+     "method": "GET",
+     "resourceType": "Document",
+     "initiator": {
+      "type": "other"
+     },
+     "startedAt": "2026-11-13T08:12:11.763Z",
+     "ms": 338,
+     "response": {
+      "status": 302,
+      "protocol": "http/1.1"
+     },
+     "timing": {
+      "dnsMs": 0,
+      "connectMs": 0,
+      "tlsMs": 0,
+      "sendMs": 0,
+      "waitMs": 1,
+      "receiveMs": 1
+     },
+     "durationMs": 5,
+     "outcome": "redirected",
+     "record": "urn:uuid:9aa99f5d-aa36-4503-879b-4d78be363b57"
+    },
+    {
+     "kind": "request",
+     "id": "8B877D6D55101ED4276792A611DCC01D",
+     "hop": 3,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/redirect-target",
+     "method": "GET",
+     "resourceType": "Document",
+     "initiator": {
+      "type": "other"
+     },
+     "startedAt": "2026-11-13T08:12:11.768Z",
+     "ms": 343,
+     "response": {
+      "status": 200,
+      "protocol": "http/1.1"
+     },
+     "timing": {
+      "dnsMs": 0,
+      "connectMs": 0,
+      "tlsMs": 0,
+      "sendMs": 0,
+      "waitMs": 1,
+      "receiveMs": 0
+     },
+     "durationMs": 4,
+     "encodedBytes": 262,
+     "outcome": "finished",
+     "record": "urn:uuid:4341819f-dd00-4d59-9112-da0e5fb93f75"
+    }
+   ],
+   "counts": {
+    "finished": 1,
+    "redirected": 3,
+    "failed": 0,
+    "pending": 0,
+    "notArchived": 0,
+    "denied": 0,
+    "evicted": 0
+   },
+   "dropped": 0
+  },
+  "reason": null
+ },
+ "timeout": {
+  "page": {
+   "id": "976",
+   "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000",
+   "depth": 0,
+   "state": "failed",
+   "reason": "timeout: Navigation timeout of 30000 ms exceeded",
+   "taskId": "d4052c40-1d10-43b5-accb-f5fde9221fae",
+   "archiveId": null,
+   "capturedAt": null,
+   "bundledRev": null,
+   "logCounts": {
+    "info": 3,
+    "warn": 0,
+    "debug": 1,
+    "error": 1,
+    "dropped": 0
+   },
+   "submittedAt": "2026-11-13T08:12:56.812Z",
+   "finishedAt": "2026-11-13T08:13:27.205Z"
+  },
+  "archive": null,
+  "capture": {
+   "status": "timeout",
+   "timestamp": "2026-11-13T08:13:27.164Z",
+   "captureProcessingTimeMs": 30130,
+   "errorDetails": {
+    "type": "timeout",
+    "message": "Navigation timeout of 30000 ms exceeded",
+    "timeoutMs": 30000
+   }
+  },
+  "log": {
+   "lines": [
+    {
+     "at": "2026-11-13T08:12:57.034Z",
+     "ms": 219,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step check-address",
+     "data": {
+      "step": "check-address"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:57.096Z",
+     "ms": 281,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step start-recording",
+     "data": {
+      "step": "start-recording"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:57.100Z",
+     "ms": 285,
+     "source": "browserhive",
+     "level": "info",
+     "msg": "step load-pages",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:12:57.101Z",
+     "ms": 286,
+     "dpr": 1,
+     "source": "browserhive",
+     "level": "debug",
+     "msg": "navigation, dpr=1",
+     "data": {
+      "step": "load-pages"
+     }
+    },
+    {
+     "at": "2026-11-13T08:13:27.170Z",
+     "ms": 30355,
+     "source": "browserhive",
+     "level": "error",
+     "msg": "Navigation timeout of 30000 ms exceeded"
+    }
+   ],
+   "counts": {
+    "debug": 1,
+    "info": 3,
+    "warn": 0,
+    "error": 1
+   },
+   "dropped": 0
+  },
+  "trace": {
+   "lines": [
+    {
+     "kind": "request",
+     "id": "B9544EA0FEBC7524E6DA004C9224A119",
+     "hop": 0,
+     "dpr": 1,
+     "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000",
+     "method": "GET",
+     "resourceType": "Document",
+     "initiator": {
+      "type": "other"
+     },
+     "startedAt": "2026-11-13T08:12:57.156Z",
+     "ms": 342,
+     "outcome": "pending"
+    }
+   ],
+   "counts": {
+    "finished": 0,
+    "redirected": 0,
+    "failed": 0,
+    "pending": 1,
+    "notArchived": 0,
+    "denied": 0,
+    "evicted": 0
+   },
+   "dropped": 0
+  },
+  "reason": null
+ },
+ "e2eLines": {
+  "unobservable": {
+   "kind": "request",
+   "id": "E058663D9B8F34876C0B61EE874AF177",
+   "hop": 0,
+   "dpr": 1,
+   "url": "http://capture-fixtures-1-b.browserhive:8080/links/frame/menu",
+   "method": "GET",
+   "resourceType": "Document",
+   "initiator": {
+    "type": "parser",
+    "url": "http://capture-fixtures-1-a.browserhive:8080/links/iframe-other?embedOrigin=http%3A%2F%2Fcapture-fixtures-1-b.browserhive%3A8080",
+    "line": 3
+   },
+   "startedAt": "2026-11-13T07:33:21.093Z",
+   "ms": 334,
+   "response": {
+    "status": 200,
+    "protocol": "http/1.1"
+   },
+   "timing": {
+    "dnsMs": 0,
+    "connectMs": 0,
+    "tlsMs": 0,
+    "sendMs": 0,
+    "waitMs": 1,
+    "receiveMs": 0
+   },
+   "outcome": "pending",
+   "endUnobservable": true
+  },
+  "failed": {
+   "kind": "request",
+   "id": "C990087B24CC6C10FE8D584D56E571C3",
+   "hop": 0,
+   "dpr": 1,
+   "url": "http://c270-b25bf5f5.invalid/links/frame/menu",
+   "method": "GET",
+   "resourceType": "Document",
+   "initiator": {
+    "type": "parser",
+    "url": "http://capture-fixtures-1-a.browserhive:8080/links/iframe-other?embedOrigin=http%3A%2F%2Fc270-b25bf5f5.invalid",
+    "line": 3
+   },
+   "startedAt": "2026-11-13T07:33:19.816Z",
+   "ms": 319,
+   "durationMs": 14,
+   "outcome": "failed",
+   "error": "net::ERR_NAME_NOT_RESOLVED"
+  }
+ }
+}

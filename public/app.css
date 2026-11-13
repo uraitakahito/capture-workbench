@@ -2524,6 +2524,52 @@ body[data-face="scripts"] main {
 .trace-req .trace-track .tick {
   cursor: inherit;
 }
+/* 要求の棒（答えが trace を持つ取り込み）。始まりから終わりまで。終わらなかった行は点線で軸の終わりまで */
+.trace-track .bar.req {
+  top: 3px;
+  bottom: 3px;
+  min-width: 2px;
+  padding: 0;
+  background: currentColor;
+  cursor: inherit;
+}
+.trace-track .bar.req.ok {
+  color: var(--ok);
+}
+.trace-track .bar.req.bad {
+  color: var(--bad);
+}
+.trace-track .bar.req.run {
+  color: var(--run);
+}
+.trace-track .bar.req.muted {
+  color: var(--muted);
+}
+.trace-track .bar.req.open {
+  border: 1px dashed currentColor;
+  background: transparent;
+}
+/* 始まり・結末・長さ・URL・軸 */
+.trace-reqs.lined .trace-req {
+  grid-template-columns: 3.6em 7.5em 4.6em minmax(0, 1.4fr) minmax(90px, 1fr);
+}
+.trace-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.trace-tools label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.trace-tools select {
+  font: inherit;
+}
 .trace-panel {
   display: grid;
   grid-template-columns: 8em minmax(0, 1fr);
@@ -2571,6 +2617,9 @@ tr.detail .pagelist .outcome a.trace-link {
   .trace-req {
     grid-template-columns: 3.2em 4.6em minmax(0, 1fr);
     gap: 6px;
+  }
+  .trace-reqs.lined .trace-req {
+    grid-template-columns: 3.2em 5.6em 4.2em minmax(0, 1fr);
   }
   .trace-req .trace-track {
     display: none;

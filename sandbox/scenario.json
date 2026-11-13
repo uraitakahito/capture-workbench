@@ -63,29 +63,53 @@
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,
-  "submit": { "runsSeconds": 15 },
+  "submit": {
+    "runsSeconds": 15
+  },
   "crawls": [
     {
       "crawlId": "5b0c0001-6a1e-4000-8000-000000000001",
       "state": "running",
-      "seeds": ["https://sandbox.test/"],
+      "seeds": [
+        "https://sandbox.test/"
+      ],
       "startedSecondsAgo": 40,
       "pagesCaptured": 3,
       "pagesDiscovered": 12,
       "waczCount": 3,
       "lastJobId": "019a5b0c-0001-7000-8000-000000000001",
       "lastJobDepth": 1,
-      "dispatch": { "depth": 1, "state": "accepted", "attempts": 3, "lastError": "The operation was aborted due to timeout" },
-      "replayBundle": { "rev": 1, "pages": 3, "builtSecondsAgo": 30 }
+      "dispatch": {
+        "depth": 1,
+        "state": "accepted",
+        "attempts": 3,
+        "lastError": "The operation was aborted due to timeout"
+      },
+      "replayBundle": {
+        "rev": 1,
+        "pages": 3,
+        "builtSecondsAgo": 30
+      }
     },
     {
       "crawlId": "5b0c0002-6a1e-4000-8000-000000000002",
       "state": "succeeded",
       "stopReason": "max_depth",
-      "seeds": ["https://sandbox.test/about"],
+      "seeds": [
+        "https://sandbox.test/about"
+      ],
       "maxDepth": 0,
       "decisions": [
-        { "depth": 1, "rule": 1, "action": "follow", "hostname": "sandbox.test", "links": 8, "samples": ["https://sandbox.test/"] }
+        {
+          "depth": 1,
+          "rule": 1,
+          "action": "follow",
+          "hostname": "sandbox.test",
+          "links": 8,
+          "samples": [
+            "https://sandbox.test/"
+          ]
+        }
       ],
       "startedSecondsAgo": 900,
       "tookSeconds": 75,
@@ -94,24 +118,260 @@
       "waczCount": 1,
       "lastJobId": "019a5b0c-0002-7000-8000-000000000002",
       "lastJobDepth": 0,
-      "replayBundle": { "error": "could not write r1 to the store: The specified bucket does not exist" }
+      "replayBundle": {
+        "error": "could not write r1 to the store: The specified bucket does not exist"
+      }
     },
     {
       "crawlId": "5b0c0003-6a1e-4000-8000-000000000003",
       "state": "succeeded",
       "stopReason": "max_depth",
       "maxDepth": 1,
-      "seeds": ["https://sandbox.test/docs/"],
+      "seeds": [
+        "https://sandbox.test/docs/"
+      ],
       "//linkPages": "リンクの構成（capture-ledger の GET /api/crawls/:id/links と …/links/:page の元。CAPTURE-246）。ページと親と、そのページにあったリンク [URL, 文字, どうなったか]。数・束・ホストは代役がここから組む",
       "linkPages": [
-        {"id": "301", "parent": null, "depth": 0, "url": "https://sandbox.test/docs/", "title": "Docs", "state": "captured", "links": [["https://sandbox.test/docs/start", "はじめに", "followed"], ["https://sandbox.test/docs/install", "入れる", "followed"], ["https://sandbox.test/docs/guide", "ガイド", "followed"], ["https://sandbox.test/docs/rules", "規則", "followed"], ["https://sandbox.test/docs/scripts", "スクリプト", "followed"], ["https://sandbox.test/docs/schedules", "定期実行", "followed"], ["https://sandbox.test/docs/crawls", "クロール", "followed"], ["https://github.test/sandbox", "GitHub", "skip"], ["https://status.sandbox-cdn.test/", "稼働状況", "skip"]]},
-        {"id": "302", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/start", "title": "はじめに", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/install", "入れる", "known"]]},
-        {"id": "303", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/install", "title": "入れる", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/install/macos", "macOS", "max_depth"], ["https://sandbox.test/docs/install/linux", "Linux", "max_depth"], ["https://sandbox.test/docs/install/windows", "Windows", "max_depth"]]},
-        {"id": "304", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/guide", "title": "ガイド", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/rules", "規則", "known"], ["https://sandbox.test/docs/scripts", "スクリプト", "known"], ["https://sandbox.test/docs/schedules", "定期実行", "known"], ["https://github.test/sandbox", "GitHub", "skip"]]},
-        {"id": "305", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/rules", "title": "規則", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/rules/order", "当てる順", "max_depth"], ["https://sandbox.test/docs/rules/examples", "例", "max_depth"]]},
-        {"id": "306", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/scripts", "title": "スクリプト", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/scripts/params", "値を渡す", "max_depth"], ["https://github.test/sandbox/scripts", "見本", "skip"]]},
-        {"id": "307", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/schedules", "title": "定期実行", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"]]},
-        {"id": "308", "parent": "301", "depth": 1, "url": "https://sandbox.test/docs/crawls", "title": "クロール", "state": "captured", "links": [["https://sandbox.test/docs/", "Docs", "known"], ["https://sandbox.test/docs/crawls/links", "links", "max_depth"], ["https://sandbox.test/docs/crawls/pages", "pages", "max_depth"], ["https://sandbox.test/docs/crawls/decisions", "decisions", "max_depth"], ["https://spec.openapis.test/", "OpenAPI", "skip"]]}
+        {
+          "id": "301",
+          "parent": null,
+          "depth": 0,
+          "url": "https://sandbox.test/docs/",
+          "title": "Docs",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/docs/start",
+              "はじめに",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/docs/install",
+              "入れる",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/docs/guide",
+              "ガイド",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/docs/rules",
+              "規則",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/docs/scripts",
+              "スクリプト",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/docs/schedules",
+              "定期実行",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/docs/crawls",
+              "クロール",
+              "followed"
+            ],
+            [
+              "https://github.test/sandbox",
+              "GitHub",
+              "skip"
+            ],
+            [
+              "https://status.sandbox-cdn.test/",
+              "稼働状況",
+              "skip"
+            ]
+          ]
+        },
+        {
+          "id": "302",
+          "parent": "301",
+          "depth": 1,
+          "url": "https://sandbox.test/docs/start",
+          "title": "はじめに",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/docs/",
+              "Docs",
+              "known"
+            ],
+            [
+              "https://sandbox.test/docs/install",
+              "入れる",
+              "known"
+            ]
+          ]
+        },
+        {
+          "id": "303",
+          "parent": "301",
+          "depth": 1,
+          "url": "https://sandbox.test/docs/install",
+          "title": "入れる",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/docs/",
+              "Docs",
+              "known"
+            ],
+            [
+              "https://sandbox.test/docs/install/macos",
+              "macOS",
+              "max_depth"
+            ],
+            [
+              "https://sandbox.test/docs/install/linux",
+              "Linux",
+              "max_depth"
+            ],
+            [
+              "https://sandbox.test/docs/install/windows",
+              "Windows",
+              "max_depth"
+            ]
+          ]
+        },
+        {
+          "id": "304",
+          "parent": "301",
+          "depth": 1,
+          "url": "https://sandbox.test/docs/guide",
+          "title": "ガイド",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/docs/",
+              "Docs",
+              "known"
+            ],
+            [
+              "https://sandbox.test/docs/rules",
+              "規則",
+              "known"
+            ],
+            [
+              "https://sandbox.test/docs/scripts",
+              "スクリプト",
+              "known"
+            ],
+            [
+              "https://sandbox.test/docs/schedules",
+              "定期実行",
+              "known"
+            ],
+            [
+              "https://github.test/sandbox",
+              "GitHub",
+              "skip"
+            ]
+          ]
+        },
+        {
+          "id": "305",
+          "parent": "301",
+          "depth": 1,
+          "url": "https://sandbox.test/docs/rules",
+          "title": "規則",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/docs/",
+              "Docs",
+              "known"
+            ],
+            [
+              "https://sandbox.test/docs/rules/order",
+              "当てる順",
+              "max_depth"
+            ],
+            [
+              "https://sandbox.test/docs/rules/examples",
+              "例",
+              "max_depth"
+            ]
+          ]
+        },
+        {
+          "id": "306",
+          "parent": "301",
+          "depth": 1,
+          "url": "https://sandbox.test/docs/scripts",
+          "title": "スクリプト",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/docs/",
+              "Docs",
+              "known"
+            ],
+            [
+              "https://sandbox.test/docs/scripts/params",
+              "値を渡す",
+              "max_depth"
+            ],
+            [
+              "https://github.test/sandbox/scripts",
+              "見本",
+              "skip"
+            ]
+          ]
+        },
+        {
+          "id": "307",
+          "parent": "301",
+          "depth": 1,
+          "url": "https://sandbox.test/docs/schedules",
+          "title": "定期実行",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/docs/",
+              "Docs",
+              "known"
+            ]
+          ]
+        },
+        {
+          "id": "308",
+          "parent": "301",
+          "depth": 1,
+          "url": "https://sandbox.test/docs/crawls",
+          "title": "クロール",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/docs/",
+              "Docs",
+              "known"
+            ],
+            [
+              "https://sandbox.test/docs/crawls/links",
+              "links",
+              "max_depth"
+            ],
+            [
+              "https://sandbox.test/docs/crawls/pages",
+              "pages",
+              "max_depth"
+            ],
+            [
+              "https://sandbox.test/docs/crawls/decisions",
+              "decisions",
+              "max_depth"
+            ],
+            [
+              "https://spec.openapis.test/",
+              "OpenAPI",
+              "skip"
+            ]
+          ]
+        }
       ],
       "startedSecondsAgo": 1800,
       "tookSeconds": 210,
@@ -131,7 +391,9 @@
       "crawlId": "5b0c0004-6a1e-4000-8000-000000000004",
       "state": "succeeded",
       "stopReason": "max_pages",
-      "seeds": ["https://sandbox.test/blog/"],
+      "seeds": [
+        "https://sandbox.test/blog/"
+      ],
       "startedSecondsAgo": 2700,
       "tookSeconds": 400,
       "pagesCaptured": 50,
@@ -144,7 +406,9 @@
       "crawlId": "5b0c0005-6a1e-4000-8000-000000000005",
       "state": "succeeded",
       "stopReason": "paused",
-      "seeds": ["https://sandbox.test/odd"],
+      "seeds": [
+        "https://sandbox.test/odd"
+      ],
       "startedSecondsAgo": 3600,
       "tookSeconds": 30,
       "pagesCaptured": 1,
@@ -156,7 +420,9 @@
       "//": "辿るよう頼んだのに、リンクが 1 本も無かった（capture-ledger の no_links。CAPTURE-245）",
       "state": "succeeded",
       "stopReason": "no_links",
-      "seeds": ["https://sandbox.test/frames/"],
+      "seeds": [
+        "https://sandbox.test/frames/"
+      ],
       "startedSecondsAgo": 4200,
       "tookSeconds": 9,
       "pagesCaptured": 1,
@@ -167,7 +433,9 @@
       "crawlId": "5b0c0006-6a1e-4000-8000-000000000006",
       "state": "failed",
       "stopReason": "failed",
-      "seeds": ["https://sandbox.test/slow"],
+      "seeds": [
+        "https://sandbox.test/slow"
+      ],
       "startedSecondsAgo": 7200,
       "tookSeconds": 12,
       "pagesCaptured": 0,
@@ -175,56 +443,280 @@
       "waczCount": 0,
       "error": "[1] 撮る相手が答えない",
       "failures": [
-        { "url": "https://sandbox.test/slow", "depth": 0, "reason": "timeout", "page": "601" },
-        { "url": "https://sandbox.test/slow/next", "depth": 1, "reason": "timeout", "page": "602" }
+        {
+          "url": "https://sandbox.test/slow",
+          "depth": 0,
+          "reason": "timeout",
+          "page": "601"
+        },
+        {
+          "url": "https://sandbox.test/slow/next",
+          "depth": 1,
+          "reason": "timeout",
+          "page": "602"
+        }
       ],
       "pages": [
-        { "id": "601", "url": "https://sandbox.test/slow", "depth": 0, "state": "failed", "reason": "timeout", "taskId": "019a5b0c-0601-7000-8000-000000000601" },
-        { "id": "602", "url": "https://sandbox.test/slow/next", "depth": 1, "state": "failed", "reason": "timeout" }
+        {
+          "id": "601",
+          "url": "https://sandbox.test/slow",
+          "depth": 0,
+          "state": "failed",
+          "reason": "timeout",
+          "taskId": "019a5b0c-0601-7000-8000-000000000601"
+        },
+        {
+          "id": "602",
+          "url": "https://sandbox.test/slow/next",
+          "depth": 1,
+          "state": "failed",
+          "reason": "timeout"
+        }
       ]
     },
     {
       "crawlId": "5b0c0007-6a1e-4000-8000-000000000007",
-      "schedule": { "id": "5c0d0a01-6a1e-4000-8000-000000000a01", "name": "毎朝の 5 サイト" },
+      "schedule": {
+        "id": "5c0d0a01-6a1e-4000-8000-000000000a01",
+        "name": "毎朝の 5 サイト"
+      },
       "scheduledSecondsAgo": 660,
       "scheduleMissed": 2,
       "state": "succeeded",
       "stopReason": "completed",
-      "seeds": ["https://sandbox.test/news"],
+      "seeds": [
+        "https://sandbox.test/news"
+      ],
       "//linkPages": "リンクの構成（capture-ledger の GET /api/crawls/:id/links と …/links/:page の元。CAPTURE-246）。ページと親と、そのページにあったリンク [URL, 文字, どうなったか]。数・束・ホストは代役がここから組む",
       "linkPages": [
-        {"id": "701", "parent": null, "depth": 0, "url": "https://sandbox.test/news", "title": "ニュース", "state": "captured", "links": [["https://sandbox.test/news/1", "記事 1", "followed"], ["https://sandbox.test/news/2", "記事 2", "followed"], ["https://sandbox.test/news/3", "記事 3", "followed"], ["https://sandbox.test/news/4", "記事 4", "followed"], ["https://sandbox.test/news/5", "記事 5", "followed"], ["https://sandbox.test/news/6", "記事 6", "followed"], ["https://ads.sandbox.test/banner", "", "skip"]]},
-        {"id": "702", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/1", "title": "記事 1", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
-        {"id": "703", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/2", "title": "記事 2", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
-        {"id": "704", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/3", "title": "記事 3", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
-        {"id": "705", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/4", "title": "記事 4", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
-        {"id": "706", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/5", "title": "記事 5", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]},
-        {"id": "707", "parent": "701", "depth": 1, "url": "https://sandbox.test/news/6", "title": "記事 6", "state": "captured", "links": [["https://sandbox.test/news", "ニュース", "known"]]}
+        {
+          "id": "701",
+          "parent": null,
+          "depth": 0,
+          "url": "https://sandbox.test/news",
+          "title": "ニュース",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/news/1",
+              "記事 1",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/news/2",
+              "記事 2",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/news/3",
+              "記事 3",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/news/4",
+              "記事 4",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/news/5",
+              "記事 5",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/news/6",
+              "記事 6",
+              "followed"
+            ],
+            [
+              "https://ads.sandbox.test/banner",
+              "",
+              "skip"
+            ]
+          ]
+        },
+        {
+          "id": "702",
+          "parent": "701",
+          "depth": 1,
+          "url": "https://sandbox.test/news/1",
+          "title": "記事 1",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/news",
+              "ニュース",
+              "known"
+            ]
+          ]
+        },
+        {
+          "id": "703",
+          "parent": "701",
+          "depth": 1,
+          "url": "https://sandbox.test/news/2",
+          "title": "記事 2",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/news",
+              "ニュース",
+              "known"
+            ]
+          ]
+        },
+        {
+          "id": "704",
+          "parent": "701",
+          "depth": 1,
+          "url": "https://sandbox.test/news/3",
+          "title": "記事 3",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/news",
+              "ニュース",
+              "known"
+            ]
+          ]
+        },
+        {
+          "id": "705",
+          "parent": "701",
+          "depth": 1,
+          "url": "https://sandbox.test/news/4",
+          "title": "記事 4",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/news",
+              "ニュース",
+              "known"
+            ]
+          ]
+        },
+        {
+          "id": "706",
+          "parent": "701",
+          "depth": 1,
+          "url": "https://sandbox.test/news/5",
+          "title": "記事 5",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/news",
+              "ニュース",
+              "known"
+            ]
+          ]
+        },
+        {
+          "id": "707",
+          "parent": "701",
+          "depth": 1,
+          "url": "https://sandbox.test/news/6",
+          "title": "記事 6",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/news",
+              "ニュース",
+              "known"
+            ]
+          ]
+        }
       ],
       "//rules": "規則と、規則が何を決めたか（capture-ledger の GET /api/crawls/:id/decisions の形）。3 行目は 1 度も当たらない",
       "rules": [
-        { "skip": "ads.sandbox.test" },
-        { "skip": "https://sandbox.test/news/archive/" },
-        { "skip": "tracker.third-site.test" },
-        { "follow": "same-site" },
-        { "capture": "any" }
+        {
+          "skip": "ads.sandbox.test"
+        },
+        {
+          "skip": "https://sandbox.test/news/archive/"
+        },
+        {
+          "skip": "tracker.third-site.test"
+        },
+        {
+          "follow": "same-site"
+        },
+        {
+          "capture": "any"
+        }
       ],
       "decisions": [
-        { "depth": 1, "rule": 1, "action": "skip", "hostname": "ads.sandbox.test", "links": 3, "samples": ["https://ads.sandbox.test/banner?id=1"] },
-        { "depth": 1, "rule": 2, "action": "skip", "hostname": "sandbox.test", "links": 12, "samples": ["https://sandbox.test/news/archive/1"] },
-        { "depth": 1, "rule": 4, "action": "follow", "hostname": "sandbox.test", "links": 4, "samples": ["https://sandbox.test/news/1"] },
-        { "depth": 1, "rule": 5, "action": "capture", "hostname": "partner.other-site.test", "links": 2, "samples": ["https://partner.other-site.test/"] }
+        {
+          "depth": 1,
+          "rule": 1,
+          "action": "skip",
+          "hostname": "ads.sandbox.test",
+          "links": 3,
+          "samples": [
+            "https://ads.sandbox.test/banner?id=1"
+          ]
+        },
+        {
+          "depth": 1,
+          "rule": 2,
+          "action": "skip",
+          "hostname": "sandbox.test",
+          "links": 12,
+          "samples": [
+            "https://sandbox.test/news/archive/1"
+          ]
+        },
+        {
+          "depth": 1,
+          "rule": 4,
+          "action": "follow",
+          "hostname": "sandbox.test",
+          "links": 4,
+          "samples": [
+            "https://sandbox.test/news/1"
+          ]
+        },
+        {
+          "depth": 1,
+          "rule": 5,
+          "action": "capture",
+          "hostname": "partner.other-site.test",
+          "links": 2,
+          "samples": [
+            "https://partner.other-site.test/"
+          ]
+        }
       ],
-      "robots": [{ "hostname": "sandbox.test", "pages": 1, "samples": ["https://sandbox.test/private/"] }],
+      "robots": [
+        {
+          "hostname": "sandbox.test",
+          "pages": 1,
+          "samples": [
+            "https://sandbox.test/private/"
+          ]
+        }
+      ],
       "startedSecondsAgo": 600,
       "tookSeconds": 38,
       "pagesCaptured": 7,
       "pagesDiscovered": 6,
       "waczCount": 7,
-      "variables": { "query": "個人情報" },
+      "variables": {
+        "query": "個人情報"
+      },
       "secrets": [
-        { "name": "api_token", "path": "f/waggle_secrets/api_token", "editedAt": "2026-10-11T09:00:00.000Z", "rotated": null, "archive": null },
-        { "name": "login", "path": "f/waggle_secrets/login", "editedAt": "2026-10-11T09:00:00.000Z", "rotated": null, "archive": "keep" }
+        {
+          "name": "api_token",
+          "path": "f/waggle_secrets/api_token",
+          "editedAt": "2026-10-11T09:00:00.000Z",
+          "rotated": null,
+          "archive": null
+        },
+        {
+          "name": "login",
+          "path": "f/waggle_secrets/login",
+          "editedAt": "2026-10-11T09:00:00.000Z",
+          "rotated": null,
+          "archive": "keep"
+        }
       ],
       "scripts": [
         {
@@ -237,20 +729,43 @@
             "phase": "behavior",
             "source": "import { z } from \"zod\";\n\n(() => {\n  const { query } = defineParams(z.object({ query: z.string().min(1).describe(\"ニュースの検索語\") }));\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.log.info(\"検索語を入れて押した\", { query });\n  globalThis.__bh.report({\n    query,\n    token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\",\n    login: globalThis.__bh.secrets.login === undefined ? \"none\" : \"given\",\n  });\n})();\n",
             "params": [
-              { "name": "api_token", "kind": "secret", "required": false, "summary": "会員 API のトークン。Windmill の f/waggle_secrets/api_token に置く" },
-              { "name": "login", "kind": "secret", "required": false, "summary": "会員のログイン名。誰として撮ったかを WARC に残す", "archive": "keep" }
+              {
+                "name": "api_token",
+                "kind": "secret",
+                "required": false,
+                "summary": "会員 API のトークン。Windmill の f/waggle_secrets/api_token に置く"
+              },
+              {
+                "name": "login",
+                "kind": "secret",
+                "required": false,
+                "summary": "会員のログイン名。誰として撮ったかを WARC に残す",
+                "archive": "keep"
+              }
             ]
           }
         },
-        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "f24100fd1c9b3b71b3a447b0aad5e696daf1309c7580107382713ddef1510ef4" },
-        { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "f5379a5d3323cf8ef08cbba891f7cd76844f7a18d6afd8c060029a35c4110473" }
+        {
+          "id": "autofetch",
+          "version": 1,
+          "phase": "behavior",
+          "sha256": "f24100fd1c9b3b71b3a447b0aad5e696daf1309c7580107382713ddef1510ef4"
+        },
+        {
+          "id": "autoscroll",
+          "version": 1,
+          "phase": "behavior",
+          "sha256": "f5379a5d3323cf8ef08cbba891f7cd76844f7a18d6afd8c060029a35c4110473"
+        }
       ]
     },
     {
       "crawlId": "5b0c0008-6a1e-4000-8000-000000000008",
       "state": "failed",
       "stopReason": "failed",
-      "seeds": ["https://sandbox.test/news"],
+      "seeds": [
+        "https://sandbox.test/news"
+      ],
       "startedSecondsAgo": 900,
       "tookSeconds": 4,
       "pagesCaptured": 0,
@@ -261,11 +776,23 @@
       "diagnosed": {
         "typescript": "6.0.3",
         "diagnostics": [
-          { "script": "inline-close-banner", "line": 2, "col": 18, "code": "TS7006", "message": "Parameter 'el' implicitly has an 'any' type." }
+          {
+            "script": "inline-close-banner",
+            "line": 2,
+            "col": 18,
+            "code": "TS7006",
+            "message": "Parameter 'el' implicitly has an 'any' type."
+          }
         ]
       },
       "pages": [
-        { "id": "801", "url": "https://sandbox.test/news", "depth": 0, "state": "pending", "reason": null }
+        {
+          "id": "801",
+          "url": "https://sandbox.test/news",
+          "depth": 0,
+          "state": "pending",
+          "reason": null
+        }
       ],
       "fixes": {
         "close-banner": {
@@ -277,13 +804,34 @@
               {
                 "from": 2,
                 "to": 3,
-                "before": ["  const close = (el) => el.click();", "  close(document.querySelector(\"#onetrust-accept-btn-handler\"));"],
-                "after": ["  const close = (el: HTMLElement | null) => el?.click();", "  close(document.querySelector<HTMLElement>(\"#onetrust-accept-btn-handler\"));"]
+                "before": [
+                  "  const close = (el) => el.click();",
+                  "  close(document.querySelector(\"#onetrust-accept-btn-handler\"));"
+                ],
+                "after": [
+                  "  const close = (el: HTMLElement | null) => el?.click();",
+                  "  close(document.querySelector<HTMLElement>(\"#onetrust-accept-btn-handler\"));"
+                ]
               }
             ],
-            "notes": [{ "code": "TS7006", "line": 2, "why": "引数 el に HTMLElement | null の型を付け、ボタンが無ければ押さないようにした" }],
-            "compiled": { "typescript": "6.0.3", "hostTypes": "v0.7.0" },
-            "usage": { "inputTokens": 3410, "outputTokens": 1180, "cacheReadTokens": 0, "cacheWriteTokens": 2208, "usd": 0.0483 }
+            "notes": [
+              {
+                "code": "TS7006",
+                "line": 2,
+                "why": "引数 el に HTMLElement | null の型を付け、ボタンが無ければ押さないようにした"
+              }
+            ],
+            "compiled": {
+              "typescript": "6.0.3",
+              "hostTypes": "v0.7.0"
+            },
+            "usage": {
+              "inputTokens": 3410,
+              "outputTokens": 1180,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 2208,
+              "usd": 0.0483
+            }
           }
         }
       },
@@ -293,23 +841,95 @@
           "version": 1,
           "phase": "behavior",
           "sha256": "50ec1c71cd89b42c2bd98d313372fd49f01dabda740dd67d07b08c0c9c84fdf6",
-          "inline": { "name": "close-banner", "phase": "behavior", "source": "(() => {\n  const close = (el) => el.click();\n  close(document.querySelector(\"#onetrust-accept-btn-handler\"));\n})();\n" }
+          "inline": {
+            "name": "close-banner",
+            "phase": "behavior",
+            "source": "(() => {\n  const close = (el) => el.click();\n  close(document.querySelector(\"#onetrust-accept-btn-handler\"));\n})();\n"
+          }
         },
-        { "id": "autofetch", "version": 1, "phase": "behavior", "sha256": "f24100fd1c9b3b71b3a447b0aad5e696daf1309c7580107382713ddef1510ef4" },
-        { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "0e1f829de9ba863b754d83186765e225c7ebc4972dde4808e85656cd5032e3b4" }
+        {
+          "id": "autofetch",
+          "version": 1,
+          "phase": "behavior",
+          "sha256": "f24100fd1c9b3b71b3a447b0aad5e696daf1309c7580107382713ddef1510ef4"
+        },
+        {
+          "id": "autoscroll",
+          "version": 1,
+          "phase": "behavior",
+          "sha256": "0e1f829de9ba863b754d83186765e225c7ebc4972dde4808e85656cd5032e3b4"
+        }
       ]
     },
     {
       "crawlId": "5b0c0009-6a1e-4000-8000-000000000009",
       "state": "succeeded",
       "stopReason": "completed",
-      "seeds": ["https://sandbox.test/search"],
+      "seeds": [
+        "https://sandbox.test/search"
+      ],
       "//linkPages": "リンクの構成（capture-ledger の GET /api/crawls/:id/links と …/links/:page の元。CAPTURE-246）。ページと親と、そのページにあったリンク [URL, 文字, どうなったか]。数・束・ホストは代役がここから組む",
       "linkPages": [
-        {"id": "1201", "parent": null, "depth": 0, "url": "https://sandbox.test/search", "title": "検索", "state": "captured", "links": [["https://sandbox.test/slow", "遅いページ", "followed"], ["https://sandbox.test/feed", "フィード", "followed"], ["https://sandbox.test/private/", "会員の頁", "followed"]]},
-        {"id": "1202", "parent": "1201", "depth": 1, "url": "https://sandbox.test/slow", "title": null, "state": "failed", "reason": "timeout: capture exceeded its budget", "links": []},
-        {"id": "1203", "parent": "1201", "depth": 1, "url": "https://sandbox.test/feed", "title": "フィード", "state": "captured", "links": [["https://sandbox.test/search", "検索", "known"]]},
-        {"id": "1204", "parent": "1201", "depth": 1, "url": "https://sandbox.test/private/", "title": null, "state": "skipped", "reason": "robots", "links": []}
+        {
+          "id": "1201",
+          "parent": null,
+          "depth": 0,
+          "url": "https://sandbox.test/search",
+          "title": "検索",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/slow",
+              "遅いページ",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/feed",
+              "フィード",
+              "followed"
+            ],
+            [
+              "https://sandbox.test/private/",
+              "会員の頁",
+              "followed"
+            ]
+          ]
+        },
+        {
+          "id": "1202",
+          "parent": "1201",
+          "depth": 1,
+          "url": "https://sandbox.test/slow",
+          "title": null,
+          "state": "failed",
+          "reason": "timeout: capture exceeded its budget",
+          "links": []
+        },
+        {
+          "id": "1203",
+          "parent": "1201",
+          "depth": 1,
+          "url": "https://sandbox.test/feed",
+          "title": "フィード",
+          "state": "captured",
+          "links": [
+            [
+              "https://sandbox.test/search",
+              "検索",
+              "known"
+            ]
+          ]
+        },
+        {
+          "id": "1204",
+          "parent": "1201",
+          "depth": 1,
+          "url": "https://sandbox.test/private/",
+          "title": null,
+          "state": "skipped",
+          "reason": "robots",
+          "links": []
+        }
       ],
       "startedSecondsAgo": 1200,
       "tookSeconds": 96,
@@ -318,10 +938,21 @@
       "waczCount": 2,
       "lastJobId": "019a5b0c-0009-7000-8000-000000000009",
       "lastJobDepth": 1,
-      "replayBundle": { "rev": 2, "pages": 6, "builtSecondsAgo": 1103 },
-      "variables": { "query": "個人情報" },
+      "replayBundle": {
+        "rev": 2,
+        "pages": 6,
+        "builtSecondsAgo": 1103
+      },
+      "variables": {
+        "query": "個人情報"
+      },
       "failures": [
-        { "url": "https://sandbox.test/slow", "depth": 1, "reason": "timeout: Timeout: Task processing for https://sandbox.test/slow (45000ms) — behaviors, dpr 1", "page": "1202" }
+        {
+          "url": "https://sandbox.test/slow",
+          "depth": 1,
+          "reason": "timeout: Timeout: Task processing for https://sandbox.test/slow (45000ms) — behaviors, dpr 1",
+          "page": "1202"
+        }
       ],
       "scripts": [
         {
@@ -335,7 +966,12 @@
             "source": "import { z } from \"zod\";\n\n(() => {\n  const { query } = defineParams(z.object({ query: z.string().min(1).describe(\"ニュースの検索語\") }));\n  const box = document.querySelector<HTMLInputElement>(\"#q\");\n  if (box !== null) box.value = query;\n  document.querySelector<HTMLButtonElement>(\"#search\")?.click();\n  globalThis.__bh.log.info(\"検索語を入れて押した\", { query });\n  globalThis.__bh.report({ query, token: globalThis.__bh.secrets.api_token === undefined ? \"none\" : \"given\" });\n})();\n"
           }
         },
-        { "id": "autoscroll", "version": 1, "phase": "behavior", "sha256": "f5379a5d3323cf8ef08cbba891f7cd76844f7a18d6afd8c060029a35c4110473" }
+        {
+          "id": "autoscroll",
+          "version": 1,
+          "phase": "behavior",
+          "sha256": "f5379a5d3323cf8ef08cbba891f7cd76844f7a18d6afd8c060029a35c4110473"
+        }
       ],
       "pages": [
         {
@@ -350,10 +986,53 @@
           "bundledRev": 1,
           "log": {
             "lines": [
-              { "at": "2026-10-12T08:40:01.204Z", "ms": 1204, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "検索語を入れて押した", "data": { "query": "個人情報" } },
-              { "at": "2026-10-12T08:40:01.206Z", "ms": 1206, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "report", "data": { "query": "個人情報", "token": "none" } },
-              { "at": "2026-10-12T08:40:02.310Z", "ms": 2310, "dpr": 1, "source": "page", "level": "warn", "msg": "[Deprecation] Listener added for a synchronous 'DOMNodeInserted' DOM Mutation Event." },
-              { "at": "2026-10-12T08:40:09.870Z", "ms": 9870, "dpr": 1, "source": "script", "script": "autoscroll", "level": "info", "msg": "report", "data": { "stopped": "bottom reached after 7 steps", "reachedBottom": true, "scrollSteps": 7 } }
+              {
+                "at": "2026-10-12T08:40:01.204Z",
+                "ms": 1204,
+                "dpr": 1,
+                "source": "script",
+                "script": "inline-search",
+                "level": "info",
+                "msg": "検索語を入れて押した",
+                "data": {
+                  "query": "個人情報"
+                }
+              },
+              {
+                "at": "2026-10-12T08:40:01.206Z",
+                "ms": 1206,
+                "dpr": 1,
+                "source": "script",
+                "script": "inline-search",
+                "level": "info",
+                "msg": "report",
+                "data": {
+                  "query": "個人情報",
+                  "token": "none"
+                }
+              },
+              {
+                "at": "2026-10-12T08:40:02.310Z",
+                "ms": 2310,
+                "dpr": 1,
+                "source": "page",
+                "level": "warn",
+                "msg": "[Deprecation] Listener added for a synchronous 'DOMNodeInserted' DOM Mutation Event."
+              },
+              {
+                "at": "2026-10-12T08:40:09.870Z",
+                "ms": 9870,
+                "dpr": 1,
+                "source": "script",
+                "script": "autoscroll",
+                "level": "info",
+                "msg": "report",
+                "data": {
+                  "stopped": "bottom reached after 7 steps",
+                  "reachedBottom": true,
+                  "scrollSteps": 7
+                }
+              }
             ]
           }
         },
@@ -367,10 +1046,51 @@
           "archiveId": null,
           "log": {
             "lines": [
-              { "at": "2026-10-12T08:40:13.020Z", "ms": 1020, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "検索語を入れて押した", "data": { "query": "個人情報" } },
-              { "at": "2026-10-12T08:40:13.021Z", "ms": 1021, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "report", "data": { "query": "個人情報", "token": "none" } },
-              { "at": "2026-10-12T08:40:26.873Z", "ms": 14873, "dpr": 1, "source": "page", "level": "error", "msg": "Uncaught TypeError: Cannot read properties of null (reading 'textContent')" },
-              { "at": "2026-10-12T08:40:57.002Z", "ms": 45002, "dpr": 1, "source": "browserhive", "level": "error", "msg": "capture timed out", "data": { "timeoutMs": 45000, "step": "behaviors, dpr 1" } }
+              {
+                "at": "2026-10-12T08:40:13.020Z",
+                "ms": 1020,
+                "dpr": 1,
+                "source": "script",
+                "script": "inline-search",
+                "level": "info",
+                "msg": "検索語を入れて押した",
+                "data": {
+                  "query": "個人情報"
+                }
+              },
+              {
+                "at": "2026-10-12T08:40:13.021Z",
+                "ms": 1021,
+                "dpr": 1,
+                "source": "script",
+                "script": "inline-search",
+                "level": "info",
+                "msg": "report",
+                "data": {
+                  "query": "個人情報",
+                  "token": "none"
+                }
+              },
+              {
+                "at": "2026-10-12T08:40:26.873Z",
+                "ms": 14873,
+                "dpr": 1,
+                "source": "page",
+                "level": "error",
+                "msg": "Uncaught TypeError: Cannot read properties of null (reading 'textContent')"
+              },
+              {
+                "at": "2026-10-12T08:40:57.002Z",
+                "ms": 45002,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "error",
+                "msg": "capture timed out",
+                "data": {
+                  "timeoutMs": 45000,
+                  "step": "behaviors, dpr 1"
+                }
+              }
             ]
           }
         },
@@ -386,14 +1106,70 @@
           "bundledRev": 2,
           "log": {
             "lines": [
-              { "at": "2026-10-12T08:41:00.980Z", "ms": 980, "dpr": 1, "source": "page", "level": "info", "msg": "tick 1" },
-              { "at": "2026-10-12T08:41:00.990Z", "ms": 990, "dpr": 1, "source": "page", "level": "info", "msg": "tick 2" },
-              { "at": "2026-10-12T08:41:01.000Z", "ms": 1000, "dpr": 1, "source": "browserhive", "level": "warn", "msg": "dropped 1204 lines to stay within the capture's log limits", "data": { "dropped": 1204 } },
-              { "at": "2026-10-12T08:41:13.050Z", "ms": 13050, "dpr": 1, "source": "page", "level": "info", "msg": "tick 1207" },
-              { "at": "2026-10-12T08:41:13.060Z", "ms": 13060, "dpr": 1, "source": "page", "level": "info", "msg": "state: {\"items\":[{\"id\":1,\"title\":\"記事 1\"},{\"id\":2,\"title\":\"記事 2\"},{\"id\":3,\"title\":\"記事 3\"},{\"id\":4,\"title\":\"記事 4\"},{\"id\":5,\"title\":\"記事 5\"},{\"id\":6,\"title\":\"記事 6\"},{\"id\":7,\"title\":\"記事 7\"},{\"id\":8,\"title\":\"記事 8\"},{\"id\":9,\"title\":\"記事 9\"},{\"id\":10,\"title\":\"記事 10\"},{\"id\":11,\"title\":\"記事 11\"},{\"id\":12,\"title\":\"記事 12\"},{\"id\":13,\"title\":\"記事 13\"},{\"id\":14,\"title\":\"記事 14\"},{\"id\":15,\"title\":\"記事 15\"},{\"id\":16,\"title\":\"記事 16\"},{\"id\":17,\"title\":\"記事 17\"},{\"id\":18,\"title\":\"記事 18\"},{\"id\":19,\"title\":\"記事 19\"},{\"id\":20,\"title\":\"記事 20\"},{\"id\":21,\"title\":\"記事 21\"},{\"id\":22,\"title\":\"記事 22\"},{\"id\":23,\"title\":\"記事 23\"},{\"id\":24,\"title\":\"記事 24\"},{\"id\":25,\"title\":\"記事 25\"},{\"id\":26,\"title\":\"記事 26\"},{\"id\":27,\"title\":\"記事 27\"},{\"id\":28,\"title\":\"記事 28\"},{\"id\":29,\"title\":\"記事 29\"},{\"id\":30,\"title\":\"記事 30\"},{\"id\":31,\"title\":\"記事 31\"},{\"id\":32,\"title\":\"記事 32\"},{\"id\":33,\"title\":\"記事 33\"},{\"id\":34,\"title\":\"記事 34\"},{\"id\":35,\"title\":\"記事 35\"},{\"id\":36,\"title\":\"記事 36\"},{\"id\":37,\"title\":\"記事 37\"},{\"id\":38,\"title\":\"記事 38\"},{\"id\":39,\"title\":\"記事 39\"},", "truncated": true },
-              { "at": "2026-10-12T08:41:13.900Z", "ms": 13900, "dpr": 1, "source": "script", "script": "inline-search", "level": "info", "msg": "report", "data": { "query": "個人情報", "token": "none" } }
+              {
+                "at": "2026-10-12T08:41:00.980Z",
+                "ms": 980,
+                "dpr": 1,
+                "source": "page",
+                "level": "info",
+                "msg": "tick 1"
+              },
+              {
+                "at": "2026-10-12T08:41:00.990Z",
+                "ms": 990,
+                "dpr": 1,
+                "source": "page",
+                "level": "info",
+                "msg": "tick 2"
+              },
+              {
+                "at": "2026-10-12T08:41:01.000Z",
+                "ms": 1000,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "warn",
+                "msg": "dropped 1204 lines to stay within the capture's log limits",
+                "data": {
+                  "dropped": 1204
+                }
+              },
+              {
+                "at": "2026-10-12T08:41:13.050Z",
+                "ms": 13050,
+                "dpr": 1,
+                "source": "page",
+                "level": "info",
+                "msg": "tick 1207"
+              },
+              {
+                "at": "2026-10-12T08:41:13.060Z",
+                "ms": 13060,
+                "dpr": 1,
+                "source": "page",
+                "level": "info",
+                "msg": "state: {\"items\":[{\"id\":1,\"title\":\"記事 1\"},{\"id\":2,\"title\":\"記事 2\"},{\"id\":3,\"title\":\"記事 3\"},{\"id\":4,\"title\":\"記事 4\"},{\"id\":5,\"title\":\"記事 5\"},{\"id\":6,\"title\":\"記事 6\"},{\"id\":7,\"title\":\"記事 7\"},{\"id\":8,\"title\":\"記事 8\"},{\"id\":9,\"title\":\"記事 9\"},{\"id\":10,\"title\":\"記事 10\"},{\"id\":11,\"title\":\"記事 11\"},{\"id\":12,\"title\":\"記事 12\"},{\"id\":13,\"title\":\"記事 13\"},{\"id\":14,\"title\":\"記事 14\"},{\"id\":15,\"title\":\"記事 15\"},{\"id\":16,\"title\":\"記事 16\"},{\"id\":17,\"title\":\"記事 17\"},{\"id\":18,\"title\":\"記事 18\"},{\"id\":19,\"title\":\"記事 19\"},{\"id\":20,\"title\":\"記事 20\"},{\"id\":21,\"title\":\"記事 21\"},{\"id\":22,\"title\":\"記事 22\"},{\"id\":23,\"title\":\"記事 23\"},{\"id\":24,\"title\":\"記事 24\"},{\"id\":25,\"title\":\"記事 25\"},{\"id\":26,\"title\":\"記事 26\"},{\"id\":27,\"title\":\"記事 27\"},{\"id\":28,\"title\":\"記事 28\"},{\"id\":29,\"title\":\"記事 29\"},{\"id\":30,\"title\":\"記事 30\"},{\"id\":31,\"title\":\"記事 31\"},{\"id\":32,\"title\":\"記事 32\"},{\"id\":33,\"title\":\"記事 33\"},{\"id\":34,\"title\":\"記事 34\"},{\"id\":35,\"title\":\"記事 35\"},{\"id\":36,\"title\":\"記事 36\"},{\"id\":37,\"title\":\"記事 37\"},{\"id\":38,\"title\":\"記事 38\"},{\"id\":39,\"title\":\"記事 39\"},",
+                "truncated": true
+              },
+              {
+                "at": "2026-10-12T08:41:13.900Z",
+                "ms": 13900,
+                "dpr": 1,
+                "source": "script",
+                "script": "inline-search",
+                "level": "info",
+                "msg": "report",
+                "data": {
+                  "query": "個人情報",
+                  "token": "none"
+                }
+              }
             ],
-            "counts": { "debug": 0, "info": 1209, "warn": 1, "error": 0 },
+            "counts": {
+              "debug": 0,
+              "info": 1209,
+              "warn": 1,
+              "error": 0
+            },
             "dropped": 1204
           }
         },
@@ -408,18 +1184,26 @@
     },
     {
       "crawlId": "5b0c000b-6a1e-4000-8000-00000000000b",
-      "//": "経緯の画面（#trace/…。CAPTURE-270）の見本。ページ 1301 は置き場の trace-timeline.wacz を指し、取り込みの欄とログはその取り込みの本物の答え。1302 は時間切れで、WACZ が無い",
+      "//": "経緯の画面（#trace/…。CAPTURE-270）の見本。ページ 1301 は置き場の trace-timeline.wacz を指し、取り込みの欄・ログ・trace は、その取り込み（BrowserHive v30.0.0）の本物の答え。1302 は時間切れで、WACZ は無いが trace は在る。1303 は 1301 と同じ取り込みを、trace の無い答えの形（v30.0.0 より前）にした物",
       "state": "succeeded",
       "stopReason": "max_depth",
       "maxDepth": 0,
-      "seeds": ["http://capture-fixtures.capture-ledger:8080/charset/", "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000"],
+      "seeds": [
+        "http://capture-fixtures.capture-ledger:8080/charset/",
+        "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000"
+      ],
       "startedSecondsAgo": 9000,
       "tookSeconds": 70,
-      "pagesCaptured": 1,
+      "pagesCaptured": 2,
       "pagesDiscovered": 0,
       "waczCount": 1,
       "failures": [
-        { "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000", "depth": 0, "reason": "timeout: Navigation timeout of 30000 ms exceeded", "page": "1302" }
+        {
+          "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000",
+          "depth": 0,
+          "reason": "timeout: Navigation timeout of 30000 ms exceeded",
+          "page": "1302"
+        }
       ],
       "pages": [
         {
@@ -430,29 +1214,593 @@
           "reason": null,
           "taskId": "019a5b0c-1301-7000-8000-000000001301",
           "archiveId": "c4557f7c-708d-3fda-2f31-715cd115132f",
-          "capturedAt": "2026-11-13T02:48:19.909Z",
+          "capturedAt": "2026-11-13T08:12:20.522Z",
           "bundledRev": 1,
-          "submittedAt": "2026-11-13T02:48:16.793Z",
-          "finishedAt": "2026-11-13T02:48:19.941Z",
-          "capture": {"status": "success", "timestamp": "2026-11-13T02:48:19.909Z", "captureProcessingTimeMs": 2782, "httpStatusCode": 200, "settle": {"strategy": "fully-loaded", "endedBy": "quiet", "waitedMs": 2133, "devicePixelRatio": 1, "limits": {"minMs": 1000, "maxMs": 3000, "quietMs": 1000, "networkConcurrency": 0}, "load": {"atMs": 14}, "network": {"quietAtMs": 2016}, "cpu": {"quietAtMs": 1119}, "dom": {"quietAtMs": 2025}}, "waczStats": {"totalRecorded": 11, "totalBlocked": 0, "totalDenied": 0, "totalSkippedContentType": 0, "totalSkippedUrlPolicy": 0, "totalTruncatedTooLarge": 0, "totalTruncatedTaskCap": 0, "totalNotIntercepted": 0, "totalSkippedSecret": 0, "totalFailed": 0, "totalIncomplete": 0, "totalBodyBytes": 1125}, "completeness": {"bodylessUrls": [], "truncatedUrls": [], "uninterceptedUrls": [], "crashedTargets": [], "complete": true}, "document": {"url": "http://capture-fixtures.capture-ledger:8080/charset/"}, "windowsNotOpened": 0},
+          "submittedAt": "2026-11-13T08:12:17.471Z",
+          "finishedAt": "2026-11-13T08:12:20.557Z",
+          "capture": {
+            "status": "success",
+            "timestamp": "2026-11-13T08:12:20.522Z",
+            "captureProcessingTimeMs": 2771,
+            "httpStatusCode": 200,
+            "settle": {
+              "strategy": "fully-loaded",
+              "endedBy": "quiet",
+              "waitedMs": 2134,
+              "devicePixelRatio": 1,
+              "limits": {
+                "minMs": 1000,
+                "maxMs": 3000,
+                "quietMs": 1000,
+                "networkConcurrency": 0
+              },
+              "load": {
+                "atMs": 65
+              },
+              "network": {
+                "quietAtMs": 2016
+              },
+              "cpu": {
+                "quietAtMs": 1120
+              },
+              "dom": {
+                "quietAtMs": 2025
+              }
+            },
+            "waczStats": {
+              "totalRecorded": 11,
+              "totalBlocked": 0,
+              "totalDenied": 0,
+              "totalSkippedContentType": 0,
+              "totalSkippedUrlPolicy": 0,
+              "totalTruncatedTooLarge": 0,
+              "totalTruncatedTaskCap": 0,
+              "totalNotIntercepted": 0,
+              "totalSkippedSecret": 0,
+              "totalFailed": 0,
+              "totalIncomplete": 0,
+              "totalBodyBytes": 1125
+            },
+            "completeness": {
+              "bodylessUrls": [],
+              "truncatedUrls": [],
+              "uninterceptedUrls": [],
+              "crashedTargets": [],
+              "complete": true
+            },
+            "document": {
+              "url": "http://capture-fixtures.capture-ledger:8080/charset/"
+            },
+            "windowsNotOpened": 0
+          },
           "log": {
             "lines": [
-              {"at": "2026-11-13T02:48:17.127Z", "ms": 318, "source": "browserhive", "level": "info", "msg": "step check-address", "data": {"step": "check-address"}},
-              {"at": "2026-11-13T02:48:17.187Z", "ms": 378, "source": "browserhive", "level": "info", "msg": "step start-recording", "data": {"step": "start-recording"}},
-              {"at": "2026-11-13T02:48:17.195Z", "ms": 386, "source": "browserhive", "level": "info", "msg": "step load-pages", "data": {"step": "load-pages"}},
-              {"at": "2026-11-13T02:48:17.196Z", "ms": 387, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "navigation, dpr=1", "data": {"step": "load-pages"}},
-              {"at": "2026-11-13T02:48:17.392Z", "ms": 583, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "settle, dpr=1", "data": {"step": "load-pages"}},
-              {"at": "2026-11-13T02:48:19.525Z", "ms": 2716, "dpr": 1, "source": "browserhive", "level": "info", "msg": "settled by quiet after 2133ms", "data": {"endedBy": "quiet", "waitedMs": 2133}},
-              {"at": "2026-11-13T02:48:19.539Z", "ms": 2730, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "snapshot after-load, dpr=1", "data": {"step": "load-pages"}},
-              {"at": "2026-11-13T02:48:19.672Z", "ms": 2863, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "behaviors, dpr=1", "data": {"step": "load-pages"}},
-              {"at": "2026-11-13T02:48:19.672Z", "ms": 2863, "source": "browserhive", "level": "info", "msg": "step write-formats", "data": {"step": "write-formats"}},
-              {"at": "2026-11-13T02:48:19.677Z", "ms": 2868, "source": "browserhive", "level": "debug", "msg": "links", "data": {"step": "write-formats"}},
-              {"at": "2026-11-13T02:48:19.682Z", "ms": 2873, "source": "browserhive", "level": "debug", "msg": "page read", "data": {"step": "write-formats"}},
-              {"at": "2026-11-13T02:48:19.803Z", "ms": 2994, "source": "browserhive", "level": "debug", "msg": "put links", "data": {"step": "write-formats"}},
-              {"at": "2026-11-13T02:48:19.832Z", "ms": 3023, "source": "browserhive", "level": "info", "msg": "took 0 links from the page and 1 same-origin frames", "data": {"links": 0, "frames": {"read": 1, "unreadable": 0, "withheld": 0}}},
-              {"at": "2026-11-13T02:48:19.832Z", "ms": 3023, "source": "browserhive", "level": "debug", "msg": "web storage", "data": {"step": "write-formats"}},
-              {"at": "2026-11-13T02:48:19.839Z", "ms": 3030, "source": "browserhive", "level": "info", "msg": "step package-wacz", "data": {"step": "package-wacz"}}
+              {
+                "at": "2026-11-13T08:12:17.751Z",
+                "ms": 268,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step check-address",
+                "data": {
+                  "step": "check-address"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:17.808Z",
+                "ms": 325,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step start-recording",
+                "data": {
+                  "step": "start-recording"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:17.811Z",
+                "ms": 328,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step load-pages",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:17.812Z",
+                "ms": 329,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "navigation, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:18.010Z",
+                "ms": 527,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "settle, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.144Z",
+                "ms": 2661,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "settled by quiet after 2134ms",
+                "data": {
+                  "endedBy": "quiet",
+                  "waitedMs": 2134
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.157Z",
+                "ms": 2674,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "snapshot after-load, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.311Z",
+                "ms": 2828,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "behaviors, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.312Z",
+                "ms": 2829,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step write-formats",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.317Z",
+                "ms": 2834,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "links",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.322Z",
+                "ms": 2839,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "page read",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.431Z",
+                "ms": 2948,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "put links",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.442Z",
+                "ms": 2959,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "took 0 links from the page and 1 same-origin frames",
+                "data": {
+                  "links": 0,
+                  "frames": {
+                    "read": 1,
+                    "unreadable": 0,
+                    "withheld": 0
+                  }
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.442Z",
+                "ms": 2959,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "web storage",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.448Z",
+                "ms": 2965,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step package-wacz",
+                "data": {
+                  "step": "package-wacz"
+                }
+              }
             ]
+          },
+          "trace": {
+            "lines": [
+              {
+                "kind": "request",
+                "id": "125E687E6AA6FCC197440DEE2A561904",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                "method": "GET",
+                "resourceType": "Document",
+                "initiator": {
+                  "type": "other"
+                },
+                "startedAt": "2026-11-13T08:12:17.874Z",
+                "ms": 393,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 1
+                },
+                "durationMs": 59,
+                "encodedBytes": 1012,
+                "outcome": "finished",
+                "record": "urn:uuid:1d2bc2bc-a922-41aa-a52b-b3812d066179"
+              },
+              {
+                "kind": "request",
+                "id": "645.2",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/sjis.css",
+                "method": "GET",
+                "resourceType": "Stylesheet",
+                "initiator": {
+                  "type": "parser",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 3
+                },
+                "startedAt": "2026-11-13T08:12:17.961Z",
+                "ms": 480,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 0
+                },
+                "durationMs": 23,
+                "encodedBytes": 217,
+                "outcome": "finished",
+                "record": "urn:uuid:b315660b-5a4c-4293-935d-ec9f70ad2a5d"
+              },
+              {
+                "kind": "request",
+                "id": "645.3",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/import.css",
+                "method": "GET",
+                "resourceType": "Stylesheet",
+                "initiator": {
+                  "type": "parser",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 4
+                },
+                "startedAt": "2026-11-13T08:12:17.962Z",
+                "ms": 481,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 1,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 2,
+                  "receiveMs": 0
+                },
+                "durationMs": 24,
+                "encodedBytes": 211,
+                "outcome": "finished",
+                "record": "urn:uuid:bcf3fe4a-daf1-47db-9e3e-fdf93bd04962"
+              },
+              {
+                "kind": "request",
+                "id": "305F0EE75271DBA53D1E5CB0E360F0E7",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/sjis.html",
+                "method": "GET",
+                "resourceType": "Document",
+                "initiator": {
+                  "type": "parser",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 9
+                },
+                "startedAt": "2026-11-13T08:12:17.974Z",
+                "ms": 493,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 3,
+                  "receiveMs": 0
+                },
+                "durationMs": 12,
+                "encodedBytes": 264,
+                "outcome": "finished",
+                "record": "urn:uuid:9905ae0e-0923-4ce8-8c1e-a60c505b43d2"
+              },
+              {
+                "kind": "request",
+                "id": "645.6",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.css",
+                "method": "GET",
+                "resourceType": "Stylesheet",
+                "initiator": {
+                  "type": "parser",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/import.css",
+                  "line": 1
+                },
+                "startedAt": "2026-11-13T08:12:17.988Z",
+                "ms": 507,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 1,
+                  "receiveMs": 0
+                },
+                "durationMs": 6,
+                "encodedBytes": 218,
+                "outcome": "finished",
+                "record": "urn:uuid:7014d6f9-9e26-4351-af10-567c3815c103"
+              },
+              {
+                "kind": "request",
+                "id": "645.8",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/sjis.css",
+                "method": "GET",
+                "resourceType": "Fetch",
+                "initiator": {
+                  "type": "script",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 12
+                },
+                "startedAt": "2026-11-13T08:12:18.003Z",
+                "ms": 522,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 1,
+                  "receiveMs": 1
+                },
+                "durationMs": 8,
+                "encodedBytes": 217,
+                "outcome": "finished",
+                "record": "urn:uuid:eddd666a-208e-42f9-bc11-64f162efa50a"
+              },
+              {
+                "kind": "request",
+                "id": "645.9",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.css",
+                "method": "GET",
+                "resourceType": "Fetch",
+                "initiator": {
+                  "type": "script",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 12
+                },
+                "startedAt": "2026-11-13T08:12:18.003Z",
+                "ms": 522,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 1,
+                  "receiveMs": 0
+                },
+                "durationMs": 8,
+                "encodedBytes": 218,
+                "outcome": "finished",
+                "record": "urn:uuid:97e05f2f-37f9-43ac-b28a-391fa42f84bd"
+              },
+              {
+                "kind": "request",
+                "id": "645.10",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/sjis.txt",
+                "method": "GET",
+                "resourceType": "Fetch",
+                "initiator": {
+                  "type": "script",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 12
+                },
+                "startedAt": "2026-11-13T08:12:18.004Z",
+                "ms": 522,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 1,
+                  "receiveMs": 0
+                },
+                "durationMs": 8,
+                "encodedBytes": 198,
+                "outcome": "finished",
+                "record": "urn:uuid:3d9d7351-f92e-4199-8adc-db39941d7419"
+              },
+              {
+                "kind": "request",
+                "id": "645.11",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.txt",
+                "method": "GET",
+                "resourceType": "Fetch",
+                "initiator": {
+                  "type": "script",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 12
+                },
+                "startedAt": "2026-11-13T08:12:18.004Z",
+                "ms": 523,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 1,
+                  "receiveMs": 0
+                },
+                "durationMs": 8,
+                "encodedBytes": 181,
+                "outcome": "finished",
+                "record": "urn:uuid:bbb7cda4-1507-4ebc-87a7-d8f531bbd641"
+              },
+              {
+                "kind": "request",
+                "id": "645.12",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/gzip.css",
+                "method": "GET",
+                "resourceType": "Fetch",
+                "initiator": {
+                  "type": "script",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 12
+                },
+                "startedAt": "2026-11-13T08:12:18.004Z",
+                "ms": 523,
+                "response": {
+                  "status": 200,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 0,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 1,
+                  "receiveMs": 0
+                },
+                "durationMs": 8,
+                "encodedBytes": 244,
+                "outcome": "finished",
+                "record": "urn:uuid:13dd28f3-f630-4d6f-8c7b-4eaa83594c4a"
+              },
+              {
+                "kind": "request",
+                "id": "645.13",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/charset/echo",
+                "method": "POST",
+                "resourceType": "Fetch",
+                "initiator": {
+                  "type": "script",
+                  "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+                  "line": 13
+                },
+                "startedAt": "2026-11-13T08:12:18.004Z",
+                "ms": 523,
+                "response": {
+                  "status": 204,
+                  "protocol": "http/1.1"
+                },
+                "timing": {
+                  "dnsMs": 0,
+                  "connectMs": 1,
+                  "tlsMs": 0,
+                  "sendMs": 0,
+                  "waitMs": 1,
+                  "receiveMs": 0
+                },
+                "durationMs": 9,
+                "encodedBytes": 112,
+                "outcome": "finished",
+                "record": "urn:uuid:a7b4f378-eee5-447c-b66f-8d33f16a2f41"
+              }
+            ],
+            "counts": {
+              "finished": 11,
+              "redirected": 0,
+              "failed": 0,
+              "pending": 0,
+              "notArchived": 0,
+              "denied": 0,
+              "evicted": 0
+            },
+            "dropped": 0
           }
         },
         {
@@ -463,16 +1811,331 @@
           "reason": "timeout: Navigation timeout of 30000 ms exceeded",
           "taskId": "019a5b0c-1302-7000-8000-000000001302",
           "archiveId": null,
-          "submittedAt": "2026-11-13T02:49:08.323Z",
-          "finishedAt": "2026-11-13T02:49:38.706Z",
-          "capture": {"status": "timeout", "timestamp": "2026-11-13T02:49:38.670Z", "captureProcessingTimeMs": 30132, "errorDetails": {"type": "timeout", "message": "Navigation timeout of 30000 ms exceeded", "timeoutMs": 30000}},
+          "submittedAt": "2026-11-13T08:12:56.812Z",
+          "finishedAt": "2026-11-13T08:13:27.205Z",
+          "capture": {
+            "status": "timeout",
+            "timestamp": "2026-11-13T08:13:27.164Z",
+            "captureProcessingTimeMs": 30130,
+            "errorDetails": {
+              "type": "timeout",
+              "message": "Navigation timeout of 30000 ms exceeded",
+              "timeoutMs": 30000
+            }
+          },
           "log": {
             "lines": [
-              {"at": "2026-11-13T02:49:08.537Z", "ms": 211, "source": "browserhive", "level": "info", "msg": "step check-address", "data": {"step": "check-address"}},
-              {"at": "2026-11-13T02:49:08.598Z", "ms": 272, "source": "browserhive", "level": "info", "msg": "step start-recording", "data": {"step": "start-recording"}},
-              {"at": "2026-11-13T02:49:08.601Z", "ms": 275, "source": "browserhive", "level": "info", "msg": "step load-pages", "data": {"step": "load-pages"}},
-              {"at": "2026-11-13T02:49:08.602Z", "ms": 276, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "navigation, dpr=1", "data": {"step": "load-pages"}},
-              {"at": "2026-11-13T02:49:38.674Z", "ms": 30348, "source": "browserhive", "level": "error", "msg": "Navigation timeout of 30000 ms exceeded"}
+              {
+                "at": "2026-11-13T08:12:57.034Z",
+                "ms": 219,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step check-address",
+                "data": {
+                  "step": "check-address"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:57.096Z",
+                "ms": 281,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step start-recording",
+                "data": {
+                  "step": "start-recording"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:57.100Z",
+                "ms": 285,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step load-pages",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:57.101Z",
+                "ms": 286,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "navigation, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:13:27.170Z",
+                "ms": 30355,
+                "source": "browserhive",
+                "level": "error",
+                "msg": "Navigation timeout of 30000 ms exceeded"
+              }
+            ]
+          },
+          "trace": {
+            "lines": [
+              {
+                "kind": "request",
+                "id": "B9544EA0FEBC7524E6DA004C9224A119",
+                "hop": 0,
+                "dpr": 1,
+                "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000",
+                "method": "GET",
+                "resourceType": "Document",
+                "initiator": {
+                  "type": "other"
+                },
+                "startedAt": "2026-11-13T08:12:57.156Z",
+                "ms": 342,
+                "outcome": "pending"
+              }
+            ],
+            "counts": {
+              "finished": 0,
+              "redirected": 0,
+              "failed": 0,
+              "pending": 1,
+              "notArchived": 0,
+              "denied": 0,
+              "evicted": 0
+            },
+            "dropped": 0
+          }
+        },
+        {
+          "id": "1303",
+          "//": "1301 と同じ取り込み（同じ WACZ・同じ取り込みの欄とログ）を、trace の無い答えの形にした物。BrowserHive v30.0.0 より前の取り込みの読み方（要求の印を WACZ のレコードから置く）を見るため",
+          "url": "http://capture-fixtures.capture-ledger:8080/charset/?as=before-v30",
+          "depth": 0,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1303-7000-8000-000000001303",
+          "archiveId": "c4557f7c-708d-3fda-2f31-715cd115132f",
+          "capturedAt": "2026-11-13T08:12:20.522Z",
+          "bundledRev": 1,
+          "submittedAt": "2026-11-13T08:12:17.471Z",
+          "finishedAt": "2026-11-13T08:12:20.557Z",
+          "capture": {
+            "status": "success",
+            "timestamp": "2026-11-13T08:12:20.522Z",
+            "captureProcessingTimeMs": 2771,
+            "httpStatusCode": 200,
+            "settle": {
+              "strategy": "fully-loaded",
+              "endedBy": "quiet",
+              "waitedMs": 2134,
+              "devicePixelRatio": 1,
+              "limits": {
+                "minMs": 1000,
+                "maxMs": 3000,
+                "quietMs": 1000,
+                "networkConcurrency": 0
+              },
+              "load": {
+                "atMs": 65
+              },
+              "network": {
+                "quietAtMs": 2016
+              },
+              "cpu": {
+                "quietAtMs": 1120
+              },
+              "dom": {
+                "quietAtMs": 2025
+              }
+            },
+            "waczStats": {
+              "totalRecorded": 11,
+              "totalBlocked": 0,
+              "totalDenied": 0,
+              "totalSkippedContentType": 0,
+              "totalSkippedUrlPolicy": 0,
+              "totalTruncatedTooLarge": 0,
+              "totalTruncatedTaskCap": 0,
+              "totalNotIntercepted": 0,
+              "totalSkippedSecret": 0,
+              "totalFailed": 0,
+              "totalIncomplete": 0,
+              "totalBodyBytes": 1125
+            },
+            "completeness": {
+              "bodylessUrls": [],
+              "truncatedUrls": [],
+              "uninterceptedUrls": [],
+              "crashedTargets": [],
+              "complete": true
+            },
+            "document": {
+              "url": "http://capture-fixtures.capture-ledger:8080/charset/"
+            },
+            "windowsNotOpened": 0
+          },
+          "log": {
+            "lines": [
+              {
+                "at": "2026-11-13T08:12:17.751Z",
+                "ms": 268,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step check-address",
+                "data": {
+                  "step": "check-address"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:17.808Z",
+                "ms": 325,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step start-recording",
+                "data": {
+                  "step": "start-recording"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:17.811Z",
+                "ms": 328,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step load-pages",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:17.812Z",
+                "ms": 329,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "navigation, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:18.010Z",
+                "ms": 527,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "settle, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.144Z",
+                "ms": 2661,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "settled by quiet after 2134ms",
+                "data": {
+                  "endedBy": "quiet",
+                  "waitedMs": 2134
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.157Z",
+                "ms": 2674,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "snapshot after-load, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.311Z",
+                "ms": 2828,
+                "dpr": 1,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "behaviors, dpr=1",
+                "data": {
+                  "step": "load-pages"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.312Z",
+                "ms": 2829,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step write-formats",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.317Z",
+                "ms": 2834,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "links",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.322Z",
+                "ms": 2839,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "page read",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.431Z",
+                "ms": 2948,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "put links",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.442Z",
+                "ms": 2959,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "took 0 links from the page and 1 same-origin frames",
+                "data": {
+                  "links": 0,
+                  "frames": {
+                    "read": 1,
+                    "unreadable": 0,
+                    "withheld": 0
+                  }
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.442Z",
+                "ms": 2959,
+                "source": "browserhive",
+                "level": "debug",
+                "msg": "web storage",
+                "data": {
+                  "step": "write-formats"
+                }
+              },
+              {
+                "at": "2026-11-13T08:12:20.448Z",
+                "ms": 2965,
+                "source": "browserhive",
+                "level": "info",
+                "msg": "step package-wacz",
+                "data": {
+                  "step": "package-wacz"
+                }
+              }
             ]
           }
         }
@@ -906,17 +2569,27 @@
     }
   },
   "archives": {
-    "datapackage-bad-hash.wacz": { "waczComplete": false },
-    "wacz-missing-indexes.wacz": { "waczComplete": null }
+    "datapackage-bad-hash.wacz": {
+      "waczComplete": false
+    },
+    "wacz-missing-indexes.wacz": {
+      "waczComplete": null
+    }
   },
-  "hidden": ["ghost.wacz"],
+  "hidden": [
+    "ghost.wacz"
+  ],
   "searchPages": {
     "good.wacz": [
       {
         "title": "検索の結果: ランプ | サンドボックスの店",
         "text": "検索の結果: ランプ 3 件\nデスクランプ\nフロアランプ\nペンダントランプ"
       },
-      { "stage": "after-load", "title": "サンドボックスの店", "text": "店の中を探す\n探す語\n探す" },
+      {
+        "stage": "after-load",
+        "title": "サンドボックスの店",
+        "text": "店の中を探す\n探す語\n探す"
+      },
       {
         "stage": "after-behaviors",
         "url": "urn:browserhive:snapshot:after-behaviors:https://sandbox.test/good.wacz/result",
@@ -925,31 +2598,65 @@
       }
     ],
     "datapackage-bad-hash.wacz": [
-      { "title": "ランプの手入れ", "text": "ランプの笠は、乾いた布で拭きます。電球を替える前に、プラグを抜きます。" }
+      {
+        "title": "ランプの手入れ",
+        "text": "ランプの笠は、乾いた布で拭きます。電球を替える前に、プラグを抜きます。"
+      }
     ],
-    "ghost.wacz": [{ "title": "見えないランプ", "text": "見えないアーカイブの中のランプ" }]
+    "ghost.wacz": [
+      {
+        "title": "見えないランプ",
+        "text": "見えないアーカイブの中のランプ"
+      }
+    ]
   },
-  "windmillSecrets": ["api_token", "login"],
-  "windmillVariables": ["plain_token"],
-  "captureFormats": ["wacz"],
+  "windmillSecrets": [
+    "api_token",
+    "login"
+  ],
+  "windmillVariables": [
+    "plain_token"
+  ],
+  "captureFormats": [
+    "wacz"
+  ],
   "catalog": [
-    { "id": "autoscroll", "version": 1, "phase": "behavior", "file": "catalog/autoscroll.ts", "createdAt": "2026-10-14T12:26:38.656Z" },
+    {
+      "id": "autoscroll",
+      "version": 1,
+      "phase": "behavior",
+      "file": "catalog/autoscroll.ts",
+      "createdAt": "2026-10-14T12:26:38.656Z"
+    },
     {
       "id": "autoscroll",
       "version": 2,
       "phase": "behavior",
       "file": "catalog/autoscroll.ts",
       "createdAt": "2026-10-16T09:00:00.000Z",
-      "options": { "maxSteps": 60 }
+      "options": {
+        "maxSteps": 60
+      }
     },
     {
       "id": "egov-law-search",
       "version": 1,
       "phase": "behavior",
       "file": "catalog/egov-law-search.ts",
-      "sites": ["laws.e-gov.go.jp"],
+      "sites": [
+        "laws.e-gov.go.jp"
+      ],
       "params": [
-        { "name": "query", "kind": "variable", "required": true, "summary": "法令名の検索語", "schema": { "type": "string", "minLength": 1 } }
+        {
+          "name": "query",
+          "kind": "variable",
+          "required": true,
+          "summary": "法令名の検索語",
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       ],
       "createdAt": "2026-10-29T00:00:00.000Z"
     },
@@ -962,5 +2669,9 @@
       "enabled": false
     }
   ],
-  "hostTypes": { "version": 1, "file": "catalog/host.d.ts", "createdAt": "2026-10-17T00:36:15.178Z" }
+  "hostTypes": {
+    "version": 1,
+    "file": "catalog/host.d.ts",
+    "createdAt": "2026-10-17T00:36:15.178Z"
+  }
 }

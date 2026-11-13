@@ -14,7 +14,12 @@
  * ログの行（取り込みの段・細部・console）は BrowserHive の時計。WARC の request と response の対の `WARC-Date` は、
  * Chromium が要求を送り出した時刻（Chromium の時計）。2 つは別のコンテナの時計で、少しずれることがある。
  *
- * ## 要求の印は 2 種類
+ * ## 要求の読み方は 2 つ
+ *
+ * **答えが `trace` を持つ取り込み（BrowserHive v30.0.0 から）** は、`trace.lines`（1 行 = 1 つの交信）から読む。行は
+ * 始まり（`ms`。ログと同じ軸）と長さ（`durationMs`）を持つので、要求は棒になる。WACZ のレコードは読みに行かない。
+ *
+ * **`trace` が null の取り込み（それより前）** は、WACZ の中の WARC のレコードから読む。印は 2 種類:
  *
  * - **始まりの印**: request と response の対。対の `WARC-Date` は要求の始まり。
  * - **記録した時刻の印**: metadata だけが在る要求（終わらなかった・失敗した・止めた・残さなかった）。この
@@ -62,6 +67,14 @@ export const secondsText = (ms, { unit = true } = {}) => {
   return unit ? t("trace.seconds", { s }) : s;
 };
 
+/**
+ * 長さの字。1 秒未満は ms（`23 ms`）、それより上は秒（`1.55 秒`）。要求の長さは ms の桁が多く、秒では `0.00` が並ぶ。
+ */
+export const lengthText = (ms) => {
+  if (typeof ms !== "number" || !Number.isFinite(ms)) return "—";
+  return ms < 1000 ? t("trace.timing.ms", { n: String(Math.round(ms)) }) : secondsText(ms);
+};
+
 const epoch = (iso) => {
   const ms = Date.parse(String(iso));
   return Number.isNaN(ms) ? undefined : ms;
@@ -87,11 +100,16 @@ export const axisOf = (answer) => {
   return { originMs, endMs, fromLog: firstAt !== undefined };
 };
 
+/** 答えが `trace`（要求の出来事の行。BrowserHive v30.0.0 から）を持つか。 */
+export const hasTrace = (answer) => Array.isArray(answer?.trace?.lines);
+
 /**
  * WACZ の中のレコードを読みに行くか。WACZ の無い取り込み（時間切れ・失敗）と、軸を組めない答え（取り込みの答えが
- * 無いページ）では読まない —— 置く軸が無く、読む WACZ も無い。
+ * 無いページ）では読まない —— 置く軸が無く、読む WACZ も無い。`trace` を持つ答えでも読まない —— 要求は行から読み、
+ * 写しの位置はログの行から読むので、レコードの一覧と metadata の本文は要らない。
  */
-export const readsRecords = (answer) => typeof answer?.archive?.id === "string" && axisOf(answer) !== undefined;
+export const readsRecords = (answer) =>
+  typeof answer?.archive?.id === "string" && axisOf(answer) !== undefined && !hasTrace(answer);
 
 /** 行の `data` の欄。切られた行では `data` が文字なので、object のときだけ読む。 */
 const dataOf = (line, key) =>
@@ -390,12 +408,18 @@ export const percentOf = (ms, endMs) => {
   return Math.min(100, Math.max(0, (ms / endMs) * 100));
 };
 
-/** 軸の目盛り。4〜8 本になる、切りのよい間隔（ms）で。 */
+/** 軸の終わりから、この割合より近い目盛りは置かない。 */
+export const TICK_END_MARGIN = 0.025;
+
+/**
+ * 軸の目盛り。4〜8 本になる、切りのよい間隔（ms）で。軸の終わりに近すぎる目盛りは置かない —— 目盛りの字は線の
+ * 右に出るので、終わりの間際の字は軸の外へはみ出す（全体が 3.04 秒の取り込みの「3.00」）。
+ */
 export const ticksOf = (endMs) => {
   const steps = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000];
   const step = steps.find((one) => endMs / one <= 8) ?? 120000;
   const out = [];
-  for (let ms = 0; ms <= endMs; ms += step) out.push(ms);
+  for (let ms = 0; ms <= endMs * (1 - TICK_END_MARGIN); ms += step) out.push(ms);
   return out;
 };
 
@@ -415,4 +439,141 @@ export const traceReasonText = (reason) => {
   if (reason === "manifest-missing") return t("trace.reason.manifestMissing");
   if (reason === "manifest-invalid") return t("trace.reason.manifestInvalid");
   return t("trace.reason.unknown");
+};
+
+// ── trace の行から読む（BrowserHive v30.0.0 から）─────────────────────────
+
+/**
+ * 行の種類。結末（`outcome`）に、終わりを観測できない `pending` を別の種類として足した物。
+ *
+ * `unobservable` は、終わらなかったのではなく、終わりを見られなかった要求（別サイトのフレームの文書・dedicated
+ * worker の script。行の `endUnobservable`）。「終わらなかった」に数えない。
+ */
+export const REQUEST_KINDS = ["finished", "redirected", "failed", "pending", "unobservable", "not-archived", "denied", "evicted"];
+
+/** 行の種類。知らない結末は、届いた字のまま。 */
+export const requestKindOf = (line) =>
+  line.outcome === "pending" && line.endUnobservable === true ? "unobservable" : String(line.outcome);
+
+const REQUEST_KIND_TEXT = {
+  finished: () => t("trace.outcome.finished"),
+  redirected: () => t("trace.outcome.redirected"),
+  failed: () => t("trace.outcome.failed"),
+  pending: () => t("trace.outcome.pending"),
+  unobservable: () => t("trace.outcome.unobservable"),
+  "not-archived": () => t("trace.outcome.notArchived"),
+  denied: () => t("trace.outcome.denied"),
+  evicted: () => t("trace.outcome.evicted"),
+};
+
+/** 行の種類の字。知らない種類は、届いた字のまま。 */
+export const requestKindText = (kind) =>
+  Object.hasOwn(REQUEST_KIND_TEXT, kind) ? REQUEST_KIND_TEXT[kind]() : String(kind);
+
+/**
+ * `trace.lines` を、軸に置く物にする。並びは行の並びのまま（`index` は行の番号）。
+ *
+ * 位置は行の `ms`（ログの行と同じ軸。BrowserHive が Chromium の時計から合わせた値）で、`startedAt`（Chromium の
+ * 壁時計）からは出さない —— 2 つの時計はずれるので、壁時計から引くと取り込みの段の帯とずれる。
+ *
+ * 形（`shape`）は 3 つ:
+ * - `bar`: 長さ（`durationMs`）を持つ行。始まりから終わりまで
+ * - `open`: 終わらなかった行（`pending`）。始まりから軸の終わりまで。終わりは無い
+ * - `mark`: 始まりの印だけ。長さを持たない行 —— 方針に当たった行（残さなかった・止めた）・追うのをやめた行・
+ *   終わりを観測できない行。終わりを知らないので、長さを描かない
+ */
+export const requestsOf = (trace, endMs) =>
+  (trace?.lines ?? []).map((line, index) => {
+    const kind = requestKindOf(line);
+    const fromMs = typeof line.ms === "number" ? line.ms : 0;
+    const timed = typeof line.durationMs === "number";
+    const shape = timed ? "bar" : kind === "pending" ? "open" : "mark";
+    return {
+      index,
+      kind,
+      shape,
+      fromMs,
+      toMs: timed ? fromMs + line.durationMs : shape === "open" ? Math.max(endMs, fromMs) : fromMs,
+      line,
+    };
+  });
+
+/**
+ * 結末ごとの数。出どころは `trace.counts`（上限で捨てた行も数えてある）。終わりを観測できない行は、`pending` から
+ * 引いて別に数える（捨てた行の中の分は分からないので、残っている行だけ）。
+ */
+export const requestCountsOf = (trace) => {
+  const counts = trace?.counts ?? {};
+  const n = (key) => (typeof counts[key] === "number" ? counts[key] : 0);
+  const unobservable = (trace?.lines ?? []).filter((line) => requestKindOf(line) === "unobservable").length;
+  const out = {
+    finished: n("finished"),
+    redirected: n("redirected"),
+    failed: n("failed"),
+    pending: Math.max(0, n("pending") - unobservable),
+    unobservable,
+    "not-archived": n("notArchived"),
+    denied: n("denied"),
+    evicted: n("evicted"),
+  };
+  return {
+    ...out,
+    total: Object.values(out).reduce((sum, one) => sum + one, 0),
+    dropped: typeof trace?.dropped === "number" ? trace.dropped : 0,
+  };
+};
+
+/** 並べ方。`start` は始まりの順、`longest` は長い順（長さを持たない行は後ろ）。 */
+export const REQUEST_SORTS = ["start", "longest"];
+
+export const sortRequests = (requests, by) => {
+  const byStart = (a, b) => a.fromMs - b.fromMs || a.index - b.index;
+  if (by !== "longest") return [...requests].sort(byStart);
+  const length = (one) => (one.shape === "bar" ? one.toMs - one.fromMs : -1);
+  return [...requests].sort((a, b) => length(b) - length(a) || byStart(a, b));
+};
+
+/** 失敗した行と、終わらなかった行か。終わりを観測できない行は入れない。 */
+export const isTroubledRequest = (one) => one.kind === "failed" || one.kind === "pending";
+
+/** 絞り込み。`trouble` は、失敗と終わらなかった物だけ。 */
+export const filterRequests = (requests, only) => (only === "trouble" ? requests.filter(isTroubledRequest) : requests);
+
+/** 内訳の欄。並びは、時間の流れの順。 */
+export const TIMING_PARTS = ["dnsMs", "connectMs", "tlsMs", "sendMs", "waitMs", "receiveMs"];
+
+/**
+ * 行の長さの内訳。`timing` の 6 つと、長さから 6 つの和を引いた残り（`otherMs`）。残りは、Chromium が要求を送り出す
+ * 前の待ちと、BrowserHive が要求と応答を止めていた時間（方針の照らし・本文の読み取り）。`timing` か長さの無い行は
+ * undefined。
+ */
+export const timingOf = (line) => {
+  const timing = line?.timing;
+  if (timing === null || typeof timing !== "object" || typeof line.durationMs !== "number") return undefined;
+  const parts = TIMING_PARTS.map((key) => ({ key, ms: typeof timing[key] === "number" ? timing[key] : 0 }));
+  const sum = parts.reduce((total, part) => total + part.ms, 0);
+  return { parts, sumMs: sum, otherMs: Math.max(0, line.durationMs - sum) };
+};
+
+/**
+ * DOM の写しの印を、ログの行から置く。BrowserHive は写しを取るたびに細部の行（`snapshot <時点>`）を書く。
+ * リンクの URN（`urn:browserhive:snapshot:<時点>:<文書の URL>`）の文書の URL は、取り込みの答えの
+ * `document.url`（リダイレクトの後の URL）で、ページの行の URL ではない。文書の URL の無い答え（方針で伏せた
+ * 文書）では、印だけで URN は無い。
+ */
+export const snapshotsFromLog = (lines, capture) => {
+  const documentUrl = typeof capture?.document?.url === "string" ? capture.document.url : undefined;
+  const out = [];
+  for (const line of lines ?? []) {
+    if (line.source !== "browserhive" || line.level !== "debug") continue;
+    const m = /^snapshot ([a-z][a-z-]*)/.exec(String(line.msg));
+    if (m === null) continue;
+    out.push({
+      stage: m[1],
+      ms: line.ms,
+      ...(typeof line.dpr === "number" && { dpr: line.dpr }),
+      ...(documentUrl !== undefined && { documentUrl, uri: `urn:browserhive:snapshot:${m[1]}:${documentUrl}` }),
+    });
+  }
+  return out;
 };

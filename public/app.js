@@ -106,26 +106,35 @@ import {
 } from "/links.js";
 import {
   kindText,
+  lengthText,
   NOTES_EAGER,
   applyMetadata,
   axisOf,
   bodyKey,
   consoleOf,
   detailsOf,
+  filterRequests,
+  hasTrace,
   marksOf as traceMarksOf,
   parseTraceHash,
   percentOf,
   readRecords,
   readsRecords,
   recordPath,
+  requestCountsOf,
+  requestKindText,
+  requestsOf,
   scriptsOf,
   secondsText,
   settleOf,
+  snapshotsFromLog,
+  sortRequests,
   statusText,
   stepsOf,
   stoppedStepOf,
   tallyOf as traceTallyOf,
   ticksOf,
+  timingOf,
   traceHash,
   tracePath,
   traceReasonText,
@@ -4007,6 +4016,8 @@ $("links-fold").addEventListener("click", () => {
  *   marks     一覧から作った印（対・metadata だけの要求・写し）
  *   bodies    読んだ metadata の本文（`bodyKey` → 文字）
  *   selected  選んだ物（`{ row, index }`）
+ *   sort      要求の並べ方（`start`・`longest`）。答えが trace を持つ取り込みだけ
+ *   only      要求の絞り込み（`all`・`trouble`）。同じ
  *   log       下のログの箱の状態（`drawLog` と同じ形）
  */
 let traceView = { crawlId: undefined };
@@ -4035,6 +4046,32 @@ const traceIs = (crawlId, pageId) => traceView.crawlId === crawlId && traceView.
 /** 印を、読んだ本文に当てた形。 */
 const traceMarks = () =>
   traceView.marks === undefined ? undefined : applyMetadata(traceView.marks, traceView.bodies);
+
+/** 答えの trace の行から作った要求（軸に置く形）。答えが trace を持たなければ undefined。 */
+const traceRequests = () => {
+  const { answer } = traceView;
+  if (answer === undefined || !hasTrace(answer)) return undefined;
+  const axis = axisOf(answer);
+  return axis === undefined ? undefined : requestsOf(answer.trace, axis.endMs);
+};
+
+/** 写しの印。答えが trace を持てばログの行から、持たなければ WACZ のレコードから。 */
+const traceSnapshots = () => {
+  const { answer } = traceView;
+  if (answer !== undefined && hasTrace(answer)) return snapshotsFromLog(answer.log?.lines ?? [], answer.capture);
+  return traceMarks()?.snapshots ?? [];
+};
+
+/** 要求の種類の色。 */
+const requestTone = (kind) =>
+  kind === "finished" || kind === "redirected" ? "ok" : kind === "failed" ? "bad" : kind === "pending" ? "run" : "muted";
+
+/** 要求の title。形ごとに、長さを言うか・終わりが無いと言うか・始まりだけを言うか。 */
+const requestTitle = (one) => {
+  const said = { kind: requestKindText(one.kind), url: String(one.line.url), from: secondsText(one.fromMs) };
+  if (one.shape === "bar") return t("trace.request.title", { ...said, length: lengthText(one.toMs - one.fromMs) });
+  return one.shape === "open" ? t("trace.request.titleOpen", said) : t("trace.request.titleMark", said);
+};
 
 const drawTraceHead = () => {
   const { answer, crawlId } = traceView;
@@ -4083,7 +4120,8 @@ const drawTraceHead = () => {
     );
   }
   if (answer.archive === null) {
-    line.append(t("common.sep.dot"), t("trace.facts.noWacz"));
+    // 答えが trace を持つ取り込みは、WACZ が無くても要求の並びを出せる
+    line.append(t("common.sep.dot"), hasTrace(answer) ? t("trace.facts.noWaczLines") : t("trace.facts.noWacz"));
   } else {
     const open = document.createElement("a");
     open.href = waczHash(answer.archive.id);
@@ -4216,8 +4254,19 @@ const drawTraceChart = () => {
       ),
     );
   }
+  const lined = traceRequests();
   const marks = traceMarks();
-  if (marks !== undefined) {
+  if (lined !== undefined) {
+    // 軸の行には始まりの印だけを置く（棒は、下の要求の並びに 1 行ずつ）。終わりを知らない行は中抜き
+    chart.append(
+      traceRow(
+        t("trace.row.requests"),
+        lined.map((one) =>
+          traceMark({ row: "request", index: one.index, atMs: one.fromMs, className: one.shape === "bar" ? `tick ${requestTone(one.kind)}` : `tick hollow ${requestTone(one.kind)}`, title: requestTitle(one) }, endMs),
+        ),
+      ),
+    );
+  } else if (marks !== undefined) {
     const requests = [
       ...marks.exchanges.map((one, index) =>
         traceMark({ row: "exchange", index, atMs: one.ms, className: "tick ok", title: t("trace.exchange.title", { status: String(one.status ?? ""), uri: one.uri, at: secondsText(one.ms) }) }, endMs),
@@ -4227,18 +4276,119 @@ const drawTraceChart = () => {
       ),
     ];
     chart.append(traceRow(t("trace.row.requests"), requests));
-    if (marks.snapshots.length > 0) {
-      chart.append(
-        traceRow(
-          t("trace.row.snapshots"),
-          marks.snapshots.map((one, index) =>
-            traceMark({ row: "snapshot", index, atMs: one.ms, className: "tick content", title: t("trace.snapshot.title", { stage: one.stage, at: secondsText(one.ms) }) }, endMs),
-          ),
+  }
+  const snapshots = traceSnapshots();
+  if (snapshots.length > 0) {
+    chart.append(
+      traceRow(
+        t("trace.row.snapshots"),
+        snapshots.map((one, index) =>
+          traceMark({ row: "snapshot", index, atMs: one.ms, className: "tick content", title: t("trace.snapshot.title", { stage: one.stage, at: secondsText(one.ms) }) }, endMs),
         ),
-      );
-    }
+      ),
+    );
   }
   box.append(chart);
+};
+
+/**
+ * 要求の並び（答えが trace を持つ取り込み）。1 行に 1 つの交信で、右の軸に始まりから終わりまでの棒を描く。
+ * 終わらなかった行は軸の終わりまでの点線、長さを持たない行（残さなかった・止めた・追うのをやめた・終わりを観測
+ * できない）は始まりの印だけ。並べ方と絞り込みは、この画面の中だけの物（URL には持たない）。
+ */
+const drawTraceLines = (box) => {
+  const { answer } = traceView;
+  const axis = axisOf(answer);
+  if (axis === undefined) return;
+  const counts = requestCountsOf(answer.trace);
+  const said = [
+    t("trace.tally.requests", { n: count(counts.total) }),
+    counts.finished > 0 ? t("trace.tally.finished", { n: count(counts.finished) }) : undefined,
+    counts.redirected > 0 ? t("trace.tally.redirected", { n: count(counts.redirected) }) : undefined,
+    counts.failed > 0 ? t("trace.tally.failed", { n: count(counts.failed) }) : undefined,
+    counts.pending > 0 ? t("trace.tally.pending", { n: count(counts.pending) }) : undefined,
+    counts.unobservable > 0 ? t("trace.tally.unobservable", { n: count(counts.unobservable) }) : undefined,
+    counts.denied > 0 ? t("trace.tally.denied", { n: count(counts.denied) }) : undefined,
+    counts["not-archived"] > 0 ? t("trace.tally.notArchived", { n: count(counts["not-archived"]) }) : undefined,
+    counts.evicted > 0 ? t("trace.tally.evicted", { n: count(counts.evicted) }) : undefined,
+    counts.dropped > 0 ? t("trace.tally.dropped", { n: count(counts.dropped) }) : undefined,
+  ].filter((one) => one !== undefined);
+  box.append(tag("p", said.join(t("common.sep.dot")), "trace-tally"));
+  const all = requestsOf(answer.trace, axis.endMs);
+  if (all.length === 0) return;
+  // 並べ方と絞り込み
+  const tools = document.createElement("p");
+  tools.className = "trace-tools";
+  const redraw = () => {
+    drawTraceRequests();
+  };
+  const sortLabel = document.createElement("label");
+  const sort = document.createElement("select");
+  for (const [value, text] of [["start", t("trace.sort.start")], ["longest", t("trace.sort.longest")]]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = text;
+    option.selected = traceView.sort === value;
+    sort.append(option);
+  }
+  sort.addEventListener("change", () => {
+    traceView.sort = sort.value;
+    redraw();
+  });
+  sortLabel.append(tag("span", t("trace.sort.label")), sort);
+  const onlyLabel = document.createElement("label");
+  const only = document.createElement("input");
+  only.type = "checkbox";
+  only.checked = traceView.only === "trouble";
+  only.addEventListener("change", () => {
+    traceView.only = only.checked ? "trouble" : "all";
+    redraw();
+  });
+  onlyLabel.append(only, tag("span", t("trace.only.trouble")));
+  tools.append(sortLabel, onlyLabel);
+  box.append(tools);
+  const rows = sortRequests(filterRequests(all, traceView.only), traceView.sort);
+  if (rows.length === 0) {
+    box.append(tag("p", t("trace.requests.none"), "muted"));
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "trace-reqs lined";
+  for (const one of rows) {
+    const b = document.createElement("button");
+    b.type = "button";
+    const picked = traceView.selected?.row === "request" && traceView.selected.index === one.index;
+    b.className = picked ? "trace-req sel" : "trace-req";
+    const tone = requestTone(one.kind);
+    const status = one.line.response?.status;
+    const state =
+      typeof status === "number" && one.kind !== "pending" && one.kind !== "unobservable"
+        ? tag("span", String(status), `mono state ${status >= 400 ? "bad" : tone}`)
+        : tag("span", requestKindText(one.kind), `state ${tone}`);
+    const track = document.createElement("span");
+    track.className = "trace-track";
+    const left = percentOf(one.fromMs, axis.endMs);
+    const mark = tag("i", "", one.shape === "bar" ? `bar req ${tone}` : one.shape === "open" ? `bar req open ${tone}` : `tick hollow ${tone}`);
+    mark.style.left = `${String(left)}%`;
+    if (one.shape !== "mark") mark.style.width = `${String(Math.max(0, percentOf(one.toMs, axis.endMs) - left))}%`;
+    track.append(mark);
+    b.title = requestTitle(one);
+    b.append(
+      tag("span", secondsText(one.fromMs, { unit: false }), "num mono"),
+      state,
+      tag("span", one.shape === "bar" ? lengthText(one.toMs - one.fromMs) : "—", "num mono"),
+      tag("span", String(one.line.url), "mono url"),
+      track,
+    );
+    b.addEventListener("click", () => {
+      traceView.selected = { row: "request", index: one.index };
+      drawTraceChart();
+      drawTraceRequests();
+      drawTracePanel();
+    });
+    list.append(b);
+  }
+  box.append(list);
 };
 
 /** 要求の並び。始まり（か記録した時刻）の順に 1 行ずつ。押すと下の欄に出す。 */
@@ -4246,7 +4396,12 @@ const drawTraceRequests = () => {
   const box = $("trace-requests");
   box.replaceChildren();
   const { answer, read } = traceView;
-  if (answer === undefined || answer.archive === null || answer.archive === undefined) return;
+  if (answer === undefined) return;
+  if (hasTrace(answer)) {
+    drawTraceLines(box);
+    return;
+  }
+  if (answer.archive === null || answer.archive === undefined) return;
   const axis = axisOf(answer);
   if (axis === undefined) return;
   if (read === undefined) {
@@ -4360,6 +4515,69 @@ const drawTracePanel = () => {
     put("console", one.source === "page" ? t("trace.console.fromPage", { level: one.level }) : t("trace.console.fromScript", { level: one.level }));
     put(t("trace.panel.time"), secondsText(one.ms));
     put(t("trace.panel.message"), one.msg);
+  } else if (row === "request") {
+    const one = traceRequests()?.[index];
+    if (one === undefined) return;
+    const { line } = one;
+    put(t("trace.panel.request"), line.urlCut === true ? t("trace.panel.urlCut", { url: String(line.url) }) : line.url, "mono url");
+    put("method", line.method, "mono");
+    put(t("trace.panel.resourceType"), line.resourceType, "mono");
+    put(t("trace.panel.outcome"), requestKindText(one.kind));
+    put(t("trace.panel.error"), line.error, "mono");
+    put(t("trace.panel.start"), t("trace.panel.startOnAxis", { at: secondsText(one.fromMs) }));
+    put(t("trace.panel.startedAt"), t("trace.panel.startedAtNote", { at: String(line.startedAt) }));
+    if (one.shape === "bar") {
+      put(t("trace.panel.length"), lengthText(one.toMs - one.fromMs));
+    } else {
+      const why =
+        one.kind === "pending"
+          ? t("trace.noLength.pending")
+          : one.kind === "unobservable"
+            ? t("trace.noLength.unobservable")
+            : one.kind === "evicted"
+              ? t("trace.noLength.evicted")
+              : one.kind === "failed"
+                ? t("trace.noLength.failed")
+                : t("trace.noLength.policy");
+      put(t("trace.panel.length"), t("trace.panel.noLength", { why }));
+    }
+    const timing = timingOf(line);
+    if (timing !== undefined) {
+      const names = {
+        dnsMs: t("trace.timing.dnsMs"),
+        connectMs: t("trace.timing.connectMs"),
+        tlsMs: t("trace.timing.tlsMs"),
+        sendMs: t("trace.timing.sendMs"),
+        waitMs: t("trace.timing.waitMs"),
+        receiveMs: t("trace.timing.receiveMs"),
+      };
+      // 内訳は ms で書く（1 つずつは短く、秒では 0.00 が並ぶ）
+      const ms = (n) => lengthText(n);
+      const parts = timing.parts
+        .filter((part) => part.ms > 0)
+        .map((part) => t("trace.timing.part", { name: names[part.key], length: ms(part.ms) }));
+      if (timing.otherMs > 0) parts.push(t("trace.timing.part", { name: t("trace.timing.otherMs"), length: ms(timing.otherMs) }));
+      put(t("trace.panel.breakdown"), parts.join(t("common.sep.dot")));
+    }
+    const initiator = line.initiator;
+    if (initiator !== undefined && initiator !== null) {
+      const said = { type: String(initiator.type), url: String(initiator.url), line: String(initiator.line) };
+      put(
+        t("trace.panel.initiator"),
+        typeof initiator.url !== "string"
+          ? initiator.type
+          : typeof initiator.line === "number"
+            ? t("trace.initiator.atLine", said)
+            : t("trace.initiator.atUrl", said),
+        "mono url",
+      );
+    }
+    put("status", line.response?.status, "mono");
+    put("protocol", line.response?.protocol, "mono");
+    put(t("trace.panel.cache"), line.response?.fromCache === true ? t("trace.panel.fromCache") : undefined);
+    put(t("trace.panel.bytes"), typeof line.encodedBytes === "number" ? count(line.encodedBytes) : undefined);
+    put(t("trace.panel.hop"), typeof line.hop === "number" && (line.hop > 0 || one.kind === "redirected") ? String(line.hop) : undefined, "mono");
+    put(t("trace.panel.recordId"), line.record, "mono");
   } else if (row === "exchange" && marks !== undefined) {
     const one = marks.exchanges[index];
     if (one === undefined) return;
@@ -4379,14 +4597,15 @@ const drawTracePanel = () => {
     put(t("trace.panel.pattern"), one.pattern, "mono");
     put(t("trace.panel.resourceType"), one.resourceType, "mono");
     put("method", one.method, "mono");
-  } else if (row === "snapshot" && marks !== undefined) {
-    const one = marks.snapshots[index];
+  } else if (row === "snapshot") {
+    const one = traceSnapshots()[index];
     if (one === undefined) return;
     put(t("trace.panel.snapshot"), one.stage, "mono");
     put(t("trace.panel.time"), secondsText(one.ms));
     put(t("trace.panel.document"), one.documentUrl, "mono url");
     const objectKey = answer.archive?.objectKey;
-    if (typeof objectKey === "string") {
+    // 文書の URL の無い写し（方針で伏せた文書）は、開く先を組めない
+    if (typeof objectKey === "string" && typeof one.uri === "string") {
       const opens = document.createElement("span");
       for (const viewer of VIEWERS) {
         const hit = { stage: one.stage, objectKey, capturedAt: answer.page.capturedAt, url: one.uri };
@@ -4403,12 +4622,10 @@ const drawTraceNotes = () => {
   box.replaceChildren();
   const { answer } = traceView;
   if (answer === undefined || answer.capture === null || answer.capture === undefined) return;
-  const notes = [
-    t("trace.notes.clocks"),
-    t("trace.notes.recordedAt"),
-    t("trace.notes.unobservable"),
-    t("trace.notes.unsigned"),
-  ];
+  // 時計と「記録した時刻」の注記は、WACZ のレコードから読んだ取り込みだけの話。trace の行は、軸も終わりも持っている
+  const notes = hasTrace(answer)
+    ? [t("trace.notes.traceAxis"), t("trace.notes.traceUnobservable"), t("trace.notes.traceUnsigned")]
+    : [t("trace.notes.clocks"), t("trace.notes.recordedAt"), t("trace.notes.unobservable"), t("trace.notes.unsigned")];
   const list = document.createElement("ul");
   list.className = "trace-notes";
   for (const note of notes) list.append(tag("li", note));
@@ -4508,7 +4725,7 @@ const openTrace = (crawlId, pageId) => {
   $("crawls-list").hidden = true;
   $("trace-detail").hidden = false;
   if (traceIs(crawlId, pageId)) return;
-  traceView = { crawlId, pageId, answer: undefined, read: undefined, marks: undefined, bodies: new Map(), selected: undefined, log: undefined };
+  traceView = { crawlId, pageId, answer: undefined, read: undefined, marks: undefined, bodies: new Map(), selected: undefined, sort: "start", only: "all", log: undefined };
   traceAnswer(undefined);
   drawTrace();
   void loadTrace(crawlId, pageId);
