@@ -16,10 +16,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 import { stateOf } from "../public/format.js";
 import { outcomeOf } from "../public/pages.js";
+import { axisOf, settleOf, stepsOf, stoppedStepOf } from "../public/timeline.js";
 import { isPartialBundle, replayBundleHref } from "../public/replayweb.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
@@ -44,6 +45,7 @@ import {
   pageList,
   pageLog,
   pageRow,
+  pageTrace,
   pickable,
   readingLastGood,
   replayBundleOf,
@@ -1391,6 +1393,118 @@ test("ページの id が数字だけでなければ 400、ほかの行のペー
   assert.equal(pageLog(undefined, "12a").status, 400);
   assert.deepEqual(pageLog(c, "601"), { status: 404, body: { error: "not found" } });
   assert.deepEqual(pageLog(undefined, "1202"), { status: 404, body: { error: "not found" } });
+});
+
+// ── 1 ページの経緯（capture-ledger v0.100.0 の GET /api/crawls/:id/pages/:page/trace。CAPTURE-270）──────
+/** capture-ledger の `captureOf`（src/api/trace.ts）が `.result.json` から選ぶ欄。無い欄は鍵ごと出ない。 */
+const LEDGER_CAPTURE_KEYS = new Set([
+  "status",
+  "timestamp",
+  "captureProcessingTimeMs",
+  "httpStatusCode",
+  "errorDetails",
+  "settle",
+  "waczStats",
+  "completeness",
+  "document",
+  "windowsNotOpened",
+]);
+const TRACE_SAMPLE = "trace-timeline.wacz";
+const SAMPLE_NAMES = readdirSync(new URL("../sandbox/samples/", import.meta.url)).filter((name) => name.endsWith(".wacz"));
+
+test("経緯の答えは { page, archive, capture, log, trace, reason } で、page はページの行に submittedAt と finishedAt を足した物", () => {
+  let read = 0;
+  for (const c of scenario.crawls.filter((x) => x.pages !== undefined)) {
+    for (const p of c.pages) {
+      const answer = pageTrace(c, p.id, SAMPLE_NAMES);
+      assert.equal(answer.status, 200, `${c.crawlId} ${p.id}`);
+      assert.deepEqual(Object.keys(answer.body), ["page", "archive", "capture", "log", "trace", "reason"]);
+      const { submittedAt, finishedAt, ...row } = answer.body.page;
+      assert.deepEqual(row, pageRow(p));
+      assert.deepEqual([submittedAt, finishedAt], [p.submittedAt ?? null, p.finishedAt ?? null]);
+      // BrowserHive v30.0.0 から載る欄。capture-ledger v0.100.0 と同じく、いつも null
+      assert.equal(answer.body.trace, null);
+      // 読めたか読めないかのどちらか: 取り込みの欄が在れば理由は null、無ければ理由が在り、ログも無い
+      assert.equal(answer.body.capture === null, answer.body.reason !== null, `${c.crawlId} ${p.id}`);
+      if (answer.body.capture === null) {
+        assert.equal(answer.body.log, null);
+        continue;
+      }
+      read += 1;
+      for (const key of Object.keys(answer.body.capture)) assert.ok(LEDGER_CAPTURE_KEYS.has(key), key);
+      for (const key of ["status", "timestamp", "captureProcessingTimeMs"]) assert.ok(key in answer.body.capture, key);
+      if (answer.body.log !== null) assert.deepEqual(Object.keys(answer.body.log), ["lines", "counts", "dropped"]);
+    }
+  }
+  assert.ok(read > 0);
+});
+
+test("台本の 5b0c000b の 1301 は置き場の trace-timeline.wacz を指し、鍵が出るのは置き場に在る id のときだけ", () => {
+  const c = crawlOf("5b0c000b");
+  assert.ok(SAMPLE_NAMES.includes(TRACE_SAMPLE), "置き場に見本が在る");
+  // id はファイル名から決まる。名前を変えたら、台本の archiveId も変える
+  assert.equal(c.pages[0].archiveId, idOf(TRACE_SAMPLE));
+  assert.deepEqual(pageTrace(c, "1301", SAMPLE_NAMES).body.archive, {
+    id: idOf(TRACE_SAMPLE),
+    objectKey: `sandbox/${TRACE_SAMPLE}`,
+  });
+  // 置き場に無い id（capture-ledger の「見てよくない」と同じ形）は id だけ
+  assert.deepEqual(pageTrace(c, "1301", ["good.wacz"]).body.archive, { id: idOf(TRACE_SAMPLE), objectKey: null });
+  assert.deepEqual(pageTrace(crawlOf("5b0c0009"), "1201", SAMPLE_NAMES).body.archive, {
+    id: crawlOf("5b0c0009").pages[0].archiveId,
+    objectKey: null,
+  });
+  // WACZ の無いページは archive ごと null
+  assert.equal(pageTrace(c, "1302", SAMPLE_NAMES).body.archive, null);
+});
+
+test("台本の 5b0c000b の答えから、画面は軸・段・待ちを組める。時間切れの 1302 は止まった段を言える", () => {
+  const c = crawlOf("5b0c000b");
+  const done = pageTrace(c, "1301", SAMPLE_NAMES).body;
+  const axis = axisOf(done);
+  assert.equal(axis.fromLog, true);
+  // 軸の 0 は、最初の行の時刻からその行の ms を引いた所
+  assert.equal(axis.originMs, Date.parse(done.log.lines[0].at) - done.log.lines[0].ms);
+  assert.deepEqual(
+    stepsOf(done.log.lines, axis.endMs).map((bar) => bar.step),
+    ["check-address", "start-recording", "load-pages", "write-formats", "package-wacz"],
+  );
+  assert.equal(settleOf(done.capture.settle, done.log.lines).toMs - settleOf(done.capture.settle, done.log.lines).fromMs, done.capture.settle.waitedMs);
+  assert.equal(stoppedStepOf(done), undefined);
+
+  const timedOut = pageTrace(c, "1302", SAMPLE_NAMES).body;
+  assert.equal(timedOut.capture.status, "timeout");
+  assert.equal(timedOut.capture.errorDetails.timeoutMs, 30000);
+  assert.equal(stoppedStepOf(timedOut), "load-pages");
+  assert.ok(timedOut.log.lines.some((line) => line.level === "error"));
+});
+
+test("経緯を読めないページは capture: null と理由 —— taskId の無いページは not-captured、capture の無いページは no-manifest", () => {
+  const skipped = pageTrace(crawlOf("5b0c0009"), "1204", SAMPLE_NAMES).body;
+  assert.deepEqual([skipped.capture, skipped.log, skipped.reason], [null, null, "not-captured"]);
+  // ログを持つページでも、台本に取り込みの欄が無ければ読めない（代役の省略）
+  assert.equal(pageTrace(crawlOf("5b0c0009"), "1201", SAMPLE_NAMES).body.reason, "no-manifest");
+  // 台本が理由を名指せる
+  const named = { crawlId: "x", pages: [{ id: "1", url: "https://a.test/", state: "captured", taskId: "t", traceReason: "manifest-invalid" }] };
+  assert.equal(pageTrace(named, "1").body.reason, "manifest-invalid");
+  // ログの無い取り込み（BrowserHive v24.0.0 より前）は、理由にならない: log だけが null
+  const old = { crawlId: "x", pages: [{ id: "1", url: "https://a.test/", state: "captured", taskId: "t", capture: { status: "success", timestamp: "2026-10-12T08:40:00.000Z", captureProcessingTimeMs: 900, notPicked: 1 } }] };
+  assert.deepEqual(pageTrace(old, "1").body, {
+    page: { ...pageRow(old.pages[0]), submittedAt: null, finishedAt: null },
+    archive: null,
+    capture: { status: "success", timestamp: "2026-10-12T08:40:00.000Z", captureProcessingTimeMs: 900 },
+    log: null,
+    trace: null,
+    reason: null,
+  });
+});
+
+test("経緯も、ページの id が数字だけでなければ 400、ほかの行のページと、行が無ければ 404", () => {
+  const c = crawlOf("5b0c000b");
+  assert.equal(pageTrace(c, "13a").status, 400);
+  assert.equal(pageTrace(undefined, "13a").status, 400);
+  assert.deepEqual(pageTrace(c, "1201"), { status: 404, body: { error: "not found" } });
+  assert.deepEqual(pageTrace(undefined, "1301"), { status: 404, body: { error: "not found" } });
 });
 
 test("failures の要素は { url, depth, reason, page } で、page は同じ行の pages の、同じ URL の failed の行を指す", () => {

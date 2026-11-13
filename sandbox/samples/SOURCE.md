@@ -1,5 +1,9 @@
 # サンドボックスの WACZ の標本
 
+出どころは 2 つ: 検証の結果を見るための 5 本（corpus から）と、経緯の画面を見るための 1 本（BrowserHive の取り込み）。
+
+## corpus から写した 5 本
+
 [wacz-validator-corpus](https://github.com/uraitakahito/wacz-validator-corpus) の **v0.3.0** の
 `fixtures/` から写した（corpus では Git LFS で持っている。ここには実物を置いた）。
 corpus を更新しても、ここは自動では変わらない。上げるなら、写し直してこの表も直す。
@@ -16,6 +20,7 @@ corpus の LFS の pointer と同じ中身かは、次で確かめられる（co
 
 ```sh
 for f in sandbox/samples/*.wacz; do
+  [ "$(basename "$f")" = trace-timeline.wacz ] && continue  # corpus の物ではない（下の節）
   want=$(git -C ../wacz-validator-corpus show "v0.3.0:fixtures/$(basename "$f")" | sed -n 's/^oid sha256://p')
   got=$(shasum -a 256 "$f" | cut -d' ' -f1)
   [ "$want" = "$got" ] && echo "ok  $f" || echo "NG  $f"
@@ -23,3 +28,17 @@ done
 ```
 
 corpus は Unlicense（public domain）。
+
+## BrowserHive の取り込みの 1 本
+
+| ファイル | 何か | sha256 |
+| --- | --- | --- |
+| `trace-timeline.wacz` | BrowserHive **v29.1.0** が、[capture-fixtures](https://github.com/uraitakahito/capture-fixtures) の `/charset/` を 2026-11-13 に撮った WACZ（署名なし・要求と応答の対が 11 個・WARC は `archive/data-000.warc.gz` の 1 本） | `c2204c88f06ad3b7d1d21cfed3985fb90b435fd94bb61c18aafe9e79471c57ed` |
+
+経緯の画面（`#trace/…`。CAPTURE-270）が、レコードの `WARC-Date` を時間軸に置くのを見るための物。corpus の標本は
+BrowserHive の取り込みではないので、ログと時刻の合うレコードを持たない。台本（`sandbox/scenario.json`）のクロール
+`5b0c000b` のページ 1301 が、このファイルの id（ファイル名から決まる）と、同じ取り込みの答え（取り込みの欄とログ）を持つ。
+**3 つは同じ 1 回の取り込みの物なので、WACZ を差し替えるなら、台本の答えも同じ取り込みの物に替える。**
+
+中に在るのは capture-fixtures の頁だけ（手元のスタックの中の名前 `capture-fixtures.capture-ledger:8080` で撮った）。
+capture-fixtures は Unlicense（public domain）。

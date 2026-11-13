@@ -441,6 +441,51 @@ export const pageLog = (c, raw) => {
 };
 
 /**
+ * 取り込みの欄。capture-ledger の `captureOf` (src/api/trace.ts。v0.100.0) が `.result.json` から選ぶ 10 個と同じ名前で、
+ * 台本に無い欄は鍵ごと出さない。下位の object は台本に書かれたまま。
+ */
+const CAPTURE_FIELDS = [
+  "status",
+  "timestamp",
+  "captureProcessingTimeMs",
+  "httpStatusCode",
+  "errorDetails",
+  "settle",
+  "waczStats",
+  "completeness",
+  "document",
+  "windowsNotOpened",
+];
+
+/**
+ * /api/crawls/:id/pages/:page/trace (capture-ledger v0.100.0。CAPTURE-270)。断り方はログのエンドポイントと同じ。
+ * 答えは `{ page, archive, capture, log, trace, reason }` で、`page` はページの行に、flow が測った `submittedAt` と
+ * `finishedAt` (台本のページから。無ければ null) を足した物。`archive` は WACZ の在るページで `{ id, objectKey }` ——
+ * 鍵は、置き場に在る名前の id のときだけ (ほかの id は null。capture-ledger の「見てよくない」と同じ形)。
+ * 取り込みの欄は台本の `capture` から。**`capture` の無いページは読めない** —— 理由は台本の `traceReason`、省けば
+ * taskId の無いページは not-captured、在れば no-manifest (代役の省略)。`trace` は BrowserHive v30.0.0 から載る欄で、
+ * capture-ledger v0.100.0 と同じくいつも null。`log` の無い取り込みは `log: null` で、取り込みの欄は返す。
+ */
+export const pageTrace = (c, raw, names = []) => {
+  if (!DIGITS.test(raw)) return schemaError('params/page must match pattern "^[0-9]+$"');
+  const p = (c?.pages ?? []).find((x) => x.id === raw);
+  if (p === undefined) return { status: 404, body: { error: "not found" } };
+  const page = { ...pageRow(p), submittedAt: p.submittedAt ?? null, finishedAt: p.finishedAt ?? null };
+  const name = names.find((n) => idOf(n) === p.archiveId);
+  const archive =
+    p.archiveId === undefined || p.archiveId === null
+      ? null
+      : { id: p.archiveId, objectKey: name === undefined ? null : `sandbox/${name}` };
+  if (p.capture === undefined) {
+    const reason = p.traceReason ?? (p.taskId === undefined || p.taskId === null ? "not-captured" : "no-manifest");
+    return { status: 200, body: { page, archive, capture: null, log: null, trace: null, reason } };
+  }
+  const capture = Object.fromEntries(CAPTURE_FIELDS.filter((key) => p.capture[key] !== undefined).map((key) => [key, p.capture[key]]));
+  const log = p.log === undefined ? null : { lines: p.log.lines, counts: countsOf(p.log), dropped: p.log.dropped ?? 0 };
+  return { status: 200, body: { page, archive, capture, log, trace: null, reason: null } };
+};
+
+/**
  * /api/archives の行。欄は capture-ledger の src/api/routes.ts (v0.57.4) と同じ。
  * 置き場の WACZ に、台本の「見えない」行 (hidden) を足し、台本の archives で欄を上書きする。
  * 見えない行は一覧に出るが、署名は出ない (capture-ledger の「見てよくない」と同じ 404 になる)。
@@ -1658,17 +1703,20 @@ const handle = (req, res, raw) => {
     send(res, c === undefined ? 404 : 200, c === undefined ? { error: "not found" } : decisionsOf(mine === undefined ? c : { crawlId: mine.crawlId }, c.rules));
     return;
   }
-  // ページの一覧と 1 ページのログ (CAPTURE-18)。受けた行は何も撮っていないので、一覧は空
+  // ページの一覧と、1 ページのログ (CAPTURE-18)・経緯 (CAPTURE-270)。受けた行は何も撮っていないので、一覧は空
   const listed = /^\/api\/crawls\/([^/]+)\/pages$/.exec(pathname);
   const logged = /^\/api\/crawls\/([^/]+)\/pages\/([^/]+)\/log$/.exec(pathname);
-  if (req.method === "GET" && (listed !== null || logged !== null)) {
-    const crawlId = (listed ?? logged)[1];
+  const traced = /^\/api\/crawls\/([^/]+)\/pages\/([^/]+)\/trace$/.exec(pathname);
+  if (req.method === "GET" && (listed !== null || logged !== null || traced !== null)) {
+    const crawlId = (listed ?? logged ?? traced)[1];
     const mine = submitted.find((row) => row.crawlId === crawlId);
     const c = mine === undefined ? s.crawls.find((x) => x.crawlId === crawlId) : { crawlId };
     const answer =
       listed !== null
         ? pageList(c, new URL(req.url ?? "/", "http://sandbox").searchParams)
-        : pageLog(c, decodeURIComponent(logged[2]));
+        : logged !== null
+          ? pageLog(c, decodeURIComponent(logged[2]))
+          : pageTrace(c, decodeURIComponent(traced[2]), samples());
     send(res, answer.status, answer.body);
     return;
   }

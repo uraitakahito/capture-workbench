@@ -86,7 +86,7 @@ capture-ledger は CORS（Cross-Origin Resource Sharing。別のオリジンの�
 
 どのエンドポイントを読むかは workbench（`public/app.js`）が決め、サーバは選びません。
 エンドポイントの一覧（allowlist）は持っていません。
-だから capture-ledger の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）、`GET /api/search`（検索の画面が引く全文検索）も、ここでは何も要りません。どれも読み取りのエンドポイントで、一覧と同じく素通しです。
+だから capture-ledger の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）と `GET /api/crawls/:id/pages/:page/trace`（1 ページの取り込みの経緯）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）、`GET /api/search`（検索の画面が引く全文検索）も、ここでは何も要りません。どれも読み取りのエンドポイントで、一覧と同じく素通しです。
 ページの表の続きは、capture-ledger が本文の `next` で言います（中継が返すのは状態と `content-type` と本文だけで、ほかのヘッダは落ちるため）。
 
 ## POST /api/crawls —— クロールを始める

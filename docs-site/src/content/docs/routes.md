@@ -94,8 +94,9 @@ cannot call it directly, the server relays it to make it same-origin.
 Which ledger routes are read is decided by the workbench (`public/app.js`); the server does not
 choose. It keeps no list of allowed routes. So the ledger's `GET /api/crawl-rules/check` (the new
 crawl view checking its rules as you write them), `GET /api/crawls/:id/decisions` (what an
-opened crawl's rules decided), `GET /api/crawls/:id/pages` (an opened crawl's pages table) and
-`GET /api/crawls/:id/pages/:page/log` (one page's log), `GET /api/crawls/:id/diagnostics` (the type
+opened crawl's rules decided), `GET /api/crawls/:id/pages` (an opened crawl's pages table),
+`GET /api/crawls/:id/pages/:page/log` (one page's log) and `GET /api/crawls/:id/pages/:page/trace`
+(the trace of one page's capture), `GET /api/crawls/:id/diagnostics` (the type
 errors of a crawl that failed the type check) and `GET /api/search` (the search view's full-text
 search) need nothing here: they are reads, and pass through like the lists. The ledger says where the pages table continues in the body (`next`),
 since the relay returns only the status, `content-type` and body, and drops the other headers.

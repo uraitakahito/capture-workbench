@@ -1,0 +1,920 @@
+{
+ "//": "dev の capture-fixtures を撮った実物（2026-11-13・BrowserHive v29.1.0・capture-ledger v0.100.0）。GET /api/crawls/:id/pages/:page/trace の答えと、/wacz/<id>/records の答え。試験の期待値は、この実物から数えた物。archive の objectKey だけは短い名前に替えた（実物は <taskId>_<crawlId>.wacz で、秘密を探す検査が鍵と見間違える。試験は読まない）。",
+ "charset": {
+  "answer": {
+   "page": {
+    "id": "968",
+    "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+    "depth": 0,
+    "state": "captured",
+    "reason": null,
+    "taskId": "a1fcd8ec-709c-4022-bcf7-30c246b8c63d",
+    "archiveId": "1f1c461a-b95a-4559-a0b5-f9e0d45ac7ed",
+    "capturedAt": "2026-11-13T02:48:19.909Z",
+    "bundledRev": 1,
+    "logCounts": {
+     "info": 7,
+     "warn": 0,
+     "debug": 8,
+     "error": 0,
+     "dropped": 0
+    },
+    "submittedAt": "2026-11-13T02:48:16.793Z",
+    "finishedAt": "2026-11-13T02:48:19.941Z"
+   },
+   "archive": {
+    "id": "1f1c461a-b95a-4559-a0b5-f9e0d45ac7ed",
+    "objectKey": "charset.wacz"
+   },
+   "capture": {
+    "status": "success",
+    "timestamp": "2026-11-13T02:48:19.909Z",
+    "captureProcessingTimeMs": 2782,
+    "httpStatusCode": 200,
+    "settle": {
+     "strategy": "fully-loaded",
+     "endedBy": "quiet",
+     "waitedMs": 2133,
+     "devicePixelRatio": 1,
+     "limits": {
+      "minMs": 1000,
+      "maxMs": 3000,
+      "quietMs": 1000,
+      "networkConcurrency": 0
+     },
+     "load": {
+      "atMs": 14
+     },
+     "network": {
+      "quietAtMs": 2016
+     },
+     "cpu": {
+      "quietAtMs": 1119
+     },
+     "dom": {
+      "quietAtMs": 2025
+     }
+    },
+    "waczStats": {
+     "totalRecorded": 11,
+     "totalBlocked": 0,
+     "totalDenied": 0,
+     "totalSkippedContentType": 0,
+     "totalSkippedUrlPolicy": 0,
+     "totalTruncatedTooLarge": 0,
+     "totalTruncatedTaskCap": 0,
+     "totalNotIntercepted": 0,
+     "totalSkippedSecret": 0,
+     "totalFailed": 0,
+     "totalIncomplete": 0,
+     "totalBodyBytes": 1125
+    },
+    "completeness": {
+     "bodylessUrls": [],
+     "truncatedUrls": [],
+     "uninterceptedUrls": [],
+     "crashedTargets": [],
+     "complete": true
+    },
+    "document": {
+     "url": "http://capture-fixtures.capture-ledger:8080/charset/"
+    },
+    "windowsNotOpened": 0
+   },
+   "log": {
+    "lines": [
+     {
+      "at": "2026-11-13T02:48:17.127Z",
+      "ms": 318,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step check-address",
+      "data": {
+       "step": "check-address"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:17.187Z",
+      "ms": 378,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step start-recording",
+      "data": {
+       "step": "start-recording"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:17.195Z",
+      "ms": 386,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step load-pages",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:17.196Z",
+      "ms": 387,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "navigation, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:17.392Z",
+      "ms": 583,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "settle, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.525Z",
+      "ms": 2716,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "settled by quiet after 2133ms",
+      "data": {
+       "endedBy": "quiet",
+       "waitedMs": 2133
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.539Z",
+      "ms": 2730,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "snapshot after-load, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.672Z",
+      "ms": 2863,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "behaviors, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.672Z",
+      "ms": 2863,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step write-formats",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.677Z",
+      "ms": 2868,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "links",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.682Z",
+      "ms": 2873,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "page read",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.803Z",
+      "ms": 2994,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "put links",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.832Z",
+      "ms": 3023,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "took 0 links from the page and 1 same-origin frames",
+      "data": {
+       "links": 0,
+       "frames": {
+        "read": 1,
+        "unreadable": 0,
+        "withheld": 0
+       }
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.832Z",
+      "ms": 3023,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "web storage",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:19.839Z",
+      "ms": 3030,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step package-wacz",
+      "data": {
+       "step": "package-wacz"
+      }
+     }
+    ],
+    "counts": {
+     "debug": 8,
+     "info": 7,
+     "warn": 0,
+     "error": 0
+    },
+    "dropped": 0
+   },
+   "trace": null,
+   "reason": null
+  },
+  "records": [
+   {
+    "offset": 0,
+    "length": 412,
+    "type": "warcinfo",
+    "date": "2026-11-13T02:48:17.193Z",
+    "contentType": "application/warc-fields",
+    "indexed": false
+   },
+   {
+    "offset": 412,
+    "length": 933,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/",
+    "date": "2026-11-13T02:48:17.261Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/html",
+    "indexed": true
+   },
+   {
+    "offset": 1345,
+    "length": 621,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/",
+    "date": "2026-11-13T02:48:17.261Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 1966,
+    "length": 549,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/sjis.css",
+    "date": "2026-11-13T02:48:17.340Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/css",
+    "indexed": true
+   },
+   {
+    "offset": 2515,
+    "length": 559,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/sjis.css",
+    "date": "2026-11-13T02:48:17.340Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 3074,
+    "length": 536,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/import.css",
+    "date": "2026-11-13T02:48:17.340Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/css",
+    "indexed": true
+   },
+   {
+    "offset": 3610,
+    "length": 561,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/import.css",
+    "date": "2026-11-13T02:48:17.340Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 4171,
+    "length": 575,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/sjis.html",
+    "date": "2026-11-13T02:48:17.353Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/html",
+    "indexed": true
+   },
+   {
+    "offset": 4746,
+    "length": 636,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/sjis.html",
+    "date": "2026-11-13T02:48:17.353Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 5382,
+    "length": 558,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.css",
+    "date": "2026-11-13T02:48:17.370Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/css",
+    "indexed": true
+   },
+   {
+    "offset": 5940,
+    "length": 564,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.css",
+    "date": "2026-11-13T02:48:17.370Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 6504,
+    "length": 552,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/sjis.css",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/css",
+    "indexed": true
+   },
+   {
+    "offset": 7056,
+    "length": 550,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/sjis.css",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 7606,
+    "length": 560,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.css",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/css",
+    "indexed": true
+   },
+   {
+    "offset": 8166,
+    "length": 549,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.css",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 8715,
+    "length": 537,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/sjis.txt",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/plain",
+    "indexed": true
+   },
+   {
+    "offset": 9252,
+    "length": 547,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/sjis.txt",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 9799,
+    "length": 532,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.txt",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/plain",
+    "indexed": true
+   },
+   {
+    "offset": 10331,
+    "length": 552,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/nocharset.txt",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 10883,
+    "length": 480,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/echo",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 204,
+    "indexed": true
+   },
+   {
+    "offset": 11363,
+    "length": 654,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/echo",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=request",
+    "mime": "text/plain",
+    "indexed": false
+   },
+   {
+    "offset": 12017,
+    "length": 544,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/gzip.css",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/css",
+    "indexed": true
+   },
+   {
+    "offset": 12561,
+    "length": 546,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/charset/gzip.css",
+    "date": "2026-11-13T02:48:17.385Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 13107,
+    "length": 554,
+    "type": "resource",
+    "uri": "urn:browserhive:snapshot:after-load:http://capture-fixtures.capture-ledger:8080/charset/",
+    "date": "2026-11-13T02:48:19.593Z",
+    "contentType": "text/html; charset=utf-8",
+    "indexed": true
+   },
+   {
+    "offset": 13661,
+    "length": 422,
+    "type": "metadata",
+    "uri": "urn:browserhive:snapshot:after-load:http://capture-fixtures.capture-ledger:8080/charset/",
+    "date": "2026-11-13T02:48:19.593Z",
+    "contentType": "application/warc-fields",
+    "indexed": false
+   }
+  ]
+ },
+ "fetchLate": {
+  "answer": {
+   "page": {
+    "id": "969",
+    "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=120000",
+    "depth": 0,
+    "state": "captured",
+    "reason": null,
+    "taskId": "815ea34d-03d3-4eb8-975b-0e393488a6cd",
+    "archiveId": "cd860cd6-eb4c-4398-ba6b-3e68fac7392d",
+    "capturedAt": "2026-11-13T02:48:26.606Z",
+    "bundledRev": 1,
+    "logCounts": {
+     "info": 7,
+     "warn": 0,
+     "debug": 8,
+     "error": 0,
+     "dropped": 0
+    },
+    "submittedAt": "2026-11-13T02:48:22.724Z",
+    "finishedAt": "2026-11-13T02:48:26.637Z"
+   },
+   "archive": {
+    "id": "cd860cd6-eb4c-4398-ba6b-3e68fac7392d",
+    "objectKey": "fetch-late.wacz"
+   },
+   "capture": {
+    "status": "success",
+    "timestamp": "2026-11-13T02:48:26.606Z",
+    "captureProcessingTimeMs": 3619,
+    "httpStatusCode": 200,
+    "settle": {
+     "strategy": "fully-loaded",
+     "endedBy": "deadline",
+     "waitedMs": 3111,
+     "devicePixelRatio": 1,
+     "limits": {
+      "minMs": 1000,
+      "maxMs": 3000,
+      "quietMs": 1000,
+      "networkConcurrency": 0
+     },
+     "load": {
+      "atMs": 120
+     },
+     "network": {},
+     "cpu": {
+      "quietAtMs": 1109
+     },
+     "dom": {
+      "quietAtMs": 2011
+     }
+    },
+    "waczStats": {
+     "totalRecorded": 1,
+     "totalBlocked": 0,
+     "totalDenied": 0,
+     "totalSkippedContentType": 0,
+     "totalSkippedUrlPolicy": 0,
+     "totalTruncatedTooLarge": 0,
+     "totalTruncatedTaskCap": 0,
+     "totalNotIntercepted": 0,
+     "totalSkippedSecret": 0,
+     "totalFailed": 0,
+     "totalIncomplete": 1,
+     "totalBodyBytes": 215
+    },
+    "completeness": {
+     "bodylessUrls": [],
+     "truncatedUrls": [],
+     "uninterceptedUrls": [],
+     "crashedTargets": [],
+     "complete": true
+    },
+    "document": {
+     "url": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=120000"
+    },
+    "windowsNotOpened": 0
+   },
+   "log": {
+    "lines": [
+     {
+      "at": "2026-11-13T02:48:22.988Z",
+      "ms": 259,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step check-address",
+      "data": {
+       "step": "check-address"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:23.039Z",
+      "ms": 310,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step start-recording",
+      "data": {
+       "step": "start-recording"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:23.041Z",
+      "ms": 312,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step load-pages",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:23.042Z",
+      "ms": 313,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "navigation, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:23.124Z",
+      "ms": 395,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "settle, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.235Z",
+      "ms": 3506,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "settled by deadline after 3111ms",
+      "data": {
+       "endedBy": "deadline",
+       "waitedMs": 3111
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.248Z",
+      "ms": 3519,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "snapshot after-load, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.410Z",
+      "ms": 3681,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "behaviors, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.410Z",
+      "ms": 3681,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step write-formats",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.413Z",
+      "ms": 3684,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "links",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.418Z",
+      "ms": 3689,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "page read",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.524Z",
+      "ms": 3795,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "put links",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.533Z",
+      "ms": 3804,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "took 0 links from the page and 0 same-origin frames",
+      "data": {
+       "links": 0,
+       "frames": {
+        "read": 0,
+        "unreadable": 0,
+        "withheld": 0
+       }
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.533Z",
+      "ms": 3804,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "web storage",
+      "data": {
+       "step": "write-formats"
+      }
+     },
+     {
+      "at": "2026-11-13T02:48:26.539Z",
+      "ms": 3810,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step package-wacz",
+      "data": {
+       "step": "package-wacz"
+      }
+     }
+    ],
+    "counts": {
+     "debug": 8,
+     "info": 7,
+     "warn": 0,
+     "error": 0
+    },
+    "dropped": 0
+   },
+   "trace": null,
+   "reason": null
+  },
+  "records": [
+   {
+    "offset": 0,
+    "length": 435,
+    "type": "warcinfo",
+    "date": "2026-11-13T02:48:23.041Z",
+    "contentType": "application/warc-fields",
+    "indexed": false
+   },
+   {
+    "offset": 435,
+    "length": 640,
+    "type": "response",
+    "uri": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=120000",
+    "date": "2026-11-13T02:48:23.098Z",
+    "contentType": "application/http;msgtype=response",
+    "status": 200,
+    "mime": "text/html",
+    "indexed": true
+   },
+   {
+    "offset": 1075,
+    "length": 642,
+    "type": "request",
+    "uri": "http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=120000",
+    "date": "2026-11-13T02:48:23.098Z",
+    "contentType": "application/http;msgtype=request",
+    "indexed": false
+   },
+   {
+    "offset": 1717,
+    "length": 478,
+    "type": "resource",
+    "uri": "urn:browserhive:snapshot:after-load:http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=120000",
+    "date": "2026-11-13T02:48:26.303Z",
+    "contentType": "text/html; charset=utf-8",
+    "indexed": true
+   },
+   {
+    "offset": 2195,
+    "length": 443,
+    "type": "metadata",
+    "uri": "urn:browserhive:snapshot:after-load:http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=120000",
+    "date": "2026-11-13T02:48:26.303Z",
+    "contentType": "application/warc-fields",
+    "indexed": false
+   },
+   {
+    "offset": 2638,
+    "length": 372,
+    "type": "metadata",
+    "uri": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=120000",
+    "date": "2026-11-13T02:48:26.539Z",
+    "contentType": "application/warc-fields",
+    "indexed": false
+   }
+  ],
+  "bodies": {
+   "archive/data-000.warc.gz 2195": "snapshot: after-load\r\ndocument-uri: http://capture-fixtures.capture-ledger:8080/fetch-late?afterMs=300&takesMs=120000\r\ndocument-record: <urn:uuid:2df4ed81-cb3d-48f6-b040-d641e31c1963>\r\nsecrets-replaced: 0\r\n",
+   "archive/data-000.warc.gz 2638": "incomplete: true\r\nreason: stop-while-pending\r\nrequestId: 2805.2\r\nmethod: GET\r\nresourceType: Fetch\r\n"
+  }
+ },
+ "timedOut": {
+  "answer": {
+   "page": {
+    "id": "971",
+    "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000",
+    "depth": 0,
+    "state": "failed",
+    "reason": "timeout: Navigation timeout of 30000 ms exceeded",
+    "taskId": "d250390e-2e8e-49cf-a339-4982cf0fe25f",
+    "archiveId": null,
+    "capturedAt": null,
+    "bundledRev": null,
+    "logCounts": {
+     "info": 3,
+     "warn": 0,
+     "debug": 1,
+     "error": 1,
+     "dropped": 0
+    },
+    "submittedAt": "2026-11-13T02:49:08.323Z",
+    "finishedAt": "2026-11-13T02:49:38.706Z"
+   },
+   "archive": null,
+   "capture": {
+    "status": "timeout",
+    "timestamp": "2026-11-13T02:49:38.670Z",
+    "captureProcessingTimeMs": 30132,
+    "errorDetails": {
+     "type": "timeout",
+     "message": "Navigation timeout of 30000 ms exceeded",
+     "timeoutMs": 30000
+    }
+   },
+   "log": {
+    "lines": [
+     {
+      "at": "2026-11-13T02:49:08.537Z",
+      "ms": 211,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step check-address",
+      "data": {
+       "step": "check-address"
+      }
+     },
+     {
+      "at": "2026-11-13T02:49:08.598Z",
+      "ms": 272,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step start-recording",
+      "data": {
+       "step": "start-recording"
+      }
+     },
+     {
+      "at": "2026-11-13T02:49:08.601Z",
+      "ms": 275,
+      "source": "browserhive",
+      "level": "info",
+      "msg": "step load-pages",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:49:08.602Z",
+      "ms": 276,
+      "dpr": 1,
+      "source": "browserhive",
+      "level": "debug",
+      "msg": "navigation, dpr=1",
+      "data": {
+       "step": "load-pages"
+      }
+     },
+     {
+      "at": "2026-11-13T02:49:38.674Z",
+      "ms": 30348,
+      "source": "browserhive",
+      "level": "error",
+      "msg": "Navigation timeout of 30000 ms exceeded"
+     }
+    ],
+    "counts": {
+     "debug": 1,
+     "info": 3,
+     "warn": 0,
+     "error": 1
+    },
+    "dropped": 0
+   },
+   "trace": null,
+   "reason": null
+  }
+ }
+}

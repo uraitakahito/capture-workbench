@@ -42,6 +42,12 @@
     "        省けば lines から数える) で、ページの行の logCounts は log から組む。log の無いページはログを読めない —— 理由は",
     "        logReason、省けば taskId の無いページは not-captured、在れば no-log (ログを残す前の BrowserHive の取り込み)。",
     "        pages の無い行は一覧が空 (代役の省略)。5b0c0009 は時間切れのページ (warn と error の行) と、捨てた行・途中で切った行を持つ。",
+    "crawls の pages の capture・submittedAt・finishedAt: 1 ページの経緯 (capture-ledger の GET /api/crawls/:id/pages/:page/trace の形。v0.100.0) の元。capture は",
+    "        取り込みの欄 (BrowserHive の答えから capture-ledger が選ぶ 10 個)、submittedAt と finishedAt は flow が測った投入と完了の時刻。",
+    "        capture の無いページは経緯を読めない —— 理由は traceReason、省けば taskId の無いページは not-captured、在れば no-manifest (代役の省略)。",
+    "        答えの archive は WACZ の在るページの { id, objectKey } で、鍵は archiveId が置き場のファイルの id のときだけ。",
+    "        5b0c000b は経緯の画面の見本: 1301 の archiveId は置き場の trace-timeline.wacz の id (ファイル名から決まる。名前を変えたらここも変える) で、",
+    "        capture と log はその WACZ を作った取り込みの本物の答え (BrowserHive v29.1.0。出どころは sandbox/samples/SOURCE.md)。1302 は時間切れ (WACZ が無い)。",
     "crawls の failures の page: 取れなかったページの行の id (capture-ledger と同じ)。同じ行の pages に、同じ URL の failed の行を置く。",
     "crawls の diagnosed・fixes: 型で落ちた行の、取り直した型の誤り (GET /api/crawls/:id/diagnostics の答えの本文) と、",
     "        その場の TS の名前ごとの直し方の答え ({ status, body }。POST /api/crawls/:id/inline/:name/fix。CAPTURE-49)。",
@@ -397,6 +403,78 @@
           "depth": 1,
           "state": "skipped",
           "reason": "robots"
+        }
+      ]
+    },
+    {
+      "crawlId": "5b0c000b-6a1e-4000-8000-00000000000b",
+      "//": "経緯の画面（#trace/…。CAPTURE-270）の見本。ページ 1301 は置き場の trace-timeline.wacz を指し、取り込みの欄とログはその取り込みの本物の答え。1302 は時間切れで、WACZ が無い",
+      "state": "succeeded",
+      "stopReason": "max_depth",
+      "maxDepth": 0,
+      "seeds": ["http://capture-fixtures.capture-ledger:8080/charset/", "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000"],
+      "startedSecondsAgo": 9000,
+      "tookSeconds": 70,
+      "pagesCaptured": 1,
+      "pagesDiscovered": 0,
+      "waczCount": 1,
+      "failures": [
+        { "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000", "depth": 0, "reason": "timeout: Navigation timeout of 30000 ms exceeded", "page": "1302" }
+      ],
+      "pages": [
+        {
+          "id": "1301",
+          "url": "http://capture-fixtures.capture-ledger:8080/charset/",
+          "depth": 0,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1301-7000-8000-000000001301",
+          "archiveId": "c4557f7c-708d-3fda-2f31-715cd115132f",
+          "capturedAt": "2026-11-13T02:48:19.909Z",
+          "bundledRev": 1,
+          "submittedAt": "2026-11-13T02:48:16.793Z",
+          "finishedAt": "2026-11-13T02:48:19.941Z",
+          "capture": {"status": "success", "timestamp": "2026-11-13T02:48:19.909Z", "captureProcessingTimeMs": 2782, "httpStatusCode": 200, "settle": {"strategy": "fully-loaded", "endedBy": "quiet", "waitedMs": 2133, "devicePixelRatio": 1, "limits": {"minMs": 1000, "maxMs": 3000, "quietMs": 1000, "networkConcurrency": 0}, "load": {"atMs": 14}, "network": {"quietAtMs": 2016}, "cpu": {"quietAtMs": 1119}, "dom": {"quietAtMs": 2025}}, "waczStats": {"totalRecorded": 11, "totalBlocked": 0, "totalDenied": 0, "totalSkippedContentType": 0, "totalSkippedUrlPolicy": 0, "totalTruncatedTooLarge": 0, "totalTruncatedTaskCap": 0, "totalNotIntercepted": 0, "totalSkippedSecret": 0, "totalFailed": 0, "totalIncomplete": 0, "totalBodyBytes": 1125}, "completeness": {"bodylessUrls": [], "truncatedUrls": [], "uninterceptedUrls": [], "crashedTargets": [], "complete": true}, "document": {"url": "http://capture-fixtures.capture-ledger:8080/charset/"}, "windowsNotOpened": 0},
+          "log": {
+            "lines": [
+              {"at": "2026-11-13T02:48:17.127Z", "ms": 318, "source": "browserhive", "level": "info", "msg": "step check-address", "data": {"step": "check-address"}},
+              {"at": "2026-11-13T02:48:17.187Z", "ms": 378, "source": "browserhive", "level": "info", "msg": "step start-recording", "data": {"step": "start-recording"}},
+              {"at": "2026-11-13T02:48:17.195Z", "ms": 386, "source": "browserhive", "level": "info", "msg": "step load-pages", "data": {"step": "load-pages"}},
+              {"at": "2026-11-13T02:48:17.196Z", "ms": 387, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "navigation, dpr=1", "data": {"step": "load-pages"}},
+              {"at": "2026-11-13T02:48:17.392Z", "ms": 583, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "settle, dpr=1", "data": {"step": "load-pages"}},
+              {"at": "2026-11-13T02:48:19.525Z", "ms": 2716, "dpr": 1, "source": "browserhive", "level": "info", "msg": "settled by quiet after 2133ms", "data": {"endedBy": "quiet", "waitedMs": 2133}},
+              {"at": "2026-11-13T02:48:19.539Z", "ms": 2730, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "snapshot after-load, dpr=1", "data": {"step": "load-pages"}},
+              {"at": "2026-11-13T02:48:19.672Z", "ms": 2863, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "behaviors, dpr=1", "data": {"step": "load-pages"}},
+              {"at": "2026-11-13T02:48:19.672Z", "ms": 2863, "source": "browserhive", "level": "info", "msg": "step write-formats", "data": {"step": "write-formats"}},
+              {"at": "2026-11-13T02:48:19.677Z", "ms": 2868, "source": "browserhive", "level": "debug", "msg": "links", "data": {"step": "write-formats"}},
+              {"at": "2026-11-13T02:48:19.682Z", "ms": 2873, "source": "browserhive", "level": "debug", "msg": "page read", "data": {"step": "write-formats"}},
+              {"at": "2026-11-13T02:48:19.803Z", "ms": 2994, "source": "browserhive", "level": "debug", "msg": "put links", "data": {"step": "write-formats"}},
+              {"at": "2026-11-13T02:48:19.832Z", "ms": 3023, "source": "browserhive", "level": "info", "msg": "took 0 links from the page and 1 same-origin frames", "data": {"links": 0, "frames": {"read": 1, "unreadable": 0, "withheld": 0}}},
+              {"at": "2026-11-13T02:48:19.832Z", "ms": 3023, "source": "browserhive", "level": "debug", "msg": "web storage", "data": {"step": "write-formats"}},
+              {"at": "2026-11-13T02:48:19.839Z", "ms": 3030, "source": "browserhive", "level": "info", "msg": "step package-wacz", "data": {"step": "package-wacz"}}
+            ]
+          }
+        },
+        {
+          "id": "1302",
+          "url": "http://capture-fixtures.capture-ledger:8080/slow-response?delayMs=60000",
+          "depth": 0,
+          "state": "failed",
+          "reason": "timeout: Navigation timeout of 30000 ms exceeded",
+          "taskId": "019a5b0c-1302-7000-8000-000000001302",
+          "archiveId": null,
+          "submittedAt": "2026-11-13T02:49:08.323Z",
+          "finishedAt": "2026-11-13T02:49:38.706Z",
+          "capture": {"status": "timeout", "timestamp": "2026-11-13T02:49:38.670Z", "captureProcessingTimeMs": 30132, "errorDetails": {"type": "timeout", "message": "Navigation timeout of 30000 ms exceeded", "timeoutMs": 30000}},
+          "log": {
+            "lines": [
+              {"at": "2026-11-13T02:49:08.537Z", "ms": 211, "source": "browserhive", "level": "info", "msg": "step check-address", "data": {"step": "check-address"}},
+              {"at": "2026-11-13T02:49:08.598Z", "ms": 272, "source": "browserhive", "level": "info", "msg": "step start-recording", "data": {"step": "start-recording"}},
+              {"at": "2026-11-13T02:49:08.601Z", "ms": 275, "source": "browserhive", "level": "info", "msg": "step load-pages", "data": {"step": "load-pages"}},
+              {"at": "2026-11-13T02:49:08.602Z", "ms": 276, "dpr": 1, "source": "browserhive", "level": "debug", "msg": "navigation, dpr=1", "data": {"step": "load-pages"}},
+              {"at": "2026-11-13T02:49:38.674Z", "ms": 30348, "source": "browserhive", "level": "error", "msg": "Navigation timeout of 30000 ms exceeded"}
+            ]
+          }
         }
       ]
     }
