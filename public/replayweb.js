@@ -6,7 +6,10 @@
  * BrowserHive v23 からの WACZ では、一覧に並ぶのは DOM の写し（`urn:browserhive:snapshot:…`）で、写しには頁の script が
  * 無い。JS が出し入れする絵（apple.com/jp のヒーローなど）は、写しでは出ない（CAPTURE-29）。だから取り込んだ URL を、
  * 撮った時刻で直に開く。写し（検索前・検索後）は、replay の Pages タブから開ける。
+ *
+ * link の字と説明は辞書（`i18n/*.json`）に在る。再生の名前（ReplayWeb.page・Web Capture）は固有の名前なので、訳さない。
  */
+import { t } from "./i18n.js";
 
 /**
  * replayweb-server が保管庫へ中継する path（`/wacz/<鍵>`）。鍵は `/` で区切り、区切りごとに符号にして繋ぐ —— replayweb-server
@@ -121,11 +124,11 @@ export const viewerText = (viewer) => `${viewer.label} ↗`;
 /** クロールの行の合本の link の字。途中の版なら、番号と「途中」を言う。 */
 export const replayBundleText = (crawl, viewer) =>
   isPartialBundle(crawl)
-    ? `${viewer.label} r${String(crawl.replayBundle.rev)}（途中）↗`
+    ? t("crawls.bundle.partialLink", { viewer: viewer.label, rev: crawl.replayBundle.rev })
     : viewerText(viewer);
 
-/** 途中の版の link に添える説明（title）。 */
-export const PARTIAL_BUNDLE_NOTE = "走行中に書いた途中の版です。まだ入っていないページは Not Found になります";
+/** 途中の版の link に添える説明（title）。**関数** —— 字は、引くときの言語で辞書から引く（読み込みのときに決めない）。 */
+export const partialBundleNote = () => t("crawls.bundle.partialNote");
 
 /**
  * 合本を書けなかった理由の 1 行（capture-ledger の `replayBundle.error`。文は言い換えない）。失敗が無ければ undefined。capture-ledger は指す版を
@@ -135,6 +138,6 @@ export const replayBundleFailure = (replayBundle) => {
   const error = replayBundle?.error;
   if (typeof error !== "string" || error === "") return undefined;
   return bundleKeyOf(replayBundle) === undefined
-    ? `合本を書けませんでした（再生で開ける版はまだありません）: ${error}`
-    : `合本の新しい版を書けませんでした（再生のリンクは前の版 r${String(replayBundle.rev)} を開きます）: ${error}`;
+    ? t("crawls.bundle.neverWritten", { error })
+    : t("crawls.bundle.newFailed", { rev: replayBundle.rev, error });
 };

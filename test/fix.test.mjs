@@ -5,6 +5,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "../public/fix.js";
+import { setLang, t } from "../public/i18n.js";
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 /** 代役の 5b0c0008（sandbox/scenario.json）と同じ、行に残った失敗の文。 */
 const FAILED =
@@ -145,4 +156,52 @@ test("差分は、消した行を元の行番号で、足した行を直した�
 
 test("理由は、code・行・どう直したかの 1 行", () => {
   assert.equal(noteText({ code: "TS7006", line: 2, why: "引数に型を付けた" }), "TS7006（2 行目）: 引数に型を付けた");
+});
+
+// ── 英語の字（CAPTURE-294）。日本語の字は、上の試験が見ている ─────────────────────────
+
+test("英語: 直しの 1 行は、往復の単数と複数を言い分け、括弧は半角にする", () => {
+  const passed = (rounds) =>
+    fixAnswer(200, { rounds, compiled: { typescript: "6.0.3", hostTypes: "v0.6.0" }, usage: { usd: 0.0304 } }).text;
+  assert.equal(
+    inEnglish(() => passed(1)),
+    "A fix that passed the check with TypeScript 6.0.3 and the types of __bh v0.6.0 (1 round · $0.0304)",
+  );
+  assert.equal(
+    inEnglish(() => passed(2)),
+    "A fix that passed the check with TypeScript 6.0.3 and the types of __bh v0.6.0 (2 rounds · $0.0304)",
+  );
+  // 回数も費用も無ければ、括弧ごと出さない
+  assert.equal(inEnglish(() => fixAnswer(200, {}).text), "A fix that passed the type check");
+});
+
+test("英語: 状態の数と capture-ledger の文は「:」で繋ぎ、capture-ledger の文は訳さない", () => {
+  assert.equal(inEnglish(() => diagnosisOf(503, { error: "ts-compile unreachable" }).text), "503: ts-compile unreachable");
+  assert.equal(
+    inEnglish(() => fixAnswer(422, { error: "no fix passed the checks", rounds: 2, usage: { usd: 0.0612 } }).text),
+    "422: no fix passed the checks (2 rounds · $0.0612)",
+  );
+  assert.equal(
+    inEnglish(() => fixAnswer(429, { error: "claude budget exhausted", spentUsd: 5.0123, budgetUsd: 5 }).text),
+    "429: claude budget exhausted (this month $5.0123, limit $5; Claude was not called)",
+  );
+  assert.equal(inEnglish(() => fixAnswer(0, {}).text), "The workbench itself cannot be reached (The answer has no message)");
+  assert.equal(diagnosisOf(0, {}).text, "workbench 自身に届きません（答えに文がありません）");
+});
+
+test("英語: 理由の 1 行と、差分の見出し", () => {
+  assert.equal(inEnglish(() => noteText({ code: "TS7006", line: 2, why: "typed the parameter" })), "TS7006 (line 2): typed the parameter");
+  const titles = () =>
+    diffOf([
+      { from: 1, to: 1, before: ["a"], after: ["b"] },
+      { from: 3, to: 4, before: ["x", "y"], after: [] },
+    ]).map((hunk) => hunk.title);
+  assert.deepEqual(inEnglish(titles), ["Line 1", "Lines 3–4"]);
+});
+
+test("英語: 型の誤りの見出し（app.js が描く）は、件数の単数と複数を言い分ける", () => {
+  const title = (n) => t("crawls.diag.title", { typescript: "6.0.3", n });
+  assert.equal(title(1), "型の誤り（組み合わせを ts-compile-service に送り直した。TypeScript 6.0.3・1 件）");
+  assert.equal(inEnglish(() => title(1)), "Type errors (the combination was sent to ts-compile-service again; TypeScript 6.0.3 · 1 error)");
+  assert.equal(inEnglish(() => title(2)), "Type errors (the combination was sent to ts-compile-service again; TypeScript 6.0.3 · 2 errors)");
 });

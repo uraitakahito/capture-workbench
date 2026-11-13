@@ -6,7 +6,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+import { setLang, t } from "../public/i18n.js";
 import {
+  ACTIONS,
+  actionText,
   addRow,
   addSkipRow,
   asTemplate,
@@ -830,4 +833,96 @@ test("始める要求の鍵は、同じ本文なら同じ鍵を使い回す —�
 test("確かな答え（202・4xx）の後は鍵を捨て、届いたか分からない間（0・5xx）だけ持つ", () => {
   for (const status of [202, 400, 401, 409, 422]) assert.equal(keepsKey(status), false, String(status));
   for (const status of [0, 500, 502, 503]) assert.equal(keepsKey(status), true, String(status));
+});
+
+// ── 英語の字（辞書の en。CAPTURE-294）──────────────────────────────
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
+
+test("英語: 動きの名前は、引くときの言語で決まる（読み込みのときに字を作らない）。知らない動きは届いた字のまま", () => {
+  assert.deepEqual(ACTIONS.map((action) => [action, actionText(action)]), [
+    ["follow", "撮って辿る"],
+    ["capture", "撮るだけ"],
+    ["skip", "落とす"],
+  ]);
+  assert.deepEqual(inEnglish(() => ACTIONS.map(actionText)), ["Capture and follow", "Capture only", "Drop"]);
+  assert.equal(actionText("pause"), "pause");
+});
+
+test("英語: 確かめの文は 1 つの文で言い、段と枚は単数と複数を分ける", () => {
+  assert.equal(
+    inEnglish(() => summaryOf(ANSWER, FOLLOW).text),
+    "Rows are tried from the top: row 1 drops URLs that start with https://www.site.test/search, " +
+      "row 2 captures and follows within site.test, row 3 only captures anywhere. " +
+      "Links that match no row are dropped. Up to 3 levels and 200 pages.",
+  );
+  const limits = (maxDepth, maxPages) => inEnglish(() => summaryOf({ seeds: [], rules: [] }, { maxDepth, maxPages, rows: [] }).text);
+  assert.equal(limits("1", "1"), "There are no rules. Up to 1 level and 1 page.");
+  assert.equal(limits("2", "2"), "There are no rules. Up to 2 levels and 2 pages.");
+  assert.equal(limits("1", ""), "There are no rules. Up to 1 level and the default number of pages.");
+  assert.equal(limits("", ""), "There are no rules. Up to the default depth and the default number of pages.");
+});
+
+test("英語: 始められない理由と行ごとの印", () => {
+  const answer = {
+    seeds: [
+      { url: "https://ads.site.test/", valid: true, site: "site.test", followed: false },
+      { url: "not a url", valid: false },
+    ],
+    rules: [
+      { rule: 1, action: "follow", kind: "scope", pattern: "same-site" },
+      { rule: 2, action: "skip", kind: "domain", pattern: "ads.site.test", coveredBy: 1 },
+      { rule: 3, action: "skip", kind: "invalid", pattern: "*.site.test" },
+    ],
+    ok: false,
+  };
+  const said = inEnglish(() => summaryOf(answer, { maxDepth: "", maxPages: "", rows: [] }));
+  assert.equal(said.bad, true);
+  assert.match(said.text, /row 2 drops ads\.site\.test and its subdomains, row 3 drops "\*\.site\.test" \(cannot be read\)\. /);
+  assert.match(said.text, / Row 2 is covered by row 1 and never matches\. What row 3 matches cannot be read\. /);
+  assert.match(said.text, / The seed https:\/\/ads\.site\.test\/ does not match a "Capture and follow" row\. /);
+  assert.match(said.text, / The seed not a url is not an http\(s\) URL\. It cannot be started as it is\.$/);
+  assert.deepEqual(inEnglish(() => marksOf(answer, 3)), [
+    { text: "scope", bad: false },
+    { text: "Covered by row 1; never matches. Move it up", bad: true },
+    { text: "Cannot be read (a lowercase host name, an http(s) URL or the name of a scope)", bad: true },
+  ]);
+});
+
+test("英語: 始めた答え —— capture-ledger の文は訳さず、繋ぐ形だけが英語になる", () => {
+  const answer = (status, body) => inEnglish(() => startAnswer(status, body).text);
+  assert.equal(answer(202, { crawlId: "9072b625-1111-4000-8000-000000000000" }), "Crawl started (crawl 9072b625).");
+  assert.equal(answer(409, {}), "A crawl is running. The next one cannot start until it ends.");
+  assert.equal(
+    answer(400, { error: "rules that can never match", rules: [{ rule: 2, coveredBy: 1 }, { rule: 3, pattern: "ADS.site.test" }] }),
+    "400 — rules that can never match: row 2 (covered by row 1), row 3 (ADS.site.test)",
+  );
+  assert.equal(
+    answer(400, { error: "unknown secrets", secrets: [{ name: "api_token", path: "f/waggle_secrets/api_token" }], hint: "wmill variable add" }),
+    "400 — unknown secrets: api_token (f/waggle_secrets/api_token) (wmill variable add)",
+  );
+  assert.equal(answer(0, {}), "The workbench itself cannot be reached (The answer has no message)");
+  assert.equal(
+    inEnglish(() => inlineDeclared(503, { error: "ts-compile unreachable" }).note),
+    "Cannot check the declarations (503 — ts-compile unreachable)",
+  );
+});
+
+test("英語: 大きさの行は、行とバイトの単数と複数を分ける（数は桁を区切った字で渡す）", () => {
+  assert.equal(t("start.size.lineOfLimit", { lines: "4", bytes: "270", percent: 0 }), "4 行 · 本文 270 バイト · 上限の 0%");
+  const line = (lines, bytes) => inEnglish(() => t("start.size.line", { lines, bytes }));
+  assert.equal(line("1", "1"), "1 line · body 1 byte");
+  assert.equal(line("2", "1,234"), "2 lines · body 1,234 bytes");
+  assert.equal(line("0", "0"), "0 lines · body 0 bytes");
+  const over = (n) => inEnglish(() => t("start.size.over", { limit: "1,048,576", over: n }));
+  assert.equal(over("1"), "The body is 1 byte over the limit (1,048,576 bytes). It cannot be started");
+  assert.equal(over("2"), "The body is 2 bytes over the limit (1,048,576 bytes). It cannot be started");
 });

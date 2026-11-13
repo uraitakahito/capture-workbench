@@ -13,6 +13,7 @@ import { applyI18n, dateTime, errorText, key, langOf, t, timeOfDay, tNodes } fro
 import { checkVerdict, count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
+  actionText,
   addRow,
   addSkipRow,
   askWhenSettled,
@@ -103,7 +104,7 @@ import {
   splitOf,
 } from "/links.js";
 import {
-  KIND_TEXT,
+  kindText,
   NOTES_EAGER,
   applyMetadata,
   axisOf,
@@ -132,7 +133,7 @@ import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues
 import {
   awaitsFinalBundle,
   isPartialBundle,
-  PARTIAL_BUNDLE_NOTE,
+  partialBundleNote,
   replayBundleFailure,
   replayBundleHref,
   replayBundleText,
@@ -272,7 +273,7 @@ const bundleLink = (href, text, crawl) => {
   const a = link(href, text);
   if (isPartialBundle(crawl)) {
     a.classList.add("partial");
-    a.title = PARTIAL_BUNDLE_NOTE;
+    a.title = partialBundleNote();
   }
   return a;
 };
@@ -337,12 +338,18 @@ const fixKey = (crawlId, name) => `${crawlId} ${name}`;
 const failuresText = (one) => {
   const failures = one.failures ?? [];
   return failures.length === 0
-    ? `取れなかったページはありません（起点: ${one.seeds.join(", ")}）`
-    : failures.map((f) => `${f.url} — ${f.reason ?? "理由なし"}`).join("\n");
+    ? t("crawls.detail.noFailures", { seeds: one.seeds.join(", ") })
+    : failures.map((f) => `${f.url} — ${f.reason ?? t("crawls.detail.noReason")}`).join("\n");
 };
 
-/** 対象サイトの印（サイト用のスクリプトのホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。 */
-const siteChip = (sites, suffix = " 用") => tag("span", `${sites.join("・")}${suffix}`, "site");
+/**
+ * 対象サイトの印（サイト用のスクリプトのホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。
+ * 後ろの「用」を付けない呼び手（スクリプト集の一覧）は、`suffix` に空の字を渡す。
+ */
+const siteChip = (sites, suffix) => {
+  const list = sites.join(t("common.sep.dot"));
+  return tag("span", suffix === "" ? list : t("common.site.for", { sites: list }), "site");
+};
 
 /** 差分の箱。**DOM で組む**（public/ では HTML を差し込まない）。消した行と足した行を、行番号と印で並べる。 */
 const diffBoxOf = (edits) => {
@@ -372,7 +379,7 @@ const fixOf = (crawlId, script) => {
   const state = fixes.get(fixKey(crawlId, name));
   const asking = state?.asking === true;
   const ask = button(
-    asking ? "訊いています…" : state === undefined ? "直し方を訊く" : "もう 1 度訊く",
+    asking ? t("crawls.fix.asking") : state === undefined ? t("crawls.fix.ask") : t("crawls.fix.askAgain"),
     () => void askFix(crawlId, name),
   );
   ask.disabled = asking;
@@ -386,12 +393,12 @@ const fixOf = (crawlId, script) => {
     for (const note of state.body.notes ?? []) notes.append(tag("li", noteText(note)));
     const back = document.createElement("p");
     back.append(
-      button("直した版を欄に戻す", () => intoForm(name, script.phase, state.body.source)),
-      tag("span", "確かめたのは型だけです。動きは差分を読み、撮って確かめてください", "muted"),
+      button(t("crawls.fix.apply"), () => intoForm(name, script.phase, state.body.source)),
+      tag("span", t("crawls.fix.onlyTypes"), "muted"),
     );
     box.append(notes, diffBoxOf(state.body.edits), back);
   } else if (Array.isArray(state.body.refusals) && state.body.refusals.length > 0) {
-    box.append(tag("p", `断った案: ${state.body.refusals.join(" ／ ")}`, "muted"));
+    box.append(tag("p", t("crawls.fix.refusals", { list: state.body.refusals.join(t("common.sep.slash")) }), "muted"));
   }
   return [ask, box];
 };
@@ -427,34 +434,34 @@ const askFix = async (crawlId, name) => {
  */
 const ranOf = (one) => {
   const scripts = one.scripts ?? [];
-  if (scripts.length === 0) return tag("p", "走らせたもの: なし");
+  if (scripts.length === 0) return tag("p", t("crawls.detail.ranNone"));
   const list = document.createElement("ol");
   list.className = "ran";
   for (const script of scripts) {
     const item = document.createElement("li");
     const where =
       script.inline === undefined
-        ? `登録 v${String(script.version)}・${script.phase}`
-        : `その場・${script.phase}・${count(script.inline.bytes)} バイト`;
+        ? t("crawls.detail.registered", { version: script.version, phase: script.phase })
+        : t("crawls.detail.inline", { phase: script.phase, n: script.inline.bytes });
     item.append(tag("span", script.id, "mono"));
     if (script.sites.length > 0) item.append(siteChip(script.sites));
     item.append(tag("span", where, "muted"));
     // その場の TS は、直して撮り直せるように欄へ戻せる（登録済みのスクリプトは capture-ledger に在る）。source は詳しい所に
     // 無いので、押したときに名前で引くエンドポイントから取る
     if (script.inline !== undefined) {
-      item.append(button("欄に戻す", () => void putBack(one.crawlId, script.inline.name)));
+      item.append(button(t("crawls.detail.backToForm"), () => void putBack(one.crawlId, script.inline.name)));
       // 型の誤りの在るその場の TS には、直し方を訊く道も（押したときだけ Claude を呼ぶ）
       if (hasErrorsIn(one.diagnosed, script.id)) item.append(...fixOf(one.crawlId, script));
     } else {
       // 走った版を読む。番号は使い回されうるので sha256 の頭も渡し、読む所が食い違いを言う
-      const read = tag("a", "読む");
+      const read = tag("a", t("crawls.detail.read"));
       read.href = readingHash({ id: script.id, version: script.version, sha: script.sha256.slice(0, 12) });
       item.append(read);
     }
     list.append(item);
   }
   const box = document.createElement("div");
-  box.append(tag("p", "走らせたもの（並びが実行順）"), list);
+  box.append(tag("p", t("crawls.detail.ran")), list);
   return box;
 };
 
@@ -491,16 +498,16 @@ const valuesOf = (one) => {
   box.append(
     typeof one.userAgent === "string"
       ? tag("p", `User-Agent: ${one.userAgent}`)
-      : tag("p", "User-Agent: HeadlessChrome のまま", "muted"),
+      : tag("p", t("crawls.detail.uaDefault"), "muted"),
   );
   const vars = Object.entries(one.variables ?? {});
   const secrets = one.secrets ?? [];
   if (vars.length === 0 && secrets.length === 0) {
-    box.append(tag("p", "渡した値: なし", "muted"));
+    box.append(tag("p", t("crawls.detail.valuesNone"), "muted"));
     return box;
   }
   if (vars.length > 0) {
-    box.append(tag("p", "渡した値（変数。名前と値）"));
+    box.append(tag("p", t("crawls.detail.values")));
     const table = document.createElement("table");
     table.className = "vals";
     for (const [name, value] of vars) {
@@ -511,7 +518,7 @@ const valuesOf = (one) => {
     box.append(table);
   }
   if (secrets.length > 0) {
-    box.append(tag("p", "使ったシークレット（名前と Windmill の変数。値は capture-ledger・写し・ページの文字・ログに無い）"));
+    box.append(tag("p", t("crawls.detail.secrets")));
     const list = document.createElement("ul");
     list.className = "secrets";
     for (const secret of secrets) {
@@ -520,7 +527,11 @@ const valuesOf = (one) => {
       item.append(tag("span", `edited_at ${whenOf(secret.editedAt)}`, "muted"));
       if (secret.rotated !== null && secret.rotated !== undefined) {
         item.append(
-          tag("span", `段 ${String(secret.rotated.depth)} から替わった（${whenOf(secret.rotated.editedAt)}）`, "state warn"),
+          tag(
+            "span",
+            t("crawls.detail.secretRotated", { depth: secret.rotated.depth, when: whenOf(secret.rotated.editedAt) }),
+            "state warn",
+          ),
         );
       }
       const archive = archiveTag(secret.archive);
@@ -532,17 +543,16 @@ const valuesOf = (one) => {
   return box;
 };
 
-/** 動きの画面の言い方（新しいクロールの画面の選ぶ欄と同じ）。 */
-const ACTION_LABEL = Object.fromEntries(ACTIONS);
-
 /** 開いた行から、そのクロールのリンクの構成（`#links/<クロールの id>`・CAPTURE-246）へ。 */
 const linksLineOf = (one) => {
   const line = document.createElement("p");
   line.className = "links-line";
-  const a = document.createElement("a");
-  a.href = linksHash(one.crawlId);
-  a.textContent = "リンクの構成を開く";
-  line.append(a, "（どのページから見つけたか・撮らなかったリンクとその理由）");
+  const toLinks = (text) => {
+    const a = tag("a", text);
+    a.href = linksHash(one.crawlId);
+    return a;
+  };
+  line.append(...tNodes("crawls.detail.linksLine", { a: toLinks }));
   return line;
 };
 
@@ -558,39 +568,50 @@ const decisionsOf = (one) => {
   const decided = one.decided;
   if (decided === undefined) return box;
   if (decided instanceof Error) {
-    box.append(tag("p", `規則の判断を読めません: ${decided.message}`, "muted"));
+    box.append(tag("p", t("crawls.decided.unreadable", { said: decided.message }), "muted"));
     return box;
   }
   if (decided.decisions.length === 0) {
-    box.append(tag("p", "規則で決めたリンクはありません", "muted"));
+    box.append(tag("p", t("crawls.decided.none"), "muted"));
   } else {
     // 段の中では別々の URL だが、段を跨ぐと同じ URL を 2 度数える（延べ）。別々の URL での内訳は、リンクの構成の画面
-    box.append(tag("p", "規則ごと（別々の URL を段ごとに数えて足した数）"));
+    box.append(tag("p", t("crawls.decided.perRule")));
     const list = document.createElement("ol");
     list.className = "tally";
-    for (const t of ruleTallies(decided.rules, decided.decisions)) {
+    for (const tally of ruleTallies(decided.rules, decided.decisions)) {
       const item = document.createElement("li");
       item.append(
-        tag("span", t.rule === 0 ? "どれにも当たらない（落とす）" : `${String(t.rule)}. ${ACTION_LABEL[t.action] ?? t.action}`),
-        tag("span", t.pattern, "mono"),
-        tag("span", `${count(t.links)} 本`, "num mono"),
+        tag(
+          "span",
+          tally.rule === 0
+            ? t("crawls.decided.noRule")
+            : `${String(tally.rule)}. ${actionText(tally.action)}`,
+        ),
+        tag("span", tally.pattern, "mono"),
+        tag("span", t("crawls.decided.urls", { n: tally.links }), "num mono"),
       );
-      if (t.rule !== 0 && t.links === 0) item.append(tag("span", "当たっていません", "state warn"));
+      if (tally.rule !== 0 && tally.links === 0) item.append(tag("span", t("crawls.decided.neverMatched"), "state warn"));
       list.append(item);
     }
     box.append(list);
   }
   const drops = dropsOf(decided.decisions, decided.robots);
   if (drops.length > 0) {
-    box.append(tag("p", "落とした物（規則と robots.txt・ホスト名ごと）"));
+    box.append(tag("p", t("crawls.decided.dropped")));
     const table = document.createElement("table");
     table.className = "drops";
     for (const d of drops) {
       const row = document.createElement("tr");
       row.append(
-        cell(d.why === "robots" ? "robots.txt" : d.why === 0 ? "どれにも当たらない" : `規則 ${String(d.why)}`),
+        cell(
+          d.why === "robots"
+            ? "robots.txt"
+            : d.why === 0
+              ? t("crawls.decided.dropNoRule")
+              : t("crawls.decided.dropRule", { rule: d.why }),
+        ),
         cell(d.hostname, "mono"),
-        cell(`${count(d.links)} 本`, "num mono"),
+        cell(t("crawls.decided.urls", { n: d.links }), "num mono"),
         cell(d.sample, "mono muted"),
       );
       table.append(row);
@@ -598,11 +619,16 @@ const decisionsOf = (one) => {
     box.append(table);
   }
   const line = document.createElement("p");
-  const inspect = tag("a", "f/waggle/inspect_crawl", "mono");
-  inspect.href = inspectHref(settings.windmillOrigin, settings.windmillWorkspace, one.crawlId);
-  inspect.target = "_blank";
-  inspect.rel = "noopener";
-  line.append("Windmill で調べる: ", inspect, `（crawl = ${one.crawlId.slice(0, 8)}）`);
+  const inspect = (text) => {
+    const a = tag("a", text, "mono");
+    a.href = inspectHref(settings.windmillOrigin, settings.windmillWorkspace, one.crawlId);
+    a.target = "_blank";
+    a.rel = "noopener";
+    return a;
+  };
+  line.append(
+    ...tNodes("crawls.decided.inspect", { a: inspect, path: "f/waggle/inspect_crawl", crawl: one.crawlId.slice(0, 8) }),
+  );
   box.append(line);
   return box;
 };
@@ -621,11 +647,11 @@ const tallyCell = (counts, level) => {
 const drawLog = (state) => {
   const { answer, box } = state;
   if (answer === undefined) {
-    box.replaceChildren(tag("p", "読み込み中…", "muted"));
+    box.replaceChildren(tag("p", t("common.loading"), "muted"));
     return;
   }
   if (answer instanceof Error) {
-    box.replaceChildren(tag("p", `ログを読めません: ${answer.message}`, "state bad"));
+    box.replaceChildren(tag("p", t("crawls.log.unreadableSaid", { said: answer.message }), "state bad"));
     return;
   }
   if (answer.log === null || answer.log === undefined) {
@@ -638,7 +664,7 @@ const drawLog = (state) => {
   const bar = document.createElement("div");
   bar.className = "chips";
   for (const [id, label] of FILTERS) {
-    const chip = button(`${label} ${count(linesAt(lines, id).length)}`, () => {
+    const chip = button(label(count(linesAt(lines, id).length)), () => {
       state.filter = id;
       state.scrollTop = 0;
       drawLog(state);
@@ -653,13 +679,16 @@ const drawLog = (state) => {
   if (sealed !== undefined) {
     const a = document.createElement("a");
     a.href = waczHash(sealed.archiveId, sealed.path);
-    a.textContent = "WACZ の画面で開く";
-    a.title = `WACZ の ${sealed.path}（WACZ Profile 1.19.0 より前の WACZ には無い）`;
+    a.textContent = t("crawls.log.openInWacz");
+    a.title = t("crawls.log.openInWaczTitle", { path: sealed.path });
     bar.append(a);
   }
   const shown = linesAt(lines, state.filter);
   if (shown.length === 0) {
-    box.replaceChildren(bar, tag("p", lines.length === 0 ? "行はありません" : "この絞り込みに当たる行はありません", "muted"));
+    box.replaceChildren(
+      bar,
+      tag("p", lines.length === 0 ? t("crawls.log.noLines") : t("crawls.log.noLinesInFilter"), "muted"),
+    );
     return;
   }
   const table = document.createElement("table");
@@ -670,7 +699,7 @@ const drawLog = (state) => {
     level.append(tag("span", String(line.level), `lv ${levelKind(line.level)}`));
     const msg = document.createElement("td");
     msg.className = "msg";
-    if (line.truncated === true) msg.append(tag("span", "途中で切った", "cut"));
+    if (line.truncated === true) msg.append(tag("span", t("crawls.log.cut"), "cut"));
     msg.append(String(line.msg));
     const data = dataOf(line);
     if (data !== "") msg.append(" ", tag("span", data, "data"));
@@ -735,18 +764,24 @@ const pagesOf = (one) => {
   const list = one.pages;
   if (list === undefined) return box;
   if (list instanceof Error) {
-    box.append(tag("p", `ページを読めません: ${list.message}`, "muted"));
+    box.append(tag("p", t("crawls.pages.unreadable", { said: list.message }), "muted"));
     return box;
   }
   if (list.pages.length === 0) {
-    box.append(tag("p", "ページ: なし", "muted"));
+    box.append(tag("p", t("crawls.pages.none"), "muted"));
     return box;
   }
-  box.append(tag("p", "ページ（capture-ledger に入った順。warn と error はログの行の数で、— は数を読んでいない）"));
+  box.append(tag("p", t("crawls.pages.title")));
   const table = document.createElement("table");
   table.className = "pagelist";
   const head = document.createElement("tr");
-  head.append(tag("th", "URL"), tag("th", "結末"), tag("th", "warn", "num"), tag("th", "error", "num"), tag("th", "ログ"));
+  head.append(
+    tag("th", "URL"),
+    tag("th", t("crawls.pages.colOutcome")),
+    tag("th", "warn", "num"),
+    tag("th", "error", "num"),
+    tag("th", t("crawls.pages.colLog")),
+  );
   table.append(head);
   for (const { page, log } of rowsOf(views, one.crawlId, list)) {
     const row = document.createElement("tr");
@@ -762,13 +797,15 @@ const pagesOf = (one) => {
     if (page.taskId !== null && page.taskId !== undefined) {
       const trace = document.createElement("a");
       trace.href = traceHash(one.crawlId, page.id);
-      trace.textContent = "経緯";
+      trace.textContent = t("crawls.pages.trace");
       trace.className = "trace-link";
       said.append(" ", trace);
     }
     outcome.append(said);
     const toggle = document.createElement("td");
-    toggle.append(button(log === undefined ? "ログ ▾" : "閉じる ▴", () => toggleOne(one.crawlId, page.id)));
+    toggle.append(
+      button(log === undefined ? t("crawls.pages.logOpen") : t("crawls.pages.logClose"), () => toggleOne(one.crawlId, page.id)),
+    );
     row.append(url, outcome, tallyCell(page.logCounts, "warn"), tallyCell(page.logCounts, "error"), toggle);
     table.append(row);
     if (log === undefined) continue;
@@ -785,7 +822,7 @@ const pagesOf = (one) => {
   if (more !== undefined) {
     const next = button(more.label, () => {
       next.disabled = true;
-      next.textContent = "読み込み中…";
+      next.textContent = t("common.loading");
       viewOf(views, one.crawlId).want = more.want;
       void loadDetail(one.crawlId);
     });
@@ -801,14 +838,19 @@ const pagesOf = (one) => {
 const typeErrorsOf = (one) => {
   const said = one.diagnosed;
   if (said === undefined) return [];
-  if (said.kind === "trouble") return [tag("p", `型の誤りを取り直せません: ${said.text}`, "state bad")];
+  if (said.kind === "trouble") return [tag("p", t("crawls.diag.trouble", { said: said.text }), "state bad")];
   if (said.kind === "clean") {
-    return [tag("p", `取り直すと、いまの組み合わせは型を通ります（TypeScript ${said.typescript}）`, "muted")];
+    return [tag("p", t("crawls.diag.clean", { typescript: said.typescript }), "muted")];
   }
   const table = document.createElement("table");
   table.className = "typeerrors";
   const head = document.createElement("tr");
-  head.append(tag("th", "スクリプト"), tag("th", "行:列"), tag("th", "code"), tag("th", "文"));
+  head.append(
+    tag("th", t("crawls.diag.colScript")),
+    tag("th", t("crawls.diag.colAt")),
+    tag("th", t("crawls.diag.colCode")),
+    tag("th", t("crawls.diag.colMessage")),
+  );
   table.append(head);
   for (const row of said.rows) {
     const tr = document.createElement("tr");
@@ -817,9 +859,9 @@ const typeErrorsOf = (one) => {
   }
   const box = document.createElement("div");
   box.append(
-    tag("p", `型の誤り（組み合わせを ts-compile-service に送り直した。TypeScript ${said.typescript}・${String(said.rows.length)} 件）`),
+    tag("p", t("crawls.diag.title", { typescript: said.typescript, n: said.rows.length })),
     table,
-    ...(lacksValues(said) ? [tag("p", "必須の変数が渡されていません。値を渡して始め直してください", "state warn")] : []),
+    ...(lacksValues(said) ? [tag("p", t("crawls.diag.lacksValues"), "state warn")] : []),
   );
   return [box];
 };
@@ -858,13 +900,13 @@ const detailOf = (one) => {
       : [
           tag(
             "p",
-            resend.error === null ? resend.text : `${resend.text}。最後の誤り: ${resend.error}`,
+            resend.error === null ? resend.text : t("crawls.resend.withError", { resend: resend.text, error: resend.error }),
             `state ${resend.kind} pre`,
           ),
         ]),
     ...(one.error === null || one.error === undefined
       ? []
-      : [tag("p", `失敗の文: ${one.error}`, "state bad pre")]),
+      : [tag("p", t("crawls.detail.error", { error: one.error }), "state bad pre")]),
     ...(bundleFailure === undefined ? [] : [tag("p", bundleFailure, "state warn pre")]),
     ...typeErrorsOf(one),
     ranOf(one),
@@ -884,7 +926,7 @@ const detailRow = (crawl) => {
   const td = document.createElement("td");
   td.colSpan = 9;
   const one = opened.get(crawl.crawlId);
-  if (one === undefined) td.textContent = "読み込み中…";
+  if (one === undefined) td.textContent = t("common.loading");
   else if (one instanceof Error) td.replaceChildren(tag("p", failedText(one), "state bad"));
   else td.replaceChildren(...detailOf(one));
   row.append(td);
@@ -1032,29 +1074,39 @@ let moved;
 /**
  * 走る順の 1 行（番号・中身・↑↓）の部品。↑↓ の後のフォーカスは辿り方の表と同じ —— 同じボタン、端に着いて押せなく
  * なったら反対向きのボタン。行を DOM の中で動かすとフォーカスが外れるので、毎回付け直す。
+ * `labels` は ↑↓ の読み上げの文（`{ up, down }`。何を移すかを言う）。
  */
-const runRow = (id, title, body) => {
+const runRow = (id, labels, body) => {
   const no = tag("span", "", "pick-no");
   const moves = tag("span", "", "pick-moves");
-  const arrow = (text, delta, what) => {
+  const arrow = (text, delta, label) => {
     const b = button(text, () => {
       moved = movedOrder(runOf(), id, delta);
       syncStart();
       (b.disabled ? moves.querySelector("button:enabled") : b)?.focus();
     });
-    b.setAttribute("aria-label", `${title} を${what}`);
+    b.setAttribute("aria-label", label);
     moves.append(b);
     return b;
   };
-  const up = arrow("↑", -1, "上へ移す");
-  const down = arrow("↓", 1, "下へ移す");
+  const up = arrow("↑", -1, labels.up);
+  const down = arrow("↓", 1, labels.down);
   const el = tag("div", "", "pick-row");
   el.append(no, body, moves);
   return { id, el, no, moves, up, down };
 };
 
-/** その場の TS の行。読み込みの後に走る物を書いたときだけ出す（`drawRunOrder`）。チェックは無い —— 書いてあれば走る。 */
-const inlineRow = runRow(INLINE_ROW, "その場の TS", tag("span", "その場の TS", "pick"));
+/**
+ * その場の TS の行。読み込みの後に走る物を書いたときだけ出す（`drawRunOrder`）。チェックは無い —— 書いてあれば走る。
+ * 最初に要るときに 1 度だけ作る（字を引くのは、読み込みの後）。
+ */
+let inlineRowMade;
+const inlineRow = () =>
+  (inlineRowMade ??= runRow(
+    INLINE_ROW,
+    { up: t("start.scripts.inlineUp"), down: t("start.scripts.inlineDown") },
+    tag("span", t("start.tab.inline"), "pick"),
+  ));
 
 /**
  * 人が付け外ししたチェック（id → 付けたか）。**引き直しても覚えておく。** 覚えていない id は、capture-ledger の既定
@@ -1103,19 +1155,23 @@ const drawPicks = (scripts) => {
     const name = tag("span", `${script.id} v${String(script.version)}`, "mono");
     // 中身を読む。ふつうに押せば右の列でこの版を開き、修飾キーならスクリプト集の画面を別のタブで（data-read の
     // click）。label の中の <a> は、押してもチェックを替えない —— 押せないチェックの横でも読める
-    const read = tag("a", "読む", "read");
+    const read = tag("a", t("start.scripts.read"), "read");
     read.href = readingHash({ id: script.id, version: script.version });
     read.dataset.read = "";
     const why = script.sites.length === 0 ? undefined : tag("span", "", "why");
     // 既定に入らないスクリプト。チェックは外れた状態で出るが、付ければ走る（capture-ledger は名指しを通す）
-    const off = script.enabled ? [] : [tag("span", "既定では走らない", "off")];
+    const off = script.enabled ? [] : [tag("span", t("start.scripts.notDefault"), "off")];
     // 名前と対象サイトをまとめる。狭い列で対象サイトや「読む」が折り返しても、名前の下に揃う（理由の行と同じ）
     const head = tag("span", "", "phead");
     head.append(name, ...(script.sites.length === 0 ? [] : [siteChip(script.sites)]), ...off, read);
     label.append(input, head, ...(why === undefined ? [] : [why]));
-    picks.push({ script, input, why, ...runRow(script.id, script.id, label) });
+    const moves = {
+      up: t("start.scripts.moveUp", { name: script.id }),
+      down: t("start.scripts.moveDown", { name: script.id }),
+    };
+    picks.push({ script, input, why, ...runRow(script.id, moves, label) });
   }
-  if (scripts.length === 0) box.append(tag("span", "登録済みのスクリプトがありません（スクリプト集の画面を見てください）", "muted"));
+  if (scripts.length === 0) box.append(tag("span", t("start.scripts.empty"), "muted"));
   syncPicks();
   syncStart(); // 行を置くのは drawRunOrder。本文の大きさも登録済みのスクリプトで変わる
   // 読む窓の版が既定から外れたかもしれない。standing（既定で走る版か）を今の登録済みのスクリプトで言い直す
@@ -1137,8 +1193,8 @@ const syncPicks = () => {
     why.textContent = allowed
       ? ""
       : hosts.size === 0
-        ? "起点を書くと選べます"
-        : `起点に ${script.sites.join("・")} がありません`;
+        ? t("start.scripts.whyNoSeed")
+        : t("start.scripts.whyOffSeed", { sites: script.sites.join(t("common.sep.dot")) });
   }
   drawValues(); // 起点で選べる物が変わると、宣言された値も変わる
 };
@@ -1153,7 +1209,7 @@ const drawRunOrder = () => {
   const { hosts, scripts } = pickedNow();
   const live = liveOrder(run);
   const rows = shownOrder(run.order, scripts, hosts).map((id) =>
-    id === INLINE_ROW ? inlineRow : picks.find((pick) => pick.id === id),
+    id === INLINE_ROW ? inlineRow() : picks.find((pick) => pick.id === id),
   );
   for (const { id, no, moves, up, down } of rows) {
     const at = live.indexOf(id);
@@ -1162,7 +1218,7 @@ const drawRunOrder = () => {
     up.disabled = at === 0;
     down.disabled = at === live.length - 1;
   }
-  inlineRow.el.hidden = !live.includes(INLINE_ROW);
+  inlineRow().el.hidden = !live.includes(INLINE_ROW);
   const box = $("start-picks");
   const drawn = [...box.children].filter((child) => child.classList.contains("pick-row"));
   if (rows.some(({ el }, i) => drawn[i] !== el)) box.append(...rows.map(({ el }) => el));
@@ -1233,12 +1289,12 @@ const valueField = (v) => {
     input.type = "text";
     input.spellcheck = false;
     input.value = wanted;
-    if (v.required) input.placeholder = "必須";
+    if (v.required) input.placeholder = t("start.values.required");
     return input;
   }
   const select = document.createElement("select");
   select.append(
-    new Option(v.required ? "必須" : "渡さない", ""),
+    new Option(v.required ? t("start.values.required") : t("start.values.notPassed"), ""),
     ...v.schema.enum.map((value) => new Option(value, value)),
   );
   // 覚えていた値が選択肢に無ければ空の行に。見えている物が送る物なので、覚えている値も合わせる
@@ -1273,7 +1329,7 @@ const drawValues = () => {
     const name = tag("label", v.name, "mono");
     name.htmlFor = input.id;
     head.append(name);
-    if (v.required) head.append(tag("span", "必須", "req"));
+    if (v.required) head.append(tag("span", t("start.values.required"), "req"));
     if (v.summary !== "") head.append(tag("span", v.summary, "vsum"));
     const box = document.createElement("td");
     box.append(input);
@@ -1284,17 +1340,16 @@ const drawValues = () => {
   line.hidden = secrets.length === 0;
   line.replaceChildren();
   if (secrets.length === 0) return;
-  line.append("使うシークレット: ");
+  // 名前の並び（名前・必須の印・WARC に残すかの印）は要素なので、文に 1 つの値として挟む
+  const list = document.createDocumentFragment();
   secrets.forEach((s, i) => {
-    if (i > 0) line.append("、");
-    line.append(tag("span", s.name, "mono"));
-    if (s.required) line.append(tag("span", "必須", "req"));
+    if (i > 0) list.append(t("common.sep.comma"));
+    list.append(tag("span", s.name, "mono"));
+    if (s.required) list.append(tag("span", t("start.values.required"), "req"));
     const archive = archiveTag(s.archive);
-    if (archive !== undefined) line.append(" ", archive);
+    if (archive !== undefined) list.append(" ", archive);
   });
-  line.append(
-    tag("span", "。値はここには書きません。Windmill の変数 f/waggle_secrets/<名前> に人が置き、capture-ledger が在るかを確かめます", "muted"),
-  );
+  line.append(...tNodes("start.values.secrets", { list, note: (text) => tag("span", text, "muted") }));
 };
 
 /**
@@ -1306,7 +1361,7 @@ const putBack = async (crawlId, name) => {
   try {
     back = await api(`/api/crawls/${crawlId}/inline/${enc(name)}`);
   } catch (err) {
-    trouble(`欄に戻せません: ${failedText(err)}`);
+    trouble(t("start.inline.cannotPutBack", { said: failedText(err) }));
     return;
   }
   intoForm(name, back.phase, back.source);
@@ -1368,10 +1423,12 @@ const syncStart = () => {
   const limit = settings.writeLimit ?? Infinity;
   const size = sizeOf($("start-inline-source").value, bodyBytes(body), limit);
   const line = $("start-size");
+  const sized = { lines: count(size.lines), bytes: count(size.bytes) };
   line.textContent = size.over
-    ? `本文が上限（${count(limit)} バイト）を ${count(size.bytes - limit)} バイト超えています。始められません`
-    : `${count(size.lines)} 行 · 本文 ${count(size.bytes)} バイト` +
-      (limit === Infinity ? "" : ` · 上限の ${String(size.percent)}%`);
+    ? t("start.size.over", { limit: count(limit), over: count(size.bytes - limit) })
+    : limit === Infinity
+      ? t("start.size.line", sized)
+      : t("start.size.lineOfLimit", { ...sized, percent: size.percent });
   line.classList.toggle("bad", size.over);
   // 辿るなら、規則が無いときと、capture-ledger が今の表を「始められない」と言っているときも押せない。capture-ledger に
   // 確かめられなかった（答えが無い）なら止めない —— 始めれば capture-ledger が 400 で言う
@@ -1415,13 +1472,13 @@ const drawMarks = () => {
   }
   const said = $("start-said");
   if (ruleRows.length === 0) {
-    said.textContent = "規則がありません。型から埋めるか、行を足してください。";
+    said.textContent = t("start.rules.none");
     said.className = "start-said bad";
     return;
   }
   if (answer === undefined) {
     const asked = rulesCheck.key === checkQuery($("start-seeds").value, ruleRows);
-    said.textContent = asked ? "capture-ledger に確かめられません（始めれば、capture-ledger が答えで言います）" : "capture-ledger に確かめています…";
+    said.textContent = asked ? t("start.rules.cannotCheck") : t("start.rules.checking");
     said.className = "start-said muted";
     return;
   }
@@ -1444,9 +1501,9 @@ const drawRules = (focus) => {
     row.append(cell(n, "num mono"));
     const action = document.createElement("select");
     action.dataset.field = "action";
-    action.setAttribute("aria-label", `${n} 行目の動き`);
-    for (const [value, label] of ACTIONS) {
-      const option = tag("option", label);
+    action.setAttribute("aria-label", t("start.rules.actionOf", { n }));
+    for (const value of ACTIONS) {
+      const option = tag("option", actionText(value));
       option.value = value;
       option.selected = value === rule.action;
       action.append(option);
@@ -1456,8 +1513,8 @@ const drawRules = (focus) => {
     pattern.spellcheck = false;
     pattern.dataset.field = "pattern";
     pattern.value = rule.pattern;
-    pattern.placeholder = "same-site・ads.example.com・https://…/search";
-    pattern.setAttribute("aria-label", `${n} 行目の当てる物`);
+    pattern.placeholder = t("start.rules.matchPlaceholder");
+    pattern.setAttribute("aria-label", t("start.rules.matchOf", { n }));
     const actionCell = document.createElement("td");
     actionCell.append(action);
     const patternCell = document.createElement("td");
@@ -1465,13 +1522,13 @@ const drawRules = (focus) => {
     const tools = document.createElement("td");
     tools.className = "tools";
     for (const [label, op, what] of [
-      ["↑", "-1", "上へ移す"],
-      ["↓", "1", "下へ移す"],
-      ["×", "0", "消す"],
+      ["↑", "-1", t("start.rules.moveUp", { n })],
+      ["↓", "1", t("start.rules.moveDown", { n })],
+      ["×", "0", t("start.rules.remove", { n })],
     ]) {
       const b = button(label);
       b.dataset.op = op;
-      b.setAttribute("aria-label", `${n} 行目を${what}`);
+      b.setAttribute("aria-label", what);
       b.disabled = (op === "-1" && i === 0) || (op === "1" && i === ruleRows.length - 1);
       tools.append(b);
     }
@@ -3453,11 +3510,11 @@ const drawLinksHead = () => {
   back.className = "change-back";
   const toList = document.createElement("a");
   toList.href = "#crawls";
-  toList.textContent = "← クロールの一覧";
+  toList.textContent = t("links.back");
   back.append(toList);
   head.append(back);
   const h2 = document.createElement("h2");
-  h2.append(tag("span", "リンクの構成"), tag("span", crawlId.slice(0, 8), "mono"));
+  h2.append(tag("span", t("links.title")), tag("span", crawlId.slice(0, 8), "mono"));
   if (crawl !== undefined) {
     const said = stateOf(crawl);
     h2.append(tag("span", crawl.seeds[0] ?? "", "wide"), tag("span", said.text, `state ${said.kind}`));
@@ -3466,33 +3523,36 @@ const drawLinksHead = () => {
   if (crawl !== undefined) {
     // 欄の無い答え（古い capture-ledger）は、その項を書かない
     const facts = [
-      typeof crawl.pagesCaptured === "number" ? `撮れた ${count(crawl.pagesCaptured)}` : undefined,
-      typeof crawl.maxDepth === "number" ? `深さ ${String(crawl.maxDepth)} まで` : undefined,
-      typeof crawl.maxPages === "number" ? `枚数 ${count(crawl.maxPages)} まで` : undefined,
+      typeof crawl.pagesCaptured === "number" ? t("links.facts.captured", { n: count(crawl.pagesCaptured) }) : undefined,
+      typeof crawl.maxDepth === "number" ? t("links.facts.maxDepth", { n: crawl.maxDepth }) : undefined,
+      typeof crawl.maxPages === "number" ? t("links.facts.maxPages", { n: count(crawl.maxPages) }) : undefined,
     ].filter((fact) => fact !== undefined);
-    head.append(tag("p", facts.join("・"), "links-facts"));
+    head.append(tag("p", facts.join(t("common.sep.dot")), "links-facts"));
   }
   if (graph !== undefined && !graph.recorded) {
-    head.append(
-      tag(
-        "p",
-        "このクロールにはリンクの記録がありません（記録を残す前のクロール）。図は、見つけた道（木）だけです。",
-        "state warn",
-      ),
-    );
+    head.append(tag("p", t("links.notRecorded"), "state warn"));
   }
 };
+
+/**
+ * 内訳の 1 項（見出しと数）。`b` は、数を包む物 —— 凡例では要素（太字）、読み上げの字では字のまま。
+ */
+const splitItem = (part, b) => tNodes("links.split.item", { text: part.text, n: count(part.n), b });
 
 const drawLinksSplit = () => {
   const box = $("links-split");
   box.replaceChildren();
   const { parts, total, aside } = splitOf(linksView.graph?.summary);
   if (parts.length === 0) return;
-  box.append(tag("p", `見つけた別々の URL ${count(total)} 本（起点を除く）は、どうなったか`, "links-split-title"));
+  // 英語で単数と複数を分ける文には、数のまま渡す（桁は辞書の `{n, number}` が区切る）。分けない文には `count()` の字を渡す
+  box.append(tag("p", t("links.split.title", { n: total }), "links-split-title"));
   const bar = document.createElement("div");
   bar.className = "links-bar";
   bar.setAttribute("role", "img");
-  bar.setAttribute("aria-label", parts.map((part) => `${part.text} ${count(part.n)}`).join("、"));
+  bar.setAttribute(
+    "aria-label",
+    parts.map((part) => splitItem(part, (text) => text).join("")).join(t("common.sep.comma")),
+  );
   const legend = document.createElement("div");
   legend.className = "links-legend";
   for (const part of parts) {
@@ -3500,7 +3560,7 @@ const drawLinksSplit = () => {
     seg.style.flex = String(part.n);
     bar.append(seg);
     const item = document.createElement("span");
-    item.append(tag("i", "", part.kind), `${part.text} `, tag("b", count(part.n)));
+    item.append(tag("i", "", part.kind), ...splitItem(part, (text) => tag("b", text)));
     legend.append(item);
   }
   if (aside !== undefined) legend.append(tag("span", aside, "muted"));
@@ -3535,7 +3595,7 @@ const drawLinksGraph = () => {
     width,
     height,
     role: "img",
-    "aria-label": `撮ったページ ${String(graph.pages.length)} 枚を、深さごとの列に置いた図`,
+    "aria-label": t("links.graph.label", { n: graph.pages.length }),
   });
   if (pageId !== undefined) root.classList.add("dim");
   const defs = svgTag("defs");
@@ -3546,7 +3606,11 @@ const drawLinksGraph = () => {
   const maxDepth = linksView.crawl?.maxDepth;
   for (let depth = 0; depth <= layout.depth; depth += 1) {
     const text =
-      depth === 0 ? "深さ 0（起点）" : maxDepth !== undefined && depth > maxDepth ? `深さ ${String(depth)}（撮らない）` : `深さ ${String(depth)}`;
+      depth === 0
+        ? t("links.graph.depthSeeds")
+        : maxDepth !== undefined && depth > maxDepth
+          ? t("links.graph.depthBeyond", { depth })
+          : t("links.graph.depth", { depth });
     root.append(svgTag("text", { x: colX(depth), y: 16, class: "lg-h" }, text));
   }
   const mid = (row) => row.y + SIZE.node / 2;
@@ -3600,7 +3664,7 @@ const drawLinksGraph = () => {
       const g = svgTag("g", { class: `lg-b ${said.kind}` });
       g.append(
         svgTag("rect", { x, y: row.y, width: SIZE.col, height: SIZE.node, rx: 8 }),
-        svgTag("text", { x: x + 8, y: row.y + 12.5 }, `＋${count(row.urls)} 本 ${said.text}`),
+        svgTag("text", { x: x + 8, y: row.y + 12.5 }, bundleText(row.outcome, row.urls)),
       );
       // 束を押すと、見つけたページを選ぶ（下に、そのページのリンクが 1 本ずつ出る）
       keyed(g, () => pickLinksPage(row.from));
@@ -3610,12 +3674,18 @@ const drawLinksGraph = () => {
     const page = index.byId.get(row.id);
     const g = svgTag("g", { class: `lg-n ${pageKind(page.state)}${pageId === row.id ? " sel" : ""}` });
     const label = row.folded
-      ? `${boxLabelOf(page.url, origin, 13)} ＋${count(row.hidden)} 枚`
+      ? t("links.box.folded", { label: boxLabelOf(page.url, origin, 13), n: count(row.hidden) })
       : boxLabelOf(page.url, origin, row.foldable ? 21 : 24);
     g.append(
       svgTag("rect", { x, y: row.y, width: SIZE.col, height: SIZE.node, rx: 4 }),
       svgTag("text", { x: x + 6, y: row.y + 12.5 }, label),
-      svgTag("title", {}, `${page.url}${page.title ? ` ${page.title}` : ""}（${outcomeOfPage(page)}）`),
+      svgTag(
+        "title",
+        {},
+        page.title
+          ? t("links.box.titleNamed", { url: page.url, title: page.title, outcome: outcomeOfPage(page) })
+          : t("links.box.title", { url: page.url, outcome: outcomeOfPage(page) }),
+      ),
     );
     keyed(g, () => pickLinksPage(pageId === row.id ? undefined : row.id));
     if (row.foldable) {
@@ -3635,11 +3705,23 @@ const drawLinksGraph = () => {
     const g = svgTag("g", { class: "lg-b muted" });
     g.append(
       svgTag("rect", { x, y: height - 30, width: Math.min(SIZE.col + 100, width - x - 12), height: SIZE.node + 1, rx: 8 }),
-      svgTag("text", { x: x + 8, y: height - 17 }, `規則で落とした ${count(skipped)} 本（${count(hosts.length)} 個のホスト）`),
+      svgTag("text", { x: x + 8, y: height - 17 }, t("links.box.hosts", { urls: skipped, hosts: hosts.length })),
     );
     root.append(g);
   }
   host.replaceChildren(root);
+};
+
+/**
+ * 束の箱の字。箱の幅（`SIZE.col`）は言語で変えないので、英語は結末の字（`linkOutcomeOf`）より短い形を辞書に
+ * 置いてある。束になる結末は 3 つ。知らない結末は、結末の字をそのまま並べる。
+ */
+const bundleText = (outcome, urls) => {
+  const n = count(urls);
+  if (outcome === "max_pages") return t("links.box.maxPages", { n });
+  if (outcome === "max_depth") return t("links.box.maxDepth", { n });
+  if (outcome === "closed") return t("links.box.closed", { n });
+  return t("links.box.other", { n, text: linkOutcomeOf(outcome).text });
 };
 
 /** ページの結末の字（capture-ledger の state と理由をそのまま）。 */
@@ -3652,11 +3734,13 @@ const drawLinksHosts = () => {
   const hosts = linksView.graph?.hosts ?? [];
   if (hosts.length === 0) return;
   const details = document.createElement("details");
-  details.append(tag("summary", `規則で落とした URL のホスト ${count(hosts.length)} 個を並べる`));
+  details.append(tag("summary", t("links.hosts.list", { n: hosts.length })));
   const list = document.createElement("ul");
   for (const one of hosts) {
     const item = document.createElement("li");
-    item.append(tag("span", one.hostname, "mono"), ` ${count(one.urls)} 本`);
+    item.append(
+      ...tNodes("links.hosts.item", { hostname: one.hostname, n: one.urls, host: (text) => tag("span", text, "mono") }),
+    );
     list.append(item);
   }
   details.append(list);
@@ -3671,7 +3755,7 @@ const drawLinksPanel = () => {
   if (graph === undefined) return;
   const page = pageId === undefined ? undefined : graph.pages.find((one) => one.id === pageId);
   if (page === undefined) {
-    box.append(tag("p", "図の箱を押すと、そのページの出入りのリンクがここに並びます。箱の ▾ は、その下を畳みます。", "muted"));
+    box.append(tag("p", t("links.panel.hint"), "muted"));
     return;
   }
   const origin = originOf(graph);
@@ -3681,16 +3765,16 @@ const drawLinksPanel = () => {
   h3.append(tag("span", outcomeOfPage(page), `state ${pageKind(page.state)}`));
   box.append(h3);
   if (!graph.recorded) {
-    box.append(tag("p", "リンクの記録が無いので、出入りのリンクは出せません。", "muted"));
+    box.append(tag("p", t("links.panel.notRecorded"), "muted"));
     return;
   }
   const answer = linksView.pages.get(pageId);
   if (answer === undefined) {
-    box.append(tag("p", "読み込み中…", "muted"));
+    box.append(tag("p", t("common.loading"), "muted"));
     return;
   }
   if (answer instanceof Error) {
-    box.append(tag("p", `リンクを読めません: ${answer.message}`, "state bad"));
+    box.append(tag("p", t("links.panel.failed", { said: answer.message }), "state bad"));
     return;
   }
   const byId = new Map(graph.pages.map((one) => [one.id, one]));
@@ -3703,19 +3787,27 @@ const drawLinksPanel = () => {
   };
   const into = document.createElement("p");
   if (answer.in.length === 0) {
-    into.append(page.parent === null ? "入ってくるリンク: なし（起点）" : "入ってくるリンク: なし");
+    into.append(page.parent === null ? t("links.panel.inNoneSeed") : t("links.panel.inNone"));
   } else {
-    into.append(`入ってくるリンク ${count(answer.in.length)} 本: `);
+    // リンク元のページ（8 つまで）を、区切りを挟んで 1 つの値にして文に埋める
     const from = [...new Set(answer.in.map((link) => link.from))];
-    from.slice(0, 8).forEach((id, i) => into.append(i === 0 ? "" : "・", pageLink(id)));
-    if (from.length > 8) into.append(` ほか ${count(from.length - 8)} ページ`);
+    const pages = document.createDocumentFragment();
+    from.slice(0, 8).forEach((id, i) => pages.append(i === 0 ? "" : t("common.sep.dot"), pageLink(id)));
+    const n = answer.in.length;
+    into.append(
+      ...(from.length > 8
+        ? tNodes("links.panel.inMore", { n, pages, more: from.length - 8 })
+        : tNodes("links.panel.in", { n, pages })),
+    );
   }
   box.append(into);
-  if (answer.out.length === 0) box.append(tag("p", "出ていくリンク: なし"));
+  if (answer.out.length === 0) box.append(tag("p", t("links.panel.outNone")));
   for (const group of groupsOf(answer.out)) {
     const details = document.createElement("details");
     const summary = document.createElement("summary");
-    summary.append(tag("span", `${group.text} ${count(group.links.length)}`, `state ${group.kind}`));
+    summary.append(
+      tag("span", t("links.panel.group", { text: group.text, n: count(group.links.length) }), `state ${group.kind}`),
+    );
     details.append(summary);
     const list = document.createElement("ul");
     for (const link of group.links) {
@@ -3769,7 +3861,7 @@ const loadLinks = async (crawlId, { first }) => {
   try {
     [crawl, graph] = await Promise.all([api(`/api/crawls/${crawlId}`), api(linksPath(crawlId))]);
   } catch (err) {
-    if (linksView.crawlId === crawlId) linksAnswer(`リンクの構成を読めません: ${failedText(err)}`);
+    if (linksView.crawlId === crawlId) linksAnswer(t("links.failed", { said: failedText(err) }));
     return;
   }
   if (linksView.crawlId !== crawlId) return; // 別のクロールを開いた・一覧へ戻った
@@ -3873,11 +3965,11 @@ const drawTraceHead = () => {
   back.className = "change-back";
   const toList = document.createElement("a");
   toList.href = "#crawls";
-  toList.textContent = "← クロールの一覧";
+  toList.textContent = t("trace.back");
   back.append(toList);
   head.append(back);
   const h2 = document.createElement("h2");
-  h2.append(tag("span", "経緯"), tag("span", crawlId.slice(0, 8), "mono"));
+  h2.append(tag("span", t("trace.title")), tag("span", crawlId.slice(0, 8), "mono"));
   if (answer !== undefined) {
     h2.append(tag("span", String(answer.page.url), "wide"));
     const capture = answer.capture;
@@ -3896,23 +3988,28 @@ const drawTraceHead = () => {
   const capture = answer.capture;
   const axis = axisOf(answer);
   const facts = [
-    axis === undefined ? undefined : `全体 ${secondsText(axis.endMs)}`,
+    axis === undefined ? undefined : t("trace.facts.total", { took: secondsText(axis.endMs) }),
     typeof capture.httpStatusCode === "number" ? `HTTP ${String(capture.httpStatusCode)}` : undefined,
   ].filter((fact) => fact !== undefined);
-  const line = tag("p", facts.join("・"), "trace-facts");
+  const line = tag("p", facts.join(t("common.sep.dot")), "trace-facts");
   const stopped = stoppedStepOf(answer);
   if (stopped !== undefined) {
-    line.append("・止まった段 ", tag("span", stopped, "mono state bad"));
+    const mark = (text) => tag("span", text, "mono state bad");
     const why = capture.errorDetails?.message;
-    if (typeof why === "string") line.append(`（${why}）`);
+    line.append(
+      t("common.sep.dot"),
+      ...(typeof why === "string"
+        ? tNodes("trace.facts.stoppedWhy", { mark, step: stopped, why })
+        : tNodes("trace.facts.stopped", { mark, step: stopped })),
+    );
   }
   if (answer.archive === null) {
-    line.append("・WACZ はありません（要求の並びは WACZ から読むので、出せません）");
+    line.append(t("common.sep.dot"), t("trace.facts.noWacz"));
   } else {
     const open = document.createElement("a");
     open.href = waczHash(answer.archive.id);
-    open.textContent = "WACZ の画面で開く";
-    line.append("・", open);
+    open.textContent = t("trace.facts.openWacz");
+    line.append(t("common.sep.dot"), open);
   }
   head.append(line);
 };
@@ -3959,6 +4056,11 @@ const consoleKind = (level) => (level === "error" ? "bad" : level === "warn" ? "
 /** metadata だけの要求の色の種類。 */
 const noteKind = (kind) => (kind === "failed" ? "bad" : kind === "incomplete" ? "run" : "muted");
 
+
+/** 帯の title。名前と、始まりと長さ。 */
+const barTitle = (name, one) =>
+  t("trace.bar.title", { name, from: secondsText(one.fromMs), length: secondsText(one.toMs - one.fromMs) });
+
 const drawTraceChart = () => {
   const box = $("trace-chart");
   box.replaceChildren();
@@ -3971,17 +4073,17 @@ const drawTraceChart = () => {
   chart.className = "trace-chart";
   // 目盛り
   const ticks = ticksOf(endMs).map((ms) => {
-    const t = tag("span", secondsText(ms).replace(" 秒", ""), "tick-label");
-    t.style.left = `${String(percentOf(ms, endMs))}%`;
-    return t;
+    const label = tag("span", secondsText(ms, { unit: false }), "tick-label");
+    label.style.left = `${String(percentOf(ms, endMs))}%`;
+    return label;
   });
-  chart.append(traceRow("秒", ticks, "axis"));
+  chart.append(traceRow(t("trace.row.seconds"), ticks, "axis"));
   const steps = stepsOf(lines, endMs);
   chart.append(
     traceRow(
-      "取り込みの段",
+      t("trace.row.steps"),
       steps.map((one, index) =>
-        traceMark({ row: "step", index, ...one, className: "bar step", text: one.step, title: `${one.step}（${secondsText(one.fromMs)} から ${secondsText(one.toMs - one.fromMs)}）` }, endMs),
+        traceMark({ row: "step", index, ...one, className: "bar step", text: one.step, title: barTitle(one.step, one) }, endMs),
       ),
     ),
   );
@@ -3989,9 +4091,9 @@ const drawTraceChart = () => {
   if (details.length > 0) {
     chart.append(
       traceRow(
-        "細部",
+        t("trace.row.details"),
         details.map((one, index) =>
-          traceMark({ row: "detail", index, ...one, className: "bar detail", text: one.text, title: `${one.text}（${secondsText(one.fromMs)} から ${secondsText(one.toMs - one.fromMs)}）` }, endMs),
+          traceMark({ row: "detail", index, ...one, className: "bar detail", text: one.text, title: barTitle(one.text, one) }, endMs),
         ),
       ),
     );
@@ -3999,27 +4101,27 @@ const drawTraceChart = () => {
   const settle = settleOf(answer.capture?.settle, lines);
   if (settle !== undefined) {
     const marks = [
-      traceMark({ row: "settle", index: 0, fromMs: settle.fromMs, toMs: settle.toMs, className: "bar wait", text: "待ち", title: `読み込みの後の待ち（${secondsText(settle.toMs - settle.fromMs)}・${String(settle.endedBy)} で終わった）` }, endMs),
+      traceMark({ row: "settle", index: 0, fromMs: settle.fromMs, toMs: settle.toMs, className: "bar wait", text: t("trace.row.wait"), title: t("trace.wait.title", { length: secondsText(settle.toMs - settle.fromMs), endedBy: String(settle.endedBy) }) }, endMs),
     ];
     const points = [
       ["load", settle.loadMs],
-      ["通信が静まった", settle.networkQuietMs],
-      ["DOM が静まった", settle.domQuietMs],
-      ["CPU が静まった", settle.cpuQuietMs],
+      [t("trace.wait.networkQuiet"), settle.networkQuietMs],
+      [t("trace.wait.domQuiet"), settle.domQuietMs],
+      [t("trace.wait.cpuQuiet"), settle.cpuQuietMs],
     ];
     points.forEach(([name, ms], i) => {
       if (ms === undefined) return;
-      marks.push(traceMark({ row: "settle", index: i + 1, atMs: ms, className: "tick accent", title: `${name}（${secondsText(ms)}）` }, endMs));
+      marks.push(traceMark({ row: "settle", index: i + 1, atMs: ms, className: "tick accent", title: t("trace.wait.pointTitle", { name, at: secondsText(ms) }) }, endMs));
     });
-    chart.append(traceRow("待ち", marks));
+    chart.append(traceRow(t("trace.row.wait"), marks));
   }
   const scripts = scriptsOf(lines, endMs);
   if (scripts.length > 0) {
     chart.append(
       traceRow(
-        "スクリプト",
+        t("trace.row.scripts"),
         scripts.map((one, index) =>
-          traceMark({ row: "script", index, ...one, className: one.open ? "bar script open" : "bar script", text: one.script, title: `${one.script}（${secondsText(one.fromMs)} から ${one.open ? "終わりの行なし" : secondsText(one.toMs - one.fromMs)}）` }, endMs),
+          traceMark({ row: "script", index, ...one, className: one.open ? "bar script open" : "bar script", text: one.script, title: one.open ? t("trace.bar.titleOpen", { name: one.script, from: secondsText(one.fromMs) }) : barTitle(one.script, one) }, endMs),
         ),
       ),
     );
@@ -4030,7 +4132,7 @@ const drawTraceChart = () => {
       traceRow(
         "console",
         consoles.map((one, index) =>
-          traceMark({ row: "console", index, atMs: one.ms, className: `tick ${consoleKind(one.level)}`, title: `${one.level}（${secondsText(one.ms)}）${one.msg}` }, endMs),
+          traceMark({ row: "console", index, atMs: one.ms, className: `tick ${consoleKind(one.level)}`, title: t("trace.console.title", { level: one.level, at: secondsText(one.ms), msg: one.msg }) }, endMs),
         ),
       ),
     );
@@ -4039,19 +4141,19 @@ const drawTraceChart = () => {
   if (marks !== undefined) {
     const requests = [
       ...marks.exchanges.map((one, index) =>
-        traceMark({ row: "exchange", index, atMs: one.ms, className: "tick ok", title: `${String(one.status ?? "")} ${one.uri}（始まり ${secondsText(one.ms)}）` }, endMs),
+        traceMark({ row: "exchange", index, atMs: one.ms, className: "tick ok", title: t("trace.exchange.title", { status: String(one.status ?? ""), uri: one.uri, at: secondsText(one.ms) }) }, endMs),
       ),
       ...marks.notes.map((one, index) =>
-        traceMark({ row: "note", index, atMs: one.ms, className: `tick hollow ${noteKind(one.kind)}`, title: `${KIND_TEXT[one.kind] ?? one.kind} ${one.uri}（記録した時刻 ${secondsText(one.ms)}）` }, endMs),
+        traceMark({ row: "note", index, atMs: one.ms, className: `tick hollow ${noteKind(one.kind)}`, title: t("trace.note.title", { kind: kindText(one.kind), uri: one.uri, at: secondsText(one.ms) }) }, endMs),
       ),
     ];
-    chart.append(traceRow("要求", requests));
+    chart.append(traceRow(t("trace.row.requests"), requests));
     if (marks.snapshots.length > 0) {
       chart.append(
         traceRow(
-          "写し",
+          t("trace.row.snapshots"),
           marks.snapshots.map((one, index) =>
-            traceMark({ row: "snapshot", index, atMs: one.ms, className: "tick content", title: `DOM の写し ${one.stage}（${secondsText(one.ms)}）` }, endMs),
+            traceMark({ row: "snapshot", index, atMs: one.ms, className: "tick content", title: t("trace.snapshot.title", { stage: one.stage, at: secondsText(one.ms) }) }, endMs),
           ),
         ),
       );
@@ -4069,26 +4171,26 @@ const drawTraceRequests = () => {
   const axis = axisOf(answer);
   if (axis === undefined) return;
   if (read === undefined) {
-    box.append(tag("p", "要求を読み込み中…（WACZ の中の WARC のレコードの一覧）", "muted"));
+    box.append(tag("p", t("trace.requests.loading"), "muted"));
     return;
   }
   const marks = traceMarks();
   const tally = traceTallyOf(marks);
   const said = [
-    `要求 ${count(tally.exchanges)}（応答と対になった物）`,
-    tally.incomplete > 0 ? `終わらなかった ${count(tally.incomplete)}` : undefined,
-    tally.failed > 0 ? `失敗した ${count(tally.failed)}` : undefined,
-    tally.denied > 0 ? `止めた ${count(tally.denied)}` : undefined,
-    tally["not-archived"] > 0 ? `残さなかった ${count(tally["not-archived"])}` : undefined,
-    tally.unread > 0 ? `まだ読んでいない記録 ${count(tally.unread)}` : undefined,
+    t("trace.tally.exchanges", { n: count(tally.exchanges) }),
+    tally.incomplete > 0 ? t("trace.tally.incomplete", { n: count(tally.incomplete) }) : undefined,
+    tally.failed > 0 ? t("trace.tally.failed", { n: count(tally.failed) }) : undefined,
+    tally.denied > 0 ? t("trace.tally.denied", { n: count(tally.denied) }) : undefined,
+    tally["not-archived"] > 0 ? t("trace.tally.notArchived", { n: count(tally["not-archived"]) }) : undefined,
+    tally.unread > 0 ? t("trace.tally.unread", { n: count(tally.unread) }) : undefined,
   ].filter((one) => one !== undefined);
-  const title = tag("p", said.join("・"), "trace-tally");
+  const title = tag("p", said.join(t("common.sep.dot")), "trace-tally");
   box.append(title);
   if (read.error !== undefined) {
     const why =
       read.error.status === 404
-        ? "この WACZ を見る許可がありません（要求の並びは WACZ から読みます）"
-        : `WARC のレコードの一覧を読めません: ${read.error.message}`;
+        ? t("trace.requests.forbidden")
+        : t("trace.requests.unreadable", { said: read.error.message });
     box.append(tag("p", why, "state warn"));
   }
   const rows = [
@@ -4106,13 +4208,13 @@ const drawTraceRequests = () => {
     const state =
       row === "exchange"
         ? tag("span", String(one.status ?? "—"), `mono state ${typeof one.status === "number" && one.status >= 400 ? "bad" : "ok"}`)
-        : tag("span", KIND_TEXT[one.kind] ?? String(one.kind), `state ${noteKind(one.kind)}`);
+        : tag("span", kindText(one.kind), `state ${noteKind(one.kind)}`);
     const track = document.createElement("span");
     track.className = "trace-track";
     const mark = tag("i", "", row === "exchange" ? "tick ok" : `tick hollow ${noteKind(one.kind)}`);
     mark.style.left = `${String(percentOf(one.ms, axis.endMs))}%`;
     track.append(mark);
-    b.append(tag("span", secondsText(one.ms).replace(" 秒", ""), "num mono"), state, tag("span", String(one.uri), "mono url"), track);
+    b.append(tag("span", secondsText(one.ms, { unit: false }), "num mono"), state, tag("span", String(one.uri), "mono url"), track);
     b.addEventListener("click", () => {
       traceView.selected = { row, index };
       drawTraceChart();
@@ -4147,62 +4249,63 @@ const drawTracePanel = () => {
   if (row === "step") {
     const one = stepsOf(lines, axis.endMs)[index];
     if (one === undefined) return;
-    put("取り込みの段", one.step, "mono");
-    put("始まり", secondsText(one.fromMs));
-    put("長さ", secondsText(one.toMs - one.fromMs));
+    put(t("trace.panel.step"), one.step, "mono");
+    put(t("trace.panel.start"), secondsText(one.fromMs));
+    put(t("trace.panel.length"), secondsText(one.toMs - one.fromMs));
   } else if (row === "detail") {
     const one = detailsOf(lines, axis.endMs)[index];
     if (one === undefined) return;
-    put("細部", one.text, "mono");
-    put("取り込みの段", one.step, "mono");
-    put("始まり", secondsText(one.fromMs));
-    put("長さ", secondsText(one.toMs - one.fromMs));
+    put(t("trace.panel.detail"), one.text, "mono");
+    put(t("trace.panel.step"), one.step, "mono");
+    put(t("trace.panel.start"), secondsText(one.fromMs));
+    put(t("trace.panel.length"), secondsText(one.toMs - one.fromMs));
   } else if (row === "settle") {
     const settle = settleOf(answer.capture?.settle, lines);
     if (settle === undefined) return;
-    put("待ち", `${secondsText(settle.fromMs)} から ${secondsText(settle.toMs - settle.fromMs)}`);
-    put("終わり方", settle.endedBy, "mono");
+    const quietAt = (ms) => (ms === undefined ? t("trace.wait.neverQuiet") : secondsText(ms));
+    put(t("trace.panel.wait"), t("trace.panel.waitSpan", { from: secondsText(settle.fromMs), length: secondsText(settle.toMs - settle.fromMs) }));
+    put(t("trace.panel.endedBy"), settle.endedBy, "mono");
     put("load", settle.loadMs === undefined ? undefined : secondsText(settle.loadMs));
-    put("通信が静まった", settle.networkQuietMs === undefined ? "静まらなかった" : secondsText(settle.networkQuietMs));
-    put("DOM が静まった", settle.domQuietMs === undefined ? "静まらなかった" : secondsText(settle.domQuietMs));
-    put("CPU が静まった", settle.cpuQuietMs === undefined ? "静まらなかった" : secondsText(settle.cpuQuietMs));
+    put(t("trace.wait.networkQuiet"), quietAt(settle.networkQuietMs));
+    put(t("trace.wait.domQuiet"), quietAt(settle.domQuietMs));
+    put(t("trace.wait.cpuQuiet"), quietAt(settle.cpuQuietMs));
   } else if (row === "script") {
     const one = scriptsOf(lines, axis.endMs)[index];
     if (one === undefined) return;
-    put("スクリプト", one.script, "mono");
-    put("始まり", secondsText(one.fromMs));
-    put("長さ", one.open ? "終わりの行がありません（止めた時点で走っていた）" : secondsText(one.toMs - one.fromMs));
+    put(t("trace.panel.script"), one.script, "mono");
+    put(t("trace.panel.start"), secondsText(one.fromMs));
+    put(t("trace.panel.length"), one.open ? t("trace.panel.scriptOpen") : secondsText(one.toMs - one.fromMs));
   } else if (row === "console") {
     const one = consoleOf(lines)[index];
     if (one === undefined) return;
-    put("console", `${one.level}（${one.source === "page" ? "取り込みのページ" : "スクリプト"}）`);
-    put("時刻", secondsText(one.ms));
-    put("文", one.msg);
+    put("console", one.source === "page" ? t("trace.console.fromPage", { level: one.level }) : t("trace.console.fromScript", { level: one.level }));
+    put(t("trace.panel.time"), secondsText(one.ms));
+    put(t("trace.panel.message"), one.msg);
   } else if (row === "exchange" && marks !== undefined) {
     const one = marks.exchanges[index];
     if (one === undefined) return;
-    put("要求", one.uri, "mono url");
-    put("始まり", `${secondsText(one.ms)}（Chromium が送り出した時刻）`);
+    put(t("trace.panel.request"), one.uri, "mono url");
+    put(t("trace.panel.start"), t("trace.panel.startByChromium", { at: secondsText(one.ms) }));
     put("status", one.status, "mono");
-    put("MIME の種類", one.mime, "mono");
-    put("本文", one.bodyOmitted === undefined ? undefined : `残していません（${one.bodyOmitted}）`);
+    put(t("trace.panel.mime"), one.mime, "mono");
+    put(t("trace.panel.body"), one.bodyOmitted === undefined ? undefined : t("trace.panel.bodyOmitted", { why: one.bodyOmitted }));
   } else if (row === "note" && marks !== undefined) {
     const one = marks.notes[index];
     if (one === undefined) return;
-    put("要求", one.uri, "mono url");
-    put("記録", KIND_TEXT[one.kind] ?? one.kind);
-    put("記録した時刻", `${secondsText(one.ms)}（要求の始まりではありません）`);
-    put("理由", one.reason, "mono");
-    put("誤り", one.error, "mono");
-    put("当たった方針", one.pattern, "mono");
-    put("種類", one.resourceType, "mono");
+    put(t("trace.panel.request"), one.uri, "mono url");
+    put(t("trace.panel.record"), kindText(one.kind));
+    put(t("trace.panel.recordedAt"), t("trace.panel.recordedAtNote", { at: secondsText(one.ms) }));
+    put(t("trace.panel.reason"), one.reason, "mono");
+    put(t("trace.panel.error"), one.error, "mono");
+    put(t("trace.panel.pattern"), one.pattern, "mono");
+    put(t("trace.panel.resourceType"), one.resourceType, "mono");
     put("method", one.method, "mono");
   } else if (row === "snapshot" && marks !== undefined) {
     const one = marks.snapshots[index];
     if (one === undefined) return;
-    put("DOM の写し", one.stage, "mono");
-    put("時刻", secondsText(one.ms));
-    put("文書", one.documentUrl, "mono url");
+    put(t("trace.panel.snapshot"), one.stage, "mono");
+    put(t("trace.panel.time"), secondsText(one.ms));
+    put(t("trace.panel.document"), one.documentUrl, "mono url");
     const objectKey = answer.archive?.objectKey;
     if (typeof objectKey === "string") {
       const opens = document.createElement("span");
@@ -4210,7 +4313,7 @@ const drawTracePanel = () => {
         const hit = { stage: one.stage, objectKey, capturedAt: answer.page.capturedAt, url: one.uri };
         opens.append(link(hitReplaywebHref(settings[viewer.setting], hit), viewerText(viewer)), " ");
       }
-      put("開く", opens);
+      put(t("trace.panel.open"), opens);
     }
   }
   if (panel.childElementCount > 0) box.append(panel);
@@ -4222,10 +4325,10 @@ const drawTraceNotes = () => {
   const { answer } = traceView;
   if (answer === undefined || answer.capture === null || answer.capture === undefined) return;
   const notes = [
-    "帯（取り込みの段・細部・console）は BrowserHive の時計、要求の印は Chromium の時計で置いています。2 つは別の時計で、少しずれることがあります。",
-    "「終わらなかった」「失敗した」「止めた」「残さなかった」の印は、記録した時刻の位置です。要求の始まりではありません（終わらなかった要求は、記録を止めた時刻に並びます）。",
-    "別サイトのフレームの文書と dedicated worker の script は、終わりを観測できないので「終わらなかった」に入ります。",
-    "この画面は、保管庫の .result.json と WACZ を読んで並べた物で、署名の下にありません。示すための正は、WACZ の中の記録です。",
+    t("trace.notes.clocks"),
+    t("trace.notes.recordedAt"),
+    t("trace.notes.unobservable"),
+    t("trace.notes.unsigned"),
   ];
   const list = document.createElement("ul");
   list.className = "trace-notes";
@@ -4238,9 +4341,9 @@ const drawTraceLog = () => {
   box.replaceChildren();
   const { answer } = traceView;
   if (answer === undefined || answer.capture === null || answer.capture === undefined) return;
-  box.append(tag("h3", "ログ"));
+  box.append(tag("h3", t("trace.log.title")));
   if (answer.log === null || answer.log === undefined) {
-    box.append(tag("p", "この取り込みにログはありません（BrowserHive v24.0.0 より前の取り込み）。", "muted"));
+    box.append(tag("p", t("trace.log.none"), "muted"));
     return;
   }
   // ページの表のログの箱と同じ描き方（絞り込みと、流した位置を覚える）
@@ -4286,7 +4389,7 @@ const loadTrace = async (crawlId, pageId) => {
   try {
     answer = await api(tracePath(crawlId, pageId));
   } catch (err) {
-    if (traceIs(crawlId, pageId)) traceAnswer(`経緯を読めません: ${failedText(err)}`);
+    if (traceIs(crawlId, pageId)) traceAnswer(t("trace.unreadable", { said: failedText(err) }));
     return;
   }
   if (!traceIs(crawlId, pageId)) return; // 別の取り込みを開いた・一覧へ戻った

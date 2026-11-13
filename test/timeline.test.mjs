@@ -7,7 +7,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import sample from "./timeline-sample.json" with { type: "json" };
+import { setLang, t } from "../public/i18n.js";
 import {
+  KINDS,
+  kindText,
+  WARC_FILES_MAX,
   applyMetadata,
   axisOf,
   bodyKey,
@@ -26,14 +30,26 @@ import {
   scriptsOf,
   secondsText,
   settleOf,
+  statusText,
   stepsOf,
   stoppedStepOf,
   tallyOf,
   ticksOf,
   traceHash,
   tracePath,
+  traceReasonText,
   warcName,
 } from "../public/timeline.js";
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const CRAWL = "93ec38bb-60d9-469c-b659-0cbfc37fb012";
 const charset = sample.charset;
@@ -59,6 +75,58 @@ test("秒の字", () => {
   assert.equal(secondsText(3100), "3.10 秒");
   assert.equal(secondsText(30348), "30.3 秒");
   assert.equal(secondsText(undefined), "—");
+  // 軸の目盛りと、要求の並びの数の列は、数だけ
+  assert.equal(secondsText(3100, { unit: false }), "3.10");
+  assert.equal(secondsText(undefined, { unit: false }), "—");
+});
+
+test("秒の字（英語）: 数の横は s。数だけの形は言語で変わらない", () => {
+  assert.equal(inEnglish(() => secondsText(420)), "0.42 s");
+  assert.equal(inEnglish(() => secondsText(30348)), "30.3 s");
+  assert.equal(inEnglish(() => secondsText(undefined)), "—");
+  assert.equal(inEnglish(() => secondsText(3100, { unit: false })), "3.10");
+});
+
+test("結末・印の種類・読めない理由の字。字は、引くときの言語で決まる", () => {
+  assert.deepEqual(["success", "timeout", "failed", "http_error"].map(statusText), ["撮れた", "時間切れ", "失敗", "HTTP の誤り"]);
+  assert.deepEqual(
+    KINDS.map((kind) => [kind, kindText(kind)]),
+    [
+      ["incomplete", "終わらなかった"],
+      ["failed", "失敗した"],
+      ["denied", "止めた"],
+      ["not-archived", "残さなかった"],
+      ["unread", "読んでいない"],
+      ["unknown", "不明な記録"],
+    ],
+  );
+  assert.equal(traceReasonText("not-captured"), "このページには取り込みの答えがありません（まだ撮っていない・見送った・断られた）");
+  assert.equal(traceReasonText("no-manifest"), "取り込みの答えは在りますが、.result.json の場所が記録されていません");
+  assert.equal(traceReasonText("manifest-missing"), "記録した場所に .result.json がありません");
+  assert.equal(traceReasonText("manifest-invalid"), ".result.json を読めません（JSON でない、または契約に合わない）");
+  // 知らない結末はそのまま見せ、知らない理由は「読めません」とだけ言う
+  assert.equal(statusText("paused"), "paused");
+  assert.equal(traceReasonText("something-new"), "経緯を読めません");
+});
+
+test("結末・印の種類・読めない理由の字（英語）", () => {
+  assert.deepEqual(
+    inEnglish(() => ["success", "timeout", "failed", "http_error", "paused"].map(statusText)),
+    ["Captured", "Timed out", "Failed", "HTTP error", "paused"],
+  );
+  assert.deepEqual(
+    inEnglish(() => KINDS.map(kindText)),
+    ["Did not finish", "Failed", "Denied", "Not archived", "Not read yet", "Unknown metadata"],
+  );
+  assert.equal(inEnglish(() => traceReasonText("manifest-missing")), "There is no .result.json at the recorded place");
+  assert.equal(inEnglish(() => traceReasonText("something-new")), "Cannot read the trace");
+});
+
+test("内訳の見出しは「要求 N」で始まる（docs の絵を撮る道具が、この字で描き終わりを待つ）", () => {
+  assert.equal(t("trace.tally.exchanges", { n: "11" }), "要求 11（応答と対になった物）");
+  assert.equal(t("trace.tally.unread", { n: "1,234" }), "まだ読んでいない記録 1,234");
+  assert.equal(inEnglish(() => t("trace.tally.exchanges", { n: "11" })), "Requests 11 (paired with a response)");
+  assert.equal(inEnglish(() => t("trace.facts.total", { took: secondsText(3100) })), "Total 3.10 s");
 });
 
 test("軸の 0 は、ログの最初の行の at − ms（実物: 最初の行は 318 ms）。終わりは timestamp と最後の行の遅い方", () => {
@@ -343,6 +411,22 @@ test("「entry は無い」でない 400 は終わりの合図にせず、理由
   // 見てよくない WACZ（capture-ledger の 404）も理由
   const denied = await readRecords(fakeFetch(() => ({ status: 404, body: { error: "not found" } })).fetchJson, "a1");
   assert.deepEqual(denied.error, { status: 404, message: "not found" });
+});
+
+test("WARC の本が上限を超えたら、読めた分と理由を返す（理由の字は、読んだときの言語）", async () => {
+  const always = () => fakeFetch(() => ({ status: 200, body: { records: [], next: null } }));
+  const ja = always();
+  const read = await readRecords(ja.fetchJson, "a1");
+  assert.equal(read.files.length, WARC_FILES_MAX);
+  assert.equal(ja.calls.length, WARC_FILES_MAX);
+  assert.deepEqual(read.error, { status: 0, message: "WARC の本が 100 本を超えたので、残りは読んでいません" });
+  setLang("en");
+  try {
+    const { error } = await readRecords(always().fetchJson, "a1");
+    assert.equal(error.message, "There are more than 100 WARC files, so the rest have not been read");
+  } finally {
+    setLang("ja");
+  }
 });
 
 test("軸の上の位置と目盛り", () => {

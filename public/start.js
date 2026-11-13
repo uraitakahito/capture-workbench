@@ -7,7 +7,7 @@
  * **起点の URL は検査しない。** 読めない URL は capture-ledger が 400 で言う。規則を 2 か所に持つと、
  * 片方だけが変わった日に、workbench が通すのに capture-ledger が断る（または逆）形になる。
  */
-import { errorText } from "./i18n.js";
+import { errorText, t } from "./i18n.js";
 
 /** 走らせるものの欄が、何も選んでいない形（登録済みのスクリプトが無く、その場の TS も無い）。 */
 const NOTHING_CHOSEN = {
@@ -172,12 +172,15 @@ export const declaredWith = (scripts, picked, inline, inlineParams, kind) =>
 export const inlineDeclared = (status, body) => {
   if (status === 200 && Array.isArray(body?.params)) {
     const blocking = (body.diagnostics ?? []).filter((d) => d.code === "BH0002" || d.code === "BH0004");
-    return { params: body.params, note: blocking.map((d) => `${String(d.code)}: ${String(d.message)}`).join(" ／ ") };
+    return {
+      params: body.params,
+      note: blocking.map((d) => `${String(d.code)}: ${String(d.message)}`).join(t("common.sep.slash")),
+    };
   }
-  const said = errorText(body) ?? "答えに文がありません";
+  const said = errorText(body) ?? t("common.noText");
   return {
     params: [],
-    note: status === 0 ? `workbench 自身に届きません（${said}）` : `宣言を確かめられません（${String(status)} —— ${said}）`,
+    note: status === 0 ? t("common.unreachable", { said }) : t("start.inline.cannotCheck", { status, said }),
   };
 };
 
@@ -224,13 +227,18 @@ const seedsOf = (text) =>
     .map((line) => line.trim())
     .filter((line) => line !== "");
 
-/** 動きと、画面の言い方。並びは選ぶ欄の並び。 */
-export const ACTIONS = [
-  ["follow", "撮って辿る"],
-  ["capture", "撮るだけ"],
-  ["skip", "落とす"],
-];
-const VERB = Object.fromEntries(ACTIONS);
+/** 動き。並びは選ぶ欄の並び。 */
+export const ACTIONS = ["follow", "capture", "skip"];
+
+/** 動きの、画面の言い方。知らない動き（capture-ledger が足した物）は、届いた字のまま。字は、引くときの言語で決まる。 */
+export const actionText = (action) =>
+  action === "follow"
+    ? t("start.rules.action.follow")
+    : action === "capture"
+      ? t("start.rules.action.capture")
+      : action === "skip"
+        ? t("start.rules.action.skip")
+        : String(action);
 
 /**
  * 型（よく使う並び）。**どれも「撮って辿る」を 1 本持つ** —— 起点が撮って辿るに当たらないと、capture-ledger が
@@ -311,7 +319,15 @@ export const checkQuery = (text, rows) =>
     ...rows.map(({ action, pattern }) => ["rule", `${action}:${pattern.trim()}`]),
   ]).toString();
 
-const KIND = { scope: "範囲", domain: "ドメイン（その下も）", prefix: "前方一致" };
+/** 読めた種類の名前。知らない種類は、capture-ledger の字のまま。 */
+const kindText = (kind) =>
+  kind === "scope"
+    ? t("start.rules.kind.scope")
+    : kind === "domain"
+      ? t("start.rules.kind.domain")
+      : kind === "prefix"
+        ? t("start.rules.kind.prefix")
+        : kind;
 
 /**
  * 確かめの答えから、行ごとの印（`{ text, bad }`）。**答えの行の数が表と違えば印を出さない** —— 表を
@@ -323,33 +339,60 @@ export const marksOf = (answer, rowCount) => {
   }
   return answer.rules.map((rule) => {
     if (rule.kind === "invalid") {
-      return { text: "読めません（小文字のホスト名・http(s) の URL・範囲の名前のどれか）", bad: true };
+      return { text: t("start.rules.mark.invalid"), bad: true };
     }
     if (rule.coveredBy !== undefined) {
-      return {
-        text: `${String(rule.coveredBy)} 行目に覆われて当たりません。上へ移してください`,
-        bad: true,
-      };
+      return { text: t("start.rules.mark.covered", { by: String(rule.coveredBy) }), bad: true };
     }
-    return { text: KIND[rule.kind] ?? rule.kind, bad: false };
+    return { text: kindText(rule.kind), bad: false };
   });
 };
 
-/** 当てる物を文に。範囲の `same-site` は、起点のサイトの名前で言う。 */
-const phraseOf = (rule, sites) => {
-  if (rule.kind === "invalid") return `「${rule.pattern}」（読めない）`;
-  if (rule.kind === "domain") return `${rule.pattern} とその下`;
-  if (rule.kind === "prefix") return `${rule.pattern} で始まる URL`;
-  switch (rule.pattern) {
+/** 要約の中の、動きの言い方（「N 行目 … は撮って辿る」の後ろ）。知らない動きは、capture-ledger の字のまま。 */
+const verbText = (action) =>
+  action === "follow"
+    ? t("start.summary.verb.follow")
+    : action === "capture"
+      ? t("start.summary.verb.capture")
+      : action === "skip"
+        ? t("start.summary.verb.skip")
+        : String(action);
+
+/**
+ * 規則 1 行を言う句（「2 行目 site.test の中は撮って辿る」）。範囲の `same-site` は、起点のサイトの名前で言う。
+ * **当てる物の種類ごとに 1 つの文** —— 英字で終わる物（URL・origin）と「は」の間を空ける書き方（この repo の決まり）は、
+ * 辞書の日本語の文が持つ。
+ */
+const lineOf = (rule, sites) => {
+  const n = String(rule.rule);
+  const verb = verbText(rule.action);
+  const pattern = String(rule.pattern);
+  if (rule.kind === "scope" && pattern === "any") return t("start.summary.line.any", { n, verb });
+  if (rule.kind === "invalid") return t("start.summary.line.invalid", { n, pattern, verb });
+  if (rule.kind === "domain") return t("start.summary.line.domain", { n, pattern, verb });
+  if (rule.kind === "prefix") return t("start.summary.line.prefix", { n, pattern, verb });
+  switch (pattern) {
     case "same-origin":
-      return "起点と同じ origin";
+      return t("start.summary.line.sameOrigin", { n, verb });
     case "same-host":
-      return "起点と同じホスト";
+      return t("start.summary.line.sameHost", { n, verb });
     case "same-site":
-      return sites.length === 0 ? "起点と同じサイト" : `${sites.join("・")} の中`;
+      return sites.length === 0
+        ? t("start.summary.line.sameSite", { n, verb })
+        : t("start.summary.line.sites", { n, sites: sites.join(t("common.sep.dot")), verb });
     default:
-      return "どこでも";
+      return t("start.summary.line.other", { n, verb });
   }
+};
+
+/** 深さと枚数の上限を言う文。空の欄は「既定」と言う（既定の数は capture-ledger が持つ）。 */
+const limitsOf = (follow) => {
+  const depth = follow.maxDepth.trim();
+  const pages = follow.maxPages.trim();
+  if (depth === "" && pages === "") return t("start.summary.limits.default");
+  if (depth === "") return t("start.summary.limits.pages", { pages });
+  if (pages === "") return t("start.summary.limits.depth", { depth });
+  return t("start.summary.limits.both", { depth, pages });
 };
 
 /**
@@ -360,38 +403,32 @@ export const summaryOf = (answer, follow) => {
   const sites = [
     ...new Set(answer.seeds.filter((seed) => seed.valid).map((seed) => seed.site)),
   ];
-  const lines = answer.rules.map((rule) => {
-    const phrase = phraseOf(rule, sites);
-    const verb = VERB[rule.action];
-    return rule.kind === "scope" && rule.pattern === "any"
-      ? `${String(rule.rule)} 行目 どこでも${verb}`
-      : // 英字で終わる物（URL・origin）と「は」の間は空ける（この repo の書き方）
-        `${String(rule.rule)} 行目 ${phrase}${/[!-~]$/.test(phrase) ? " " : ""}は${verb}`;
-  });
-  const depth = follow.maxDepth.trim() === "" ? "既定の深さ" : `${follow.maxDepth.trim()} 段`;
-  const pages = follow.maxPages.trim() === "" ? "既定の枚数" : `${follow.maxPages.trim()} 枚`;
   const problems = [
     ...answer.rules.flatMap((rule) =>
       rule.kind === "invalid"
-        ? [`${String(rule.rule)} 行目の当てる物が読めません。`]
+        ? [t("start.summary.problem.invalid", { n: String(rule.rule) })]
         : rule.coveredBy !== undefined
-          ? [`${String(rule.rule)} 行目は ${String(rule.coveredBy)} 行目に覆われて当たりません。`]
+          ? [t("start.summary.problem.covered", { n: String(rule.rule), by: String(rule.coveredBy) })]
           : [],
     ),
     ...answer.seeds.flatMap((seed) =>
       !seed.valid
-        ? [`起点 ${seed.url} は http(s) の URL ではありません。`]
+        ? [t("start.summary.problem.seedInvalid", { url: seed.url })]
         : seed.followed
           ? []
-          : [`起点 ${seed.url} は撮って辿る行に当たりません。`],
+          : [t("start.summary.problem.seedNotFollowed", { url: seed.url })],
     ),
   ];
   const told =
     answer.rules.length === 0
-      ? "規則がありません。"
-      : `上の行から当てます。${lines.join("、")}。どれにも当たらないリンクは落とします。`;
+      ? t("start.summary.noRules")
+      : t("start.summary.rules", {
+          lines: answer.rules.map((rule) => lineOf(rule, sites)).join(t("common.sep.comma")),
+        });
+  // 文と文の間は、言語の区切り（日本語は詰め、英語は空白）で繋ぐ
+  const sentences = [told, limitsOf(follow), ...problems, ...(problems.length > 0 ? [t("start.summary.cannotStart")] : [])];
   return {
-    text: `${told}${depth}・${pages}まで。${problems.join("")}${problems.length > 0 ? "このままでは始められません。" : ""}`,
+    text: sentences.join(t("start.summary.sep")),
     bad: problems.length > 0 || answer.rules.length === 0,
   };
 };
@@ -407,13 +444,15 @@ export const summaryOf = (answer, follow) => {
  * `status` が 0 なのは、workbench のサーバ自身に届かなかったとき（fetch が投げた）。
  */
 export const startAnswer = (status, answer) => {
-  const id = typeof answer.crawlId === "string" ? `（crawl ${answer.crawlId.slice(0, 8)}）` : "";
-  if (status === 202) return { kind: "ok", text: `クロール開始しました${id}。` };
-  if (status === 409) {
-    return { kind: "run", text: `走行中のクロールがあります${id}。終わるまで次は始められません。` };
+  const id = typeof answer.crawlId === "string" ? answer.crawlId.slice(0, 8) : undefined;
+  if (status === 202) {
+    return { kind: "ok", text: id === undefined ? t("start.answer.started") : t("start.answer.startedAs", { id }) };
   }
-  const said = errorText(answer) ?? "答えに文がありません";
-  if (status === 0) return { kind: "bad", text: `workbench 自身に届きません（${said}）` };
+  if (status === 409) {
+    return { kind: "run", text: id === undefined ? t("start.answer.busy") : t("start.answer.busyWith", { id }) };
+  }
+  const said = errorText(answer) ?? t("common.noText");
+  if (status === 0) return { kind: "bad", text: t("common.unreachable", { said }) };
   // capture-ledger が名指した物（知らないスクリプトの id・重ね・辿らない起点・規則の行・変数やシークレットの名前・シークレットの
   // 名前と Windmill の path）。文の後、hint の前に。隠すシークレットと組めない形式の 400 は、形式を hint の中で言う
   const named = Array.isArray(answer.ids)
@@ -421,7 +460,9 @@ export const startAnswer = (status, answer) => {
     : Array.isArray(answer.names)
       ? answer.names
       : Array.isArray(answer.secrets)
-        ? answer.secrets.map((s) => (s.path === undefined ? String(s.name) : `${String(s.name)}（${String(s.path)}）`))
+        ? answer.secrets.map((s) =>
+            s.path === undefined ? String(s.name) : t("start.answer.secretAt", { name: String(s.name), path: String(s.path) }),
+          )
         : typeof answer.script === "string" // 宣言の形が読めないその場の TS（invalid params）
           ? [answer.script]
           : Array.isArray(answer.seeds)
@@ -429,13 +470,24 @@ export const startAnswer = (status, answer) => {
             : Array.isArray(answer.rules)
               ? answer.rules.map((r) =>
                   r.coveredBy === undefined
-                    ? `${String(r.rule)} 行目（${String(r.pattern)}）`
-                    : `${String(r.rule)} 行目（${String(r.coveredBy)} 行目に覆われる）`,
+                    ? t("start.answer.rule", { n: String(r.rule), pattern: String(r.pattern) })
+                    : t("start.answer.ruleCovered", { n: String(r.rule), by: String(r.coveredBy) }),
                 )
               : [];
-  const ids = named.length === 0 ? "" : `: ${named.join(", ")}`;
-  const hint = typeof answer.hint === "string" ? `（${answer.hint}）` : "";
-  return { kind: "bad", text: `${String(status)} —— ${said}${ids}${hint}` };
+  // 名指した物の並びは、言語に依らず ", " で繋ぐ（id・名前・URL の並び）
+  const list = named.join(", ");
+  const hint = typeof answer.hint === "string" ? answer.hint : undefined;
+  return {
+    kind: "bad",
+    text:
+      named.length === 0
+        ? hint === undefined
+          ? t("start.answer.refused", { status, said })
+          : t("start.answer.refusedHint", { status, said, hint })
+        : hint === undefined
+          ? t("start.answer.refusedNamed", { status, said, named: list })
+          : t("start.answer.refusedNamedHint", { status, said, named: list, hint }),
+  };
 };
 
 /**

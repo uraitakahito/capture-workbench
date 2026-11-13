@@ -20,7 +20,7 @@
  * - **記録した時刻の印**: metadata だけが在る要求（終わらなかった・失敗した・止めた・残さなかった）。この
  *   `WARC-Date` は BrowserHive がレコードを書いた時刻で、始まりではない（終わらなかった要求なら、記録を止めた時刻）。
  */
-import { errorText } from "./i18n.js";
+import { errorText, t } from "./i18n.js";
 
 const TRACE_HASH = /^#trace\/([0-9a-f-]{36})\/([0-9]{1,18})$/;
 
@@ -51,16 +51,20 @@ export const recordsPath = (archiveId, path, from) =>
 export const recordPath = (archiveId, path, offset, length) =>
   `/wacz/${encodeURIComponent(archiveId)}/record?path=${encodeURIComponent(path)}&offset=${String(offset)}&length=${String(length)}`;
 
-/** 秒の字。1 秒未満は 2 桁、10 秒未満は 2 桁、それより上は 1 桁。 */
-export const secondsText = (ms) => {
+/**
+ * 秒の字（`3.10 秒`）。1 秒未満は 2 桁、10 秒未満は 2 桁、それより上は 1 桁。`unit: false` なら数だけ（`3.10`）——
+ * 軸の目盛りと、要求の並びの数の列。
+ */
+export const secondsText = (ms, { unit = true } = {}) => {
   if (typeof ms !== "number" || !Number.isFinite(ms)) return "—";
-  const s = ms / 1000;
-  return `${s < 10 ? s.toFixed(2) : s.toFixed(1)} 秒`;
+  const seconds = ms / 1000;
+  const s = seconds < 10 ? seconds.toFixed(2) : seconds.toFixed(1);
+  return unit ? t("trace.seconds", { s }) : s;
 };
 
 const epoch = (iso) => {
-  const t = Date.parse(String(iso));
-  return Number.isNaN(t) ? undefined : t;
+  const ms = Date.parse(String(iso));
+  return Number.isNaN(ms) ? undefined : ms;
 };
 
 /**
@@ -233,15 +237,21 @@ export const metadataKind = (fields) => {
   return "unknown";
 };
 
-/** 印の種類の字。 */
-export const KIND_TEXT = {
-  incomplete: "終わらなかった",
-  failed: "失敗した",
-  denied: "止めた",
-  "not-archived": "残さなかった",
-  unread: "読んでいない",
-  unknown: "不明な記録",
+/** 印の種類 → 字を返す関数。字は、引くときの言語で決まる。 */
+const KIND_TEXT = {
+  incomplete: () => t("trace.kind.incomplete"),
+  failed: () => t("trace.kind.failed"),
+  denied: () => t("trace.kind.denied"),
+  "not-archived": () => t("trace.kind.notArchived"),
+  unread: () => t("trace.kind.unread"),
+  unknown: () => t("trace.kind.unknown"),
 };
+
+/** 印の種類。並びは `KIND_TEXT` の並び。 */
+export const KINDS = Object.keys(KIND_TEXT);
+
+/** 印の種類の字。知らない種類は、届いた字のまま。 */
+export const kindText = (kind) => (Object.hasOwn(KIND_TEXT, kind) ? KIND_TEXT[kind]() : String(kind));
 
 /**
  * レコードの一覧（本ごと）を、軸に置く物にする。
@@ -258,8 +268,8 @@ export const marksOf = (files, originMs) => {
   const notes = [];
   const snapshots = [];
   const at = (date) => {
-    const t = epoch(date);
-    return t === undefined ? undefined : t - originMs;
+    const ms = epoch(date);
+    return ms === undefined ? undefined : ms - originMs;
   };
   for (const { path, records } of files) {
     for (let i = 0; i < records.length; i += 1) {
@@ -367,7 +377,7 @@ export const readRecords = async (fetchJson, archiveId) => {
   }
   return {
     files,
-    error: { status: 0, message: `WARC の本が ${String(WARC_FILES_MAX)} 本を超えたので、残りは読んでいません` },
+    error: { status: 0, message: t("trace.records.tooManyFiles", { n: WARC_FILES_MAX }) },
   };
 };
 
@@ -389,15 +399,20 @@ export const ticksOf = (endMs) => {
   return out;
 };
 
-/** 結末の字。 */
-export const statusText = (status) =>
-  ({ success: "撮れた", timeout: "時間切れ", failed: "失敗", http_error: "HTTP の誤り" })[status] ?? String(status);
+/** 結末の字。知らない結末は、そのまま見せる。 */
+export const statusText = (status) => {
+  if (status === "success") return t("trace.status.success");
+  if (status === "timeout") return t("trace.status.timeout");
+  if (status === "failed") return t("trace.status.failed");
+  if (status === "http_error") return t("trace.status.httpError");
+  return String(status);
+};
 
 /** 読めない理由の字（capture-ledger の `reason`）。 */
-export const traceReasonText = (reason) =>
-  ({
-    "not-captured": "このページには取り込みの答えがありません（まだ撮っていない・見送った・断られた）",
-    "no-manifest": "取り込みの答えは在りますが、.result.json の場所が記録されていません",
-    "manifest-missing": "記録した場所に .result.json がありません",
-    "manifest-invalid": ".result.json を読めません（JSON でない、または契約に合わない）",
-  })[reason] ?? "経緯を読めません";
+export const traceReasonText = (reason) => {
+  if (reason === "not-captured") return t("trace.reason.notCaptured");
+  if (reason === "no-manifest") return t("trace.reason.noManifest");
+  if (reason === "manifest-missing") return t("trace.reason.manifestMissing");
+  if (reason === "manifest-invalid") return t("trace.reason.manifestInvalid");
+  return t("trace.reason.unknown");
+};

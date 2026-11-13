@@ -22,6 +22,17 @@ import {
   parseLinksHash,
   splitOf,
 } from "../public/links.js";
+import { setLang, t } from "../public/i18n.js";
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const CRAWL = "a0278294-be68-4676-a9de-f200c680682a";
 const page = (id, parent, depth, path = `/p/${id}`, state = "captured") => ({
@@ -217,4 +228,74 @@ test("選んだページの出るリンクは、どうなったかごとに、�
       ["max_pages", "枚数で切った", 2],
     ],
   );
+});
+
+test("英語: どうなったかの字は、引くときの言語で読む（読み込みのときに固めない）", () => {
+  assert.deepEqual(inEnglish(() => linkOutcomeOf("max_pages")), { text: "Cut by the page limit", kind: "run" });
+  assert.deepEqual(inEnglish(() => linkOutcomeOf("later")), { text: "later", kind: "run" });
+  assert.deepEqual(
+    inEnglish(() => groupsOf([{ url: "https://site.test/a", outcome: "known" }]).map((group) => group.text)),
+    ["Already had a row"],
+  );
+  // 英語で引いた後も、日本語に戻る
+  assert.equal(linkOutcomeOf("max_pages").text, "枚数で切った");
+});
+
+test("英語: 内訳の帯の字。ホストと nofollow の数は、単数と複数を分ける", () => {
+  const summary = (hosts, nofollow) => ({
+    pending: 1,
+    captured: 2,
+    failed: 1,
+    skipped: 0,
+    maxPages: 0,
+    maxDepth: 3,
+    closed: 0,
+    skip: 5,
+    nofollow,
+    hosts,
+  });
+  const one = inEnglish(() => splitOf(summary(1, 1)));
+  assert.deepEqual(
+    one.parts.map((part) => part.text),
+    ["Captured", "Not captured (failed or skipped)", "Pending", "Cut by the depth limit", "Dropped by a rule (1 host)"],
+  );
+  assert.equal(one.aside, "plus 1 URL left out by nofollow");
+  const two = inEnglish(() => splitOf(summary(2, 2)));
+  assert.equal(two.parts.at(-1).text, "Dropped by a rule (2 hosts)");
+  assert.equal(two.aside, "plus 2 URLs left out by nofollow");
+});
+
+test("英語: 数の付く見出しは、単数と複数を分け、桁は日本語と同じに区切る", () => {
+  const title = (n) => t("links.split.title", { n });
+  assert.equal(title(1234), "見つけた別々の URL 1,234 本（起点を除く）は、どうなったか");
+  assert.equal(inEnglish(() => title(1)), "What became of the 1 distinct URL found (seeds not counted)");
+  assert.equal(inEnglish(() => title(1234)), "What became of the 1,234 distinct URLs found (seeds not counted)");
+  const incoming = (n) => t("links.panel.in", { n, pages: "/a" });
+  assert.equal(incoming(1), "入ってくるリンク 1 本: /a");
+  assert.equal(inEnglish(() => incoming(1)), "1 incoming link: /a");
+  assert.equal(inEnglish(() => incoming(2)), "2 incoming links: /a");
+  const more = (n) => t("links.panel.inMore", { n: 12, pages: "/a", more: n });
+  assert.equal(more(1), "入ってくるリンク 12 本: /a ほか 1 ページ");
+  assert.equal(inEnglish(() => more(1)), "12 incoming links: /a and 1 more page");
+  assert.equal(inEnglish(() => more(2)), "12 incoming links: /a and 2 more pages");
+});
+
+test("英語: 図の箱の字は、日本語より幅を取らない（箱の幅 SIZE.col は言語で変えない）", () => {
+  // 幅は字の数で見る: 全角は 2、半角は 1
+  const cells = (text) => [...text].reduce((n, c) => n + (c.codePointAt(0) > 0xff ? 2 : 1), 0);
+  const boxes = [
+    () => t("links.box.maxPages", { n: "1,234" }),
+    () => t("links.box.maxDepth", { n: "1,234" }),
+    () => t("links.box.closed", { n: "1,234" }),
+    () => t("links.box.folded", { label: "/docs/schedul…", n: "123" }),
+    () => t("links.box.hosts", { urls: 1234, hosts: 123 }),
+  ];
+  for (const box of boxes) {
+    const en = inEnglish(box);
+    assert.ok(cells(en) <= cells(box()), `${en} は ${box()} より長い`);
+  }
+  assert.equal(inEnglish(boxes[1]), "+1,234 cut by depth");
+  assert.equal(boxes[1](), "＋1,234 本 深さで切った");
+  assert.equal(inEnglish(() => t("links.box.hosts", { urls: 1, hosts: 1 })), "1 dropped by a rule (1 host)");
+  assert.equal(t("links.box.hosts", { urls: 1234, hosts: 2 }), "規則で落とした 1,234 本（2 個のホスト）");
 });
