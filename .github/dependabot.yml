@@ -38,10 +38,10 @@ updates:
         patterns:
           - "*"
 
-  # ── highlighter (public/vendor/shiki.js を作る元) ──
+  # ── highlighter (public/vendor/ の束 shiki.js・intl-messageformat.js を作る元) ──
   #
   # PR は package.json と lockfile しか変えないので、vendor.yml が赤になる。その PR の枝で
-  # `npm run vendor` を走らせ、作り直した shiki.js と shiki.LICENSES.txt を commit してから入れる。
+  # `npm run vendor` を走らせ、作り直した束と license の一覧 (public/vendor/) を commit してから入れる。
   - package-ecosystem: npm
     directory: /highlighter
     schedule:

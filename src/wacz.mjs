@@ -15,14 +15,18 @@
  *
  * ここに在るのは経路の読みと組み替えだけ。**workbench のロジックは置かない。**
  */
+import { Told } from "./lib.mjs";
 
-/** workbench が組み立てた引数が足りない・数でない。400 で返す。 */
-export class BadRequest extends Error {
-  constructor(message) {
-    super(message);
+/** workbench が組み立てた引数が足りない・数でない。400 で返す。句と値は `lib.mjs` の `ERROR_PHRASES`。 */
+export class BadRequest extends Told {
+  constructor(phrase, params) {
+    super(phrase, params);
     this.name = "BadRequest";
   }
 }
+
+/** 検証の報告の言語。daemon（wacz-validator）が辞書を持つ言語のうち、画面が持つ物。 */
+export const LOCALES = Object.freeze(["ja", "en"]);
 
 /**
  * daemon へ行くエンドポイントの名前。**docs の「エンドポイント」の表は、これと突き合わされる**
@@ -35,6 +39,7 @@ const ROUTE = new RegExp(`^/wacz/([^/?]+)/(${OPS.join("|")})(?:\\?(.*))?$`);
 /**
  * `/wacz/<archiveId>/<op>?…` を読む。合わなければ undefined。
  * 数は数に（無ければ undefined、数でなければ NaN —— paramsFor が断る）、path は decode して返す。
+ * `locale` は検証（validate）だけが使う、報告の言語。
  */
 export const parseWaczRoute = (url) => {
   const m = ROUTE.exec(url);
@@ -48,6 +53,7 @@ export const parseWaczRoute = (url) => {
   const q = new URLSearchParams(m[3] ?? "");
   const num = (name) => (q.has(name) ? Number(q.get(name)) : undefined);
   const path = q.get("path");
+  const locale = q.get("locale");
   return {
     archiveId,
     op: m[2],
@@ -58,6 +64,7 @@ export const parseWaczRoute = (url) => {
       n: num("n"),
       offset: num("offset"),
       length: num("length"),
+      locale: locale === null || locale === "" ? undefined : locale,
     },
   };
 };
@@ -69,12 +76,17 @@ export const parseWaczRoute = (url) => {
 export const paramsFor = (op, params) => {
   const need = (name) => {
     const value = params[name];
-    if (value === undefined || Number.isNaN(value)) throw new BadRequest(`${name} is required`);
+    if (value === undefined || Number.isNaN(value)) throw new BadRequest("parameter required", { name });
     return value;
   };
   switch (op) {
-    case "validate":
-      return { locale: "ja" };
+    case "validate": {
+      // 報告の文は daemon が言語ごとに持つ。画面が言語を送らなければ日本語（言語を送らない前の画面と同じ）。
+      // 知らない言語は、黙って別の言語に倒さずに断る
+      const locale = params.locale ?? "ja";
+      if (!LOCALES.includes(locale)) throw new BadRequest("unknown locale", { locale });
+      return { locale };
+    }
     case "lines":
     case "records":
       return { path: need("path"), from: need("from"), count: need("count") };
@@ -84,7 +96,7 @@ export const paramsFor = (op, params) => {
     case "record/body":
       return { path: need("path"), offset: need("offset"), length: need("length") };
     default:
-      throw new BadRequest(`unknown op: ${op}`);
+      throw new BadRequest("unknown op", { op });
   }
 };
 
@@ -103,7 +115,11 @@ export const viaSignedUrl = async ({ toLedger, call }, archiveId) => {
   try {
     return await call(href);
   } catch (err) {
-    const text = err instanceof Error ? err.message : String(err);
-    throw new Error(text.replaceAll(href, "(署名付き URL)"));
+    // 句を持つ誤り（daemon に届かない）は、値の中の URL だけを伏せて、句と値のまま返す
+    const hide = (value) => (typeof value === "string" ? value.replaceAll(href, "(signed URL)") : value);
+    if (err instanceof Told) {
+      throw new Told(err.message, Object.fromEntries(Object.entries(err.params).map(([k, v]) => [k, hide(v)])));
+    }
+    throw new Error(hide(err instanceof Error ? err.message : String(err)));
   }
 };

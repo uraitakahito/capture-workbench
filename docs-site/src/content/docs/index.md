@@ -51,13 +51,16 @@ the daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (
   convenience, not a protection, and the workbench stays on loopback
   ([Configuration](/configuration/#signing-in)).
 - **It has no npm dependencies.** The workbench is built from the Node standard library and plain
-  JavaScript that runs as-is in the browser, plus one committed file that colors the scripts
-  (`public/vendor/shiki.js`). What has dependencies is the source of this site (`docs-site/`) and
-  what that file is built from (`highlighter/`), see [Development](/development/).
+  JavaScript that runs as-is in the browser, plus two committed bundles in `public/vendor/`: one
+  colors the scripts (`shiki.js`) and one turns the dictionaries of the screen's text into
+  sentences (`intl-messageformat.js`). What has dependencies is the source of this site
+  (`docs-site/`) and what those bundles are built from (`highlighter/`), see
+  [Development](/development/).
 - **It only relays.** None of the workbench's logic lives on the server. The moment it did, there would be a
   copy of what the ledger knows.
-- **It owns no wording.** Validation messages, their Japanese text and the spec sections all come
-  back from the daemon already resolved, and are shown as they are. If the workbench rephrased them,
+- **It owns no wording of the validation.** Validation messages, in the language the page asks
+  for, and the spec sections all come back from the daemon already resolved, and are shown as they
+  are. If the workbench rephrased them,
   it would quietly drift from what the validator has started to say.
 
 ## Not published

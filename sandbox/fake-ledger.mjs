@@ -35,7 +35,7 @@
  *
  * クロールの合本 (CAPTURE-54。capture-ledger が段ごとに保管庫へ書く replay.json と pages.json) の欄も返す —— 行と詳しい所の
  * `replayBundle` (台本の行の `replayBundle` から。鍵は capture-ledger と同じ形に組む) と、ページの行の `capturedAt`・`bundledRev`
- * (台本のページから)。**代役は合本を書かない** —— 保管庫も replay も無いので、replay ↗ の先には何も無い。
+ * (台本のページから)。**代役は合本を書かない** —— 保管庫も replay も無いので、再生のリンクの先には何も無い。
  *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */

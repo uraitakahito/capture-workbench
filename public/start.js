@@ -7,6 +7,7 @@
  * **起点の URL は検査しない。** 読めない URL は capture-ledger が 400 で言う。規則を 2 か所に持つと、
  * 片方だけが変わった日に、workbench が通すのに capture-ledger が断る（または逆）形になる。
  */
+import { errorText } from "./i18n.js";
 
 /** 走らせるものの欄が、何も選んでいない形（登録済みのスクリプトが無く、その場の TS も無い）。 */
 const NOTHING_CHOSEN = {
@@ -173,7 +174,7 @@ export const inlineDeclared = (status, body) => {
     const blocking = (body.diagnostics ?? []).filter((d) => d.code === "BH0002" || d.code === "BH0004");
     return { params: body.params, note: blocking.map((d) => `${String(d.code)}: ${String(d.message)}`).join(" ／ ") };
   }
-  const said = body?.message ?? body?.error ?? "答えに文がありません";
+  const said = errorText(body) ?? "答えに文がありません";
   return {
     params: [],
     note: status === 0 ? `workbench 自身に届きません（${said}）` : `宣言を確かめられません（${String(status)} —— ${said}）`,
@@ -411,7 +412,7 @@ export const startAnswer = (status, answer) => {
   if (status === 409) {
     return { kind: "run", text: `走行中のクロールがあります${id}。終わるまで次は始められません。` };
   }
-  const said = answer.message ?? answer.error ?? "答えに文がありません";
+  const said = errorText(answer) ?? "答えに文がありません";
   if (status === 0) return { kind: "bad", text: `workbench 自身に届きません（${said}）` };
   // capture-ledger が名指した物（知らないスクリプトの id・重ね・辿らない起点・規則の行・変数やシークレットの名前・シークレットの
   // 名前と Windmill の path）。文の後、hint の前に。隠すシークレットと組めない形式の 400 は、形式を hint の中で言う

@@ -1,6 +1,6 @@
 ---
 title: 開発
-description: 依存の線、検査と試験が見るもの・見ないもの、サンドボックスで開く、docs を直す、画面の絵を撮り直す、リリース
+description: 依存の線、同梱した束、画面の文言と辞書、検査と試験が見るもの・見ないもの、サンドボックスで開く、docs を直す、画面の絵を撮り直す、リリース
 ---
 
 ## 依存の線
@@ -9,11 +9,11 @@ description: 依存の線、検査と試験が見るもの・見ないもの、�
 在るのは node の http サーバ 1 本と、ブラウザで素のまま走る JS だけです。
 framework は通さないので、workbench のためには install も lockfile も audit も要りません（[capture-scripts](https://github.com/uraitakahito/capture-scripts) と同じ判断）。
 分割したくなるほど育ったら、そのとき入れます。
-**例外は `public/vendor/shiki.js` の 1 ファイルです。**
-スクリプトの色付けを 1 ファイルに束ねて commit した物で（[同梱した色付け](#同梱した色付け)）、workbench はそれを読むだけなので、install は今も要りません。
+**例外は `public/vendor/` の束 2 つです。**
+スクリプトの色付け（`shiki.js`）と、辞書の文を画面の字にする library（`intl-messageformat.js`。[画面の文言](#画面の文言)）を、それぞれ 1 ファイルに束ねて commit した物で（[同梱した束](#同梱した束)）、workbench はそれを読むだけなので、install は今も要りません。
 
 依存が在るのは 2 つで、どちらも npm の別 project にしてあります。
-`docs-site/`（このサイトの原稿。Astro + Starlight と、画面の絵を撮る道具）と、`highlighter/`（`public/vendor/shiki.js` を作る元）です。
+`docs-site/`（このサイトの原稿。Astro + Starlight と、画面の絵を撮る道具）と、`highlighter/`（`public/vendor/` の束を作る元）です。
 lockfile も audit も Dependabot もそこに閉じ、root に `node_modules` を作りません。
 
 | 打つもの | 何をするか |
@@ -28,19 +28,23 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
 `check` に `site:check` は入れていません。
 `check` が install なしで走ることも、workbench の性質の一部だからです。
 
-## 同梱した色付け
+## 同梱した束
 
 スクリプト集の画面は、`public/vendor/shiki.js` で source に色を付けます。
 [Shiki](https://shiki.style) を、TypeScript の文法と 2 つの配色（GitHub Light High Contrast と GitHub Dark Default）だけにして、esbuild で束ねた物です（何を入れるかは `highlighter/entry.mjs`）。
+画面の字は、`public/vendor/intl-messageformat.js` が文にします。
+[intl-messageformat](https://formatjs.github.io/docs/intl-messageformat/) と、それが使う parser を束ねた物です（`highlighter/entry-i18n.mjs`）。
+どの束を何から作るかは、`highlighter/build.mjs` の `BUNDLES` の表に在ります。
 束は詰めてあるので、差分を読んでレビューできません。
 読むのは lockfile と `highlighter/build.mjs` にして、束がそこから作った物どおりかは `vendor.yml` に見させます。
 
 - **`public/vendor/` を手で直さない。**
-  書くのは `npm run vendor` です。Shiki の版を上げたら走らせます。
+  書くのは `npm run vendor` です。Shiki か intl-messageformat の版を上げたら走らせます。
 - **`highlighter/` への Dependabot の PR は、`package.json` と lockfile しか変えない。**
   なので `vendor.yml` が赤になります。その枝で `npm run vendor` を走らせ、作り直した物を commit してから入れます。
-- **束ねる物に MIT 以外が混ざると、作り直しが止まる**（`highlighter/build.mjs`）。そのときは何も書きません。
-  束ねた物の license の本文は `public/vendor/shiki.LICENSES.txt` に在ります。
+- **束ねる物に、許していない license が混ざると、作り直しが止まる**（`highlighter/build.mjs`）。そのときは何も書きません。
+  MIT は許します。ほかの license は、`BUNDLES` で名指した package の物だけです（いまは intl-messageformat の BSD-3-Clause）。
+  束ねた物の license の本文は、束の隣に在ります（`public/vendor/shiki.LICENSES.txt`・`public/vendor/intl-messageformat.LICENSES.txt`）。
 - **色は、画面の地に対して測る。**
   `test/highlight.test.mjs` が `public/app.css` の `--ground` を読み、スクリプトのファイルで使う色が明暗とも 4.5:1 以上かを見ます。地や配色を替えれば、測り直しになります。
 - **`npm run check` は `innerHTML` の語を、`public/` の下の `.js` の全部で探す。** 束も含みます。
@@ -48,6 +52,75 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
 - **色付けは worker で走る**（`public/highlight-worker.js`）。
   Shiki は最初の 1 本で文法を組むので、画面を描く thread で走らせると 100 ms を優に超えて止まります。
   色は描いてある行に、1 コマに数 ms ずつ塗ります。
+
+## 画面の文言
+
+画面の字は、描く所には書きません。
+`public/*.js` と `public/index.html` には鍵だけを置き、文は言語ごとの辞書（`public/i18n/ja.json` と `public/i18n/en.json`）に置きます。
+鍵を、いまの言語の文にするのは `public/i18n.js` です。
+
+- **辞書は「鍵 → 文」の平らな JSON で、文は ICU MessageFormat で書く。**
+  [wacz-validator](https://github.com/uraitakahito/wacz-validator) の辞書と同じ形です。
+  値の埋め込みは `{name}`、英語の単数と複数は `{n, plural, one {{n} page} other {{n} pages}}`、要素が挟まる文は `<code>…</code>` のようなタグで書きます。
+  字として書く波括弧は `'` で囲みます（`'{'chrome'}'`）。
+  文にするのは、同梱した `public/vendor/intl-messageformat.js` です（[同梱した束](#同梱した束)）。
+- **鍵は `<画面>.<まとまり>.<意味>`。**
+  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`archives`・`search`・`scripts`・`wacz`・`links`・`trace`）、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。
+  **鍵は文字列をそのまま書き、組み立てません。**
+  検査は、コードが名指す鍵と辞書を照らします。走らせたときに組み立てる鍵は、検査から見えません。
+  値から鍵への対応表のように、`t()` の外に鍵を書く所は `key("…")` で包みます。
+- **JS は `t("鍵", { 値 })`。**
+  要素が挟まる文は `tNodes("鍵", { code: (字) => 要素 })` が字と要素の並びを返すので、`append` に渡します。
+  HTML を受ける API は、辞書の文にも使いません。
+  **`public/index.html` には字を書きません。**
+  中身は `data-i18n="鍵"`、属性は `data-i18n-placeholder`・`data-i18n-aria-label`・`data-i18n-title` で、ページを読み込んだときに入ります。
+- **1 文に 1 鍵。**
+  断片を並べて文を作りません。並べる順が、もう 1 つの言語では違うからです。
+  複数形の枝の中では、`#` ではなく `{n}` と書きます。`#` は英語で桁を区切り（`1,234`）、日本語の文と字が変わります。
+- **言語を決めるのは、ページを読み込んだときの 1 度だけ。**
+  URL の `?lang=ja`・`?lang=en` が在ればそれ、無ければ日本語です。描いた後に描き直すことはありません。
+  まだ辞書へ移していない画面は、`?lang=en` でも日本語のままです。移していない行の数は `scripts/i18n-baseline.json` に在ります。
+- **日時は言語で変え、機械向けの形は変えない。**
+  `dateTime()` は、日本語なら今までと同じ `2026/1/5 4:00:00`、英語なら `Jan 5, 2026, 4:00:00 AM` と書きます。
+  桁区切り（`1,234`）・`11-08 04:00`・`2026-11-13`・`1m 40s` は、どちらの言語でも同じです。
+- **サーバの誤りは文ではなく、句と値で届く。**
+  画面に出す文を決めるのは、`public/i18n.js` の `errorText()` の 1 か所です。workbench のサーバの句は辞書で訳し、ほかは capture-ledger の `message`、無ければ `error` を出します。
+
+この形は `npm run check:i18n` が守ります（`npm run check` の中で走ります）。赤になるのは次のときです。
+
+1. 片方の辞書にしか無い鍵が在る
+2. 鍵の埋め込みの名前が、言語の間で違う（`{n}` と `{m}`）。文として読めない文が在る
+3. コードか `public/index.html` が名指す鍵が辞書に無い。辞書の鍵が、どこにも使われていない。`t()`・`tNodes()`・`key()` の最初の引数が文字列でない。
+   `workbench.error.` の鍵は、`src/lib.mjs` の `ERROR_PHRASES` と両方向で照らします
+4. `public/*.js` か `public/index.html` の、コメントの外に日本語の字が在る（全角の句読点も）。
+   画面を移している間は、ファイルごとの行数を `scripts/i18n-baseline.json` と比べます。控えより多ければ赤、少なくても赤です（余りを残さないよう、控えの数を減らします）。控えに無いファイルは 0 行でなければなりません
+
+試験は、流す機械の言語の設定に関わらず、日本語で走ります。
+`npm test` が `test/lang-ja.mjs` を先に読むからです。
+英語の字の試験は、その中で `setLang("en")` を呼び、終わりに `"ja"` へ戻します。ブラウザでは、`setLang` を呼ぶ所はありません。
+
+### 選んだ語
+
+辞書の英語は、この docs が既に書いていた英語を元にしています。
+docs が 1 つの物に 2 つの語を当てていた所は、辞書で 1 つにしました。
+
+| 鍵・まとまり | 日本語 | 英語 | 添え書き |
+| --- | --- | --- | --- |
+| `common.tab.*` | クロール・新しいクロール・定期実行・変化・アーカイブ・検索・スクリプト集 | Crawls・New crawl・Schedules・Changes・Archives・Search・Script collection | 見出しとボタンは、頭の 1 語だけ大文字 |
+| `crawls.state.running` | 走行中 | Running | |
+| `crawls.state.completed` | 完走 | Completed | capture-ledger の `stopReason` が `completed`。finished は、終わった行の全部を指す |
+| `crawls.state.maxDepth` | 打ち切り (深さ) | Cut (depth) | `crawls.state.maxPages` は Cut (pages) |
+| `crawls.state.withFailed` | ・2 枚取れず | · 2 pages failed | capture-ledger の欄が `pagesFailed` |
+| `crawls.state.pageOnly` | このページだけ | This page only | |
+| `archives.check.*` | 問題なし・失敗 1・警告 3・検証できず | No problems・1 failure・3 warnings・Could not validate | クロールは Failed、検証は failures |
+| `start.tab.inline` | その場の TS | Your script | inline は id（`inline-<名前>`）と API の話にだけ使う |
+| `start.schedule.make` | 定期にする | Make a schedule | |
+| `common.col.goto` | 行き先 | Open in | Links は「リンク」の列 |
+| 段 | 段 | level（クロールの 1 巡）・step（取り込みと compile の区切り） | |
+| 行 | 行 | row（表と規則）・line（source・ログ・差分） | |
+| 回 | 回 | run（予定の 1 回）・times（数える回） | |
+| 起点 | 起点 | seed | |
+| 写し | 写し | snapshot | Copy はボタン「写す」 |
 
 ## 試験が見るもの、見ないもの
 

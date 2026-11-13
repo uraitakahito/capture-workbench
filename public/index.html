@@ -10,16 +10,16 @@
     <header>
       <h1>Web Capture</h1>
       <nav id="tabs">
-        <button type="button" id="tab-crawls" class="on" data-face="crawls">クロール</button>
-        <button type="button" id="tab-start" data-face="start">新しいクロール</button>
-        <button type="button" id="tab-schedules" data-face="schedules">定期実行<span id="tab-schedules-count" class="tab-count" hidden></span></button>
-        <button type="button" id="tab-changes" data-face="changes">変化</button>
-        <button type="button" id="tab-archives" data-face="archives">アーカイブ</button>
-        <button type="button" id="tab-search" data-face="search">検索</button>
-        <button type="button" id="tab-scripts" data-face="scripts">スクリプト集</button>
+        <button type="button" id="tab-crawls" class="on" data-face="crawls" data-i18n="common.tab.crawls"></button>
+        <button type="button" id="tab-start" data-face="start" data-i18n="common.tab.start"></button>
+        <button type="button" id="tab-schedules" data-face="schedules"><span data-i18n="common.tab.schedules"></span><span id="tab-schedules-count" class="tab-count" hidden></span></button>
+        <button type="button" id="tab-changes" data-face="changes" data-i18n="common.tab.changes"></button>
+        <button type="button" id="tab-archives" data-face="archives" data-i18n="common.tab.archives"></button>
+        <button type="button" id="tab-search" data-face="search" data-i18n="common.tab.search"></button>
+        <button type="button" id="tab-scripts" data-face="scripts" data-i18n="common.tab.scripts"></button>
         <button type="button" id="tab-wacz" data-face="wacz" hidden>WACZ</button>
       </nav>
-      <p class="who"><span id="who">名乗りを確かめています…</span> <a href="/logout">サインアウト</a></p>
+      <p class="who"><span id="who" data-i18n="common.who.checking"></span> <a href="/logout" data-i18n="common.who.signOut"></a></p>
     </header>
 
     <!--
@@ -31,7 +31,7 @@
       定期実行の帯。#trouble は引き直しが成功すると消えるので、同じ所に書かない。全部のタブで見え、手で閉じない ——
       原因が直ると消える。読み取りは一覧の引き直しと別の輪（app.js の refreshSchedules）。
     -->
-    <p id="schedule-band" class="schedule-band" hidden><span id="schedule-band-text"></span> <a href="#schedules">定期実行を開く</a></p>
+    <p id="schedule-band" class="schedule-band" hidden><span id="schedule-band-text"></span> <a href="#schedules" data-i18n="common.band.open"></a></p>
 
     <main>
       <!--
@@ -44,20 +44,20 @@
         <table>
           <thead>
             <tr>
-              <th>状態</th>
+              <th data-i18n="crawls.col.state"></th>
               <th>id</th>
-              <th>始めた人</th>
-              <th>起点</th>
-              <th class="num">撮れた</th>
-              <th class="num" title="撮ったページにあったリンクのうち、規則が通した別々の URL の数。撮らなかった物も入る。押すとリンクの構成を開く">リンク</th>
+              <th data-i18n="crawls.col.by"></th>
+              <th data-i18n="crawls.col.seed"></th>
+              <th class="num" data-i18n="crawls.col.captured"></th>
+              <th class="num" data-i18n-title="crawls.col.linksTitle" data-i18n="crawls.col.links"></th>
               <th class="num">WACZ</th>
-              <th class="num">かかった</th>
-              <th>行き先</th>
+              <th class="num" data-i18n="crawls.col.took"></th>
+              <th data-i18n="common.col.goto"></th>
             </tr>
           </thead>
           <tbody id="crawls"></tbody>
         </table>
-        <p id="crawls-empty" class="empty" hidden>クロールがまだ 1 本もありません。</p>
+        <p id="crawls-empty" class="empty" hidden data-i18n="crawls.empty"></p>
        </div>
         <!--
           リンクの構成。上から、戻るリンクと題・数の内訳の帯・道具・図（深さを列にした SVG。app.js が組む）・
@@ -69,8 +69,8 @@
           <div id="links-head"></div>
           <div id="links-split"></div>
           <div id="links-tools" class="links-tools">
-            <label><input type="checkbox" id="links-cross" /> 木に無い辺を全部出す</label>
-            <button type="button" id="links-fold">深さ 1 より下を畳む</button>
+            <label><input type="checkbox" id="links-cross" /> <span data-i18n="links.tools.cross"></span></label>
+            <button type="button" id="links-fold" data-i18n="links.tools.fold"></button>
           </div>
           <!-- 枠（線）と、横に流す箱 -->
           <div class="links-frame"><div id="links-graph" class="links-graph"></div></div>
@@ -106,10 +106,10 @@
       <section id="face-start" hidden>
         <form id="start" class="start" autocomplete="off">
           <div class="start-side">
-            <label for="start-seeds">起点の URL（1 行に 1 本）</label>
+            <label for="start-seeds" data-i18n="start.seeds.label"></label>
             <textarea id="start-seeds" rows="4" spellcheck="false" placeholder="https://example.com/"></textarea>
             <fieldset class="start-run">
-              <legend>スクリプト（番号の順に走る）</legend>
+              <legend data-i18n="start.scripts.legend"></legend>
               <!--
                 スクリプトの行。app.js がスクリプト集の画面と同じ一覧から描く。外した物は、このクロールでは走らない。
                 番号が走る順で、↑↓ で番号の行どうしを入れ替える（チェックでは行は動かない）。読み込みの後に走るその場の TS も、
@@ -127,15 +127,15 @@
               名前の横に、WARC に値を残すか（宣言の archive。省けば隠す）が出る
             -->
             <fieldset class="start-run start-values" id="start-values" hidden>
-              <legend>クロールごとの値</legend>
+              <legend data-i18n="start.values.legend"></legend>
               <table class="vars" id="start-vars-table" hidden>
                 <thead>
-                  <tr><th>変数</th><th>値</th></tr>
+                  <tr><th data-i18n="start.values.colName"></th><th data-i18n="start.values.colValue"></th></tr>
                 </thead>
                 <tbody id="start-vars"></tbody>
               </table>
               <p id="start-secrets" class="start-secrets" hidden></p>
-              <p class="start-hint">チェックしたスクリプトとその場の TS が宣言した変数が並びます。値は文字列です。任意の欄は空なら送らず、スクリプトは <code>undefined</code> を読みます。必須の欄が空なら、capture-ledger が 400 で名指します。</p>
+              <p class="start-hint" data-i18n="start.values.hint"></p>
             </fieldset>
             <!--
               クロールごとの User-Agent。空なら送らず、browser の字のまま撮る。workbench は字を検査しない（形は
@@ -143,17 +143,17 @@
             -->
             <fieldset class="start-run" id="start-ua">
               <legend>User-Agent</legend>
-              <textarea id="start-ua-text" class="start-ua-text" rows="2" spellcheck="false" placeholder="空なら HeadlessChrome のまま"></textarea>
-              <div class="start-row"><button type="button" id="start-ua-compatible">Headless を外す型を入れる</button></div>
-              <p class="start-hint"><code>{chrome}</code> はブラウザの字（Headless なし）に置き換わります。<code>BrowserHive</code> の語を含むと、robots.txt はその名前の規則で読みます。</p>
+              <textarea id="start-ua-text" class="start-ua-text" rows="2" spellcheck="false" data-i18n-placeholder="start.ua.placeholder"></textarea>
+              <div class="start-row"><button type="button" id="start-ua-compatible" data-i18n="start.ua.compatible"></button></div>
+              <p class="start-hint" data-i18n="start.ua.hint"></p>
             </fieldset>
             <div class="start-row">
-              <label><input type="radio" name="start-depth" id="start-page" checked /> このページだけ</label>
+              <label><input type="radio" name="start-depth" id="start-page" checked /> <span data-i18n="start.depth.pageOnly"></span></label>
               <!-- 辿るときは、右の列の「辿り方」のタブで深さ・枚数・規則を決める -->
-              <label><input type="radio" name="start-depth" id="start-follow" /> リンクを辿る</label>
+              <label><input type="radio" name="start-depth" id="start-follow" /> <span data-i18n="start.depth.follow"></span></label>
             </div>
             <div class="start-row">
-              <button type="submit" id="start-go" disabled>始める</button>
+              <button type="submit" id="start-go" disabled data-i18n="start.go"></button>
             </div>
             <p id="start-answer" class="start-answer" hidden></p>
             <!--
@@ -161,16 +161,16 @@
               固定され、新しい版が出ても変わらない（上げるのは定期実行の画面の「固定し直す」）。
             -->
             <fieldset class="start-run start-schedule">
-              <legend>定期にする</legend>
+              <legend data-i18n="start.schedule.make"></legend>
               <div class="start-row">
-                <label>名前 <input type="text" id="schedule-name" autocomplete="off" spellcheck="false" placeholder="例: 毎朝の 5 サイト" /></label>
-                <label>いつ（cron の 5 欄） <input type="text" id="schedule-cron" class="mono" autocomplete="off" spellcheck="false" value="0 4 * * *" /></label>
+                <label><span data-i18n="start.schedule.name"></span> <input type="text" id="schedule-name" autocomplete="off" spellcheck="false" data-i18n-placeholder="start.schedule.namePlaceholder" /></label>
+                <label><span data-i18n="start.schedule.cron"></span> <input type="text" id="schedule-cron" class="mono" autocomplete="off" spellcheck="false" value="0 4 * * *" /></label>
                 <span id="schedule-presets" class="schedule-presets"></span>
               </div>
               <div class="start-row">
-                <button type="button" id="schedule-go" disabled>定期にする</button>
+                <button type="button" id="schedule-go" disabled data-i18n="start.schedule.make"></button>
               </div>
-              <p class="start-hint">いまの欄の中身で予定を作ります。時刻は Asia/Tokyo で読みます。結果は「定期実行」の画面に出ます。</p>
+              <p class="start-hint" data-i18n="start.schedule.hint"></p>
               <p id="schedule-answer" class="start-answer" hidden></p>
             </fieldset>
             <!--
@@ -178,39 +178,33 @@
               （capture-ledger の POST /api/crawls・inline.name）で、workbench は検査しない（違えば capture-ledger が 400 で言う）
             -->
             <p class="start-hint">
-              strict の TypeScript として型を検査します（最初の段の compile）。IIFE で包み、要素には型を付けて
-              <code>?.</code> で。束ねた JS は「型を検査しない」で（1 行目に <code>// @ts-nocheck</code> が入る）。
-              先頭の文に <code>import { z } from "zod"</code> を書けば Zod を使える（「遷移の前」では使えない）。
-              <code>const { query } = defineParams(z.object({ … }))</code> で宣言した変数は「クロールごとの値」に欄が出る。
-              <code>export</code> は書けない（compile が <code>BH0006</code> で止める。ページでは構文エラーになり、何も走らないため）。その場の TS は、「読み込みの後」ならスクリプトの欄の番号の順に（初めは先頭）、「遷移の前」なら全部より先に走ります。
-              スクリプトの名前（<code>inline-</code> の後ろ）は、英小文字で始め、英小文字・数字・<code>-</code> で 57 字まで。
-              <code>inline-</code> を付けた物がこのスクリプトの id になります。
+              <span data-i18n="start.inline.hint"></span>
               <!-- data-read: ふつうに押せば右の列で開く（app.js）。修飾キーならスクリプト集の画面を別のタブで -->
-              <a href="#scripts/types/host.d.ts" data-read>受け皿 <code>__bh</code> の型を読む</a>
+              <a href="#scripts/types/host.d.ts" data-read data-i18n="start.inline.readTypes"></a>
             </p>
           </div>
           <div class="start-code">
             <!-- 右の列のタブ。読む窓のタブと × は、スクリプトの「読む」で開いている間だけ出る（app.js の showStartTab） -->
             <div class="start-tabs">
-              <button type="button" id="start-tab-js" class="on">その場の TS</button>
-              <button type="button" id="start-tab-rules" hidden>辿り方</button>
+              <button type="button" id="start-tab-js" class="on" data-i18n="start.tab.inline"></button>
+              <button type="button" id="start-tab-rules" hidden data-i18n="start.tab.rules"></button>
               <button type="button" id="start-tab-read" hidden></button>
-              <button type="button" id="start-tab-close" aria-label="読む窓を閉じる" hidden>×</button>
+              <button type="button" id="start-tab-close" data-i18n-aria-label="start.tab.closeRead" hidden>×</button>
             </div>
             <div id="start-js" class="start-js">
               <div class="start-row">
-                <label for="start-inline-name">スクリプトの名前</label>
+                <label for="start-inline-name" data-i18n="start.inline.name"></label>
                 <span class="start-name"
                   ><span class="prefix">inline-</span
                   ><input type="text" id="start-inline-name" spellcheck="false" placeholder="close-banner"
                 /></span>
-                <label><input type="radio" name="start-phase" id="start-inline-behavior" checked /> 読み込みの後</label>
-                <label><input type="radio" name="start-phase" id="start-inline-preload" /> 遷移の前</label>
+                <label><input type="radio" name="start-phase" id="start-inline-behavior" checked /> <span data-i18n="start.inline.afterLoad"></span></label>
+                <label><input type="radio" name="start-phase" id="start-inline-preload" /> <span data-i18n="start.inline.beforeNavigation"></span></label>
                 <label class="start-file"
-                  >ファイルを読む<input type="file" id="start-inline-file" accept=".ts,.js,.mjs,text/plain,text/javascript"
+                  ><span data-i18n="start.inline.file"></span><input type="file" id="start-inline-file" accept=".ts,.js,.mjs,text/plain,text/javascript"
                 /></label>
                 <!-- 1 行目の // @ts-nocheck を足し引きする。見えている物が送る物 -->
-                <label><input type="checkbox" id="start-nocheck" /> 型を検査しない</label>
+                <label><input type="checkbox" id="start-nocheck" /> <span data-i18n="start.inline.nocheck"></span></label>
               </div>
               <!-- 行番号の溝と箱。折り返さない（折り返すと溝の番号と行がずれる） -->
               <div class="start-editor">
@@ -219,11 +213,11 @@
                   id="start-inline-source"
                   wrap="off"
                   spellcheck="false"
-                  aria-label="その場の TS"
+                  data-i18n-aria-label="start.tab.inline"
                   placeholder="(() => {&#10;  document.querySelector&lt;HTMLButtonElement&gt;(&quot;#accept&quot;)?.click();&#10;})();"
                 ></textarea>
               </div>
-              <p id="start-size" class="start-size">0 行</p>
+              <p id="start-size" class="start-size" data-i18n="start.size.empty"></p>
               <!-- 欄が出ない理由（宣言を読めない・確かめられない）。無ければ出ない（start.js の inlineDeclared） -->
               <p id="start-inline-note" class="start-size bad" hidden></p>
             </div>
@@ -234,29 +228,29 @@
             -->
             <div id="start-rules" class="start-rules" hidden>
               <div class="start-row">
-                <label for="start-max-depth">深さ</label>
-                <input type="number" id="start-max-depth" min="1" max="10" placeholder="既定" />
-                <span class="muted">段まで</span>
-                <label for="start-max-pages">枚数</label>
-                <input type="number" id="start-max-pages" min="1" max="10000" placeholder="既定" />
-                <span class="muted">枚まで（空なら capture-ledger の既定）</span>
+                <label for="start-max-depth" data-i18n="start.rules.depth"></label>
+                <input type="number" id="start-max-depth" min="1" max="10" data-i18n-placeholder="start.rules.default" />
+                <span class="muted" data-i18n="start.rules.depthUnit"></span>
+                <label for="start-max-pages" data-i18n="start.rules.pages"></label>
+                <input type="number" id="start-max-pages" min="1" max="10000" data-i18n-placeholder="start.rules.default" />
+                <span class="muted" data-i18n="start.rules.pagesUnit"></span>
               </div>
               <div class="start-row" id="start-presets">
-                <span class="muted">型から埋める:</span>
-                <button type="button" data-preset="site">サイトの中</button>
-                <button type="button" data-preset="siteAndOneHop">サイトの中＋外は 1 歩</button>
-                <button type="button" data-preset="host">ホストの中</button>
-                <button type="button" data-preset="any">どこでも</button>
+                <span class="muted" data-i18n="start.rules.presets"></span>
+                <button type="button" data-preset="site" data-i18n="start.rules.preset.site"></button>
+                <button type="button" data-preset="siteAndOneHop" data-i18n="start.rules.preset.siteAndOneHop"></button>
+                <button type="button" data-preset="host" data-i18n="start.rules.preset.host"></button>
+                <button type="button" data-preset="any" data-i18n="start.rules.preset.any"></button>
               </div>
               <table class="rules">
                 <thead>
-                  <tr><th>行</th><th>動き</th><th>当てる物</th><th>確かめの答え</th><th></th></tr>
+                  <tr><th data-i18n="start.rules.colRow"></th><th data-i18n="start.rules.colAction"></th><th data-i18n="start.rules.colMatch"></th><th data-i18n="start.rules.colAnswer"></th><th></th></tr>
                 </thead>
                 <tbody id="start-rule-rows"></tbody>
               </table>
               <div class="start-row">
-                <button type="button" id="start-add-skip">＋ 落とす行を足す（いちばん上に入る）</button>
-                <button type="button" id="start-add-row">＋ 行を足す</button>
+                <button type="button" id="start-add-skip" data-i18n="start.rules.addSkip"></button>
+                <button type="button" id="start-add-row" data-i18n="start.rules.addRow"></button>
               </div>
               <p id="start-said" class="start-said" aria-live="polite"></p>
             </div>
@@ -269,7 +263,7 @@
               <p id="start-read-note" class="reading-note" hidden></p>
               <p id="start-read-colors" class="reading-colors" hidden></p>
               <div id="start-read-ask" class="reading-ask" hidden></div>
-              <ol id="start-read-lines" class="vlines rlines" tabindex="0" aria-label="読んでいる source"></ol>
+              <ol id="start-read-lines" class="vlines rlines" tabindex="0" data-i18n-aria-label="start.read.source"></ol>
             </div>
           </div>
         </form>
@@ -279,19 +273,19 @@
         <table>
           <thead>
             <tr>
-              <th>撮れたもの</th>
-              <th>ラベル</th>
-              <th>撮った時刻</th>
-              <th>完全か</th>
-              <th>仕様どおりか</th>
+              <th data-i18n="archives.col.source"></th>
+              <th data-i18n="archives.col.label"></th>
+              <th data-i18n="archives.col.capturedAt"></th>
+              <th data-i18n="archives.col.complete"></th>
+              <th data-i18n="archives.col.conformant"></th>
               <th></th>
               <th>WACZ</th>
-              <th>行き先</th>
+              <th data-i18n="common.col.goto"></th>
             </tr>
           </thead>
           <tbody id="archives"></tbody>
         </table>
-        <p id="archives-empty" class="empty" hidden>見えるアーカイブがありません。</p>
+        <p id="archives-empty" class="empty" hidden data-i18n="archives.empty"></p>
       </section>
 
       <!--
@@ -305,7 +299,7 @@
       -->
       <section id="face-schedules" hidden>
         <p id="schedules-answer" class="start-answer" hidden></p>
-        <p id="schedules-empty" class="empty" hidden>予定はまだありません。「新しいクロール」の画面で撮り方を決めて「定期にする」を押すと作れます。</p>
+        <p id="schedules-empty" class="empty" hidden data-i18n="schedules.empty"></p>
         <div id="schedules"></div>
       </section>
 
@@ -317,14 +311,14 @@
         <p id="changes-answer" class="start-answer" hidden></p>
         <!-- 一覧（#changes）。回を開くと隠す -->
         <div id="changes-list">
-          <p id="changes-empty" class="empty" hidden>まだ比べた回がありません。定期実行の回が 2 回撮れると、ここに前回からの変化が出ます。</p>
+          <p id="changes-empty" class="empty" hidden data-i18n="changes.empty"></p>
           <table id="changes-table" hidden>
             <thead>
               <tr>
-                <th>予定</th>
-                <th>始まった</th>
-                <th>変化</th>
-                <th class="wide">Claude の 1 行（証拠ではない）</th>
+                <th data-i18n="changes.col.schedule"></th>
+                <th data-i18n="changes.col.started"></th>
+                <th data-i18n="changes.col.change"></th>
+                <th class="wide" data-i18n="changes.col.claude"></th>
               </tr>
             </thead>
             <tbody id="changes-rows"></tbody>
@@ -334,7 +328,7 @@
         <div id="change-detail" hidden>
           <div id="change-head"></div>
           <div id="change-body" class="change-body">
-            <nav id="change-toc" class="change-toc" aria-label="回のページの目次"></nav>
+            <nav id="change-toc" class="change-toc" data-i18n-aria-label="changes.toc.label"></nav>
             <section id="change-pane" class="change-pane"></section>
           </div>
         </div>
@@ -342,17 +336,17 @@
 
       <section id="face-search" hidden>
         <form id="search" class="search" autocomplete="off">
-          <label for="search-words">探す語</label>
-          <input type="search" id="search-words" spellcheck="false" placeholder="例: MacBook" />
-          <button type="submit" id="search-go">探す</button>
+          <label for="search-words" data-i18n="search.words"></label>
+          <input type="search" id="search-words" spellcheck="false" data-i18n-placeholder="search.placeholder" />
+          <button type="submit" id="search-go" data-i18n="search.go"></button>
         </form>
         <p id="search-answer" class="search-answer" hidden></p>
         <table id="search-table" hidden>
           <thead>
             <tr>
-              <th>時点</th>
-              <th>題と当たった所</th>
-              <th>行き先</th>
+              <th data-i18n="search.col.stage"></th>
+              <th data-i18n="search.col.hit"></th>
+              <th data-i18n="common.col.goto"></th>
             </tr>
           </thead>
           <tbody id="search-hits"></tbody>
@@ -371,13 +365,9 @@
           空は「異常ではないが、たいてい間違い」。BrowserHive は顔ぶれを持たないので、
           登録済みのスクリプトが無いと、ページの中で何も走らない —— それでも取り込みは成功する。
         -->
-        <p id="scripts-empty" class="empty bad" hidden>
-          登録済みのスクリプトがありません。クロールはページの中で何も走らせません（スクロールも遅延読み込みも
-          起きないまま、成功したアーカイブが出ます）。
-          <code>cd ../capture-ledger &amp;&amp; pnpm run scripts import .upstream/capture-scripts</code>
-        </p>
+        <p id="scripts-empty" class="empty bad" hidden data-i18n="scripts.empty"></p>
         <div class="vgrid">
-          <nav id="reading-list" class="rlist" aria-label="スクリプト集"></nav>
+          <nav id="reading-list" class="rlist" data-i18n-aria-label="common.tab.scripts"></nav>
           <div class="vmain">
             <div id="reading-head" class="vhead rhead"></div>
             <p id="reading-note" class="reading-note" hidden></p>
@@ -405,7 +395,7 @@
       </section>
     </main>
 
-    <footer id="pulse">読み込み中…</footer>
+    <footer id="pulse" data-i18n="common.pulse.loading"></footer>
 
     <script type="module" src="/app.js"></script>
   </body>

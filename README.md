@@ -21,4 +21,4 @@ npm の依存を持たず（例外は commit した色付けの 1 ファイル�
 
 ## License
 
-Unlicense。同梱した色付け（`public/vendor/shiki.js`）は Shiki ほかの MIT で、本文は `public/vendor/shiki.LICENSES.txt` に在る。
+Unlicense。同梱した束は 2 つで、license の本文は束の隣に在る。色付け（`public/vendor/shiki.js`）は Shiki ほかの MIT（`public/vendor/shiki.LICENSES.txt`）。画面の文言を文にする library（`public/vendor/intl-messageformat.js`）は intl-messageformat の BSD-3-Clause と、それが使う parser の MIT（`public/vendor/intl-messageformat.LICENSES.txt`）。

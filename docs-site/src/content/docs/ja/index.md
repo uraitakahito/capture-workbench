@@ -47,13 +47,13 @@ replayweb-server・capture-player と Windmill へは、画面の行からリン
   Floci の管理の API は既定の鍵を通すので、Floci に届くものは利用者を作り、その利用者としてサインインできます。
   ここのサインインは便利さであって守りではなく、workbench は loopback の外に出しません（[設定](/configuration/#サインイン)）。
 - **npm の依存を持たない。**
-  workbench は node の標準ライブラリと、ブラウザで素のまま走る JS、それにスクリプトに色を付ける commit 済みの 1 ファイル（`public/vendor/shiki.js`）で建っています。
-  依存が在るのは、このサイトの原稿（`docs-site/`）と、その 1 ファイルを作る元（`highlighter/`）です（[開発](/development/)）。
+  workbench は node の標準ライブラリと、ブラウザで素のまま走る JS、それに commit 済みの束 2 つ（`public/vendor/`。スクリプトに色を付ける `shiki.js` と、画面の文言の辞書を文にする `intl-messageformat.js`）で建っています。
+  依存が在るのは、このサイトの原稿（`docs-site/`）と、その束を作る元（`highlighter/`）です（[開発](/development/)）。
 - **中継するだけ。**
   workbench のロジックはサーバに置きません。
   置いた瞬間に「capture-ledger が知っていることの写し」が生まれるからです。
-- **文を持たない。**
-  検証の message も、日本語も、仕様の節も、daemon が解決して返したものをそのまま出します。
+- **検証の文を持たない。**
+  検証の message も、画面が頼んだ言語の文も、仕様の節も、daemon が解決して返したものをそのまま出します。
   workbench が言い換えると、検証器が言い始めたことと静かにずれていきます。
 
 ## 公開しない

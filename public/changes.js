@@ -8,6 +8,7 @@
  *
  * 回の詳細は、左に回の全ページの目次、右に選んだ 1 ページ（CAPTURE-236）。ページは今回の WACZ の id で名指す。
  */
+import { errorText } from "./i18n.js";
 import { runDelay, shortTime } from "./schedules.js";
 
 export const CHANGES_PATH = "/api/changes";
@@ -199,4 +200,4 @@ export const versionNote = (page) => {
 export const changesError = (status, body) =>
   status === 404 && body?.error !== "not found"
     ? "この capture-ledger は前回からの変化を返しません（v0.93.0 より前）"
-    : `${String(status)} —— ${String(body?.error ?? body?.message ?? "読めませんでした")}`;
+    : `${String(status)} —— ${errorText(body) ?? "読めませんでした"}`;

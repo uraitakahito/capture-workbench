@@ -75,16 +75,19 @@ workbench stops at that 404 without drawing the lists.
 
 ## Fix it from the message
 
-The workbench itself is in Japanese, so the messages below are quoted as they appear.
+The workbench itself is in Japanese, so the messages below are quoted as they appear. The
+messages of `/login` and `/callback` reach the browser without the workbench's page, which is where
+the language is chosen, so they carry English and Japanese side by side (separated by ` / `, or on
+two lines). The English half is quoted here.
 
 | Where | Message | What to do |
 | --- | --- | --- |
 | top of the screen (red) | `not found` | Your user has no permission. Run the `idp:grant` above |
-| `/login` | `サインインの設定が無い —— WORKBENCH_OIDC_ISSUER と WORKBENCH_OIDC_CLIENT_ID を書く …` | The workbench was started without the sign-in settings. Set them ([Configuration](/configuration/)), or let `dev:up` start it |
-| `/login`, or top of the screen (red) | `… に届かない (…)。capture-ledger で pnpm run dev:status の IdP の行を見る` | Floci does not answer. Look at the IdP row of `dev:status` |
-| `/login`, or top of the screen (red) | `… の discovery が … —— Floci のプールが作り直されたなら、capture-ledger で pnpm run dev:up --from idp` | Floci answers, but not for this issuer: its pool was made again. Run the command it names |
-| `/callback` | `サインインできませんでした: 知らない state —— サインインをやり直す (/login)` | The sign-in took too long, was used twice (the back button), or the workbench restarted in between. Open `/login` again |
-| `/callback` | `サインインできませんでした: code をトークンに替えられない: …` | The IdP refused the code; its answer follows the colon. Open `/login` again |
+| `/login` | `Sign-in is not configured: set WORKBENCH_OIDC_ISSUER and WORKBENCH_OIDC_CLIENT_ID …` | The workbench was started without the sign-in settings. Set them ([Configuration](/configuration/)), or let `dev:up` start it |
+| `/login`, or top of the screen (red) | `Cannot reach … (…). Look at the IdP line of pnpm run dev:status in capture-ledger / …` | Floci does not answer. Look at the IdP row of `dev:status` |
+| `/login`, or top of the screen (red) | `The discovery of … answered …. If the Floci pool was recreated, run pnpm run dev:up --from idp in capture-ledger / …` | Floci answers, but not for this issuer: its pool was made again. Run the command it names |
+| `/callback` | `Could not sign in / サインインできませんでした: unknown state: sign in again (/login) / …` | The sign-in took too long, was used twice (the back button), or the workbench restarted in between. Open `/login` again |
+| `/callback` | `Could not sign in / サインインできませんでした: could not exchange the code for a token / …: …` | The IdP refused the code; its answer follows the last colon. Open `/login` again |
 | top of the screen (red) | `… に届かない (…)。capture-ledger で pnpm run api は動いているか?` | The ledger's API is not up. Start it with `dev:up` |
 | validation cell, WACZ view | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | The daemon is not up. Run the command it names |
 | sign-in line | `サインインしていません` | There is no session. If it stays, the workbench has no sign-in settings; `/login` says which are missing |

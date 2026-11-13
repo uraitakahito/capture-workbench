@@ -72,14 +72,17 @@ workbench はその 404 を受けて、一覧を描かずに止まります。
 
 ## 出た文から直す
 
+`/login` と `/callback` の文は、言語を選ぶ workbench のページを通らずにブラウザへ直に出ます。
+なので、英語と日本語を並べて書いてあります（` / ` で区切るか、2 行に分ける）。下の表は、日本語の側を引いています。
+
 | どこに | 出る文 | 直し方 |
 | --- | --- | --- |
 | 画面の上（赤） | `not found` | 名乗りに許可が無い。上の `idp:grant` |
 | `/login` | `サインインの設定が無い —— WORKBENCH_OIDC_ISSUER と WORKBENCH_OIDC_CLIENT_ID を書く …` | サインインの設定なしで起こした。設定を書く（[設定](/configuration/)）か、`dev:up` に起こさせる |
-| `/login`・画面の上（赤） | `… に届かない (…)。capture-ledger で pnpm run dev:status の IdP の行を見る` | Floci が答えない。`dev:status` の IdP の行を見る |
-| `/login`・画面の上（赤） | `… の discovery が … —— Floci のプールが作り直されたなら、capture-ledger で pnpm run dev:up --from idp` | Floci は答えるが、この issuer には答えない。プールが作り直された。言われたとおりに打つ |
-| `/callback` | `サインインできませんでした: 知らない state —— サインインをやり直す (/login)` | サインインに時間が掛かりすぎた、2 度使った（戻るボタン）、途中で workbench を起こし直した。`/login` を開き直す |
-| `/callback` | `サインインできませんでした: code をトークンに替えられない: …` | IdP が code を断った。コロンの後が IdP の答え。`/login` を開き直す |
+| `/login`・画面の上（赤） | `… / … に届かない (…)。capture-ledger で pnpm run dev:status の IdP の行を見る` | Floci が答えない。`dev:status` の IdP の行を見る |
+| `/login`・画面の上（赤） | `… / … の discovery が … —— Floci のプールが作り直されたなら、capture-ledger で pnpm run dev:up --from idp` | Floci は答えるが、この issuer には答えない。プールが作り直された。言われたとおりに打つ |
+| `/callback` | `Could not sign in / サインインできませんでした: … / 知らない state —— サインインをやり直す (/login)` | サインインに時間が掛かりすぎた、2 度使った（戻るボタン）、途中で workbench を起こし直した。`/login` を開き直す |
+| `/callback` | `Could not sign in / サインインできませんでした: … / code をトークンに替えられない: …` | IdP が code を断った。最後のコロンの後が IdP の答え。`/login` を開き直す |
 | 画面の上（赤） | `… に届かない (…)。capture-ledger で pnpm run api は動いているか?` | capture-ledger の API が立っていない。`dev:up` で起こす |
 | 検証の欄・WACZ の画面 | `… に届かない (…)。capture-ledger で pnpm run dev:up --from validator は済んでいるか?` | daemon が立っていない。言われたとおりに打つ |
 | 名乗りの欄 | `サインインしていません` | セッションが無い。出たままなら、サインインの設定が無い。`/login` が足りない物を言う |

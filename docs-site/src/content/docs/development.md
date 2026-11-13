@@ -1,6 +1,6 @@
 ---
 title: Development
-description: Where the dependencies stop, what the checks and tests see and do not see, opening capture-workbench in the sandbox, editing these docs, re-taking the screenshots, releasing
+description: Where the dependencies stop, the bundles, the text on the screen and its dictionaries, what the checks and tests see and do not see, opening capture-workbench in the sandbox, editing these docs, re-taking the screenshots, releasing
 ---
 
 ## Where the dependencies stop
@@ -9,13 +9,15 @@ description: Where the dependencies stop, what the checks and tests see and do n
 JavaScript that runs as-is in the browser. Nothing goes through a framework, so the workbench needs
 no install, no lockfile and no audit (the same call as
 [capture-scripts](https://github.com/uraitakahito/capture-scripts)). If it grows enough to want
-splitting up, that is the time to add them. **The one exception is `public/vendor/shiki.js`,** the
-coloring of the script collection view, bundled into a single file and committed (see
-[The bundled coloring](#the-bundled-coloring)). The workbench only reads it, so it still needs no
+splitting up, that is the time to add them. **The exceptions are the two bundles in
+`public/vendor/`:** `shiki.js`, the coloring of the script collection view, and
+`intl-messageformat.js`, which turns the messages of the dictionaries into text
+([The text on the screen](#the-text-on-the-screen)). Each is bundled into a single file and
+committed (see [The bundles](#the-bundles)). The workbench only reads them, so it still needs no
 install.
 
 Two things have dependencies, each kept as a separate npm project: `docs-site/` (the source of
-this site, Astro + Starlight, and the tool that takes its screenshots) and `highlighter/` (what `public/vendor/shiki.js` is built from).
+this site, Astro + Starlight, and the tool that takes its screenshots) and `highlighter/` (what the bundles in `public/vendor/` are built from).
 Their lockfiles, audits and Dependabot stay inside them, and no `node_modules` is created at the
 root.
 
@@ -24,37 +26,122 @@ root.
 | `npm run dev` | serves `public/`, relaying `/api/*` to the ledger and `/wacz/*` to the daemon |
 | `npm run check` | every check for the workbench to run before pushing; what it runs, and in which order, is `check` in `package.json` (the same thing CI's `ci.yml` runs) |
 | `npm run site:check` | builds the docs and checks that they match the repository (after `npm ci --prefix docs-site`) |
-| `npm run vendor` | rebuilds `public/vendor/` (the bundle and the license texts of what it bundles) from the lockfile in `highlighter/` |
+| `npm run vendor` | rebuilds `public/vendor/` (the bundles and the license texts of what they bundle) from the lockfile in `highlighter/` |
 | `npm run vendor:check` | rebuilds, and fails if a single byte differs from what is committed (CI's `vendor.yml` runs it) |
 
 The root scripts work the same with `pnpm run` (the `dev:up` of
 [capture-ledger](https://github.com/uraitakahito/capture-ledger) starts the workbench with `pnpm run dev`). `site:check` is deliberately not part of `check`: that `check` runs without
 installing anything is part of the workbench's nature too.
 
-## The bundled coloring
+## The bundles
 
 The script collection view colors the source with `public/vendor/shiki.js`:
 [Shiki](https://shiki.style) with only the TypeScript grammar and two themes (GitHub Light High
 Contrast and GitHub Dark Default), bundled by esbuild (`highlighter/entry.mjs` names what goes in).
-The bundle is minified, so its diff cannot be reviewed by reading it. Review the lockfile and
-`highlighter/build.mjs` instead, and let `vendor.yml` check that the bundle is exactly what they
+The text on the screen is put together by `public/vendor/intl-messageformat.js`:
+[intl-messageformat](https://formatjs.github.io/docs/intl-messageformat/) and the parser it
+depends on (`highlighter/entry-i18n.mjs`). Which bundles are built, and from what, is the
+`BUNDLES` table in `highlighter/build.mjs`.
+The bundles are minified, so their diff cannot be reviewed by reading it. Review the lockfile and
+`highlighter/build.mjs` instead, and let `vendor.yml` check that each bundle is exactly what they
 produce.
 
 - **Do not edit `public/vendor/` by hand.** `npm run vendor` writes it. Run it after raising
-  Shiki's version.
+  the version of Shiki or of intl-messageformat.
 - **A Dependabot PR for `highlighter/` only changes `package.json` and the lockfile,** so
   `vendor.yml` fails on it. Run `npm run vendor` on that branch and commit the rebuilt files
   before merging.
-- **The build stops if anything it bundles is not MIT** (`highlighter/build.mjs`), and then writes
-  nothing. The license texts of everything bundled are in `public/vendor/shiki.LICENSES.txt`.
+- **The build stops if anything it bundles has a license that was not allowed**
+  (`highlighter/build.mjs`), and then writes nothing. MIT is allowed. Any other license is allowed
+  only for a package named in `BUNDLES`: today that is intl-messageformat's BSD-3-Clause. The
+  license texts of everything bundled are next to each bundle (`public/vendor/shiki.LICENSES.txt`,
+  `public/vendor/intl-messageformat.LICENSES.txt`).
 - **The colors are measured against the screen's backgrounds.** `test/highlight.test.mjs` reads
   `--ground` from `public/app.css` and requires every color the script files use to reach
   4.5:1 in both schemes, so changing the background or the theme measures again.
-- **`npm run check` looks for the word `innerHTML` in every `.js` file under `public/`,** the bundle
+- **`npm run check` looks for the word `innerHTML` in every `.js` file under `public/`,** the bundles
   included. It does not read `.html` files, nor look for other APIs (`insertAdjacentHTML` and the like).
 - **The coloring runs in a worker** (`public/highlight-worker.js`): Shiki builds its grammar on
   first use, which would stop the page for well over 100 ms. The colors are painted onto the
   lines already drawn, a few milliseconds per frame.
+
+## The text on the screen
+
+The words on the screen are not written where they are drawn. `public/*.js` and `public/index.html`
+hold keys, and the sentences are in one dictionary per language, `public/i18n/ja.json` and
+`public/i18n/en.json`. `public/i18n.js` turns a key into a sentence in the page's language.
+
+- **A dictionary is a flat JSON of key → message, in ICU MessageFormat** (the same shape as
+  [wacz-validator](https://github.com/uraitakahito/wacz-validator)'s dictionaries). `{name}` embeds
+  a value, `{n, plural, one {{n} page} other {{n} pages}}` chooses between singular and plural in
+  English, and `<code>…</code>` puts part of the sentence in an element. A brace that is meant as
+  text is quoted with `'` (`'{'chrome'}'`). What turns a message into text is the bundled
+  `public/vendor/intl-messageformat.js` ([The bundles](#the-bundles)).
+- **A key is `<view>.<group>.<meaning>`.** The view is its name in the code (`crawls`, `start`,
+  `schedules`, `changes`, `archives`, `search`, `scripts`, `wacz`, `links`, `trace`), `common` is
+  for what every view shows, and `workbench.error.<phrase>` is for the errors of the workbench's
+  own server ([What failures look like](/routes/#what-failures-look-like)). **Write a key out as a
+  string; never assemble one.** The check compares the keys the code names with the dictionaries,
+  and it cannot see a key that is put together at run time. Where a key is written outside `t()`
+  (a table from a value to a key), wrap it in `key("…")`.
+- **In JavaScript, `t("key", { values })`.** For a sentence with an element in it,
+  `tNodes("key", { code: (text) => element })` returns strings and elements to hand to `append`.
+  No API that takes HTML is used, for the dictionaries either. **In `public/index.html`, write no
+  words:** `data-i18n="key"` fills an element, and `data-i18n-placeholder`, `data-i18n-aria-label`
+  and `data-i18n-title` fill attributes, when the page loads.
+- **One sentence, one key.** Do not build a sentence from pieces: the order of the pieces is
+  different in the other language. Inside a plural, write `{n}` rather than `#`. `#` groups the
+  digits in English (`1,234`) and the Japanese sentence would not.
+- **The language is decided once, when the page loads:** `?lang=ja` or `?lang=en` in the URL, and
+  Japanese without it. Nothing is drawn again afterwards. Views whose words have not been moved to
+  the dictionaries yet stay in Japanese with `?lang=en`; the lines still to move are counted in
+  `scripts/i18n-baseline.json`.
+- **Dates follow the language, machine-like forms do not.** `dateTime()` writes `2026/1/5 4:00:00`
+  in Japanese (the form the workbench has always shown) and `Jan 5, 2026, 4:00:00 AM` in English.
+  Grouped digits (`1,234`), `11-08 04:00`, `2026-11-13` and `1m 40s` are the same in both.
+- **An error from the server is a phrase and its values, not a sentence.** `errorText()` in
+  `public/i18n.js` is the one place that decides what to show: a phrase of the workbench's server
+  through the dictionary, otherwise the ledger's `message`, otherwise its `error`.
+
+`npm run check:i18n` (part of `npm run check`) keeps it that way. It fails when:
+
+1. a key is in one dictionary and not in the other;
+2. the embedded names of a key differ between the languages (`{n}` against `{m}`), or a message
+   cannot be parsed;
+3. the code or `public/index.html` names a key that is in no dictionary, a key in the dictionaries
+   is used nowhere, or the first argument of `t()`, `tNodes()` or `key()` is not a string. The keys
+   under `workbench.error.` are compared with `ERROR_PHRASES` in `src/lib.mjs`, in both directions;
+4. there is Japanese text outside comments in `public/*.js` or `public/index.html` (full-width
+   punctuation included). While the views are being moved, the count per file is compared with
+   `scripts/i18n-baseline.json`: more lines than recorded fail, and so do fewer (lower the number
+   in the file, so that no slack is left). A file that is not listed must have none.
+
+The tests run in Japanese whatever the machine's language is: `npm test` loads
+`test/lang-ja.mjs` first. A test of the English text calls `setLang("en")` and sets it back to
+`"ja"` when it is done; in the browser nothing calls `setLang`.
+
+### The words chosen
+
+The English of the dictionary starts from the English these docs already used. Where the docs
+had used two words for one thing, the dictionary takes one.
+
+| Key or group | Japanese | English | Note |
+| --- | --- | --- | --- |
+| `common.tab.*` | クロール・新しいクロール・定期実行・変化・アーカイブ・検索・スクリプト集 | Crawls, New crawl, Schedules, Changes, Archives, Search, Script collection | sentence case, as every heading and button |
+| `crawls.state.running` | 走行中 | Running | |
+| `crawls.state.completed` | 完走 | Completed | the ledger's `stopReason` is `completed`; "finished" is any row that has ended |
+| `crawls.state.maxDepth` | 打ち切り (深さ) | Cut (depth) | `crawls.state.maxPages` is Cut (pages) |
+| `crawls.state.withFailed` | ・2 枚取れず | · 2 pages failed | the ledger's field is `pagesFailed` |
+| `crawls.state.pageOnly` | このページだけ | This page only | |
+| `archives.check.*` | 問題なし・失敗 1・警告 3・検証できず | No problems, 1 failure, 3 warnings, Could not validate | a crawl is Failed; a validation has failures |
+| `start.tab.inline` | その場の TS | Your script | "inline" is kept for the id (`inline-<name>`) and the API |
+| `start.schedule.make` | 定期にする | Make a schedule | |
+| `common.col.goto` | 行き先 | Open in | "Links" is the リンク column |
+| a level and a step | 段 | level (one round of a crawl), step (of a capture or of compile) | |
+| a row and a line | 行 | row (tables and rules), line (source, logs, diffs) | |
+| a run | 回 | run (of a schedule), times (how often) | |
+| the seed | 起点 | seed | |
+| the snapshot | 写し | snapshot | Copy is the 写す button |
 
 ## What the tests see, and what they do not
 

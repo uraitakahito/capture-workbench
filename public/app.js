@@ -9,6 +9,7 @@
  * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
  * `outerHTML` のようなほかの API は見ない。
  */
+import { applyI18n, dateTime, errorText, key, langOf, t, timeOfDay, tNodes } from "/i18n.js";
 import { checkVerdict, count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
@@ -201,6 +202,9 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
+// index.html は字を書かず、鍵（data-i18n）を書く。描く前に、いまの言語の字を入れる
+applyI18n();
+
 /** `/healthz` が配る、この配備の事実。深いリンクの行き先はここから来る。 */
 let settings = {};
 
@@ -216,7 +220,7 @@ const api = async (path) => {
   const res = await fetch(path);
   const body = await res.json();
   signInAgain(res, body);
-  if (!res.ok) throw new Error(body.error ?? body.message ?? `${path} → ${String(res.status)}`);
+  if (!res.ok) throw new Error(errorText(body) ?? `${path} → ${String(res.status)}`);
   return body;
 };
 
@@ -224,7 +228,7 @@ const post = async (path) => {
   const res = await fetch(path, { method: "POST" });
   const body = await res.json();
   signInAgain(res, body);
-  if (!res.ok) throw new Error(body.error ?? body.message ?? `${path} → ${String(res.status)}`);
+  if (!res.ok) throw new Error(errorText(body) ?? `${path} → ${String(res.status)}`);
   return body;
 };
 
@@ -457,7 +461,7 @@ const ranOf = (one) => {
 /** 時刻を読める形に。読めない文字列（capture-ledger が null を返した所など）はそのまま。 */
 const whenOf = (iso) => {
   const ms = Date.parse(String(iso));
-  return Number.isNaN(ms) ? String(iso) : new Date(ms).toLocaleString("ja-JP");
+  return Number.isNaN(ms) ? String(iso) : dateTime(new Date(ms));
 };
 
 /**
@@ -1878,7 +1882,7 @@ const toggleCheck = async (id) => {
   redrawCheck(id);
   let answer;
   try {
-    answer = await post(`/wacz/${enc(id)}/validate`);
+    answer = await post(`/wacz/${enc(id)}/validate?locale=${langOf()}`);
   } catch (err) {
     answer = asError(err);
   }
@@ -1901,7 +1905,7 @@ const drawArchives = () => {
     row.dataset.archive = archive.id;
     row.append(cell(archive.sourceUrl, "wide"));
     row.append(cell(archive.labels.join(" ")));
-    row.append(cell(new Date(archive.capturedAt).toLocaleString("ja-JP"), "mono"));
+    row.append(cell(dateTime(new Date(archive.capturedAt)), "mono"));
     // **null は「分からない」。** 「不完全」と同じに描かない。
     row.append(
       cell(archive.waczComplete === null ? "—" : archive.waczComplete ? "完全" : "欠けあり"),
@@ -1961,7 +1965,7 @@ const drawHits = (hits) => {
     }
     if (hit.textTruncated === true) what.append(tag("div", "文字は上限で切っています（全文ではありません）", "hit-note"));
     what.append(
-      tag("div", `撮れたもの: ${hit.sourceUrl}（${new Date(hit.capturedAt).toLocaleString("ja-JP")}）`, "hit-note"),
+      tag("div", `撮れたもの: ${hit.sourceUrl}（${dateTime(new Date(hit.capturedAt))}）`, "hit-note"),
     );
     row.append(what);
     // 行き先: WACZ の画面（一覧に在るアーカイブだけ）と replayweb-server
@@ -2077,7 +2081,7 @@ const find = async (path) => {
   const res = await fetch(path);
   if (res.status === 404) return undefined;
   const body = await res.json();
-  if (!res.ok) throw new Error(body.error ?? body.message ?? `${path} → ${String(res.status)}`);
+  if (!res.ok) throw new Error(errorText(body) ?? `${path} → ${String(res.status)}`);
   return body;
 };
 
@@ -2656,7 +2660,7 @@ const drawWaczBar = (status) => {
   const archive = wacz.archive;
   bar.append(
     tag("span", archive.sourceUrl, "mono"),
-    tag("span", new Date(archive.capturedAt).toLocaleString("ja-JP"), "mono muted"),
+    tag("span", dateTime(new Date(archive.capturedAt)), "mono muted"),
   );
   if (status !== undefined) {
     bar.append(tag("span", status, "muted"));
@@ -2743,7 +2747,7 @@ const openWacz = async ({ archiveId, path, n }) => {
     $("wacz-content").replaceChildren();
     drawWaczBar("検証しています…");
     try {
-      wacz.report = await post(`/wacz/${enc(archiveId)}/validate`);
+      wacz.report = await post(`/wacz/${enc(archiveId)}/validate?locale=${langOf()}`);
     } catch (err) {
       drawWaczBar(failedText(err));
       return;
@@ -3117,7 +3121,7 @@ const refreshSchedules = async () => {
   try {
     const res = await fetch(SCHEDULES_PATH, { signal: AbortSignal.timeout(SCHEDULES_TIMEOUT_MS) });
     const body = await res.json();
-    if (!res.ok) throw new Error(body.error ?? body.message ?? `${SCHEDULES_PATH} → ${String(res.status)}`);
+    if (!res.ok) throw new Error(errorText(body) ?? `${SCHEDULES_PATH} → ${String(res.status)}`);
     schedules = body.schedules;
     schedulesError = undefined;
   } catch (err) {
@@ -4433,12 +4437,15 @@ const refresh = async () => {
     drawReadingList();
     drawPicks(s.scripts);
     trouble(undefined);
-    $("pulse").textContent =
-      `クロール ${String(crawls.length)} 本 ／ アーカイブ ${String(archives.length)} 本 ` +
-      `（${new Date().toLocaleTimeString("ja-JP")} 現在、${String(pace() / 1000)} 秒ごと）`;
+    $("pulse").textContent = t("common.pulse.status", {
+      crawls: crawls.length,
+      archives: archives.length,
+      time: timeOfDay(new Date()),
+      seconds: pace() / 1000,
+    });
   } catch (err) {
     trouble(failedText(err));
-    $("pulse").textContent = "取りに行けませんでした（上の表は最後に描けたもの）";
+    $("pulse").textContent = t("common.pulse.failed");
   }
   clearTimeout(timer);
   timer = setTimeout(() => void refresh(), pace());
@@ -4450,10 +4457,10 @@ const start = async () => {
     const who = settings.signedIn;
     $("who").textContent =
       who === null || who === undefined
-        ? "サインインしていません"
-        : `${who.user} (${who.groups.join(", ") || "組織なし"}) としてサインインしています`;
+        ? t("common.who.signedOut")
+        : t("common.who.signedIn", { user: who.user, groups: who.groups.join(", ") || t("common.who.noGroups") });
   } catch {
-    $("who").textContent = "workbench 自身に届きません";
+    $("who").textContent = t("common.who.unreachable");
   }
   drawRules();
   syncStart(); // 上限を知ってから、欄の下の行を出す

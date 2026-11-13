@@ -14,7 +14,7 @@
  *   - 部品の箱だけを切り抜き、高さに上限を付ける。DPR 1
  *   - 画素が前の絵と同じなら書かない（sharp の版が替わってバイト列だけが変わっても、何も足さない）
  *
- * 予算（1 枚 35 KB・全部で 264 KB）と幅の上限は `scripts/check-doc-refs.mjs` の規則 7 が見る。
+ * 予算（1 枚の上限と全部の上限。数は `scripts/check-doc-refs.mjs` の `BUDGET`）と幅の上限は、同じファイルの規則 7 が見る。
  *
  * ## 縮めずに読める絵に
  *
@@ -30,8 +30,8 @@
  *     止めれば、「かかった」はいつ撮っても 1m 40s（止めないと、撮るたびに絵が変わった）
  *   - 引き直しを止める。workbench の setTimeout は、引き直し（2 秒・30 秒）と「写しました」の戻し（1.5 秒）
  *     だけなので、2 秒以上の物を落とす（引き直しは表を作り直すが、検証の答えは `checks` に覚えて付け直す。止めるのは、撮る間に表が動かないため）
- *   - 明るい色・ja-JP・Asia/Tokyo（撮った時刻は toLocaleString）・字のカーソルと動きを消す・
- *     スクロールバーを隠す
+ *   - 明るい色・日本語の画面（URL の `?lang=ja`。Chrome の `--lang` は、workbench が見る `navigator.languages` を
+ *     変えない）・Asia/Tokyo（撮った時刻は日本語の形）・字のカーソルと動きを消す・スクロールバーを隠す
  *   - Chrome の版を決める（`CHROME_BUILD`）。字の形は OS のフォントで変わるので、撮るのは macOS
  *   - DPR は整数（1.5 は、時計を止めても字の縁の画素が揺れた）
  *   - GPU で描かない（`--disable-gpu`）。GPU の描き方は、同じ状態でも撮るたびに番号の丸や字の縁が揺れ、
@@ -174,7 +174,7 @@ const SHOTS = [
     hash: "#changes/5c0d0006-6a1e-4000-8000-000000000006",
     box: "#change-detail",
     // 目次と 1 ページの 2 段は COLUMN より広い。本文に縮めて載せる。右は差分の行の帯だけなので 840 で切る
-    // （切らないと 956px で 38.6 KB になり、1 枚の枠 35 KB を超える）
+    // （切らないと 956px で 38.6 KB になった。1 枚の枠は `scripts/check-doc-refs.mjs` の `BUDGET.one`）
     wide: true,
     maxWidth: 840,
     ready: () =>
@@ -654,13 +654,17 @@ const browser = await puppeteer.launch({
   args: ["--hide-scrollbars", "--lang=ja-JP", "--disable-gpu"],
 });
 try {
+  // 先に 1 度サインインを済ませる。サインインに回る（/login → IdP → /callback → /）と、URL の ?lang= が落ちる
+  const first = await browser.newPage();
+  await first.goto(`${BASE}/`, { waitUntil: "networkidle0" });
+  await first.close();
   for (const shot of SHOTS.filter((s) => named.length === 0 || named.includes(s.name))) {
     const page = await browser.newPage();
     await page.setViewport({ width: WINDOW, height: 900, deviceScaleFactor: DPR });
     await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
     await page.emulateTimezone("Asia/Tokyo");
     await page.evaluateOnNewDocument(freeze, NOW);
-    await page.goto(`${BASE}/${shot.hash}`, { waitUntil: "networkidle0" });
+    await page.goto(`${BASE}/?lang=ja${shot.hash}`, { waitUntil: "networkidle0" });
     await page.addStyleTag({
       content:
         "*{caret-color:transparent!important;animation:none!important;transition:none!important}" +

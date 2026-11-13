@@ -83,7 +83,7 @@ cannot call it directly, the server relays it to make it same-origin.
 - The path and query go through unchanged, as a GET. Any other method is a 405 (the routes that
   write are the `POST` routes below).
 - Your session's access token is attached as `Authorization: Bearer`. Without a session it
-  answers 401 `{"error":"サインインしていません","login":"/login"}`, and the page goes to `/login`.
+  answers 401 `{"error":"not signed in","params":{},"login":"/login"}`, and the page goes to `/login`.
 - **On a 401 from the ledger it gets a new token with the refresh token and retries once.** It does
   not track the token's lifetime: when the IdP's pool is made again its keys change, so a clock
   that says "still valid" cannot be trusted. A 401 says both "expired" and "the keys changed" in
@@ -198,7 +198,7 @@ and its indexes are read one window at a time.
 
 | The workbench calls | Sent to the daemon | Returns |
 | --- | --- | --- |
-| `POST /wacz/:id/validate` | `POST /validate` | the validation report |
+| `POST /wacz/:id/validate?locale=` | `POST /validate` | the validation report, in the page's language |
 | `GET /wacz/:id/lines?path=&from=&count=` | `POST /lines` | a window of lines |
 | `GET /wacz/:id/line?path=&n=` | `POST /line` | one whole line, and its fields |
 | `GET /wacz/:id/records?path=&from=&count=` | `POST /records` | the records, walking the WARC from the start |
@@ -215,7 +215,8 @@ change `OPS`, `paramsFor` and this table.
   can be fetched with a GET. Only validation is a POST from the workbench as well (it runs only when
   you press it).
 - The body sent to the daemon is `{ "source": { "kind": "uri", "uri": "<signed URL>" }, …arguments }`.
-  Validation's only argument is `locale`.
+  Validation's only argument is `locale`: `ja` or `en`, the language of the page (`ja` when the
+  query has none). Any other value is a 400; it is not quietly turned into another language.
 
 ## Headers that pass
 
@@ -228,18 +229,27 @@ put on it (`nosniff`, `sandbox`, `no-store`).
 
 A failure says what is missing. "You may not see it" and "it is not running" are never mixed.
 
+**A JSON failure of the workbench's own server is a phrase and its values, not a sentence:**
+`{"error":"<phrase>","params":{…}}`. The phrases are `ERROR_PHRASES` in `src/lib.mjs`. The page
+turns a phrase into a sentence in its own language with its dictionary (the key
+`workbench.error.<phrase>`, see [Development](/development/#the-text-on-the-screen)), so the
+sentence that says how to fix it is in the dictionary too. An answer that the browser shows
+without the page (`/login`, `/callback`, and the 405 text) cannot choose a language, so it is
+written in English and Japanese side by side, separated by ` / `.
+
 | Status | When | Body |
 | --- | --- | --- |
-| 400 | an argument of a `/wacz/` route is missing or not a number; the ledger is not asked | `{"error":"from is required"}` |
-| 400 | `/callback` with an unknown or used `state`, or a code the IdP would not turn into tokens | `サインインできませんでした: …` (text) |
-| 401 | `/api/*` or a `/wacz/` route without a session, or the ledger refused the token and the refresh token got nothing | `{"error":"サインインしていません","login":"/login"}` or `サインインが切れました`; the page goes to `/login` |
-| 403 | the `Host` is not the workbench's (any route); on the route that writes, also when the `Origin` is not the workbench | `{"error":"workbench の Host ではない"}` and so on |
-| 405 | wrong method: on a `/wacz/` route (validation is POST, the rest GET), or on `/api/*` (GET only, except the route that writes) | `POST だけ`, `GET だけ` and so on, with an `Allow` header |
-| 413 | the body sent to the route that writes is over 1 MiB | `{"error":"本文が 1048576 バイトを超えた"}` |
-| 415 | the `content-type` sent to the route that writes is not JSON | `{"error":"JSON だけを受ける"}` |
+| 400 | an argument of a `/wacz/` route is missing or not a number, or the `locale` of a validation is not one the page has; the ledger is not asked | `{"error":"parameter required","params":{"name":"from"}}`, `{"error":"unknown locale","params":{"locale":"fr"}}` |
+| 400 | `/callback` with an unknown or used `state`, or a code the IdP would not turn into tokens | `Could not sign in / サインインできませんでした: …` (text) |
+| 401 | `/api/*` or a `/wacz/` route without a session, or the ledger refused the token and the refresh token got nothing | `{"error":"not signed in","params":{},"login":"/login"}` or `sign-in expired`; the page goes to `/login` |
+| 403 | the `Host` is not the workbench's (any route); on the route that writes, also when the `Origin` is not the workbench | `{"error":"not the workbench host"}`, `{"error":"not from a workbench page"}` |
+| 405 | wrong method: on a `/wacz/` route (validation is POST, the rest GET), or on `/api/*` (GET only, except the route that writes) | `POST only / POST だけ`, `GET only … / GET だけ …`, with an `Allow` header |
+| 413 | the body sent to the route that writes is over 1 MiB | `{"error":"body too large","params":{"limit":1048576}}` |
+| 415 | the `content-type` sent to the route that writes is not JSON | `{"error":"json only"}` |
 | as the ledger said | the ledger refused (such as a 404 for an archive you may not view) | the ledger's body |
-| 502 | the IdP, the ledger or the daemon cannot be reached, or the IdP's discovery failed | `{"error":"… に届かない (…)。…"}`, with one sentence on how to fix it |
-| 503 | `/login` without `WORKBENCH_OIDC_ISSUER` and `WORKBENCH_OIDC_CLIENT_ID` | `サインインの設定が無い —— …` (text) |
+| 502 | the ledger or the daemon cannot be reached | `{"error":"ledger unreachable","params":{"url":"…","cause":"…"}}` or `validator unreachable`; the dictionary's sentence names the command that fixes it |
+| 502 | the IdP cannot be reached, or its discovery failed | `{"error":"Cannot reach … / … に届かない (…)。…"}`, in English and Japanese, with one sentence on how to fix it |
+| 503 | `/login` without `WORKBENCH_OIDC_ISSUER` and `WORKBENCH_OIDC_CLIENT_ID` | `Sign-in is not configured: …` and `サインインの設定が無い —— …` (text) |
 | 404 | a file that is not in `public/`, or an extension that is not served | `not found` |
 
 If the upstream breaks off while the answer is being streamed, the headers have already been

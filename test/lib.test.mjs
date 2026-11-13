@@ -11,12 +11,15 @@ import { Readable } from "node:stream";
 
 import {
   contentType,
+  ERROR_PHRASES,
+  errorBody,
   forwardedHeaders,
   hostAllowed,
   isWriteRoute,
   optional,
   readBody,
   safePath,
+  Told,
   TooLarge,
   WRITE_LIMIT,
   writeRefusal,
@@ -164,7 +167,33 @@ test("書き込みのエンドポイントの本文は、上限ちょうどま�
   // 読み切ってから断る —— 途中で切ると、413 を書く相手が居なくなる
   const body = (n) => Readable.from([Buffer.alloc(n, 0x61)]);
   assert.equal((await readBody(body(1024), 1024)).length, 1024);
-  await assert.rejects(readBody(body(1025), 1024), TooLarge);
+  await assert.rejects(readBody(body(1025), 1024), (err) => {
+    assert.ok(err instanceof TooLarge);
+    // 文ではなく、句と値（上限のバイト数）を返す。文にするのは画面の辞書
+    assert.deepEqual(errorBody(err), { error: "body too large", params: { limit: 1024 } });
+    return true;
+  });
+});
+
+test("誤りの答えは句と値。知らない句は作れず、句を持たない誤りは文のまま返す", () => {
+  assert.deepEqual(errorBody(new Told("ledger unreachable", { url: "http://127.0.0.1:7070", cause: "fetch failed" })), {
+    error: "ledger unreachable",
+    params: { url: "http://127.0.0.1:7070", cause: "fetch failed" },
+  });
+  assert.deepEqual(errorBody(new Told("json only")), { error: "json only", params: {} });
+  assert.throws(() => new Told("no such phrase"), /unknown error phrase/);
+  assert.deepEqual(errorBody(new Error("fetch failed")), { error: "fetch failed" });
+  assert.deepEqual(errorBody("plain"), { error: "plain" });
+});
+
+test("書き込みの門の断りは、句の一覧に在る句で言う", () => {
+  const refusals = [
+    writeRefusal({ ...fromThisPage, host: "evil.test:7080", origin: "http://evil.test:7080" }, 7080),
+    writeRefusal({ ...fromThisPage, origin: "https://evil.test" }, 7080),
+    writeRefusal({ ...fromThisPage, "content-type": "text/plain" }, 7080),
+  ];
+  assert.deepEqual(refusals.map((r) => r?.error), ["not the workbench host", "not from a workbench page", "json only"]);
+  for (const refusal of refusals) assert.ok(ERROR_PHRASES.includes(refusal?.error), refusal?.error);
 });
 
 test("書き込みのエンドポイントの上限は、capture-ledger の POST /api/crawls と同じ 1 MiB", () => {

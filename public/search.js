@@ -7,6 +7,7 @@
  * null）を入れる（CAPTURE-48）。だから当たりは「アーカイブの 1 時点」で、同じアーカイブが時点ごとに並ぶ。
  * 返るのは見せてよいアーカイブの物だけ（capture-ledger が OpenFGA の can_view で絞る）。
  */
+import { errorText } from "./i18n.js";
 import { replaywebHref, replaywebSourceHref, replaywebTs } from "./replayweb.js";
 
 /** 検索のエンドポイント。語はそのまま `q` に（capture-ledger は空を 400 で断る）。 */
@@ -74,7 +75,7 @@ export const hitReplaywebHref = (origin, hit) => {
  * `message` に在る）。503 は OpenSearch が答えない、404 は capture-ledger に検索のエンドポイントが無い（設定の無い古い capture-ledger）。
  */
 export const searchFailure = (status, body) => {
-  const said = body?.message ?? body?.error ?? "答えに文がありません";
+  const said = errorText(body) ?? "答えに文がありません";
   if (status === 0) return `workbench 自身に届きません（${said}）`;
   if (status === 503) {
     return `capture-ledger の全文検索が答えません（OpenSearch。capture-ledger の CAPTURE_LEDGER_OPENSEARCH_URL の先）: ${said}`;
