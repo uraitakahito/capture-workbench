@@ -1,15 +1,9 @@
 {
   "//": "まだ辞書（public/i18n/）へ移していない、直書きの日本語の行数（ファイルごと・コメントの外）。check:i18n が比べる: 多ければ赤、少なければ「控えを減らす」と言って赤。移した分だけ数を減らし、0 になったファイルは行ごと消す。全部移し終えたら、このファイルを消す（Jira CAPTURE-294）",
-  "public/app.js": 296,
+  "public/app.js": 109,
   "public/changes.js": 22,
-  "public/fix.js": 13,
-  "public/links.js": 15,
-  "public/pages.js": 12,
   "public/reading.js": 10,
-  "public/replayweb.js": 4,
   "public/schedules.js": 43,
   "public/search.js": 5,
-  "public/start.js": 36,
-  "public/timeline.js": 14,
   "public/wacz-view.js": 13
 }

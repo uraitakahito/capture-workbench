@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import {
   awaitsFinalBundle,
   isPartialBundle,
+  partialBundleNote,
   replayBundleFailure,
   replayBundleHref,
   replayBundleText,
@@ -20,6 +21,17 @@ import {
   viewerText,
 } from "../public/replayweb.js";
 import { hitReplaywebHref } from "../public/search.js";
+import { setLang } from "../public/i18n.js";
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const ORIGIN = "http://127.0.0.1:8899";
 const ARCHIVE = {
@@ -285,4 +297,29 @@ test("終わってから 1 分を過ぎた行は、待たない（来ない版�
 test("終わった時刻の読めない行は、待たない", () => {
   assert.equal(awaitsFinalBundle({ state: "succeeded", finishedAt: null, replayBundle: null }, SOON), false);
   assert.equal(awaitsFinalBundle({ state: "succeeded", replayBundle: null }, SOON), false);
+});
+
+// ── 英語の字（CAPTURE-294）。再生の名前（ReplayWeb.page・Web Capture）は訳さない ───────────────
+
+test("英語: 途中の版の link の字と、添える説明（説明は、引くときの言語で引く）", () => {
+  const running = { state: "running", finishedAt: null, replayBundle: { ...BUNDLE, rev: 1 } };
+  assert.equal(inEnglish(() => replayBundleText(running, REPLAYWEB)), "ReplayWeb.page r1 (mid-crawl) ↗");
+  assert.equal(inEnglish(() => replayBundleText(running, CAPTURE_PLAYER)), "Web Capture r1 (mid-crawl) ↗");
+  assert.equal(inEnglish(() => replayBundleText(ended(afterEnd), REPLAYWEB)), "ReplayWeb.page ↗");
+  assert.equal(partialBundleNote(), "走行中に書いた途中の版です。まだ入っていないページは Not Found になります");
+  assert.equal(
+    inEnglish(() => partialBundleNote()),
+    "A mid-crawl version, written while the crawl was running. Pages not in it yet come up as Not Found",
+  );
+});
+
+test("英語: 合本を書けなかった理由。capture-ledger の文は訳さない", () => {
+  assert.equal(
+    inEnglish(() => replayBundleFailure({ ...BUNDLE, error: "could not write r3 to the store: socket hang up" })),
+    "A new version of the bundle could not be written (the viewer links open the previous version, r2): could not write r3 to the store: socket hang up",
+  );
+  assert.equal(
+    inEnglish(() => replayBundleFailure(NEVER_WRITTEN)),
+    "The bundle could not be written (there is no version a viewer can open yet): could not write r1 to the store: The specified bucket does not exist",
+  );
 });

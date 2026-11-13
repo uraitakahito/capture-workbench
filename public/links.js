@@ -3,7 +3,10 @@
  * `GET /api/crawls/:id/links` と `…/links/:page` の答えを、図に描く形にするだけで、数え直しも判断もしない
  * （どのリンクがどうなったかを決めて残したのは capture-ledger）。ここが決めるのは、URL の形・字・色の種類・
  * **図の配置**と、畳み方。DOM には触らない —— ブラウザは `/links.js` として読み、試験は `node --test` から import する。
+ *
+ * 字は辞書（`i18n/*.json`）に在り、ここは鍵を選んで `t()` に渡す（`i18n.js`）。
  */
+import { t } from "./i18n.js";
 
 const LINKS_HASH = /^#links\/([0-9a-f-]{36})(?:\/([0-9]{1,18}))?$/;
 
@@ -26,21 +29,24 @@ export const pageLinksPath = (crawlId, pageId) =>
 
 /**
  * リンク 1 本がどうなったか（capture-ledger の `outcome`）の字と色の種類。並びは、画面に出す順。
+ * 字は、引くときに辞書から読む関数（読み込みのときには言語がまだ決まっていない）。
  * 色の種類は `.state` と同じ名前（ok・content・run・depth・muted）で、知らない値は字をそのまま、色は run。
  */
 export const OUTCOMES = [
-  ["followed", "次の段に入れた", "ok"],
-  ["known", "もう行がある", "content"],
-  ["max_pages", "枚数で切った", "run"],
-  ["max_depth", "深さで切った", "depth"],
-  ["closed", "締まっていた", "muted"],
-  ["skip", "規則で落とした", "muted"],
-  ["nofollow", "nofollow で外した", "muted"],
+  ["followed", () => t("links.outcome.followed"), "ok"],
+  ["known", () => t("links.outcome.known"), "content"],
+  ["max_pages", () => t("links.outcome.maxPages"), "run"],
+  ["max_depth", () => t("links.outcome.maxDepth"), "depth"],
+  ["closed", () => t("links.outcome.closed"), "muted"],
+  ["skip", () => t("links.outcome.skip"), "muted"],
+  ["nofollow", () => t("links.outcome.nofollow"), "muted"],
 ];
 const OUTCOME = new Map(OUTCOMES.map(([key, text, kind]) => [key, { text, kind }]));
 
-export const linkOutcomeOf = (outcome) =>
-  OUTCOME.get(outcome) ?? { text: String(outcome), kind: "run" };
+export const linkOutcomeOf = (outcome) => {
+  const known = OUTCOME.get(outcome);
+  return known === undefined ? { text: String(outcome), kind: "run" } : { text: known.text(), kind: known.kind };
+};
 
 /** ページごとの数（`pages[].out`）の鍵 → `outcome`。 */
 export const OUT_KEYS = [
@@ -61,23 +67,18 @@ export const OUT_KEYS = [
 export const splitOf = (summary) => {
   if (summary === null || summary === undefined) return { parts: [], total: 0, aside: undefined };
   const parts = [
-    { key: "captured", text: "撮った", kind: "ok", n: summary.captured },
-    { key: "unfinished", text: "取れず・見送り", kind: "bad", n: summary.failed + summary.skipped },
-    { key: "pending", text: "これから", kind: "accent", n: summary.pending },
-    { key: "max_pages", text: "枚数で切った", kind: "run", n: summary.maxPages },
-    { key: "max_depth", text: "深さで切った", kind: "depth", n: summary.maxDepth },
-    { key: "closed", text: "締まっていた", kind: "muted", n: summary.closed },
-    {
-      key: "skip",
-      text: `規則で落とした（${String(summary.hosts)} 個のホスト）`,
-      kind: "muted",
-      n: summary.skip,
-    },
+    { key: "captured", text: t("links.split.captured"), kind: "ok", n: summary.captured },
+    { key: "unfinished", text: t("links.split.unfinished"), kind: "bad", n: summary.failed + summary.skipped },
+    { key: "pending", text: t("links.split.pending"), kind: "accent", n: summary.pending },
+    { key: "max_pages", text: t("links.outcome.maxPages"), kind: "run", n: summary.maxPages },
+    { key: "max_depth", text: t("links.outcome.maxDepth"), kind: "depth", n: summary.maxDepth },
+    { key: "closed", text: t("links.outcome.closed"), kind: "muted", n: summary.closed },
+    { key: "skip", text: t("links.split.skip", { hosts: summary.hosts }), kind: "muted", n: summary.skip },
   ].filter((part) => part.n > 0);
   return {
     parts,
     total: parts.reduce((n, part) => n + part.n, 0),
-    aside: summary.nofollow > 0 ? `ほかに nofollow で外した ${String(summary.nofollow)} 本` : undefined,
+    aside: summary.nofollow > 0 ? t("links.split.nofollow", { n: summary.nofollow }) : undefined,
   };
 };
 

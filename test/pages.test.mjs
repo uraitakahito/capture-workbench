@@ -27,6 +27,17 @@ import {
   toggleLog,
   viewOf,
 } from "../public/pages.js";
+import { setLang } from "../public/i18n.js";
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const CRAWL = "5b0c0009-6a1e-4000-8000-000000000009";
 
@@ -246,4 +257,38 @@ test("WACZ の画面へは、ページに WACZ（archiveId）が在るときだ�
   assert.equal(waczLogTarget({ archiveId: "" }), undefined);
   assert.equal(waczLogTarget({}), undefined);
   assert.equal(waczLogTarget(undefined), undefined);
+});
+
+// ── 絞り込みの字と、英語の字（CAPTURE-294）─────────────────────────────────────
+
+test("絞り込みの字は、当たる行の数まで含めた 1 つの文で、描くときに引く", () => {
+  const texts = () => FILTERS.map(([, label]) => label("1,204"));
+  assert.deepEqual(texts(), ["すべて 1,204", "warn 以上 1,204", "error だけ 1,204"]);
+  assert.deepEqual(inEnglish(texts), ["All 1,204", "warn and above 1,204", "error only 1,204"]);
+});
+
+test("英語: 残さなかった行は、単数と複数を言い分ける（数は 3 桁ずつのまま）", () => {
+  assert.equal(inEnglish(() => droppedOf(1)), "1 line not kept (by the limit or a policy)");
+  assert.equal(inEnglish(() => droppedOf(2)), "2 lines not kept (by the limit or a policy)");
+  assert.equal(inEnglish(() => droppedOf(1204)), "1,204 lines not kept (by the limit or a policy)");
+  assert.equal(droppedOf(1), "1 行は残していない（上限か方針で）");
+});
+
+test("英語: 続きの字と、報告の来なかった頁。capture-ledger の state と理由は訳さない", () => {
+  assert.deepEqual(
+    inEnglish(() => moreOf({ pages: [page("1"), page("2")], next: "2" })),
+    { label: "Read on (from row 3)", want: 3 },
+  );
+  const pending = page("4", { state: "pending", taskId: null, logCounts: null });
+  assert.equal(inEnglish(() => outcomeOf(pending, "failed")), "pending (no report: the crawl ended first)");
+  assert.equal(
+    inEnglish(() => outcomeOf(page("2", { state: "failed", reason: "timeout" }), "failed")),
+    "failed: timeout",
+  );
+});
+
+test("英語: 読めない理由の文。知らない理由は、読めないとだけ言う", () => {
+  assert.equal(inEnglish(() => reasonText("manifest-missing")), "The store has no .result.json");
+  assert.equal(inEnglish(() => reasonText("someday")), "Cannot read the log");
+  assert.equal(inEnglish(() => reasonText("toString")), "Cannot read the log");
 });

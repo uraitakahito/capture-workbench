@@ -3,8 +3,10 @@
  * `GET /api/crawls/:id/pages/:page/log` の答えを描く形にするだけで、並べ替えも言い換えもしない（capture-ledger も、
  * BrowserHive の行を届いた順のまま返す）。ここが決めるのは、数の見せ方・絞り込み・読めない理由の文・続きの
  * 引き方と、引き直しをまたいで覚える物。ブラウザは `/pages.js` として読み、試験は `node --test` から import する。
+ * 字は辞書（`i18n/*.json`）に在る。capture-ledger が返す字（結末の state と理由・level・理由の id）は訳さない。
  */
 import { count } from "./format.js";
+import { t } from "./i18n.js";
 
 /** ページの一覧のエンドポイント。`after` は前の答えの `next`（省けば頭から）。件数は capture-ledger の既定に任せる。 */
 export const pagesPath = (crawlId, after) =>
@@ -34,7 +36,7 @@ export const readPages = async (read, crawlId, want) => {
 export const moreOf = (list) =>
   list.next === null
     ? undefined
-    : { label: `続きを読む（${count(list.pages.length + 1)} 件目から）`, want: list.pages.length + 1 };
+    : { label: t("crawls.pages.more", { count: count(list.pages.length + 1) }), want: list.pages.length + 1 };
 
 /**
  * 結末: capture-ledger の state をそのまま、理由（skip_reason）があれば後ろに。**state は言い分けない** —— 決めるのは
@@ -48,7 +50,7 @@ export const outcomeOf = (page, crawlState) => {
   // capture-ledger は報告の来なかった頁を pending のまま残す（結末が分からない。capture-ledger の POST /api/crawls/:id/failed の
   // 注記）。終わったクロールでそのまま出すと、落ちたクロールの頁が「待っている」ように読める。capture-ledger の語は残す
   return page.state === "pending" && crawlState !== undefined && crawlState !== "running"
-    ? `${said}（報告なし —— クロールが先に終わった）`
+    ? t("crawls.pages.noReport", { said })
     : said;
 };
 
@@ -71,11 +73,14 @@ const WEIGHT = new Map([
   ["error", 3],
 ]);
 
-/** ログの絞り込み（id と字）。「すべて」が既定。 */
+/**
+ * ログの絞り込み（id と、押す字を作る関数）。「すべて」が既定。字は、当たる行の数（`count()` の字）まで含めた 1 つの文
+ * （「すべて 4」）で、描くときに引く。
+ */
 export const FILTERS = [
-  ["all", "すべて"],
-  ["warn", "warn 以上"],
-  ["error", "error だけ"],
+  ["all", (shown) => t("crawls.log.filterAll", { count: shown })],
+  ["warn", (shown) => t("crawls.log.filterWarn", { count: shown })],
+  ["error", (shown) => t("crawls.log.filterError", { count: shown })],
 ];
 
 /**
@@ -113,7 +118,7 @@ export const dataOf = (line) => (line.data === undefined ? "" : JSON.stringify(l
  * console に書いた行（page の行）の合計。どちらの理由かは、ログの中の browserhive の行が言う。0 なら undefined。
  */
 export const droppedOf = (dropped) =>
-  typeof dropped === "number" && dropped > 0 ? `${count(dropped)} 行は残していない（上限か方針で）` : undefined;
+  typeof dropped === "number" && dropped > 0 ? t("crawls.log.dropped", { n: dropped }) : undefined;
 
 /** WACZ に封じたログの entry（BrowserHive が WACZ Profile 1.19.0 から書く）。 */
 export const WACZ_LOG_PATH = "logs/capture.jsonl";
@@ -127,17 +132,17 @@ export const waczLogTarget = (page) =>
     ? { archiveId: page.archiveId, path: WACZ_LOG_PATH }
     : undefined;
 
-/** ログを読めない理由（capture-ledger の `reason`）を短い文に。 */
+/** ログを読めない理由（capture-ledger の `reason`）を短い文に。文は、引くときに辞書から引く。 */
 const REASONS = new Map([
-  ["not-captured", "取り込みの答えがありません（まだ撮っていない・撮らなかった・期限で切った・断られた）"],
-  ["no-manifest", "取り込みの答えに、.result.json の場所がありません"],
-  ["manifest-missing", "保管庫に .result.json がありません"],
-  ["manifest-invalid", ".result.json が契約に合わず、読めません"],
-  ["no-log", ".result.json にログがありません（ログを残す前の BrowserHive で撮った）"],
+  ["not-captured", () => t("crawls.log.reason.notCaptured")],
+  ["no-manifest", () => t("crawls.log.reason.noManifest")],
+  ["manifest-missing", () => t("crawls.log.reason.manifestMissing")],
+  ["manifest-invalid", () => t("crawls.log.reason.manifestInvalid")],
+  ["no-log", () => t("crawls.log.reason.noLog")],
 ]);
 
 /** 理由の文。知らない理由は「読めません」とだけ言う（理由の字は、画面が隣にそのまま出す）。 */
-export const reasonText = (reason) => REASONS.get(reason) ?? "ログを読めません";
+export const reasonText = (reason) => REASONS.get(reason)?.() ?? t("crawls.log.unreadable");
 
 /**
  * 開いた行の「ページ」の表で、引き直しをまたいで覚える物（クロールの id → `{ want, logs }`）。**id で覚える**

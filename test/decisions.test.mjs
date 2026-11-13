@@ -6,6 +6,18 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { dropsOf, inspectHref, ruleTallies } from "../public/decisions.js";
+import { count } from "../public/format.js";
+import { setLang, t } from "../public/i18n.js";
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const RULES = [
   { skip: "skipped.invalid" },
@@ -62,4 +74,21 @@ test("Windmill の走らせる画面は、hash に JSON の引数を置いて開
   // hash の値を戻すと、Windmill が読む JSON の文字列になる
   const value = decodeURIComponent(new URL(href).hash.slice("#crawl=".length));
   assert.equal(JSON.parse(value), "5b0c0007-6a1e-4000-8000-000000000007");
+});
+
+// ── 開いた行の字（app.js が描く。CAPTURE-294）。数は count() の字のまま、英語は単数と複数を言い分ける ───────
+
+test("規則ごとの数と落とした物の数は「N 本」。英語は URL の単数と複数", () => {
+  const urls = (n) => t("crawls.decided.urls", { n });
+  assert.deepEqual([0, 1, 1204].map(urls), ["0 本", "1 本", "1,204 本"]);
+  assert.deepEqual(inEnglish(() => [0, 1, 2, 1204].map(urls)), ["0 URLs", "1 URL", "2 URLs", "1,204 URLs"]);
+});
+
+test("走らせたものの行: 登録済みは版と phase、その場の物は phase と大きさ（phase は訳さない）", () => {
+  const inline = (n) => t("crawls.detail.inline", { phase: "behavior", n });
+  assert.equal(inline(1589), "その場・behavior・1,589 バイト");
+  assert.equal(inEnglish(() => inline(1)), "your script · behavior · 1 byte");
+  assert.equal(inEnglish(() => inline(1589)), "your script · behavior · 1,589 bytes");
+  assert.equal(t("crawls.detail.registered", { version: 2, phase: "preload" }), "登録 v2・preload");
+  assert.equal(inEnglish(() => t("crawls.detail.registered", { version: 2, phase: "preload" })), "registered v2 · preload");
 });
