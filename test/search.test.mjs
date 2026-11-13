@@ -77,14 +77,14 @@ test("当たった所の断片は、<em> の中だけを印にし、ほかの山
   assert.deepEqual(highlightParts("<em></em>空の印"), [{ text: "空の印", mark: false }]);
 });
 
-test("文書の行の replay ↗ は、取り込んだ URL を撮った時刻で直に開く", () => {
+test("文書の行の再生のリンクは、取り込んだ URL を撮った時刻で直に開く", () => {
   const hash = hashOf(hitReplaywebHref(ORIGIN, DOC));
   assert.equal(hash.get("view"), "replay");
   assert.equal(hash.get("url"), "https://shop.test/search?q=lamp");
   assert.equal(hash.get("ts"), "20261104135820");
 });
 
-test("写しの行の replay ↗ は、写しの URI（urn）を直に開く", () => {
+test("写しの行の再生のリンクは、写しの URI（urn）を直に開く", () => {
   const href = hitReplaywebHref(ORIGIN, SNAPSHOT);
   assert.ok(href.startsWith(`${ORIGIN}/?source=%2Fwacz%2Ftask-a_corr-b.wacz#`), href);
   const hash = hashOf(href);

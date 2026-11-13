@@ -15,7 +15,7 @@
  *   6. README の Documentation の 2 本の URL が、docs-site/astro.config.ts の `site` ＋ `BASE` から
  *      組んだものと一致する (base を変えた日に、README だけが 404 を指し続けないように)
  *   7. 「画面」の絵 (`docs-site/src/assets/screens/`) が shots.json の一覧と揃い、ja・en の screens.md が
- *      全部を載せている。どれも DPR 1 の lossless の WebP で、予算 (1 枚 35 KB・全部で 268 KB) の中。
+ *      全部を載せている。どれも DPR 1 の lossless の WebP で、予算 (下の `BUDGET`) の中。
  *      wide (本文に縮めて載せる表) でない絵は、本文の幅 (`COLUMN`) 以内。絵の元 (`public/`・`sandbox/`・
  *      撮る道具) が、撮ったときから変わっていない
  *

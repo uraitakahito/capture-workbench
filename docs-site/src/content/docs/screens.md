@@ -7,7 +7,7 @@ capture-workbench is a set of views you switch with the tabs at the top, and the
 which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`; in the search view it also
 names the words searched, in the changes view the run and page opened, and in the script collection view what you are reading). The WACZ tab only appears once you
 enter it with 開く (open) on an archive row. The workbench itself is in Japanese; the tab names are
-クロール, 新しいクロール, 定期実行, アーカイブ, 検索, スクリプト集 and WACZ.
+クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索, スクリプト集 and WACZ.
 
 The pictures on this page are taken against the stand-in ledger (the
 [sandbox](/development/#opening-the-workbench-in-the-sandbox)). Its scripts are copies from capture-scripts,

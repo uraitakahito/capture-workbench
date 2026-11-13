@@ -54,7 +54,7 @@
  *   （repo の名前・URL・環境変数の `WORKBENCH_*` も）。この repo に、Grafana の dashboard のような別の意味は無いので、
  *   語を全部見る（大文字小文字を問わない）。許す形は無い
  * - **WACZ を開くビューアは replayweb-server と書く。** 2026-11 に replay から替えた（repo の URL・環境変数・`/healthz` の
- *   欄・ファイルの名前）。語の replay は、画面の「replay ↗」と合本の形式（replay.json）に残るので禁じず、旧い名前の形だけを見る
+ *   欄・ファイルの名前）。語の replay は、合本の形式（replay.json）と capture-ledger の答えの欄（`replayBundle`）に残るので禁じず、旧い名前の形だけを見る
  * - **HTTP の method と path の組は「エンドポイント」、待ち受けの番号は「ポート」、その場の TS が走る時は「phase」と
  *   書く。** 2026-11 に（Jira CAPTURE-184）、1 字の語（docs のページの題「中継の口」など）から意味ごとに替えた。
  *   同じ字が 1 文の中でエンドポイントとポートの両方を指していた（「どの〇も、Host が 127.0.0.1:<〇> でなければ」）。
@@ -146,15 +146,15 @@ const OLD_VIEW =
  */
 const OLD_INLINE =
   /その場の JS|その場で書いた JS|JS の名前|JS の箱|書きかけの JS|この JS の id|その JS の id|\binline JS\b/u;
+/** replayweb-server の旧い名前の形。語の replay は禁じない（上の注記）。 */
+const OLD_REPLAY_NAMES =
+  /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b/u;
+
 /**
  * 一式の意味の crawler の形（2026-11 まで）。足すときは、動いている識別子（`crawler-storage`・`/w/crawler/`・
  * `workspace=crawler`・`crawler.no-dns`）と、ふつうの名詞（a crawler that…・The crawler honoured…・Browsertrix Crawler）に
  * 当たらないことを確かめる。カタカナのクローラは見ない。
  */
-/** replayweb-server の旧い名前の形。語の replay は禁じない（上の注記）。 */
-const OLD_REPLAY_NAMES =
-  /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b/u;
-
 const OLD_SUITE =
   /(?<![-/.=`\w])crawler ?(?:の|で|が|を|は|に|と|全体|—)|<h1>crawler<\/h1>|\bcrawler repos(?:itories)?\b|\ball of crawler\b|\b[Tt]he crawler's development\b|\b[Tt]he crawler (?:shares|produces)\b/u;
 
