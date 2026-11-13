@@ -466,7 +466,7 @@
   "trace.panel.urlCut": "{url} (cut: too long)",
   "trace.notes.traceAxis": "The request bars are drawn from the lines BrowserHive put in its answer (the trace). A start is placed on the same axis as the step bars, and a length includes the time BrowserHive held the request and the response.",
   "trace.notes.traceUnobservable": "\"End not observable\" is not a request that failed to finish: its end event does not reach the captured page's side (the document of a cross-site frame, the script of a dedicated worker). It has no length and is not counted as \"Did not finish\".",
-  "trace.notes.traceUnsigned": "This view lays out what it read from the .result.json in the store, and it is not under the signature. The lines are not inside the WACZ. What stands as the record is what is inside the WACZ.",
+  "trace.notes.traceUnsigned": "This view lays out what it read from the .result.json in the store, and it is not under the signature. The same lines are also inside the WACZ, in trace/events.jsonl (from BrowserHive v30.1.0). What stands as the record is what is inside the WACZ.",
   "trace.row.screenshots": "Screenshots",
   "trace.shot.title": "Stage screenshot {stage} ({at})",
   "trace.shots.title": "Stage screenshots",

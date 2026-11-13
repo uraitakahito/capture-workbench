@@ -284,7 +284,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
 - **下に、同じ取り込みのログが並ぶ。**
   ページの表の「ログ」と同じ箱で、絞り込みも同じです。
 - **この画面は、署名の下にない。**
-  保管庫の `.result.json`（と、`trace` の無い取り込みでは WACZ）を読んで並べた物です。要求の行は、WACZ の中にはありません。示すための正は、WACZ の中の記録です。
+  保管庫の `.result.json`（と、`trace` の無い取り込みでは WACZ）を読んで並べた物です。同じ要求の行は、WACZ の中の `trace/events.jsonl` にも在ります（BrowserHive v30.1.0 から。署名した WACZ では、署名の下）。示すための正は、WACZ の中の記録です。
 
 計算（軸・帯・印・棒・数・絵の位置）は `public/timeline.js` で、`test/timeline.test.mjs` と `test/timeline-trace.test.mjs` が、手元の capture-fixtures を撮った本物の答えで固定しています。絵の所は `test/timeline-shots.test.mjs` が、BrowserHive の取り込みが作った本物の WACZ（`sandbox/samples/`）で固定しています。
 

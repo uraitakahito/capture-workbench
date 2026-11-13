@@ -309,3 +309,12 @@ test("走査: 名指した鍵を、行つきで拾う", () => {
     { key: "a.three", line: 1 },
   ]);
 });
+
+test("経緯の画面の注記は、行が WACZ の中にも在ると言う（BrowserHive v30.1.0 から trace/events.jsonl に入る）", () => {
+  for (const lang of ["ja", "en"]) {
+    const dict = JSON.parse(readFileSync(fileURLToPath(new URL(`../public/i18n/${lang}.json`, import.meta.url)), "utf8"));
+    const note = dict["trace.notes.traceUnsigned"];
+    assert.match(note, /trace\/events\.jsonl/, lang);
+    assert.doesNotMatch(note, /WACZ の中にはありません|not inside the WACZ/, lang);
+  }
+});

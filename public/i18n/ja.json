@@ -466,7 +466,7 @@
   "trace.panel.urlCut": "{url}（長いので切ってあります）",
   "trace.notes.traceAxis": "要求の棒は、BrowserHive が答えに載せた行（trace）から描いています。始まりは取り込みの段の帯と同じ軸に置いてあり、長さには BrowserHive が要求と応答を止めていた時間を含みます。",
   "trace.notes.traceUnobservable": "「終わりを観測できない」は、終わらなかったのではなく、終わりの出来事が取り込みのページの側に届かない要求です（別サイトのフレームの文書・dedicated worker の script）。長さを持たず、「終わらなかった」には数えません。",
-  "trace.notes.traceUnsigned": "この画面は、保管庫の .result.json を読んで並べた物で、署名の下にありません。行は WACZ の中にはありません。示すための正は、WACZ の中の記録です。",
+  "trace.notes.traceUnsigned": "この画面は、保管庫の .result.json を読んで並べた物で、署名の下にありません。同じ行は、WACZ の中の trace/events.jsonl にも在ります（BrowserHive v30.1.0 から）。示すための正は、WACZ の中の記録です。",
   "trace.row.screenshots": "節目の絵",
   "trace.shot.title": "節目のスクリーンショット {stage}（{at}）",
   "trace.shots.title": "節目のスクリーンショット",
