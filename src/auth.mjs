@@ -17,6 +17,11 @@
  * ## 入出力
  *
  * IdP と話すのは `fetch` だけで、引数で受ける —— 試験は偽物を渡す（`test/auth.test.mjs`）。
+ *
+ * ## 失敗の文は、英語と日本語を並べる
+ *
+ * ここの失敗は `/login`・`/callback` の答えとして、画面の JS を通らずにブラウザへ直に出る。言語を選ぶ画面が
+ * 無いので、辞書（`public/i18n/`）を使わずに「英語 / 日本語」と並べて書く。
  */
 import { createHash, randomBytes } from "node:crypto";
 
@@ -91,21 +96,27 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
     try {
       res = await send(`${issuer}/.well-known/openid-configuration`);
     } catch (err) {
+      const cause = err instanceof Error ? err.message : String(err);
       throw new Error(
-        `${issuer} に届かない (${err instanceof Error ? err.message : String(err)})。` +
-          "capture-ledger で pnpm run dev:status の IdP の行を見る",
+        `Cannot reach ${issuer} (${cause}). Look at the IdP line of pnpm run dev:status in capture-ledger / ` +
+          `${issuer} に届かない (${cause})。capture-ledger で pnpm run dev:status の IdP の行を見る`,
         { cause: err },
       );
     }
     if (!res.ok) {
       throw new Error(
-        `${issuer} の discovery が ${String(res.status)} —— Floci のプールが作り直されたなら、` +
+        `The discovery of ${issuer} answered ${String(res.status)}. If the Floci pool was recreated, ` +
+          "run pnpm run dev:up --from idp in capture-ledger / " +
+          `${issuer} の discovery が ${String(res.status)} —— Floci のプールが作り直されたなら、` +
           "capture-ledger で pnpm run dev:up --from idp",
       );
     }
     const body = await res.json();
     if (typeof body.authorization_endpoint !== "string" || typeof body.token_endpoint !== "string") {
-      throw new Error(`${issuer} の discovery に authorization_endpoint か token_endpoint が無い`);
+      throw new Error(
+        `The discovery of ${issuer} has no authorization_endpoint or token_endpoint / ` +
+          `${issuer} の discovery に authorization_endpoint か token_endpoint が無い`,
+      );
     }
     discovery = { authorize: body.authorization_endpoint, token: body.token_endpoint };
     return discovery;
@@ -142,7 +153,7 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
     const body = JSON.parse(text);
     return typeof body.access_token === "string"
       ? { accessToken: body.access_token, refreshToken: body.refresh_token }
-      : { error: "token endpoint の答えに access_token が無い" };
+      : { error: "the token endpoint's answer has no access_token / token endpoint の答えに access_token が無い" };
   };
 
   /**
@@ -154,17 +165,19 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
   const finishLogin = async (code, state) => {
     const entry = typeof state === "string" ? pending.get(state) : undefined;
     if (entry === undefined || now() - entry.at > PENDING_MS) {
-      return { error: "知らない state —— サインインをやり直す (/login)" };
+      return { error: "unknown state: sign in again (/login) / 知らない state —— サインインをやり直す (/login)" };
     }
     pending.delete(state); // 1 度だけ
-    if (typeof code !== "string" || code === "") return { error: "code が無い" };
+    if (typeof code !== "string" || code === "") return { error: "no code / code が無い" };
     const tokens = await tokenRequest({
       grant_type: "authorization_code",
       code,
       redirect_uri: redirectUri,
       code_verifier: entry.verifier,
     });
-    if ("error" in tokens) return { error: `code をトークンに替えられない: ${tokens.error}` };
+    if ("error" in tokens) {
+      return { error: `could not exchange the code for a token / code をトークンに替えられない: ${tokens.error}` };
+    }
     const session = base64url(randomBytes(24));
     sessions.set(session, tokens);
     return { session };

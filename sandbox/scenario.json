@@ -56,10 +56,10 @@
     "        5b0c0008 の pages は起点の 1 行だけで、pending のまま (型で落ちたクロールは 1 枚も撮らず、capture-ledger は報告の来なかった頁を pending で残す)。",
     "crawls の replayBundle: クロールの合本 (capture-ledger が段ごとに保管庫へ書く replay.json と pages.json。CAPTURE-54) の欄。rev・pages・builtSecondsAgo・error",
     "        を書き、鍵は代役が capture-ledger と同じ形 (org/<orgId>/crawls/<crawlId>/r<rev>/replay.json) に組む。rev を省いた行は、失敗だけの行。",
-    "        書けた版が在ればクロールの行に replay ↗ が出て (失敗が在っても、前の版を開く)、失敗は開いた行の 1 行が言う。",
-    "        ページの capturedAt と bundledRev は、WACZ の撮った時刻と、その WACZ が最初に入った版 (bundledRev ≤ rev のページに replay ↗)。",
+    "        書けた版が在ればクロールの行に再生のリンクが出て (失敗が在っても、前の版を開く)、失敗は開いた行の 1 行が言う。",
+    "        ページの capturedAt と bundledRev は、WACZ の撮った時刻と、その WACZ が最初に入った版 (bundledRev ≤ rev のページに再生のリンク)。",
     "        5b0c0001 は走行中で、途中の版 r1 (replay r1（途中）↗)。5b0c0009 は r2 (ページ 1201 は r1、1203 は r2。WACZ の無い 1202・1204 には出ない)。5b0c0003 は r2 の次の版を書けなかった行、",
-    "        5b0c0002 は 1 度も書けなかった行 (replay ↗ が出ない)。代役は合本を書かない —— replay ↗ の先には何も無い。"
+    "        5b0c0002 は 1 度も書けなかった行 (再生のリンクが出ない)。代役は合本を書かない —— 再生のリンクの先には何も無い。"
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,

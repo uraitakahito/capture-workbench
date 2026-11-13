@@ -51,12 +51,14 @@ import { cookieValue, createAuth, SESSION_COOKIE, sessionCookie, whoOf } from ".
 
 import {
   contentType,
+  errorBody,
   forwardedHeaders,
   hostAllowed,
   isWriteRoute,
   optional,
   readBody,
   safePath,
+  Told,
   TooLarge,
   WRITE_LIMIT,
   writeRefusal,
@@ -89,7 +91,9 @@ const VALIDATOR = optional("WORKBENCH_VALIDATOR_URL", "http://127.0.0.1:7180");
 const auth = createAuth({ issuer: OIDC_ISSUER, clientId: OIDC_CLIENT_ID, redirectUri: REDIRECT_URI });
 
 /** サインインしていない（セッションが無い・取り直せない）。画面はこれを見てサインインへ回る。 */
-class NotSignedIn extends Error {}
+class NotSignedIn extends Told {}
+
+const causeOf = (err) => (err instanceof Error ? err.message : String(err));
 
 /**
  * capture-ledger へ中継する。トークンはその人のセッションの物。
@@ -99,7 +103,7 @@ class NotSignedIn extends Error {}
  * 同じ形で言う。取り直しは refresh token で、それも通らなければサインインからやり直してもらう。
  */
 const toLedger = async (path, method = "GET", body = undefined, session = undefined, extra = {}) => {
-  if (auth.tokenOf(session) === undefined) throw new NotSignedIn("サインインしていません");
+  if (auth.tokenOf(session) === undefined) throw new NotSignedIn("not signed in");
   const send = async () => {
     try {
       // 401 で取得し直したときも、同じ body を送り直す（文字列なので何度でも読める）
@@ -114,16 +118,13 @@ const toLedger = async (path, method = "GET", body = undefined, session = undefi
       });
     } catch (err) {
       // **何が居ないかを言う。** 素の `fetch failed` は、capture-ledger が落ちているのか
-      // 宛先を間違えているのかを区別しない。
-      throw new Error(
-        `${LEDGER} に届かない (${err instanceof Error ? err.message : String(err)})。` +
-          "capture-ledger で pnpm run api は動いているか?",
-      );
+      // 宛先を間違えているのかを区別しない。どう直すか（pnpm run api）は、辞書の文が言う。
+      throw new Told("ledger unreachable", { url: LEDGER, cause: causeOf(err) });
     }
   };
   let res = await send();
   if (res.status === 401) {
-    if (!(await auth.refresh(session))) throw new NotSignedIn("サインインが切れました");
+    if (!(await auth.refresh(session))) throw new NotSignedIn("sign-in expired");
     res = await send();
   }
   return res;
@@ -141,10 +142,7 @@ const toDaemon = async (path, body) => {
       body: JSON.stringify(body),
     });
   } catch (err) {
-    throw new Error(
-      `${VALIDATOR} に届かない (${err instanceof Error ? err.message : String(err)})。` +
-        "capture-ledger で pnpm run dev:up --from validator は済んでいるか?",
-    );
+    throw new Told("validator unreachable", { url: VALIDATOR, cause: causeOf(err) });
   }
 };
 
@@ -183,7 +181,10 @@ const sendJson = (reply, status, body) => {
   reply.end(JSON.stringify(body));
 };
 
-/** 失敗は、**何が居ないか**を言う。「見えない」と「立っていない」を混ぜない。 */
+/**
+ * 失敗は、**何が居ないか**を言う。「見えない」と「立っていない」を混ぜない。
+ * 本文は `{ error: 句, params }`（`lib.mjs` の `errorBody`）。画面が、自分の言語の文にする。
+ */
 const failed = (reply, err) => {
   // 流している途中で切れたら、もう頭は書けない。閉じるだけ。
   if (reply.headersSent) {
@@ -192,11 +193,11 @@ const failed = (reply, err) => {
   }
   if (err instanceof NotSignedIn) {
     // 画面 (`public/app.js` の `api`) は `login` を見てサインインへ回る。
-    sendJson(reply, 401, { error: err.message, login: "/login" });
+    sendJson(reply, 401, { ...errorBody(err), login: "/login" });
     return;
   }
   const status = err instanceof BadRequest ? 400 : err instanceof TooLarge ? 413 : 502;
-  sendJson(reply, status, { error: err instanceof Error ? err.message : String(err) });
+  sendJson(reply, status, errorBody(err));
 };
 
 /** 302 で回す。 */
@@ -212,7 +213,7 @@ const server = createServer((request, reply) => {
   // **どのエンドポイントも、workbench の Host でなければ答えない**（DNS rebinding。`lib.mjs` の注）。
   // dev:up の準備の確かめは `http://127.0.0.1:<ポート>/healthz` を引くので、ここを通る。
   if (!hostAllowed(request.headers.host, PORT)) {
-    sendJson(reply, 403, { error: "workbench の Host ではない" });
+    sendJson(reply, 403, { error: "not the workbench host" });
     return;
   }
 
@@ -246,8 +247,11 @@ const server = createServer((request, reply) => {
   if (pathname === "/login" && request.method === "GET") {
     if (!auth.configured) {
       reply.writeHead(503, { "content-type": "text/plain; charset=utf-8" });
+      // 画面の JS を通らずにブラウザへ直に出る文。言語を選ぶ画面が無いので、英語と日本語を並べる
       reply.end(
-        "サインインの設定が無い —— WORKBENCH_OIDC_ISSUER と WORKBENCH_OIDC_CLIENT_ID を書く " +
+        "Sign-in is not configured: set WORKBENCH_OIDC_ISSUER and WORKBENCH_OIDC_CLIENT_ID " +
+          "(capture-ledger's pnpm run dev:up passes them; the values are in capture-ledger's .dev/idp.env)\n" +
+          "サインインの設定が無い —— WORKBENCH_OIDC_ISSUER と WORKBENCH_OIDC_CLIENT_ID を書く " +
           "(capture-ledger の pnpm run dev:up が渡す。値は capture-ledger の .dev/idp.env)\n",
       );
       return;
@@ -269,7 +273,7 @@ const server = createServer((request, reply) => {
       .then((done) => {
         if ("error" in done) {
           reply.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
-          reply.end(`サインインできませんでした: ${done.error}\n`);
+          reply.end(`Could not sign in / サインインできませんでした: ${done.error}\n`);
           return;
         }
         redirect(reply, "/", { "set-cookie": sessionCookie(done.session) });
@@ -301,7 +305,7 @@ const server = createServer((request, reply) => {
     const expected = route.op === "validate" ? "POST" : "GET";
     if (request.method !== expected) {
       reply.writeHead(405, { allow: expected, "content-type": "text/plain; charset=utf-8" });
-      reply.end(`${expected} だけ\n`);
+      reply.end(`${expected} only / ${expected} だけ\n`);
       return;
     }
     void (async () => {
@@ -343,7 +347,10 @@ const server = createServer((request, reply) => {
     // 読み取りのエンドポイントは GET だけ。ほかの method を GET として通すと、書けたように見えてしまう。
     if (request.method !== "GET") {
       reply.writeHead(405, { allow: "GET", "content-type": "text/plain; charset=utf-8" });
-      reply.end("GET だけ（書き込みのエンドポイントは POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/crawls/:id/failed・POST /api/scripts/check・POST /api/schedules・POST /api/schedules/:id/<操作>）\n");
+      reply.end(
+        "GET only (the write endpoints are POST /api/crawls, POST /api/crawls/:id/inline/:name/fix, POST /api/crawls/:id/failed, POST /api/scripts/check, POST /api/schedules and POST /api/schedules/:id/<action>)\n" +
+          "GET だけ（書き込みのエンドポイントは POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/crawls/:id/failed・POST /api/scripts/check・POST /api/schedules・POST /api/schedules/:id/<操作>）\n",
+      );
       return;
     }
     void toLedger(url, "GET", undefined, session)

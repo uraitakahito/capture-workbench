@@ -20,6 +20,7 @@
  * - **記録した時刻の印**: metadata だけが在る要求（終わらなかった・失敗した・止めた・残さなかった）。この
  *   `WARC-Date` は BrowserHive がレコードを書いた時刻で、始まりではない（終わらなかった要求なら、記録を止めた時刻）。
  */
+import { errorText } from "./i18n.js";
 
 const TRACE_HASH = /^#trace\/([0-9a-f-]{36})\/([0-9]{1,18})$/;
 
@@ -356,7 +357,7 @@ export const readRecords = async (fetchJson, archiveId) => {
       if (isNoEntry(status, body)) return { files };
       if (status !== 200) {
         if (records.length > 0) files.push({ path, records });
-        return { files, error: { status, message: String(body?.message ?? body?.error ?? `HTTP ${String(status)}`) } };
+        return { files, error: { status, message: errorText(body) ?? `HTTP ${String(status)}` } };
       }
       records.push(...(body.records ?? []));
       if (typeof body.next !== "number") break;

@@ -8,6 +8,49 @@
 import { normalize, resolve, sep } from "node:path";
 
 /**
+ * 画面の JS（`public/`）が受け取る誤りの句。**server は文を書かず、句と値を返す**（`{ error: 句, params: { … } }`）。
+ * 文にするのは画面の辞書（`public/i18n/*.json` の `workbench.error.<句>`）で、言語は画面が決める。
+ *
+ * 句は英語の短い語の並びで、鍵として使う（言い換えると辞書の鍵が外れる）。`check:i18n` が、この一覧と辞書を
+ * 両方向で照らす —— 句を足したら、2 つの辞書に文を足す。値の名前は、句ごとに右の注記のとおり。
+ *
+ * 画面の JS を通らずにブラウザへ直に出る文（`/login`・`/callback` の失敗と、text/plain の答え）は、ここに無い ——
+ * 言語を選ぶ画面が無いので、英語と日本語を並べて書く。
+ */
+export const ERROR_PHRASES = Object.freeze([
+  "not the workbench host",
+  "not from a workbench page",
+  "json only",
+  "not signed in",
+  "sign-in expired",
+  "ledger unreachable", // url・cause
+  "validator unreachable", // url・cause
+  "parameter required", // name
+  "unknown op", // op
+  "unknown locale", // locale
+  "body too large", // limit
+]);
+
+/**
+ * 句と値を持つ誤り。`message` は句（英語）で、`params` は辞書の文に埋める値。知らない句は投げる ——
+ * 辞書に文の無い句を、黙って返さない。
+ */
+export class Told extends Error {
+  constructor(phrase, params = {}, options = undefined) {
+    if (!ERROR_PHRASES.includes(phrase)) throw new Error(`unknown error phrase: ${phrase}`);
+    super(phrase, options);
+    this.name = "Told";
+    this.params = params;
+  }
+}
+
+/** 誤りを、答えの本文（JSON）にする。句を持つ誤りは値も載せる。ほかの誤りは、文をそのまま。 */
+export const errorBody = (err) =>
+  err instanceof Told
+    ? { error: err.message, params: err.params }
+    : { error: err instanceof Error ? err.message : String(err) };
+
+/**
  * 環境変数を読む関数。**空文字は「無い」と同じに扱う**（POSIX の `${VAR:-word}` 側）。
  *
  * Web Capture の他の repo と同じ意味に揃えてある —— `??` は未設定のときしか既定値に
@@ -101,19 +144,20 @@ export const forwardedHeaders = (url, headers) => {
 };
 
 /**
- * 書き込みのエンドポイントの門。workbench のページからの JSON だけを通す。断るなら `{ status, error }` を返す。
+ * 書き込みのエンドポイントの門。workbench のページからの JSON だけを通す。断るなら `{ status, error }` を返す
+ * （`error` は句。`ERROR_PHRASES`）。
  *
  * Origin を見るのは CSRF（別のサイトのページに、利用者のブラウザから POST させる手）のため。
  * JSON に限るのは、form が preflight なしで送れる形（text/plain など）を締め出すため。
  * Chrome の Private Network Access には頼らない —— 版で振る舞いが変わる。
  */
 export const writeRefusal = (headers, port) => {
-  if (!hostAllowed(headers.host, port)) return { status: 403, error: "workbench の Host ではない" };
+  if (!hostAllowed(headers.host, port)) return { status: 403, error: "not the workbench host" };
   if (headers.origin !== `http://${String(headers.host)}`) {
-    return { status: 403, error: "workbench のページからの要求ではない" };
+    return { status: 403, error: "not from a workbench page" };
   }
   const type = (headers["content-type"] ?? "").split(";")[0].trim();
-  if (type !== "application/json") return { status: 415, error: "JSON だけを受ける" };
+  if (type !== "application/json") return { status: 415, error: "json only" };
   return undefined;
 };
 
@@ -125,7 +169,7 @@ export const writeRefusal = (headers, port) => {
  */
 export const WRITE_LIMIT = 1024 * 1024;
 
-export class TooLarge extends Error {}
+export class TooLarge extends Told {}
 
 /**
  * 本文を読む。上限を超えたら**溜めるのをやめ**、読み切ってから TooLarge で断る ——
@@ -140,7 +184,7 @@ export const readBody = (request, limit) =>
       if (size <= limit) chunks.push(chunk);
     });
     request.on("end", () => {
-      if (size > limit) reject(new TooLarge(`本文が ${String(limit)} バイトを超えた`));
+      if (size > limit) reject(new TooLarge("body too large", { limit }));
       else resolve(Buffer.concat(chunks).toString("utf8"));
     });
     request.on("error", reject);

@@ -62,10 +62,10 @@ Pressing 検証 on an archive row opens that archive's report under the row.
 
 The verdict also stays in the row's 仕様どおりか (conforms?) cell, until you reload the page.
 
-**The workbench owns no wording.** Messages, their Japanese text and the spec links all come back
+**The workbench owns no wording of the report.** Messages and the spec links all come back
 from the daemon already resolved, and are shown as they are. If the workbench rephrased a rule, it
 would quietly drift from what the validator has started to say. All the workbench sends is
-`locale`.
+`locale`, the language of the page (`ja` or `en`), and the daemon answers in that language.
 
 ### It validates with the spec profile
 

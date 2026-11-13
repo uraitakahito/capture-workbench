@@ -3,11 +3,12 @@
     "package.json にコメントを書く方法の議論:",
     "https://stackoverflow.com/questions/14221579/how-do-i-add-comments-to-package-json-for-npm-install",
     "",
-    "public/vendor/shiki.js (読む所の色付け) を作るためだけの npm project (docs-site と同じ形)。",
+    "public/vendor/ の束 (読む所の色付けの shiki.js と、画面の文言を文にする intl-messageformat.js) を作るためだけの npm project (docs-site と同じ形)。",
     "workbench は install しない。作り直しは root の npm run vendor (lockfile どおりに入れてから作る)。",
     "版はちょうどで固める (^ を付けない): 版が 1 つ動けば束が変わる。上げるのは Dependabot の PR か人で、",
     "どちらも束を作り直して commit する。",
     "shiki: 色付け。束ねるのは TypeScript の文法と、明暗 2 つの配色だけ (entry.mjs)。",
+    "intl-messageformat: 画面の文言の辞書 (public/i18n/*.json の ICU MessageFormat の文) を文にする (entry-i18n.mjs)。license は BSD-3-Clause で、build.mjs が名指しで許している。",
     "esbuild: 束ねるだけ (build.mjs)。"
   ],
   "name": "capture-workbench-highlighter",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "esbuild": "0.28.2",
+    "intl-messageformat": "12.1.4",
     "shiki": "4.5.0"
   }
 }

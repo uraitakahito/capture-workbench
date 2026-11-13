@@ -11,12 +11,13 @@
  *
  * capture-ledger の文（`error`）は言い換えない。状態の数と一緒に、そのまま出す。
  */
+import { errorText } from "./i18n.js";
 
 /** 失敗の文が、型の検査で落ちたことを言うか（capture-scheduler の compile の段の文 `compile 422 CompileFailed: …`）。 */
 export const failedOnTypes = (error) => typeof error === "string" && /(?:^|\]\s*)compile 422 /.test(error);
 
 /** capture-ledger の答えの文。無ければそう言う。 */
-const saidOf = (body) => body?.error ?? body?.message ?? "答えに文がありません";
+const saidOf = (body) => errorText(body) ?? "答えに文がありません";
 
 /**
  * エンドポイントが無い 404 か（Fastify の既定の文は "Route GET:… not found"）。行が無い・見えない 404 は "not found" で、

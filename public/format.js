@@ -3,7 +3,10 @@
  *
  * ブラウザは `/format.js` として読み、試験は `node --test` から import する ——
  * 同じファイルを両方が読むので、写しが腐ることがない。
+ *
+ * 字は辞書（`i18n/*.json`）に在り、ここは鍵を選んで `t()` に渡す（`i18n.js`）。
  */
+import { t } from "./i18n.js";
 
 /**
  * クロールの状態を、**言葉にする**。
@@ -22,19 +25,21 @@
  * 頼んだ物が全部撮れたときだけ。知らない `stopReason` は、括弧に入れてそのまま見せる。
  */
 export const stateOf = (crawl) => {
-  if (crawl.state === "running") return { text: "走行中", kind: "run" };
-  if (crawl.state !== "succeeded") return { text: "失敗", kind: "bad" };
-  const short = crawl.pagesFailed > 0 ? `・${String(crawl.pagesFailed)} 枚取れず` : "";
+  if (crawl.state === "running") return { text: t("crawls.state.running"), kind: "run" };
+  if (crawl.state !== "succeeded") return { text: t("crawls.state.failed"), kind: "bad" };
+  const whole = crawl.pagesFailed === 0;
+  /** 取れなかったページが在れば、状態の後ろに数を添える。 */
+  const said = (state) => (whole ? state : t("crawls.state.withFailed", { state, n: crawl.pagesFailed }));
   if (crawl.maxDepth === 0) {
-    return { text: `このページだけ${short}`, kind: short === "" ? "ok" : "warn" };
+    return { text: said(t("crawls.state.pageOnly")), kind: whole ? "ok" : "warn" };
   }
-  if (crawl.stopReason === "no_links") return { text: `リンクなし${short}`, kind: "warn" };
+  if (crawl.stopReason === "no_links") return { text: said(t("crawls.state.noLinks")), kind: "warn" };
   if (crawl.stopReason === "completed") {
-    return { text: `完走${short}`, kind: short === "" ? "ok" : "warn" };
+    return { text: said(t("crawls.state.completed")), kind: whole ? "ok" : "warn" };
   }
-  if (crawl.stopReason === "max_depth") return { text: `打ち切り (深さ)${short}`, kind: "warn" };
-  if (crawl.stopReason === "max_pages") return { text: `打ち切り (枚数)${short}`, kind: "warn" };
-  return { text: `成功 (${String(crawl.stopReason)})${short}`, kind: "warn" };
+  if (crawl.stopReason === "max_depth") return { text: said(t("crawls.state.maxDepth")), kind: "warn" };
+  if (crawl.stopReason === "max_pages") return { text: said(t("crawls.state.maxPages")), kind: "warn" };
+  return { text: said(t("crawls.state.other", { reason: String(crawl.stopReason) })), kind: "warn" };
 };
 
 /**
@@ -51,7 +56,7 @@ export const linksOf = (crawl) => (crawl.pagesCaptured === 0 ? "−" : String(cr
  */
 export const linksNoteOf = (crawl) =>
   crawl.linksRecorded === false && crawl.pagesCaptured > 0
-    ? "延べの数（リンクの記録が無いクロール。別の段で同じ URL が出ると 2 度数えている）"
+    ? t("crawls.links.sumNote")
     : undefined;
 
 /**
@@ -87,9 +92,9 @@ export const severityKind = (severity) => {
  * どちらも「失敗 0」だから。
  */
 export const verdict = (summary) => {
-  if (summary.failed > 0) return { text: `失敗 ${summary.failed}`, kind: "bad" };
-  if (summary.warnings > 0) return { text: `警告 ${summary.warnings}`, kind: "warn" };
-  return { text: "問題なし", kind: "ok" };
+  if (summary.failed > 0) return { text: t("archives.check.failed", { n: summary.failed }), kind: "bad" };
+  if (summary.warnings > 0) return { text: t("archives.check.warnings", { n: summary.warnings }), kind: "warn" };
+  return { text: t("archives.check.ok"), kind: "ok" };
 };
 
 /**
@@ -107,17 +112,16 @@ export const secretArchiveOf = (archive) => {
   if (archive === undefined) return undefined;
   if (archive === "keep") {
     return {
-      text: "WARC に残す（keep）",
+      text: t("crawls.secret.keep"),
       kind: "warn",
-      title: "値は WARC の通信の記録（request・response・metadata と、その URL）に値のまま残る",
+      title: t("crawls.secret.keepTitle"),
     };
   }
   if (archive === null) {
     return {
-      text: "WARC で隠す",
+      text: t("crawls.secret.hide"),
       kind: "muted",
-      title:
-        "値は WARC で *** に置き換わる。BrowserHive v29.0.0 から（それより前の BrowserHive は、通信に載せた値を WARC に残す）",
+      title: t("crawls.secret.hideTitle"),
     };
   }
   return { text: `WARC: ${String(archive)}`, kind: "warn" };
@@ -129,7 +133,7 @@ export const secretArchiveOf = (archive) => {
  */
 export const checkVerdict = (answer) => {
   if (answer === undefined) return undefined;
-  if (answer instanceof Error) return { text: "検証できず", kind: "bad" };
+  if (answer instanceof Error) return { text: t("archives.check.unavailable"), kind: "bad" };
   return verdict(answer.summary);
 };
 
@@ -164,7 +168,7 @@ export const statsOf = (report) => {
   if (stats === undefined) return [];
   const hosts = stats.hosts ?? [];
   return [
-    `WARC ${String(stats.warcRecordCount)} レコード`,
+    t("archives.stats.records", { n: stats.warcRecordCount }),
     ...(hosts.length === 0 ? [] : [hosts.join(", ")]),
   ];
 };
@@ -182,11 +186,10 @@ export const resendOf = (dispatch) => {
   if (dispatch === null || dispatch === undefined) return undefined;
   const resent = Math.max(0, dispatch.attempts - 1);
   if (resent === 0 && dispatch.lastError === null) return undefined;
-  const level = `段 ${String(dispatch.depth)}`;
   const text =
     dispatch.state === "abandoned" && dispatch.lastError !== null
-      ? `${level} を Windmill に渡せず諦めた（${String(dispatch.attempts)} 回送った）`
-      : `${level} を Windmill に送り直し ${String(resent)} 回`;
+      ? t("crawls.resend.abandoned", { depth: dispatch.depth, attempts: dispatch.attempts })
+      : t("crawls.resend.resent", { depth: dispatch.depth, resent });
   const kind = dispatch.state === "abandoned" ? "bad" : "warn";
   return { text, kind, error: dispatch.lastError };
 };

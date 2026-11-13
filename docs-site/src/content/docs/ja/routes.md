@@ -76,12 +76,12 @@ capture-ledger は CORS（Cross-Origin Resource Sharing。別のオリジンの�
 - path と query はそのままで、capture-ledger へは GET で通します。
   GET 以外は 405 です（書き込みのエンドポイントは下の `POST` の物だけ）。
 - そのセッションのアクセストークンを `Authorization: Bearer` で付けます。
-  セッションが無ければ 401 `{"error":"サインインしていません","login":"/login"}` を返し、ページは `/login` へ移ります。
+  セッションが無ければ 401 `{"error":"not signed in","params":{},"login":"/login"}` を返し、ページは `/login` へ移ります。
 - **capture-ledger から 401 を受けたら、refresh token で取得し直して 1 度だけやり直す。**
   寿命は数えません。
   IdP のプールを作り直すと鍵ごと変わるので、「まだ有効なはず」の時計は当てになりません。
   401 は、期限切れも鍵替わりも同じ形で言います。
-  refresh token でも取れなければセッションを消し、401（`サインインが切れました`）でサインインし直してもらいます。
+  refresh token でも取れなければセッションを消し、401（`sign-in expired`。画面の字は「サインインが切れました」）でサインインし直してもらいます。
 - capture-ledger の答えは、状態と `content-type` と本文をそのまま返します。
 
 どのエンドポイントを読むかは workbench（`public/app.js`）が決め、サーバは選びません。
@@ -177,7 +177,7 @@ WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）を�
 
 | workbench が呼ぶ | daemon へ | 返すもの |
 | --- | --- | --- |
-| `POST /wacz/:id/validate` | `POST /validate` | 検証の報告 |
+| `POST /wacz/:id/validate?locale=` | `POST /validate` | 検証の報告（画面の言語で） |
 | `GET /wacz/:id/lines?path=&from=&count=` | `POST /lines` | 行の窓 |
 | `GET /wacz/:id/line?path=&n=` | `POST /line` | 1 行を丸ごとと、割った fields |
 | `GET /wacz/:id/records?path=&from=&count=` | `POST /records` | WARC を頭から歩いたレコードの一覧 |
@@ -193,7 +193,8 @@ WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）を�
   `<img src>` も GET なので、画像の実体も GET で呼べるようにしてあります。
   検証だけは workbench からも POST です（押したときだけ走らせる）。
 - daemon へ送る本文は `{ "source": { "kind": "uri", "uri": "<署名付き URL>" }, …引数 }` です。
-  検証の引数は `locale` だけです。
+  検証の引数は `locale` だけです（`ja` か `en`。画面の言語。query に無ければ `ja`）。
+  ほかの値は 400 で断り、黙って別の言語には倒しません。
 
 ## 通すヘッダ
 
@@ -206,18 +207,24 @@ daemon の `date` や `connection` は、workbench の応答に混ぜません�
 失敗は、何が居ないかを言います。
 「見えない」と「立っていない」を混ぜません。
 
+**workbench のサーバ自身の JSON の失敗は、文ではなく、句と値です**（`{"error":"<句>","params":{…}}`）。
+句は `src/lib.mjs` の `ERROR_PHRASES` に在ります。
+ページが、句を自分の言語の文にします（辞書の鍵は `workbench.error.<句>`。[開発](/development/#画面の文言)）。どう直すかの 1 文も、辞書の側に在ります。
+ページを通らずにブラウザへ直に出る答え（`/login`・`/callback`・405 の text）は言語を選べないので、英語と日本語を ` / ` で並べて書いてあります。
+
 | 状態 | いつ | 本文 |
 | --- | --- | --- |
-| 400 | `/wacz/` のエンドポイントの引数が足りない、または数でない。capture-ledger へは行かない | `{"error":"from is required"}` |
-| 400 | `/callback` の `state` を知らない・もう使った、または IdP が code をトークンに替えない | `サインインできませんでした: …`（text） |
-| 401 | セッションの無い `/api/*` と `/wacz/` のエンドポイント、または capture-ledger がトークンを断り、refresh token でも取れなかった | `{"error":"サインインしていません","login":"/login"}` か `サインインが切れました`。ページは `/login` へ移る |
-| 403 | `Host` が workbench の host:port でない（どのエンドポイントも）。書き込みのエンドポイントでは、`Origin` が workbench でないときも | `{"error":"workbench の Host ではない"}` など |
-| 405 | method が違う。`/wacz/` のエンドポイント（検証は POST、他は GET）と、`/api/*`（GET だけ。書き込みのエンドポイントを除く） | `POST だけ`・`GET だけ` など（`Allow` ヘッダつき） |
-| 413 | 書き込みのエンドポイントの本文が 1 MiB を超えた | `{"error":"本文が 1048576 バイトを超えた"}` |
-| 415 | 書き込みのエンドポイントの `content-type` が JSON でない | `{"error":"JSON だけを受ける"}` |
+| 400 | `/wacz/` のエンドポイントの引数が足りない、または数でない。検証の `locale` が、画面の持たない言語。capture-ledger へは行かない | `{"error":"parameter required","params":{"name":"from"}}`・`{"error":"unknown locale","params":{"locale":"fr"}}` |
+| 400 | `/callback` の `state` を知らない・もう使った、または IdP が code をトークンに替えない | `Could not sign in / サインインできませんでした: …`（text） |
+| 401 | セッションの無い `/api/*` と `/wacz/` のエンドポイント、または capture-ledger がトークンを断り、refresh token でも取れなかった | `{"error":"not signed in","params":{},"login":"/login"}` か `sign-in expired`。ページは `/login` へ移る |
+| 403 | `Host` が workbench の host:port でない（どのエンドポイントも）。書き込みのエンドポイントでは、`Origin` が workbench でないときも | `{"error":"not the workbench host"}`・`{"error":"not from a workbench page"}` |
+| 405 | method が違う。`/wacz/` のエンドポイント（検証は POST、他は GET）と、`/api/*`（GET だけ。書き込みのエンドポイントを除く） | `POST only / POST だけ`・`GET only … / GET だけ …`（`Allow` ヘッダつき） |
+| 413 | 書き込みのエンドポイントの本文が 1 MiB を超えた | `{"error":"body too large","params":{"limit":1048576}}` |
+| 415 | 書き込みのエンドポイントの `content-type` が JSON でない | `{"error":"json only"}` |
 | capture-ledger のまま | capture-ledger が断った（見てよくない archive の 404 など） | capture-ledger の本文 |
-| 502 | IdP・capture-ledger・daemon に届かない、または IdP の discovery が失敗した | `{"error":"… に届かない (…)。…"}`。直し方の 1 文つき |
-| 503 | `WORKBENCH_OIDC_ISSUER` と `WORKBENCH_OIDC_CLIENT_ID` の無い `/login` | `サインインの設定が無い —— …`（text） |
+| 502 | capture-ledger か daemon に届かない | `{"error":"ledger unreachable","params":{"url":"…","cause":"…"}}` か `validator unreachable`。直すコマンドは、辞書の文が言う |
+| 502 | IdP に届かない、または IdP の discovery が失敗した | `{"error":"Cannot reach … / … に届かない (…)。…"}`。英語と日本語を並べ、直し方の 1 文つき |
+| 503 | `WORKBENCH_OIDC_ISSUER` と `WORKBENCH_OIDC_CLIENT_ID` の無い `/login` | `Sign-in is not configured: …` と `サインインの設定が無い —— …`（text） |
 | 404 | `public/` に無いファイル、または配らない拡張子 | `not found` |
 
 答えを流している途中で上流が切れたら、頭はもう書けないので、接続を閉じます。

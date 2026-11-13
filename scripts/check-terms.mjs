@@ -137,9 +137,10 @@ const TAIHON = /サイト用の台本|対象サイトの(無い|ある)台本|�
  * 足すときは、物の意味（`<legend>スクリプト</legend>`・登録済みのスクリプトがありません）・ふつうの言葉
  * （WACZ の中身）・新しい名前（スクリプト集の画面）・コードの名前（`#scripts`・`/api/scripts`）に当たらないことを
  * 確かめる。英語は頭の字だけ大小を許す（`/i` にすると、npm の scripts のような小文字の表の行にも当たる）。
+ * タブの字は辞書（`public/i18n/*.json` の `common.tab.*`）に在るので、辞書の行の形（`"common.tab.scripts": "…"`）も見る。
  */
 const OLD_VIEW =
-  /スクリプトの画面|中身の画面|タブ「(?:スクリプト|中身)」|「中身」|>(?:スクリプト|中身)<\/button>|<th>中身<\/th>|検証・中身・|^## スクリプト\s*$|^\| (?:スクリプト|中身) \||\b[Ss]cripts [Vv]iew\b|\b[Cc]ontents (?:[Vv]iew|[Tt]ab)\b|^## Scripts\s*$|^\| (?:Scripts|Contents) \|/u;
+  /スクリプトの画面|中身の画面|タブ「(?:スクリプト|中身)」|「中身」|>(?:スクリプト|中身)<\/button>|<th>中身<\/th>|"common\.tab\.[a-z]+": "(?:スクリプト|中身|Scripts|Contents)"|検証・中身・|^## スクリプト\s*$|^\| (?:スクリプト|中身) \||\b[Ss]cripts [Vv]iew\b|\b[Cc]ontents (?:[Vv]iew|[Tt]ab)\b|^## Scripts\s*$|^\| (?:Scripts|Contents) \|/u;
 /**
  * 箱に書く物の古い呼び名（2026-11 まで）。JS になるのは変換の後なので、走った JS・変換後の JS・束ねた JS・素の JS は
  * 当てない。足すときは、それらと `jsSha256` に当たらないことを確かめる。
