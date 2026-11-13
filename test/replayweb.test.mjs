@@ -1,5 +1,5 @@
 /**
- * 「replay ↗」の行き先（`public/replayweb.js`）。アーカイブの行は取り込んだ URL を撮った時刻で直に開く
+ * 再生のリンク（「ReplayWeb.page ↗」「Web Capture ↗」）の行き先（`public/replayweb.js`）。アーカイブの行は取り込んだ URL を撮った時刻で直に開く
  * （CAPTURE-48。replay は mainPageURL を読まず、一覧を新しい順に並べるので、行き先で名指す）。クロールの行と
  * ページの行はクロールの合本を開く（CAPTURE-54。`replayBundleHref`。WACZ 1 本の `replaywebHref` とは別に試す）。
  * `source` の綴りは 3 つの組み立て役（検索の当たりの `hitReplaywebHref` も）で同じ —— replay の server（v0.3.0 から）の

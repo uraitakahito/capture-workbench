@@ -173,7 +173,7 @@ npm run docs:shots -- start crawls   # 名指した絵だけ
   控えを手で写して緑にしないこと —— 絵が古いまま残ります。
 - **名指して撮っても、控えは変わらない。**
   控えを今に合わせるのは、全部を撮ったときだけです。
-- **絵は lossless の WebP で、1 枚 39 KB・全部で 312 KB まで。**
+- **絵は lossless の WebP で、1 枚ごとと全部の合計に予算があります**（`scripts/check-doc-refs.mjs` の `BUDGET`）。
   撮り直すたびに git に積もるからです。
   超えると `site:check` が落ちます。
   そのときは `docs-shots.mjs` の `SHOTS` で、写す箱を小さくするか、高さの上限（`maxHeight`）を下げます。

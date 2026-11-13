@@ -348,7 +348,7 @@ test("同梱の台本は、合本の 3 つの形（書けた版・書けた版�
   const bundles = scenario.crawls.map((c) => crawlRow(c, NOW).replayBundle);
   assert.ok(bundles.some((b) => b?.key && b.error === null), "書けた版");
   assert.ok(bundles.some((b) => b?.key && b.error !== null), "書けた版の後の失敗（前の版を開く）");
-  assert.ok(bundles.some((b) => b !== null && b.key === null), "失敗だけ（replay ↗ が出ない）");
+  assert.ok(bundles.some((b) => b !== null && b.key === null), "失敗だけ（再生のリンクが出ない）");
   assert.ok(bundles.some((b) => b === null), "合本の無い行");
   const rows = [];
   submitCrawl(rows, { seeds: ["https://site.test/"] }, NOW, RUNS, versions);
@@ -1362,7 +1362,7 @@ test("台本の途中の版: 走行中の行と次の版を書けなかった行
   assert.equal(isPartialBundle(row("5b0c0001")), true, "走行中");
   assert.equal(isPartialBundle(row("5b0c0003")), true, "次の版を書けなかった");
   assert.equal(isPartialBundle(row("5b0c0009")), false, "最後の版まで書けた");
-  // 詳しい所も一覧の行と同じに読める（開いた行のページの表の replay ↗ が使う）
+  // 詳しい所も一覧の行と同じに読める（開いた行のページの表の再生のリンクが使う）
   for (const id of ["5b0c0001", "5b0c0003", "5b0c0009"]) {
     const detail = crawlDetail(scenarioAt(crawlOf(id), NOW));
     assert.equal(isPartialBundle(detail), isPartialBundle(row(id)), id);
@@ -1370,7 +1370,7 @@ test("台本の途中の版: 走行中の行と次の版を書けなかった行
   }
 });
 
-test("5b0c0009 のページの表では、WACZ が capture-ledger の指す合本に入った 2 ページにだけ replay ↗ が付く", () => {
+test("5b0c0009 のページの表では、WACZ が capture-ledger の指す合本に入った 2 ページにだけ再生のリンクが付く", () => {
   const c = crawlOf("5b0c0009");
   const bundle = crawlDetail(c).replayBundle;
   const pages = pageList(c, query()).body.pages;
