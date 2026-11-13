@@ -429,8 +429,9 @@ reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
 - **The same capture's log is listed below**, in the same box as **Log** in the pages table, with
   the same filter.
 - **The signature does not cover this view.** It lays out what it read from `.result.json` in the
-  store (and from the WACZ, for a capture without a `trace`). The request lines are not inside
-  the WACZ. The records to show as evidence are the ones inside the WACZ.
+  store (and from the WACZ, for a capture without a `trace`). The same request lines
+  are also inside the WACZ, in `trace/events.jsonl` (from BrowserHive v30.1.0; in a signed WACZ,
+  under its signature). The records to show as evidence are the ones inside the WACZ.
 
 The arithmetic (axis, bars, marks, request bars, counts, where the screenshots are) is
 `public/timeline.js`, pinned by `test/timeline.test.mjs` and `test/timeline-trace.test.mjs` against
