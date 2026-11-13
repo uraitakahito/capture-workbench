@@ -775,7 +775,7 @@ The view that searches the titles and text of captured pages with the ledger's f
 - **A hit is one stage of one archive.** The ledger indexes each line of a WACZ's page list: for a
   WACZ with snapshot lines only the snapshots (`after-load`, `after-behaviors`), and for a capture
   without snapshots (a document a policy withheld, say) the document's line. When both the
-  before-search and the after-search stage of one archive match, two rows are listed.
+  `after-load` and the `after-behaviors` stage of one archive match, two rows are listed.
 - **Only archives you may see are listed.** The ledger filters with the same authorization as the
   archive list. The count is the number of rows listed; the ledger returns at most 50 at a time.
 - **ReplayWeb.page ↗ / Web Capture ↗ open a document hit at the captured URL, and a snapshot hit at the snapshot itself.**
