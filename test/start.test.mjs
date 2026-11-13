@@ -889,11 +889,11 @@ test("英語: 始められない理由と行ごとの印", () => {
   assert.match(said.text, /row 2 drops ads\.site\.test and its subdomains, row 3 drops "\*\.site\.test" \(cannot be read\)\. /);
   assert.match(said.text, / Row 2 is covered by row 1 and never matches\. What row 3 matches cannot be read\. /);
   assert.match(said.text, / The seed https:\/\/ads\.site\.test\/ does not match a "Capture and follow" row\. /);
-  assert.match(said.text, / The seed not a url is not an http\(s\) URL\. It cannot be started as it is\.$/);
+  assert.match(said.text, / The seed not a url is not an http\(s\) URL\. The crawl cannot be started as it is\.$/);
   assert.deepEqual(inEnglish(() => marksOf(answer, 3)), [
     { text: "scope", bad: false },
     { text: "Covered by row 1; never matches. Move it up", bad: true },
-    { text: "Cannot be read (a lowercase host name, an http(s) URL or the name of a scope)", bad: true },
+    { text: "Cannot be read (write a lowercase host name, an http(s) URL or the name of a scope)", bad: true },
   ]);
 });
 
@@ -916,13 +916,18 @@ test("英語: 始めた答え —— capture-ledger の文は訳さず、繋ぐ�
   );
 });
 
-test("英語: 大きさの行は、行とバイトの単数と複数を分ける（数は桁を区切った字で渡す）", () => {
-  assert.equal(t("start.size.lineOfLimit", { lines: "4", bytes: "270", percent: 0 }), "4 行 · 本文 270 バイト · 上限の 0%");
+test("大きさの行: 数は桁を区切り、英語は行とバイトの単数と複数を分ける", () => {
+  assert.equal(t("start.size.lineOfLimit", { lines: 4, bytes: 270, percent: 0 }), "4 行 · 本文 270 バイト · 上限の 0%");
+  assert.equal(t("start.size.line", { lines: 1234, bytes: 56789 }), "1,234 行 · 本文 56,789 バイト");
+  assert.equal(
+    t("start.size.over", { limit: 1048576, over: 1234 }),
+    "本文が上限（1,048,576 バイト）を 1,234 バイト超えています。始められません",
+  );
   const line = (lines, bytes) => inEnglish(() => t("start.size.line", { lines, bytes }));
-  assert.equal(line("1", "1"), "1 line · body 1 byte");
-  assert.equal(line("2", "1,234"), "2 lines · body 1,234 bytes");
-  assert.equal(line("0", "0"), "0 lines · body 0 bytes");
-  const over = (n) => inEnglish(() => t("start.size.over", { limit: "1,048,576", over: n }));
-  assert.equal(over("1"), "The body is 1 byte over the limit (1,048,576 bytes). It cannot be started");
-  assert.equal(over("2"), "The body is 2 bytes over the limit (1,048,576 bytes). It cannot be started");
+  assert.equal(line(1, 1), "1 line · body 1 byte");
+  assert.equal(line(2, 1234), "2 lines · body 1,234 bytes");
+  assert.equal(line(0, 0), "0 lines · body 0 bytes");
+  const over = (n) => inEnglish(() => t("start.size.over", { limit: 1048576, over: n }));
+  assert.equal(over(1), "The body is 1 byte over the limit (1,048,576 bytes). The crawl cannot be started");
+  assert.equal(over(2), "The body is 2 bytes over the limit (1,048,576 bytes). The crawl cannot be started");
 });

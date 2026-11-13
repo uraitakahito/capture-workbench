@@ -6,6 +6,7 @@ description: Web Capture を開発するときに手元で開く Web アプリ�
 capture-workbench は、[Web Capture](https://uraitakahito.github.io/capture-ledger/ja/#web-capture)（Web ページを撮ってアーカイブに残し、後から確かめられるようにする repo の一式）を開発するときに手元で開く Web アプリです。
 **1 本のクロールを 1 行で見ます。**
 新しいクロールを始めることも、撮れた WACZ の中身を読むこともできます。
+画面の字は、日本語か英語です（[画面](/screens/#言語)）。
 
 クロールを始めるのは [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録するシステム）、
 走らせるのは [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)（クロールを Windmill の flow で回す）、

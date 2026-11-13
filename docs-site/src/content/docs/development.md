@@ -82,8 +82,10 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
   for what every view shows, and `workbench.error.<phrase>` is for the errors of the workbench's
   own server ([What failures look like](/routes/#what-failures-look-like)). **Write a key out as a
   string; never assemble one.** The check compares the keys the code names with the dictionaries,
-  and it cannot see a key that is put together at run time. Where a key is written outside `t()`
-  (a table from a value to a key), wrap it in `key("…")`.
+  and it cannot see a key that is put together at run time. A table from a value to its words is
+  written as a function that returns the words (`actionText` in `public/start.js`), not as a table
+  of keys. Where a key does have to be written outside `t()` (a phrase that arrives as data and is
+  looked up with `phraseText`), wrap it in `key("…")` so that the check counts it.
 - **In JavaScript, `t("key", { values })`.** For a sentence with an element in it,
   `tNodes("key", { code: (text) => element })` returns strings and elements to hand to `append`.
   No API that takes HTML is used, for the dictionaries either. **In `public/index.html`, write no
@@ -92,10 +94,20 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
 - **One sentence, one key.** Do not build a sentence from pieces: the order of the pieces is
   different in the other language. Inside a plural, write `{n}` rather than `#`. `#` groups the
   digits in English (`1,234`) and the Japanese sentence would not.
-- **The language is decided once, when the page loads:** `?lang=ja` or `?lang=en` in the URL, and
-  Japanese without it. Nothing is drawn again afterwards. Views whose words have not been moved to
-  the dictionaries yet stay in Japanese with `?lang=en`; the lines still to move are counted in
-  `scripts/i18n-baseline.json`.
+- **The language is decided once, when the page loads** (`chooseLang` in `public/i18n.js`):
+  `?lang=ja` or `?lang=en` in the URL (for that load only), then the choice the switch at the top
+  right remembered (`localStorage`), then the first of the browser's languages that is Japanese or
+  English, then English. Nothing is drawn again afterwards: the switch stores the choice, takes
+  `?lang=` off the URL (it would win over the stored choice) and reloads the page.
+- **Words that become stored data are sent as a fixed English phrase, not as a sentence.** The
+  reason sent when a row left running is closed from the schedules view ends up in the crawl's
+  `error`. Where it is shown, `phraseText` looks the phrase up (`crawls.reason.<phrase>`); a
+  phrase that is not in the dictionary, such as one stored before or written by another system,
+  is shown as it arrived.
+- **What is not translated:** what the ledger, BrowserHive, Windmill and the daemon return
+  (states such as `captured`, step names, log lines, failure reasons), proper names
+  (ReplayWeb.page ↗, run ↗, WACZ, User-Agent), units (`ms`, `KiB`) and Claude's summaries, which
+  the ledger has written in Japanese (the changes view says so in English).
 - **Dates follow the language, machine-like forms do not.** `dateTime()` writes `2026/1/5 4:00:00`
   in Japanese (the form the workbench has always shown) and `Jan 5, 2026, 4:00:00 AM` in English.
   Grouped digits (`1,234`), `11-08 04:00`, `2026-11-13` and `1m 40s` are the same in both.
@@ -112,9 +124,7 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
    is used nowhere, or the first argument of `t()`, `tNodes()` or `key()` is not a string. The keys
    under `workbench.error.` are compared with `ERROR_PHRASES` in `src/lib.mjs`, in both directions;
 4. there is Japanese text outside comments in `public/*.js` or `public/index.html` (full-width
-   punctuation included). While the views are being moved, the count per file is compared with
-   `scripts/i18n-baseline.json`: more lines than recorded fail, and so do fewer (lower the number
-   in the file, so that no slack is left). A file that is not listed must have none.
+   punctuation included). One line is enough.
 
 The tests run in Japanese whatever the machine's language is: `npm test` loads
 `test/lang-ja.mjs` first. A test of the English text calls `setLang("en")` and sets it back to

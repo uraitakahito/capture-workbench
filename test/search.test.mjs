@@ -15,6 +15,17 @@ import {
   searchPath,
   stageLabel,
 } from "../public/search.js";
+import { setLang, t } from "../public/i18n.js";
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const ORIGIN = "http://127.0.0.1:8899";
 const DOC = {
@@ -107,4 +118,36 @@ test("引けなかったときの文: 503 は OpenSearch を、404 は検索の�
     "400 — querystring/q must NOT have fewer than 1 characters",
   );
   assert.equal(searchFailure(0, { message: "Failed to fetch" }), "workbench 自身に届きません（Failed to fetch）");
+});
+
+test("英語: 文書の行の時点は document、写しの行の時点の名前は訳さない", () => {
+  assert.deepEqual(
+    inEnglish(() => [null, "", "after-load", "after-behaviors"].map(stageLabel)),
+    ["document", "document", "after-load", "after-behaviors"],
+  );
+});
+
+test("英語: 引けなかったときの文は英語で、capture-ledger の文はそのまま後ろに付く", () => {
+  assert.equal(
+    inEnglish(() => searchFailure(503, { error: "search unavailable", message: "OpenSearch did not answer" })),
+    "capture-ledger's full-text search does not answer (OpenSearch, where capture-ledger's CAPTURE_LEDGER_OPENSEARCH_URL points): OpenSearch did not answer",
+  );
+  assert.equal(
+    inEnglish(() => searchFailure(404, { error: "Not Found" })),
+    "capture-ledger has no search endpoint (a capture-ledger without CAPTURE_LEDGER_OPENSEARCH_URL): Not Found",
+  );
+  assert.equal(
+    inEnglish(() => searchFailure(0, { message: "Failed to fetch" })),
+    "The workbench itself cannot be reached (Failed to fetch)",
+  );
+  assert.equal(inEnglish(() => searchFailure(500, {})), "500 — The answer has no message");
+  assert.equal(searchFailure(500, {}), "500 — 答えに文がありません");
+});
+
+test("当たりの数の文: 日本語は「N 件」、英語は 1 hit と 2 hits を分ける", () => {
+  const found = (n) => t("search.found", { words: "ランプ", n });
+  assert.equal(found(2), "「ランプ」: 2 件。1 件はアーカイブの 1 時点です（写しのある取り込みは写しの時点ごと）。");
+  assert.match(inEnglish(() => found(1)), /^"ランプ": 1 hit\. A hit is one stage of one archive /);
+  assert.match(inEnglish(() => found(2)), /^"ランプ": 2 hits\. /);
+  assert.equal(inEnglish(() => t("search.none", { words: "ランプ" })), '"ランプ" was not found (among the archives you may view).');
 });

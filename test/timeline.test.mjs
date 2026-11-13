@@ -118,7 +118,7 @@ test("結末・印の種類・読めない理由の字（英語）", () => {
     inEnglish(() => KINDS.map(kindText)),
     ["Did not finish", "Failed", "Denied", "Not archived", "Not read yet", "Unknown metadata"],
   );
-  assert.equal(inEnglish(() => traceReasonText("manifest-missing")), "There is no .result.json at the recorded place");
+  assert.equal(inEnglish(() => traceReasonText("manifest-missing")), "There is no .result.json at the recorded location");
   assert.equal(inEnglish(() => traceReasonText("something-new")), "Cannot read the trace");
 });
 

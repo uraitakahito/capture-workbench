@@ -5,12 +5,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+import { setLang } from "../public/i18n.js";
 import {
   actionAnswer,
   bandOf,
   closableCrawl,
   createAnswer,
   createBody,
+  cronPresets,
   cronWords,
   healthOf,
   markOf,
@@ -24,6 +26,16 @@ import {
   spanText,
   troubleCount,
 } from "../public/schedules.js";
+
+/** 英語の画面で呼ぶ。終わったら日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const NOW = Date.parse("2026-11-07T05:10:00.000Z"); // 14:10 JST
 const hoursAgo = (hours) => new Date(NOW - hours * 3_600_000).toISOString();
@@ -246,4 +258,103 @@ test("操作の答えの 1 行。断られたら capture-ledger の文をその�
   const refused = actionAnswer("repin", 400, { error: "unknown script ids", ids: ["gone"] });
   assert.equal(refused.kind, "bad");
   assert.match(refused.text, /unknown script ids/);
+});
+
+test("cron の見本は、式を言葉にした字を引くときに作る", () => {
+  assert.deepEqual(cronPresets(), [
+    { label: "毎日 04:00", cron: "0 4 * * *" },
+    { label: "毎週月曜 04:00", cron: "0 4 * * 1" },
+  ]);
+  assert.deepEqual(inEnglish(() => cronPresets().map((preset) => preset.label)), ["Daily 04:00", "Mondays 04:00"]);
+});
+
+test("曜日は 7 つとも言い分ける", () => {
+  const weekly = () => [0, 1, 2, 3, 4, 5, 6].map((day) => cronWords(`30 16 * * ${String(day)}`));
+  assert.deepEqual(weekly(), [
+    "毎週日曜 16:30",
+    "毎週月曜 16:30",
+    "毎週火曜 16:30",
+    "毎週水曜 16:30",
+    "毎週木曜 16:30",
+    "毎週金曜 16:30",
+    "毎週土曜 16:30",
+  ]);
+  assert.deepEqual(inEnglish(weekly), [
+    "Sundays 16:30",
+    "Mondays 16:30",
+    "Tuesdays 16:30",
+    "Wednesdays 16:30",
+    "Thursdays 16:30",
+    "Fridays 16:30",
+    "Saturdays 16:30",
+  ]);
+  // 式のままの物は、言語で変わらない
+  assert.equal(inEnglish(() => cronWords("0 */6 * * *")), "0 */6 * * *");
+});
+
+test("英語の長さは min・h・days。時刻の形は言語で変わらない", () => {
+  const spans = () => [59 * 60_000, 3_600_000, 2 * 3_600_000, 48 * 3_600_000, 72 * 3_600_000].map(spanText);
+  assert.deepEqual(inEnglish(spans), ["59 min", "1 h", "2 h", "2 days", "3 days"]);
+  assert.equal(inEnglish(() => runDelay({ ...RUN, startedAt: "2026-11-06T19:12:00.000Z" })), "12 min late");
+  assert.equal(inEnglish(() => runWhen(RUN, "Asia/Tokyo")), "11-07 04:00");
+  assert.equal(inEnglish(() => runWhen({ ...RUN, scheduledFor: null }, "Asia/Tokyo")), "Run now");
+  assert.equal(inEnglish(() => runMissed({ ...RUN, scheduleMissed: 3 })), "3 missed");
+});
+
+test("英語の状態と帯。予定の名前と失敗の理由は届いた字のまま", () => {
+  const late = schedule({ health: "overdue", nextRunAt: hoursAgo(2) });
+  const stuck = schedule({ health: "stuck", recentRuns: [{ ...RUN, state: "running", startedAt: hoursAgo(3) }] });
+  const failing = schedule({ health: "failing", recentRuns: [{ ...RUN, state: "failed", error: "timeout: 30s\n続き" }] });
+  assert.equal(inEnglish(() => healthOf(late, NOW).text), "The next run is 2 h late");
+  assert.equal(inEnglish(() => healthOf(stuck, NOW).text), "A run has been running for 3 h");
+  assert.equal(inEnglish(() => healthOf(schedule(), NOW).text), "On schedule");
+  assert.equal(
+    inEnglish(() => bandOf([failing, late], undefined, NOW)),
+    'Schedule "毎朝": the latest run failed (timeout: 30s) / Schedule "毎朝": the next run is 2 h late',
+  );
+  assert.equal(inEnglish(() => bandOf([stuck], undefined, NOW)), 'Schedule "毎朝": a run has been running for 3 h');
+  assert.equal(
+    inEnglish(() => bandOf([], "capture-ledger is unreachable", NOW)),
+    "Cannot read the state of the schedules: capture-ledger is unreachable",
+  );
+});
+
+test("英語の回の結果・撮り方・クロールの行の印（単数と複数）", () => {
+  assert.equal(
+    inEnglish(() => runResult({ ...RUN, pagesCaptured: 4, pagesFailed: 1 }).text),
+    "Partly failed (captured 4, failed 1)",
+  );
+  assert.equal(inEnglish(() => runResult(RUN).text), "Captured 5");
+  assert.equal(
+    inEnglish(() => scriptsText(schedule({ scripts: [{ id: "a", version: 1, latest: 3 }, { id: "b", version: 1, latest: null }] }))),
+    "a@1 (newer version 3) · b@1",
+  );
+  const mark = (scheduleMissed, scheduledFor = "2026-11-06T19:00:00.000Z") =>
+    inEnglish(() => markOf({ schedule: { id: "s1", name: "毎朝" }, scheduledFor, scheduleMissed }));
+  assert.deepEqual(mark(0), { text: "scheduled", title: 'A run of the schedule "毎朝" (due 11-07 04:00)' });
+  assert.deepEqual(mark(1), {
+    text: "scheduled · 1 missed",
+    title: 'A run of the schedule "毎朝" (due 11-07 04:00). It merges 1 run missed during downtime',
+  });
+  assert.equal(mark(2).title, 'A run of the schedule "毎朝" (due 11-07 04:00). It merges 2 runs missed during downtime');
+  assert.equal(mark(2, null).title, 'A run of the schedule "毎朝" (Run now). It merges 2 runs missed during downtime');
+  assert.equal(mark(0, null).title, 'A run of the schedule "毎朝" (Run now)');
+});
+
+test("英語の答え。capture-ledger の句と hint は届いた字のまま", () => {
+  assert.equal(
+    inEnglish(() => createAnswer(201, { nextRunAt: "2026-11-07T19:00:00.000Z", timezone: "Asia/Tokyo" }).text),
+    "Schedule made. The next run is at 11-08 04:00.",
+  );
+  assert.equal(
+    inEnglish(() => createAnswer(400, { error: "invalid cron", hint: "cron must have 5 fields" }).text),
+    "Cannot read the cron expression (cron must have 5 fields)",
+  );
+  assert.equal(
+    inEnglish(() => createAnswer(400, { error: "cron runs too often", gapMinutes: 5, minIntervalMinutes: 60 }).text),
+    "The interval is too short (5 min; the minimum is 60 min)",
+  );
+  assert.equal(inEnglish(() => actionAnswer("delete", 200, {}).text), "Deleted.");
+  assert.equal(inEnglish(() => actionAnswer("nope", 200, {}).text), "Done.");
+  assert.equal(actionAnswer("nope", 200, {}).text, "済みました。");
 });

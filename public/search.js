@@ -7,7 +7,7 @@
  * null）を入れる（CAPTURE-48）。だから当たりは「アーカイブの 1 時点」で、同じアーカイブが時点ごとに並ぶ。
  * 返るのは見せてよいアーカイブの物だけ（capture-ledger が OpenFGA の can_view で絞る）。
  */
-import { errorText } from "./i18n.js";
+import { errorText, t } from "./i18n.js";
 import { replaywebHref, replaywebSourceHref, replaywebTs } from "./replayweb.js";
 
 /** 検索のエンドポイント。語はそのまま `q` に（capture-ledger は空を 400 で断る）。 */
@@ -38,7 +38,8 @@ export const answerOf = (body) => {
 };
 
 /** 時点の名前。文書の行（`stage` が null）は「文書」。 */
-export const stageLabel = (stage) => (typeof stage === "string" && stage !== "" ? stage : "文書");
+export const stageLabel = (stage) =>
+  typeof stage === "string" && stage !== "" ? stage : t("search.stage.document");
 
 /**
  * OpenSearch が返す当たった所の断片を、文字と印に分ける。`<em>` と `</em>` だけを印の境として読み、
@@ -75,11 +76,9 @@ export const hitReplaywebHref = (origin, hit) => {
  * `message` に在る）。503 は OpenSearch が答えない、404 は capture-ledger に検索のエンドポイントが無い（設定の無い古い capture-ledger）。
  */
 export const searchFailure = (status, body) => {
-  const said = errorText(body) ?? "答えに文がありません";
-  if (status === 0) return `workbench 自身に届きません（${said}）`;
-  if (status === 503) {
-    return `capture-ledger の全文検索が答えません（OpenSearch。capture-ledger の CAPTURE_LEDGER_OPENSEARCH_URL の先）: ${said}`;
-  }
-  if (status === 404) return `capture-ledger に検索のエンドポイントがありません（CAPTURE_LEDGER_OPENSEARCH_URL の無い capture-ledger）: ${said}`;
+  const said = errorText(body) ?? t("common.noText");
+  if (status === 0) return t("common.unreachable", { said });
+  if (status === 503) return t("search.failure.unavailable", { said });
+  if (status === 404) return t("search.failure.noEndpoint", { said });
   return `${String(status)} — ${said}`;
 };

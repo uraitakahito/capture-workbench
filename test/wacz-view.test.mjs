@@ -16,11 +16,23 @@ import {
   parseWaczHash,
   recordCells,
   recordOpener,
+  typeName,
   waczHash,
   warcinfoNote,
   warcinfoOf,
   warcinfoTag,
 } from "../public/wacz-view.js";
+import { setLang, t } from "../public/i18n.js";
+
+/** 英語の字を確かめる間だけ言語を替える（`test/i18n.test.mjs` と同じ形）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const entry = (path, over = {}) => ({ path, present: true, expectedBy: [], issues: [], ...over });
 
@@ -161,4 +173,74 @@ test("画面の URL は行まで指せて、読み戻せる", () => {
   assert.equal(parseWaczHash("#archives"), undefined);
   assert.equal(isWarc("archive/data.warc.gz"), true);
   assert.equal(isWarc("indexes/index.cdxj"), false);
+});
+
+test("英語: 木の印と「なぜ要るか」。単位と罫線は言語で変わらない", () => {
+  const missing = (expectedBy) => entryMarker(entry("x", { present: false, expectedBy })).glyph;
+  assert.deepEqual(
+    inEnglish(() => [missing(["wacz-spec", "datapackage"]), missing(["datapackage"]), missing([])]),
+    ["(missing — required by §5.2)", "(missing — declared in datapackage)", "(missing)"],
+  );
+  assert.equal(
+    inEnglish(() => expectedLabel(["datapackage", "wacz-spec"], "5.2.1")),
+    "declared in datapackage, required by §5.2.1",
+  );
+  assert.equal(inEnglish(() => expectedLabel([], undefined)), "—");
+  assert.equal(inEnglish(() => formatBytes(404697)), "395.2 KiB");
+});
+
+test("英語: レコードの種別は WARC-Type の名前。metadata を record と言わない", () => {
+  assert.deepEqual(
+    inEnglish(() => ["response", "request", "metadata", "resource", "warcinfo", "revisit"].map(typeName)),
+    ["response", "request", "metadata", "snapshot", "warcinfo", "revisit"],
+  );
+  assert.equal(inEnglish(() => recordCells({ type: "metadata", indexed: false }).type), "metadata");
+  assert.equal(typeName("warcinfo"), "warcinfo");
+});
+
+test("英語: 行と本文の言い方", () => {
+  assert.equal(
+    inEnglish(() => lineLabel({ text: "head", cut: true, binary: false, bytes: 404696 })),
+    "head … (395.2 KiB; the list shows up to 2 KiB)",
+  );
+  assert.equal(inEnglish(() => lineLabel({ text: "", cut: false, binary: true, bytes: 9930 })), "(binary · 9.7 KiB)");
+  assert.equal(inEnglish(() => bodyLabel({ kind: "text", content: "x", truncated: true })), "… (cut at 64 KiB)");
+  assert.equal(inEnglish(() => bodyLabel({ kind: "binary", mime: "application/pdf", byteLength: 10 })), "(binary · application/pdf · 10 B)");
+});
+
+test("行の字に波括弧やタグの形が在っても、そのまま出す（辞書の文として読まない）", () => {
+  const text = "{\"url\": \"<b>x</b>\", \"n\": {n}}";
+  assert.equal(lineLabel({ text, cut: true, binary: false, bytes: 4096 }), `${text} …（4.0 KiB。一覧は 2 KiB まで）`);
+});
+
+test("英語: warcinfo の枠の見出しと、欄に分けなかった記録の言い方", () => {
+  assert.equal(
+    inEnglish(() => warcinfoTag(warcinfo("archive/data.warc.gz", 1))),
+    "warcinfo · record 1 · 2026-11-01T09:30:00.000Z",
+  );
+  assert.equal(inEnglish(() => warcinfoTag(warcinfo("archive/data.warc.gz", 3, { date: undefined }))), "warcinfo · record 3");
+  assert.equal(
+    inEnglish(() => warcinfoNote(warcinfo("archive/data.warc.gz", 1, { contentType: "text/plain", fields: undefined }))),
+    "The body is not split into fields (Content-Type: text/plain). Only an application/warc-fields body that is not too large is split",
+  );
+  assert.match(
+    inEnglish(() => warcinfoNote(warcinfo("archive/data.warc.gz", 1, { contentType: undefined, fields: undefined }))),
+    /Content-Type: none/,
+  );
+});
+
+test("英語: 画面の側の字（指摘の数・続きを読む・1 行の見出し）。単数と複数", () => {
+  assert.deepEqual(
+    inEnglish(() => [1, 2].map((n) => t("wacz.head.findings", { n }))),
+    ["1 finding", "2 findings"],
+  );
+  assert.equal(inEnglish(() => t("wacz.lines.more", { from: 201, count: 200 })), "Read on (from line 201, 200 lines)");
+  assert.equal(inEnglish(() => t("wacz.lines.more", { from: 2, count: 1 })), "Read on (from line 2, 1 line)");
+  assert.equal(
+    inEnglish(() => t("wacz.records.more", { from: 201, count: 200, total: 1234 })),
+    "Read on (from record 201, 200 records, 1234 in all)",
+  );
+  assert.equal(inEnglish(() => t("wacz.line.tag", { n: 3, size: "1.2 KiB" })), "line 3 · 1.2 KiB");
+  assert.equal(t("wacz.line.tag", { n: 3, size: "1.2 KiB" }), "3 行目 · 1.2 KiB");
+  assert.equal(t("wacz.lines.more", { from: 201, count: 200 }), "続きを読む（201 行目から 200 行）");
 });

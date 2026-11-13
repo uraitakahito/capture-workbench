@@ -1,11 +1,12 @@
 /**
  * 定期実行の画面（CAPTURE-174）の、画面に依らない部分。capture-ledger の `GET /api/schedules` の答えを、状態の字・帯の文・回の行に
  * するだけで、判定はしない —— 状態の語（`health`）を決めるのは capture-ledger で、ここは語を文にする。ブラウザは `/schedules.js` と
- * して読み、試験は `node --test` から import する。
+ * して読み、試験は `node --test` から import する。字は辞書（`i18n/*.json`）に在り、ここは鍵を選んで `t()` に渡す。
  *
  * 帯を出すのは 3 つの語と、読めないときだけ。順番待ち（`blocked`）は待っているだけなので出さない。頁の一部だけ失敗した回は
  * 回の欄に「一部失敗」と出し、帯には出さない —— 同じサイトが毎日落ちると帯が出続け、誰も見なくなる。
  */
+import { t } from "./i18n.js";
 import { startAnswer } from "./start.js";
 
 export const SCHEDULES_PATH = "/api/schedules";
@@ -17,22 +18,33 @@ const BAND = new Set(["stuck", "overdue", "failing"]);
 const FAST_MS = 5_000;
 const SLOW_MS = 30_000;
 
-/** cron の見本。欄に書き写すだけで、ほかの式も書ける。 */
-export const CRON_PRESETS = [
-  { label: "毎日 04:00", cron: "0 4 * * *" },
-  { label: "毎週月曜 04:00", cron: "0 4 * * 1" },
-];
+/** cron の見本の式。 */
+const PRESET_CRONS = ["0 4 * * *", "0 4 * * 1"];
 
-const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+/** 曜日の字。cron の番号（0 が日曜）の順。 */
+const WEEKDAYS = [
+  () => t("schedules.weekday.sun"),
+  () => t("schedules.weekday.mon"),
+  () => t("schedules.weekday.tue"),
+  () => t("schedules.weekday.wed"),
+  () => t("schedules.weekday.thu"),
+  () => t("schedules.weekday.fri"),
+  () => t("schedules.weekday.sat"),
+];
 const two = (n) => String(n).padStart(2, "0");
 
 /** よく使う形の cron を言葉にする。ほかの形は式のまま。 */
 export const cronWords = (cron) => {
   const m = /^(\d{1,2}) (\d{1,2}) \* \* (\*|[0-6])$/.exec(String(cron));
   if (m === null) return String(cron);
-  const at = `${two(m[2])}:${two(m[1])}`;
-  return m[3] === "*" ? `毎日 ${at}` : `毎週${WEEKDAYS[Number(m[3])]}曜 ${at}`;
+  const time = `${two(m[2])}:${two(m[1])}`;
+  return m[3] === "*"
+    ? t("schedules.cron.daily", { time })
+    : t("schedules.cron.weekly", { weekday: WEEKDAYS[Number(m[3])](), time });
 };
+
+/** cron の見本（字と式）。欄に書き写すだけで、ほかの式も書ける。字は式を言葉にした物。 */
+export const cronPresets = () => PRESET_CRONS.map((cron) => ({ label: cronWords(cron), cron }));
 
 /** 予定の時刻の短い形（`11-08 04:00`）。予定の時差で読む。 */
 export const shortTime = (iso, timeZone = "Asia/Tokyo") => {
@@ -51,10 +63,10 @@ export const shortTime = (iso, timeZone = "Asia/Tokyo") => {
 /** 長さの字。分・時間・日のどれか 1 つで言う（遅れの大きさが分かれば足りる）。 */
 export const spanText = (ms) => {
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 60) return `${String(Math.max(minutes, 0))} 分`;
+  if (minutes < 60) return t("schedules.span.minutes", { n: Math.max(minutes, 0) });
   const hours = Math.floor(minutes / 60);
-  if (hours < 48) return `${String(hours)} 時間`;
-  return `${String(Math.floor(hours / 24))} 日`;
+  if (hours < 48) return t("schedules.span.hours", { n: hours });
+  return t("schedules.span.days", { n: Math.floor(hours / 24) });
 };
 
 /** 待っている物の時刻。頼みが在れば、期限と頼みの早い方。 */
@@ -63,26 +75,31 @@ const dueOf = (schedule) => {
   return schedule.runRequestedAt === null ? next : Math.min(next, Date.parse(schedule.runRequestedAt));
 };
 
+/** 回が走ったままの長さ。 */
+const stuckFor = (schedule, now) =>
+  spanText(now - Date.parse(schedule.recentRuns[0]?.startedAt ?? new Date(now).toISOString()));
+
+/** 次の回の遅れの長さ。 */
+const lateBy = (schedule, now) => spanText(now - dueOf(schedule));
+
 /** 状態の字と色。色の種類は `.state` の `ok`・`run`・`bad` と、無し（止めている）。 */
 export const healthOf = (schedule, now = Date.now()) => {
   switch (schedule.health) {
     case "paused":
-      return { kind: "", text: "止めています" };
-    case "stuck": {
-      const since = Date.parse(schedule.recentRuns[0]?.startedAt ?? new Date(now).toISOString());
-      return { kind: "bad", text: `回が ${spanText(now - since)}走ったままです` };
-    }
+      return { kind: "", text: t("schedules.health.paused") };
+    case "stuck":
+      return { kind: "bad", text: t("schedules.health.stuck", { span: stuckFor(schedule, now) }) };
     case "overdue":
-      return { kind: "bad", text: `次の回が ${spanText(now - dueOf(schedule))}遅れています` };
+      return { kind: "bad", text: t("schedules.health.overdue", { span: lateBy(schedule, now) }) };
     case "failing":
-      return { kind: "bad", text: "直近の回が失敗しました" };
+      return { kind: "bad", text: t("schedules.health.failing") };
     case "blocked":
       return {
         kind: "run",
-        text: schedule.blockedBy === null ? "順番待ち（静かな時間の後に始まります）" : "順番待ち（走っているクロールの後に始まります）",
+        text: schedule.blockedBy === null ? t("schedules.health.blockedQuiet") : t("schedules.health.blockedByCrawl"),
       };
     default:
-      return { kind: "ok", text: "予定どおり" };
+      return { kind: "ok", text: t("schedules.health.ok") };
   }
 };
 
@@ -92,22 +109,25 @@ const briefly = (text) => {
   return line.length > 120 ? `${line.slice(0, 120)}…` : line;
 };
 
+/** 帯に出す予定 1 つの文。失敗の理由は capture-ledger の字のまま添える。 */
+const bandLine = (schedule, now) => {
+  const name = schedule.name;
+  if (schedule.health === "stuck") return t("schedules.band.stuck", { name, span: stuckFor(schedule, now) });
+  if (schedule.health === "overdue") return t("schedules.band.overdue", { name, span: lateBy(schedule, now) });
+  const error = schedule.recentRuns[0]?.error;
+  return typeof error === "string" && error !== ""
+    ? t("schedules.band.failingWith", { name, error: briefly(error) })
+    : t("schedules.band.failing", { name });
+};
+
 /**
  * 帯の文。`readError` は最後の読み取りの失敗で、読めないことを「何も起きていない」と取り違えないために一緒に言う。
  * 何も無ければ undefined（帯を隠す）。**手で閉じない** —— 原因が直ると消える。
  */
 export const bandOf = (schedules, readError, now = Date.now()) => {
-  if (readError !== undefined) return `定期実行の状態を読めません（${readError}）`;
-  const lines = schedules
-    .filter((schedule) => BAND.has(schedule.health))
-    .map((schedule) => {
-      const said = `定期実行「${schedule.name}」: ${healthOf(schedule, now).text}`;
-      const error = schedule.recentRuns[0]?.error;
-      return schedule.health === "failing" && typeof error === "string" && error !== ""
-        ? `${said}（${briefly(error)}）`
-        : said;
-    });
-  return lines.length === 0 ? undefined : lines.join(" ／ ");
+  if (readError !== undefined) return t("schedules.band.unreadable", { said: readError });
+  const lines = schedules.filter((schedule) => BAND.has(schedule.health)).map((schedule) => bandLine(schedule, now));
+  return lines.length === 0 ? undefined : lines.join(t("common.sep.slash"));
 };
 
 /** タブに出す数。帯に出ている予定の数。 */
@@ -126,39 +146,42 @@ export const pollMs = (schedules) =>
 
 /** 回の結果の字と色。 */
 export const runResult = (run) => {
-  if (run.state === "running") return { kind: "run", text: "走行中" };
-  if (run.state === "failed") return { kind: "bad", text: "失敗" };
+  if (run.state === "running") return { kind: "run", text: t("schedules.run.running") };
+  if (run.state === "failed") return { kind: "bad", text: t("schedules.run.failed") };
   if (run.pagesFailed > 0) {
-    return { kind: "warn", text: `一部失敗（撮れた ${String(run.pagesCaptured)}・失敗 ${String(run.pagesFailed)}）` };
+    return {
+      kind: "warn",
+      text: t("schedules.run.partly", { captured: run.pagesCaptured, failed: run.pagesFailed }),
+    };
   }
-  return { kind: "ok", text: `撮れた ${String(run.pagesCaptured)}` };
+  return { kind: "ok", text: t("schedules.run.captured", { n: run.pagesCaptured }) };
 };
 
 /** 回がいつの物か。本来の時刻が無いのは「いま撮る」の回。 */
 export const runWhen = (run, timeZone) =>
-  run.scheduledFor === null ? "いま撮る" : shortTime(run.scheduledFor, timeZone);
+  run.scheduledFor === null ? t("schedules.run.now") : shortTime(run.scheduledFor, timeZone);
 
 /** 本来の時刻からの遅れ。1 分未満は言わない。 */
 export const runDelay = (run) => {
   if (run.scheduledFor === null) return "";
   const ms = Date.parse(run.startedAt) - Date.parse(run.scheduledFor);
-  return ms < 60_000 ? "" : `${spanText(ms)}遅れ`;
+  return ms < 60_000 ? "" : t("schedules.run.delay", { span: spanText(ms) });
 };
 
 /** 1 回にまとめた欠けの字。無ければ空。 */
-export const runMissed = (run) => (run.scheduleMissed > 0 ? `欠け ${String(run.scheduleMissed)}` : "");
+export const runMissed = (run) => (run.scheduleMissed > 0 ? t("schedules.run.missed", { n: run.scheduleMissed }) : "");
 
 /** 撮り方の字（`autoscroll@2`）。新しい版が出ていれば後ろに添える。 */
 export const scriptsText = (schedule) =>
   schedule.scripts.length === 0
-    ? "走らせない"
+    ? t("schedules.scripts.none")
     : schedule.scripts
         .map((script) =>
           script.latest !== null && script.latest > script.version
-            ? `${script.id}@${String(script.version)}（新しい版 ${String(script.latest)}）`
+            ? t("schedules.scripts.newer", { id: script.id, version: script.version, latest: script.latest })
             : `${script.id}@${String(script.version)}`,
         )
-        .join("・");
+        .join(t("common.sep.dot"));
 
 /** 締めるボタンの相手。止まった回か、遅れの元の走行中の行。走っているだけ（`blocked`）の行は締めさせない。 */
 export const closableCrawl = (schedule) =>
@@ -169,14 +192,17 @@ export const closableCrawl = (schedule) =>
 /** クロールの行の印。手で始めた行には付けない。 */
 export const markOf = (crawl) => {
   if (crawl.schedule === null || crawl.schedule === undefined) return undefined;
-  const missed = crawl.scheduleMissed > 0 ? `・欠け ${String(crawl.scheduleMissed)}` : "";
-  return {
-    text: `定期${missed}`,
-    title:
-      `定期実行「${crawl.schedule.name}」の回` +
-      (crawl.scheduledFor === null ? "（いま撮る）" : `（本来の時刻 ${shortTime(crawl.scheduledFor)}）`) +
-      (crawl.scheduleMissed > 0 ? `。止まっていた間の ${String(crawl.scheduleMissed)} 回をまとめた` : ""),
-  };
+  const name = crawl.schedule.name;
+  const n = crawl.scheduleMissed;
+  if (crawl.scheduledFor === null) {
+    return n > 0
+      ? { text: t("schedules.mark.missed", { n }), title: t("schedules.mark.titleNowMissed", { name, n }) }
+      : { text: t("schedules.mark.plain"), title: t("schedules.mark.titleNow", { name }) };
+  }
+  const time = shortTime(crawl.scheduledFor);
+  return n > 0
+    ? { text: t("schedules.mark.missed", { n }), title: t("schedules.mark.titleDueMissed", { name, time, n }) }
+    : { text: t("schedules.mark.plain"), title: t("schedules.mark.titleDue", { name, time }) };
 };
 
 /** 予定を作る本文。`request` は始める欄の本文（`startBody`）そのもの。 */
@@ -185,32 +211,39 @@ export const createBody = (name, cron, request) => ({ name: name.trim(), cron: c
 /** 作った答えの 1 行。頼みの中身の断りは、始めるエンドポイントと同じ文にする（`startAnswer`）。 */
 export const createAnswer = (status, answer) => {
   if (status === 201) {
-    return { kind: "ok", text: `予定を作りました。次の回は ${shortTime(answer.nextRunAt, answer.timezone)} です。` };
+    return {
+      kind: "ok",
+      text: t("schedules.create.made", { time: shortTime(answer.nextRunAt, answer.timezone) }),
+    };
   }
-  if (status === 409) return { kind: "bad", text: "同じ名前の予定があります。別の名前にしてください。" };
+  if (status === 409) return { kind: "bad", text: t("schedules.create.sameName") };
   if (answer.error === "invalid cron") {
-    return { kind: "bad", text: `cron の式を読めません（${String(answer.hint ?? "")}）` };
+    return { kind: "bad", text: t("schedules.create.invalidCron", { hint: String(answer.hint ?? "") }) };
   }
   if (answer.error === "cron runs too often") {
     return {
       kind: "bad",
-      text: `間隔が短すぎます（${String(answer.gapMinutes)} 分。下限は ${String(answer.minIntervalMinutes)} 分です）`,
+      text: t("schedules.create.tooOften", {
+        gap: String(answer.gapMinutes),
+        min: String(answer.minIntervalMinutes),
+      }),
     };
   }
   return startAnswer(status, answer);
 };
 
+/** 済んだ操作の文。引くときに `t()` を呼ぶ。 */
 const DONE = {
-  pause: "止めました。",
-  resume: "再開しました。",
-  run: "頼みました。次の周回で始まります（走っているクロールがあれば、その後に）。",
-  repin: "固定し直しました。次の回からいまの版で撮ります。",
-  delete: "消しました。",
-  close: "締めました。",
+  pause: () => t("schedules.done.pause"),
+  resume: () => t("schedules.done.resume"),
+  run: () => t("schedules.done.run"),
+  repin: () => t("schedules.done.repin"),
+  delete: () => t("schedules.done.delete"),
+  close: () => t("schedules.done.close"),
 };
 
 /** 操作の答えの 1 行。断られたら、capture-ledger の文をそのまま出す。 */
 export const actionAnswer = (action, status, answer) => {
-  if (status >= 200 && status < 300) return { kind: "ok", text: DONE[action] ?? "済みました。" };
+  if (status >= 200 && status < 300) return { kind: "ok", text: DONE[action]?.() ?? t("schedules.done.other") };
   return startAnswer(status, answer);
 };

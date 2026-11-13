@@ -9,7 +9,7 @@
  * property の名前 1 つ（`public/` の `.js` を語で探す。`package.json` の `check`）だけで、`insertAdjacentHTML` や
  * `outerHTML` のようなほかの API は見ない。
  */
-import { applyI18n, dateTime, errorText, key, langOf, t, timeOfDay, tNodes } from "/i18n.js";
+import { applyI18n, dateTime, errorText, key, langOf, phraseText, switchLang, t, timeOfDay, tNodes } from "/i18n.js";
 import { checkVerdict, count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
 import {
   ACTIONS,
@@ -52,7 +52,7 @@ import {
   closableCrawl,
   createAnswer,
   createBody,
-  CRON_PRESETS,
+  cronPresets,
   cronWords,
   healthOf,
   markOf,
@@ -74,6 +74,7 @@ import {
   changesError,
   changesHash,
   hunkLines,
+  japaneseNote,
   neighborsOf,
   pageClaudeLine,
   parseChangesHash,
@@ -205,6 +206,23 @@ const $ = (id) => document.getElementById(id);
 
 // index.html は字を書かず、鍵（data-i18n）を書く。描く前に、いまの言語の字を入れる
 applyI18n();
+
+/** 新しいクロールの画面に、読み直すと消える書きかけが在るか（起点・その場の TS・User-Agent・変数の値・予定の名前）。 */
+const startDraft = () =>
+  ["start-seeds", "start-inline-source", "start-inline-name", "start-ua-text", "schedule-name"].some(
+    (id) => $(id).value.trim() !== "",
+  ) || [...document.querySelectorAll("#start-vars input")].some((box) => box.value !== "");
+
+// 言語の切り替え。選びを覚えて頁を読み直すので、書きかけが在れば先に確かめる
+for (const b of document.querySelectorAll("#lang button")) {
+  const current = b.dataset.lang === langOf();
+  b.disabled = current;
+  if (current) b.setAttribute("aria-current", "true");
+  b.onclick = () => {
+    if (startDraft() && !window.confirm(t("common.lang.askDraft"))) return;
+    switchLang(b.dataset.lang);
+  };
+}
 
 /** `/healthz` が配る、この配備の事実。深いリンクの行き先はここから来る。 */
 let settings = {};
@@ -906,7 +924,7 @@ const detailOf = (one) => {
         ]),
     ...(one.error === null || one.error === undefined
       ? []
-      : [tag("p", t("crawls.detail.error", { error: one.error }), "state bad pre")]),
+      : [tag("p", t("crawls.detail.error", { error: phraseText("crawls.reason", one.error) }), "state bad pre")]),
     ...(bundleFailure === undefined ? [] : [tag("p", bundleFailure, "state warn pre")]),
     ...typeErrorsOf(one),
     ranOf(one),
@@ -1423,9 +1441,9 @@ const syncStart = () => {
   const limit = settings.writeLimit ?? Infinity;
   const size = sizeOf($("start-inline-source").value, bodyBytes(body), limit);
   const line = $("start-size");
-  const sized = { lines: count(size.lines), bytes: count(size.bytes) };
+  const sized = { lines: size.lines, bytes: size.bytes };
   line.textContent = size.over
-    ? t("start.size.over", { limit: count(limit), over: count(size.bytes - limit) })
+    ? t("start.size.over", { limit, over: size.bytes - limit })
     : limit === Infinity
       ? t("start.size.line", sized)
       : t("start.size.lineOfLimit", { ...sized, percent: size.percent });
@@ -1797,7 +1815,7 @@ for (const id of ["schedule-name", "schedule-cron"]) {
   });
 }
 $("schedule-presets").append(
-  ...CRON_PRESETS.map((preset) =>
+  ...cronPresets().map((preset) =>
     button(preset.label, () => {
       $("schedule-cron").value = preset.cron;
       syncStart();
@@ -1825,11 +1843,11 @@ const drawReport = (td, report) => {
   bar.className = "bar";
   const v = verdict(s);
   bar.append(
-    tag("span", `合格 ${String(s.passed)}`, "big"),
+    tag("span", t("archives.report.passed", { n: s.passed }), "big"),
     tag("span", v.text, `big state ${v.kind}`),
     tag(
       "span",
-      [...judgedUnder(report), `${String(s.durationMs)} ms`, ...statsOf(report)].join(" ／ "),
+      [...judgedUnder(report), `${String(s.durationMs)} ms`, ...statsOf(report)].join(t("common.sep.slash")),
       "mono muted",
     ),
   );
@@ -1849,7 +1867,7 @@ const drawReport = (td, report) => {
       a.href = issue.specUrl;
       a.target = "_blank";
       a.rel = "noopener";
-      a.textContent = "仕様 ↗";
+      a.textContent = t("archives.report.spec");
       a.className = "mono";
       line.append(a);
     }
@@ -1860,11 +1878,11 @@ const drawReport = (td, report) => {
     const line = document.createElement("div");
     line.className = "line";
     line.append(
-      tag("span", entry.present ? "entry" : "無い", entry.present ? "muted" : "state warn"),
+      tag("span", entry.present ? "entry" : t("archives.report.missing"), entry.present ? "muted" : "state warn"),
       tag("span", entry.path, "mono"),
       tag(
         "span",
-        entry.present ? `${String(entry.uncompressedSize ?? 0)} B` : "（上の指摘の実体）",
+        entry.present ? `${String(entry.uncompressedSize ?? 0)} B` : t("archives.report.missingNote"),
         "mono muted",
       ),
     );
@@ -1900,7 +1918,7 @@ const checkRow = (id) => {
   const td = document.createElement("td");
   td.colSpan = 8;
   const { answer, asking } = checks.get(id) ?? {};
-  if (asking || answer === undefined) td.textContent = "検証しています…";
+  if (asking || answer === undefined) td.textContent = t("archives.check.asking");
   else if (answer instanceof Error) td.textContent = failedText(answer);
   else drawReport(td, answer);
   row.append(td);
@@ -1965,13 +1983,19 @@ const drawArchives = () => {
     row.append(cell(dateTime(new Date(archive.capturedAt)), "mono"));
     // **null は「分からない」。** 「不完全」と同じに描かない。
     row.append(
-      cell(archive.waczComplete === null ? "—" : archive.waczComplete ? "完全" : "欠けあり"),
+      cell(
+        archive.waczComplete === null
+          ? "—"
+          : archive.waczComplete
+            ? t("archives.row.complete")
+            : t("archives.row.incomplete"),
+      ),
     );
     const check = document.createElement("td");
-    check.append(button("検証", () => void toggleCheck(archive.id)));
+    check.append(button(t("archives.row.validate"), () => void toggleCheck(archive.id)));
     row.append(verdictCellOf(archive.id));
     row.append(check);
-    row.append(hashCell(waczHash(archive.id), "開く"));
+    row.append(hashCell(waczHash(archive.id), t("archives.row.open")));
     const replays = document.createElement("td");
     replays.className = "replays";
     for (const viewer of VIEWERS) {
@@ -2007,7 +2031,7 @@ const drawHits = (hits) => {
     row.append(cell(stageLabel(hit.stage), "mono"));
     const what = document.createElement("td");
     what.className = "hit";
-    what.append(tag("div", hit.title === "" ? "（題なし）" : hit.title));
+    what.append(tag("div", hit.title === "" ? t("search.hit.untitled") : hit.title));
     what.append(tag("div", hit.url, "hit-url mono"));
     for (const fragment of hit.highlight ?? []) {
       const line = document.createElement("div");
@@ -2018,11 +2042,11 @@ const drawHits = (hits) => {
       what.append(line);
     }
     if (typeof hit.textWithheld === "string") {
-      what.append(tag("div", `文字は伏せています（${hit.textWithheld}）`, "hit-note"));
+      what.append(tag("div", t("search.hit.withheld", { reason: hit.textWithheld }), "hit-note"));
     }
-    if (hit.textTruncated === true) what.append(tag("div", "文字は上限で切っています（全文ではありません）", "hit-note"));
+    if (hit.textTruncated === true) what.append(tag("div", t("search.hit.truncated"), "hit-note"));
     what.append(
-      tag("div", `撮れたもの: ${hit.sourceUrl}（${dateTime(new Date(hit.capturedAt))}）`, "hit-note"),
+      tag("div", t("search.hit.source", { url: hit.sourceUrl, at: dateTime(new Date(hit.capturedAt)) }), "hit-note"),
     );
     row.append(what);
     // 行き先: WACZ の画面（一覧に在るアーカイブだけ）と replayweb-server
@@ -2031,7 +2055,7 @@ const drawHits = (hits) => {
     if (known.has(hit.archiveId)) {
       const open = document.createElement("a");
       open.href = waczHash(hit.archiveId);
-      open.textContent = "開く";
+      open.textContent = t("search.hit.open");
       go.append(open);
     }
     for (const viewer of VIEWERS) {
@@ -2056,7 +2080,7 @@ const runSearch = async (words) => {
   const seq = (searching.seq += 1);
   answer.hidden = false;
   answer.className = "search-answer";
-  answer.textContent = `「${words}」を探しています…`;
+  answer.textContent = t("search.asking", { words });
   const failed = (text) => {
     answer.className = "search-answer bad";
     answer.textContent = text;
@@ -2081,8 +2105,8 @@ const runSearch = async (words) => {
   table.hidden = hits.length === 0;
   answer.textContent =
     hits.length === 0
-      ? `「${words}」は見つかりません（見せてよいアーカイブの中に）。`
-      : `「${words}」: ${String(total)} 件。1 件はアーカイブの 1 時点です（写しのある取り込みは写しの時点ごと）。`;
+      ? t("search.none", { words })
+      : t("search.found", { words, n: total });
 };
 
 $("search").onsubmit = (event) => {
@@ -2180,19 +2204,21 @@ const drawReadingList = () => {
     const anywhere = reading.latest.filter((s) => s.enabled && s.sites.length === 0);
     const onSites = reading.latest.filter((s) => s.enabled && s.sites.length > 0);
     const off = reading.latest.filter((s) => !s.enabled);
-    nav.replaceChildren(tag("span", "既定で走る", "grp"));
+    nav.replaceChildren(tag("span", t("scripts.list.default"), "grp"));
     if (anywhere.length === 0) {
-      nav.append(tag("span", reading.latest.length === 0 ? "（登録済みのスクリプトが無い）" : "（無し）", "muted"));
+      nav.append(
+        tag("span", reading.latest.length === 0 ? t("scripts.list.noneRegistered") : t("scripts.list.none"), "muted"),
+      );
     }
     nav.append(...anywhere.map(item));
     if (onSites.length > 0) {
-      nav.append(tag("span", "サイト用（起点がそのサイトのとき）", "grp"), ...onSites.map(item));
+      nav.append(tag("span", t("scripts.list.sites"), "grp"), ...onSites.map(item));
     }
     if (off.length > 0) {
-      nav.append(tag("span", "既定では走らない（選べば走る）", "grp"), ...off.map(item));
+      nav.append(tag("span", t("scripts.list.off"), "grp"), ...off.map(item));
     }
-    nav.append(tag("span", "書くための型", "grp"));
-    if (types === null) nav.append(tag("span", "host.d.ts（capture-ledger に無い）", "muted"));
+    nav.append(tag("span", t("scripts.list.types"), "grp"));
+    if (types === null) nav.append(tag("span", t("scripts.list.typesMissing"), "muted"));
     if (types !== null && types !== undefined) {
       nav.append(listItem(TYPES_HASH, "host.d.ts", `v${String(types.version)}`, TYPES_KEY));
     }
@@ -2200,13 +2226,27 @@ const drawReadingList = () => {
   markListed();
 };
 
-/** 本文の上の 1 行。太字の文と、続く文。undefined なら隠す。 */
-const readingNote = (at, bold, rest = "", kind = "warn") => {
+/**
+ * 本文の上の 1 行。太字の文と、続く文 —— 辞書の 1 つの文で、`<b>…</b>` の中が太字（`tNodes` に `noteBold` を渡して組む）。
+ * undefined なら隠す。
+ */
+const readingNote = (at, parts, kind = "warn") => {
   const p = at.note;
-  p.hidden = bold === undefined;
-  if (bold === undefined) return;
+  p.hidden = parts === undefined;
+  if (parts === undefined) return;
   p.className = `reading-note ${kind}`;
-  p.replaceChildren(tag("b", bold), document.createTextNode(rest));
+  p.replaceChildren(...parts);
+};
+const noteBold = (text) => tag("b", text);
+
+/** 受け皿の型が capture-ledger に無いときの 1 行。読む所と読む窓で同じ字。 */
+const noteTypesMissing = (at) => {
+  readingNote(at, tNodes("scripts.note.typesMissing", { b: noteBold }), "bad");
+};
+
+/** 読めなかったときの 1 行。読む所と読む窓で同じ字。 */
+const noteUnreadable = (at, err) => {
+  readingNote(at, tNodes("scripts.note.unreadable", { b: noteBold, said: failedText(err) }), "bad");
 };
 
 /** 行に印を付ける。印は 1 つだけなので、付いている物を外して付け直す（5 千行を回さない）。 */
@@ -2269,7 +2309,7 @@ const colorsOf = (doc) => {
     // 起動できない（/vendor/shiki.js が 404 など）。Chrome は message を空で寄こし、頼みには答えない ——
     // 待っている物を全部断り、以後は訊かない
     painter.worker.onerror = (event) => {
-      painter.broken = new Error(event.message || "色付けの worker を起動できない");
+      painter.broken = new Error(event.message || t("scripts.colors.workerFailed"));
       for (const wait of painter.waiting.values()) wait.reject(painter.broken);
       painter.waiting.clear();
     };
@@ -2322,21 +2362,21 @@ const colorize = (at, doc, stale) =>
     .catch((err) => {
       if (stale()) return;
       const note = at.colors;
-      note.textContent = `色を付けられません（${failedText(err)}）`;
+      note.textContent = t("scripts.colors.failed", { said: failedText(err) });
       note.hidden = false;
     });
 
 /** 写す。http://127.0.0.1 は安全な文脈なので clipboard が使える。断られたら上の帯で言う。 */
 const copyButton = (source) => {
-  const b = button("写す", async () => {
+  const b = button(t("scripts.actions.copy"), async () => {
     try {
       await navigator.clipboard.writeText(source);
-      b.textContent = "写しました";
+      b.textContent = t("scripts.actions.copied");
       setTimeout(() => {
-        b.textContent = "写す";
+        b.textContent = t("scripts.actions.copy");
       }, 1500);
     } catch (err) {
-      trouble(`写せません: ${failedText(err)}`);
+      trouble(t("scripts.actions.copyFailed", { said: failedText(err) }));
     }
   });
   return b;
@@ -2374,8 +2414,12 @@ const chipsOf = (id, versions, shown, defaultVersion) => {
   for (const v of versions) {
     const a = document.createElement("a");
     a.href = readingHash({ id, version: v.version });
-    const mark = v.version === defaultVersion ? "（既定）" : v.enabled ? "" : "（無効）";
-    a.textContent = `v${String(v.version)}${mark}`;
+    a.textContent =
+      v.version === defaultVersion
+        ? t("scripts.chip.default", { version: v.version })
+        : v.enabled
+          ? `v${String(v.version)}`
+          : t("scripts.chip.disabled", { version: v.version });
     if (v.version === shown) a.className = "on";
     box.append(a);
   }
@@ -2398,11 +2442,7 @@ const openTypes = (target, stale) => {
   markListed();
   if (types === null) {
     drawReadingHead(IN_CATALOG, { name: "host.d.ts", facts: [] });
-    readingNote(IN_CATALOG, 
-      "受け皿の型はまだ capture-ledger に在りません。",
-      "cd ../capture-ledger && pnpm run scripts import .upstream/capture-scripts で入ります。",
-      "bad",
-    );
+    noteTypesMissing(IN_CATALOG);
     drawLines(IN_CATALOG, undefined);
     return;
   }
@@ -2410,9 +2450,7 @@ const openTypes = (target, stale) => {
     name: `host.d.ts v${String(types.version)}`,
     facts: metaOf(types),
     actions: [copyButton(types.source)],
-    aside:
-      "受け皿 __bh の型（capture-scripts の types/host.d.ts の写し）。クロールの変換が使う型は " +
-      "ts-compile-service の pin で、クロールの compiledWith.hostTypes に出ます",
+    aside: t("scripts.types.aside"),
   });
   readingNote(IN_CATALOG, undefined);
   drawLines(IN_CATALOG, types.source, target.line);
@@ -2426,7 +2464,7 @@ const openScript = async (target, stale) => {
   if (stale()) return;
   if (listed === undefined) {
     drawReadingHead(IN_CATALOG, { name: target.id, facts: [] });
-    readingNote(IN_CATALOG, `${target.id} は登録されていません。`, "", "bad");
+    readingNote(IN_CATALOG, tNodes("scripts.note.notRegistered", { b: noteBold, id: target.id }), "bad");
     drawLines(IN_CATALOG, undefined);
     return;
   }
@@ -2436,10 +2474,7 @@ const openScript = async (target, stale) => {
   const entry = listed.versions.find((v) => v.version === version);
   if (entry === undefined) {
     drawReadingHead(IN_CATALOG, { name: `${target.id} v${String(version)}`, chips, facts: [] });
-    readingNote(IN_CATALOG, 
-      `v${String(version)} は登録されていません（消されています）。`,
-      "走った物はアーカイブの behaviors/custom.jsonl に在ります（変換後の JS）。",
-    );
+    readingNote(IN_CATALOG, tNodes("scripts.note.versionGone", { b: noteBold, version }));
     drawLines(IN_CATALOG, undefined);
     return;
   }
@@ -2452,16 +2487,14 @@ const openScript = async (target, stale) => {
     sites: doc.sites,
     facts: [...metaOf(doc), optionsText(doc.options)],
     standing: standingOf(doc, defaultVersion),
-    actions: [copyButton(doc.source), button("下敷きにする", () => putTemplate(doc))],
-    aside: "走った JS（アーカイブの custom.jsonl）とは行が合いません",
+    actions: [copyButton(doc.source), button(t("scripts.actions.template"), () => putTemplate(doc))],
+    aside: t("scripts.aside.lines"),
   });
   // URL の sha256 の頭（クロールの「読む」が付ける）が、開いた版と食い違えば言う。本文は出す
   if (target.sha !== undefined && !doc.sha256.startsWith(target.sha)) {
-    readingNote(IN_CATALOG, 
-      `このクロールが走らせた v${String(version)} とは中身が違います。`,
-      `クロールの記録は sha256 ${target.sha}…、登録済みの v${String(version)} は ` +
-        `${doc.sha256.slice(0, 12)}… です。v${String(version)} は一度消され、別の中身で登録し直されて` +
-        "います。走った物はアーカイブの behaviors/custom.jsonl に在ります（変換後の JS）。",
+    readingNote(
+      IN_CATALOG,
+      tNodes("scripts.note.shaMismatch", { b: noteBold, version, ran: target.sha, registered: doc.sha256.slice(0, 12) }),
     );
   } else {
     readingNote(IN_CATALOG, undefined);
@@ -2501,7 +2534,7 @@ const openReading = async (asked) => {
     drawReadingList();
     if (target === undefined) {
       reading.open = undefined;
-      drawReadingHead(IN_CATALOG, { name: "スクリプト集", facts: [] });
+      drawReadingHead(IN_CATALOG, { name: t("common.tab.scripts"), facts: [] });
       readingNote(IN_CATALOG, undefined);
       drawLines(IN_CATALOG, undefined);
       return;
@@ -2509,7 +2542,7 @@ const openReading = async (asked) => {
     if (target.id === undefined) openTypes(target, stale);
     else await openScript(target, stale);
   } catch (err) {
-    if (!stale()) readingNote(IN_CATALOG, "読めません: ", failedText(err), "bad");
+    if (!stale()) noteUnreadable(IN_CATALOG, err);
   }
 };
 
@@ -2518,12 +2551,12 @@ const askReplace = (at, doc, lines) => {
   const box = at.ask;
   box.hidden = false;
   box.replaceChildren(
-    tag("span", `新しいクロールの欄に書きかけの TS（${count(lines)} 行）があります。`),
-    button("置き換える", () => {
+    tag("span", t("scripts.replace.ask", { n: lines })),
+    button(t("scripts.replace.yes"), () => {
       box.hidden = true;
       putTemplate(doc, { replace: true, at });
     }),
-    button("やめる", () => {
+    button(t("scripts.replace.no"), () => {
       box.hidden = true;
     }),
   );
@@ -2552,16 +2585,18 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
   const said = $("start-answer");
   said.hidden = false;
   said.className = "start-answer muted";
-  said.textContent =
-    `下敷き: ${doc.id} v${String(doc.version)} を写しました。` +
-    (changed.length === 0
-      ? "id を替える所はありませんでした。"
-      : `${changed.join("・")} 行目の id を inline-${name} に替えました。`) +
-    `登録済みの ${doc.id} は外しました（両方走ると 2 回走ります）。` +
+  // 文と文の間は、言語の区切り（日本語は詰め、英語は空白）で繋ぐ
+  said.textContent = [
+    t("scripts.template.copied", { id: doc.id, version: doc.version }),
+    changed.length === 0
+      ? t("scripts.template.unchanged")
+      : changed.length === 1
+        ? t("scripts.template.changedLine", { line: changed[0], name })
+        : t("scripts.template.changedLines", { lines: changed.join(t("common.sep.dot")), name }),
+    t("scripts.template.unticked", { id: doc.id }),
     // その場の TS は対象サイトを持たない。スクリプトの冒頭の見分けが、ほかのサイトでは何もさせない
-    (doc.sites.length === 0
-      ? ""
-      : `対象サイト（${doc.sites.join("・")}）は写しに付きません。その場の TS は、どの起点でも走ります。`);
+    ...(doc.sites.length === 0 ? [] : [t("scripts.template.sites", { sites: doc.sites.join(t("common.sep.dot")) })]),
+  ].join(t("common.sep.sentence"));
   location.hash = "start";
   // 画面とタブを今出す —— 隠れた箱には focus が効かない（hashchange が画面を出すのは、この後）。
   // 読む窓は閉じない —— タブで元と見比べられる
@@ -2609,7 +2644,7 @@ const showStartTab = (tab) => {
 /** 読む窓の見出し。名前はタブに在るので描かない（対象サイトは standing の文が言う）。 */
 const drawStartReadHead = () => {
   const { target, doc } = startRead;
-  const full = tag("a", "スクリプト集の画面で開く");
+  const full = tag("a", t("start.read.openInCollection"));
   full.href = readingHash(target);
   if (target.id === undefined) {
     drawReadingHead(IN_START, { facts: metaOf(doc), actions: [copyButton(doc.source), full] });
@@ -2619,7 +2654,7 @@ const drawStartReadHead = () => {
   drawReadingHead(IN_START, {
     facts: [...metaOf(doc), optionsText(doc.options)],
     standing: standingOf(doc, defaultVersion),
-    actions: [copyButton(doc.source), button("下敷きにする", () => putTemplate(doc, { at: IN_START })), full],
+    actions: [copyButton(doc.source), button(t("scripts.actions.template"), () => putTemplate(doc, { at: IN_START })), full],
   });
 };
 
@@ -2640,12 +2675,7 @@ const readInStart = async (target) => {
     const doc = target.id === undefined ? await hostTypes(true) : await docOf(target.id, target.version, sha);
     if (stale()) return;
     if (doc === null) {
-      readingNote(
-        IN_START,
-        "受け皿の型はまだ capture-ledger に在りません。",
-        "cd ../capture-ledger && pnpm run scripts import .upstream/capture-scripts で入ります。",
-        "bad",
-      );
+      noteTypesMissing(IN_START);
       return;
     }
     startRead.doc = doc;
@@ -2653,7 +2683,7 @@ const readInStart = async (target) => {
     drawLines(IN_START, doc.source);
     void colorize(IN_START, doc, stale); // 1 色で読めるようにしてから、worker の答えを同じ行に塗る
   } catch (err) {
-    if (!stale()) readingNote(IN_START, "読めません: ", failedText(err), "bad");
+    if (!stale()) noteUnreadable(IN_START, err);
   }
 };
 
@@ -2726,7 +2756,7 @@ const drawWaczBar = (status) => {
   const s = wacz.report.summary;
   const v = verdict(s);
   bar.append(
-    tag("span", `合格 ${String(s.passed)}`, "mono state ok"),
+    tag("span", t("archives.report.passed", { n: s.passed }), "mono state ok"),
     tag("span", v.text, `mono state ${v.kind}`),
     tag(
       "span",
@@ -2769,7 +2799,11 @@ const drawHead = (entry, extra) => {
   );
   for (const text of extra) head.append(tag("span", text));
   const issues = issuesOf(entry.path);
-  head.append(tag("span", issues.length === 0 ? "指摘なし" : `指摘 ${String(issues.length)}`, issues.length === 0 ? "muted" : "state warn"));
+  head.append(
+    issues.length === 0
+      ? tag("span", t("wacz.head.noFindings"), "muted")
+      : tag("span", t("wacz.head.findings", { n: issues.length }), "state warn"),
+  );
   for (const issue of issues) {
     const line = document.createElement("div");
     line.className = "issue";
@@ -2786,7 +2820,7 @@ const drawHead = (entry, extra) => {
 const openWacz = async ({ archiveId, path, n }) => {
   const archive = archives.find((a) => a.id === archiveId);
   if (archive === undefined) {
-    trouble(`archive ${archiveId} は見えません`);
+    trouble(t("wacz.archiveNotVisible", { id: archiveId }));
     location.hash = "archives";
     return;
   }
@@ -2802,7 +2836,7 @@ const openWacz = async ({ archiveId, path, n }) => {
     $("wacz-tree").replaceChildren();
     $("wacz-head").replaceChildren();
     $("wacz-content").replaceChildren();
-    drawWaczBar("検証しています…");
+    drawWaczBar(t("archives.check.asking"));
     try {
       wacz.report = await post(`/wacz/${enc(archiveId)}/validate?locale=${langOf()}`);
     } catch (err) {
@@ -2826,7 +2860,7 @@ const selectEntry = async (path, n) => {
   $("wacz-content").replaceChildren();
   try {
     if (isWarc(path)) {
-      drawHead(entry, ["レコードの一覧"]);
+      drawHead(entry, [t("wacz.head.recordList")]);
       await loadRecords(path, 0);
     } else {
       drawHead(entry, []);
@@ -2850,7 +2884,7 @@ const loadLines = async (path, from) => {
     list.id = "wacz-lines";
     list.className = "vlines";
     content.append(list);
-    if (page.gunzipped) $("wacz-head").append(tag("span", "gzip 展開", "muted"));
+    if (page.gunzipped) $("wacz-head").append(tag("span", t("wacz.head.gunzipped"), "muted"));
   }
   for (const line of page.lines) {
     const li = document.createElement("li");
@@ -2861,7 +2895,7 @@ const loadLines = async (path, from) => {
   }
   $("wacz-more")?.remove();
   if (page.next !== null) {
-    const more = button(`続きを読む（${String(page.next + 1)} 行目から ${String(WINDOW)} 行）`, () => {
+    const more = button(t("wacz.lines.more", { from: page.next + 1, count: WINDOW }), () => {
       more.remove();
       void loadLines(path, page.next).catch((err) => content.append(tag("p", failedText(err), "state bad")));
     });
@@ -2880,8 +2914,13 @@ const openLine = async (path, n) => {
   const panel = document.createElement("div");
   panel.id = "wacz-line";
   panel.className = "vpart";
-  const note = line.cut ? " · 4 MiB で切った" : line.binary ? " · binary" : "";
-  panel.append(tag("div", `${String(n + 1)} 行目 · ${formatBytes(line.bytes)}${note}`, "vtag"));
+  const values = { n: n + 1, size: formatBytes(line.bytes) };
+  const title = line.cut
+    ? t("wacz.line.tagCut", values)
+    : line.binary
+      ? t("wacz.line.tagBinary", values)
+      : t("wacz.line.tag", values);
+  panel.append(tag("div", title, "vtag"));
   if (line.fields.length === 0) {
     panel.append(tag("pre", line.binary ? `(binary · ${formatBytes(line.bytes)})` : line.text, "vraw"));
   } else {
@@ -2894,7 +2933,7 @@ const openLine = async (path, n) => {
     const opener = recordOpener(line.fields);
     if (opener !== undefined) {
       panel.append(
-        button(`このレコードを開く（${opener.path} の ${String(opener.offset)} から ${formatBytes(opener.length)}）`, () => {
+        button(t("wacz.line.openRecord", { path: opener.path, offset: opener.offset, size: formatBytes(opener.length) }), () => {
           void openRecord(opener.path, opener.offset, opener.length).catch((err) =>
             panel.append(tag("p", failedText(err), "state bad")),
           );
@@ -2965,15 +3004,16 @@ const drawRecords = () => {
     b.className = "chip" + (filter === value ? " on" : "");
     return b;
   };
-  chips.append(chip(`すべて ${String(rows.length)}${next === null ? "" : `+`} / ${String(total)}`, undefined));
-  for (const [type, count] of counts) chips.append(chip(`${typeName(type)} ${String(count)}`, type));
-  chips.append(tag("span", "▪ 索引が指す · ▫ 索引に無い", "muted mono"));
+  const values = { shown: rows.length, total };
+  chips.append(chip(next === null ? t("wacz.records.all", values) : t("wacz.records.allMore", values), undefined));
+  for (const [type, count] of counts) chips.append(chip(t("wacz.records.typeCount", { type: typeName(type), n: count }), type));
+  chips.append(tag("span", t("wacz.records.legend"), "muted mono"));
   content.append(chips);
 
   const table = document.createElement("table");
   table.className = "vrecords";
   const head = document.createElement("tr");
-  for (const text of ["", "種別", "状態", "content-type", "URI"]) head.append(tag("th", text));
+  for (const text of ["", t("wacz.records.col.type"), t("wacz.records.col.status"), "content-type", "URI"]) head.append(tag("th", text));
   table.append(head);
   for (const row of rows) {
     if (filter !== undefined && row.type !== filter) continue;
@@ -2996,7 +3036,7 @@ const drawRecords = () => {
   content.append(table);
   if (next !== null) {
     content.append(
-      button(`続きを読む（${String(next + 1)} 件目から ${String(WINDOW)} 件・全 ${String(total)} 件）`, () => {
+      button(t("wacz.records.more", { from: next + 1, count: WINDOW, total }), () => {
         void loadRecords(path, next).catch((err) => content.append(tag("p", failedText(err), "state bad")));
       }),
     );
@@ -3011,7 +3051,7 @@ const openRecord = async (path, offset, length) => {
   const panel = document.createElement("div");
   panel.id = "wacz-record";
   panel.className = "vpart";
-  panel.append(tag("div", `レコード · ${path} の ${String(offset)} から ${formatBytes(length)}`, "vtag"));
+  panel.append(tag("div", t("wacz.record.tag", { path, offset, size: formatBytes(length) }), "vtag"));
   panel.append(tag("pre", record.warc.map((h) => `${h.name}: ${h.value}`).join("\n"), "vraw"));
   if (record.http !== undefined) {
     panel.append(
@@ -3040,6 +3080,14 @@ const openRecord = async (path, offset, length) => {
 
 // ── 定期実行 ───────────────────────────────────────────────────────
 /**
+ * 走ったままの行を締めるときに capture-ledger へ送る理由。**保存されるデータになる**（クロールの行の `error`）ので、
+ * 画面の言語の文ではなく、決まった英語の句を送る。出す所（開いた行の失敗の文・回の表）が、辞書の
+ * `crawls.reason.<句>` で訳す（`phraseText`）。句を言い換えると、前に保存した行が訳されなくなる。
+ */
+const CLOSE_REASON_KEY = key("crawls.reason.closed from the schedules view");
+const CLOSE_REASON = CLOSE_REASON_KEY.slice("crawls.reason.".length);
+
+/**
  * 最後に読めた予定。**一覧の引き直しと別の輪で読む** —— `refresh` の `Promise.all` は 1 つ落ちると描画を全部飛ばすので、
  * ここが落ちてクロールの表まで止まらないように。読めなければ帯で言う（読めないことを正常と取り違えない）。
  */
@@ -3051,7 +3099,7 @@ const SCHEDULES_TIMEOUT_MS = 15_000;
 
 const drawBand = () => {
   const lines = [bandOf(schedules, schedulesError), ...changeBandLines(schedules)].filter((line) => line !== undefined);
-  const said = lines.length === 0 ? undefined : lines.join(" ／ ");
+  const said = lines.length === 0 ? undefined : lines.join(t("common.sep.slash"));
   $("schedule-band").hidden = said === undefined;
   if (said !== undefined) $("schedule-band-text").textContent = said;
   const trouble = troubleCount(schedules);
@@ -3075,27 +3123,28 @@ const scheduleButtons = (schedule) => {
   const path = (action) => `${SCHEDULES_PATH}/${schedule.id}/${action}`;
   const box = document.createElement("div");
   box.className = "schedule-actions";
-  box.append(button("いま撮る", () => void scheduleAction("run", path("run"))));
+  box.append(button(t("schedules.action.run"), () => void scheduleAction("run", path("run"))));
   box.append(
     schedule.enabled
-      ? button("止める", () => void scheduleAction("pause", path("pause")))
-      : button("再開", () => void scheduleAction("resume", path("resume"))),
+      ? button(t("schedules.action.pause"), () => void scheduleAction("pause", path("pause")))
+      : button(t("schedules.action.resume"), () => void scheduleAction("resume", path("resume"))),
   );
-  box.append(button("固定し直す", () => void scheduleAction("repin", path("repin"))));
+  box.append(button(t("schedules.action.repin"), () => void scheduleAction("repin", path("repin"))));
   box.append(
-    button("消す", () =>
+    button(t("schedules.action.delete"), () =>
       void scheduleAction("delete", path("delete"), {
-        ask: `予定「${schedule.name}」を消します。撮った回の行は残ります。`,
+        ask: t("schedules.ask.delete", { name: schedule.name }),
       }),
     ),
   );
   const crawlId = closableCrawl(schedule);
   if (crawlId !== undefined) {
+    const id = crawlId.slice(0, 8);
     box.append(
-      button(`走ったままの行 ${crawlId.slice(0, 8)} を締める`, () =>
+      button(t("schedules.action.close", { id }), () =>
         void scheduleAction("close", `/api/crawls/${crawlId}/failed`, {
-          ask: `クロール ${crawlId.slice(0, 8)} を失敗として締めます。本当に走っている場合、Windmill の run は止まらず、その段は撮り終えますが、次の段は投げません（撮った分は記録に残ります）。止めるなら先に Windmill で run を取り消してください。`,
-          body: { reason: "定期実行の画面から締めた" },
+          ask: t("schedules.ask.close", { id }),
+          body: { reason: CLOSE_REASON },
         }),
       ),
     );
@@ -3112,7 +3161,7 @@ const scheduleRunRow = (run, timeZone) => {
   row.append(cell(shortTime(run.startedAt, timeZone), "mono"));
   row.append(cell(runDelay(run)));
   row.append(cell(runMissed(run)));
-  row.append(cell(run.error ?? "", "wide"));
+  row.append(cell(phraseText("crawls.reason", run.error ?? ""), "wide"));
   // 前回からの変化（CAPTURE-167）。比べた回はタブ「変化」のその回へ
   const change = changeOf(run.change);
   if (run.change === null || run.change === undefined) {
@@ -3148,8 +3197,14 @@ const drawSchedules = () => {
     card.append(
       tag(
         "p",
-        `${cronWords(schedule.cron)}（${schedule.timezone}） ・ 次の回 ${shortTime(schedule.nextRunAt, schedule.timezone)} ・ ` +
-          `起点 ${String(schedule.seeds.length)} ・ 深さ ${String(schedule.maxDepth)} ・ ${scriptsText(schedule)}`,
+        t("schedules.card.meta", {
+          cron: cronWords(schedule.cron),
+          timezone: schedule.timezone,
+          next: shortTime(schedule.nextRunAt, schedule.timezone),
+          seeds: schedule.seeds.length,
+          depth: String(schedule.maxDepth),
+          scripts: scriptsText(schedule),
+        }),
         "schedule-meta",
       ),
     );
@@ -3157,9 +3212,17 @@ const drawSchedules = () => {
     if (schedule.recentRuns.length > 0) {
       const table = document.createElement("table");
       const titles = document.createElement("tr");
-      for (const title of ["結果", "本来の時刻", "始まった", "遅れ", "欠け", "理由", "前回からの変化", "id"]) {
-        titles.append(tag("th", title));
-      }
+      const columns = [
+        t("schedules.col.result"),
+        t("schedules.col.due"),
+        t("schedules.col.started"),
+        t("schedules.col.delay"),
+        t("schedules.col.missed"),
+        t("schedules.col.reason"),
+        t("schedules.col.change"),
+        "id",
+      ];
+      for (const title of columns) titles.append(tag("th", title));
       const thead = document.createElement("thead");
       thead.append(titles);
       const tbody = document.createElement("tbody");
@@ -3167,7 +3230,7 @@ const drawSchedules = () => {
       table.append(thead, tbody);
       card.append(table);
     } else {
-      card.append(tag("p", "まだ回がありません。", "empty"));
+      card.append(tag("p", t("schedules.card.noRuns"), "empty"));
     }
     box.append(card);
   }
@@ -3245,7 +3308,7 @@ const drawChangeList = (runs) => {
     const changed = hashCell(changesHash(run.crawlId), said.text);
     changed.className = `state ${said.kind}`;
     row.append(changed);
-    row.append(cell(run.restricted ? "（見てよくない WACZ を含む回）" : (run.headline ?? ""), "wide"));
+    row.append(cell(run.restricted ? t("changes.list.restricted") : (run.headline ?? ""), "wide"));
     tbody.append(row);
   }
 };
@@ -3254,10 +3317,10 @@ const drawChangeList = (runs) => {
 const replayLinksOf = (page) => {
   const opens = document.createElement("p");
   opens.className = "muted";
-  for (const [when, ref] of [["前", page.before], ["今", page.after]]) {
+  for (const [when, ref] of [[t("changes.page.before"), page.before], [t("changes.page.after"), page.after]]) {
     if (ref === null || ref === undefined) continue;
-    if (opens.childNodes.length > 0) opens.append(" ・ ");
-    opens.append(`${when}:`);
+    if (opens.childNodes.length > 0) opens.append(t("changes.sep.dot"));
+    opens.append(when);
     for (const viewer of VIEWERS) {
       opens.append(" ", link(replaywebHref(settings[viewer.setting], ref), viewerText(viewer)));
     }
@@ -3277,9 +3340,9 @@ const changeStepsOf = (crawlId, toc, row) => {
     a.textContent = text;
     return a;
   };
-  steps.append(step(near.prev, "← 前のページ"));
+  steps.append(step(near.prev, t("changes.steps.prev")));
   if (near.index !== undefined) steps.append(tag("span", `${String(near.index)} / ${String(near.total)}`, "muted"));
-  steps.append(step(near.next, "次のページ →"));
+  steps.append(step(near.next, t("changes.steps.next")));
   return steps;
 };
 
@@ -3288,12 +3351,12 @@ const drawChangePane = (detail, toc, picked) => {
   const pane = $("change-pane");
   pane.replaceChildren();
   const row = picked.row;
-  if (picked.missing) pane.append(tag("p", "名指したページはこの回にありません。先頭のページを出しています。", "state bad"));
+  if (picked.missing) pane.append(tag("p", t("changes.pane.missing"), "state bad"));
   if (row === undefined) {
     pane.append(
       tag(
         "p",
-        toc.length === 0 ? "出せるページがありません。" : "どのページも前の回と同じでした。",
+        toc.length === 0 ? t("changes.pane.noPages") : t("changes.pane.allSame"),
         "empty",
       ),
     );
@@ -3305,19 +3368,24 @@ const drawChangePane = (detail, toc, picked) => {
   pane.append(changeStepsOf(detail.crawlId, toc, row));
   const page = row.page;
   if (row.same) {
-    pane.append(tag("p", "前の回と同じ文字でした（空行と字下げだけの違いも、ここに入ります）。"));
+    pane.append(tag("p", t("changes.pane.same")));
     pane.append(replayLinksOf(page));
     return;
   }
   const meta = document.createElement("p");
   meta.className = "muted";
-  meta.append(`足した行 ${String(page.added)} ・ 消した行 ${String(page.removed)}`);
+  const lines = { added: page.added, removed: page.removed };
   const note = versionNote(page);
-  if (note !== "") meta.append(` ・ ${note}`);
+  meta.append(note === "" ? t("changes.pane.lines", lines) : t("changes.pane.linesNoted", { ...lines, note }));
   pane.append(meta, replayLinksOf(page));
-  if (page.headline !== null) pane.append(tag("p", pageClaudeLine(page.headline)));
+  if (page.headline !== null) {
+    pane.append(tag("p", pageClaudeLine(page.headline)));
+    // Claude の 1 行は日本語のまま届く。日本語でない画面にだけ、そう断る
+    const japanese = japaneseNote();
+    if (japanese !== undefined) pane.append(tag("p", japanese, "muted"));
+  }
   if (page.state === "prev_missing") {
-    pane.append(tag("p", "前の回の WACZ が保管庫に無く、差分を作れませんでした。", "state bad"));
+    pane.append(tag("p", t("changes.pane.prevMissing"), "state bad"));
     return;
   }
   // 引用は、それを含む差分の行に結ぶ。押すとその行へ動く（照合で外れた引用はボタンにしない）
@@ -3327,15 +3395,20 @@ const drawChangePane = (detail, toc, picked) => {
   if (page.quotes.length > 0) {
     const quotes = document.createElement("p");
     quotes.className = "change-quotes";
-    quotes.append(tag("span", "引用（押すと差分の行へ）:", "muted"));
+    quotes.append(tag("span", t("changes.quotes.label"), "muted"));
     for (const [i, quote] of page.quotes.entries()) {
       const pos = quoted[i];
       if (pos === undefined) {
-        quotes.append(tag("span", `「${quote.text}」${quote.verified ? "" : "（差分に無い）"}`, quote.verified ? "muted" : "state bad"));
+        const said = { text: quote.text };
+        quotes.append(
+          quote.verified
+            ? tag("span", t("changes.quotes.quote", said), "muted")
+            : tag("span", t("changes.quotes.notInDiff", said), "state bad"),
+        );
         continue;
       }
       quotes.append(
-        button(`「${quote.text}」`, () => {
+        button(t("changes.quotes.quote", { text: quote.text }), () => {
           const line = diff.rows.get(at(pos));
           for (const hit of pane.querySelectorAll("tr.hit")) hit.classList.remove("hit");
           line?.classList.add("hit");
@@ -3352,7 +3425,7 @@ const drawChangePane = (detail, toc, picked) => {
 const drawChangeToc = (detail, toc, row) => {
   const box = $("change-toc");
   box.replaceChildren();
-  box.append(tag("h3", `目次（比べた ${String(detail.pagesCompared)} ページ）`));
+  box.append(tag("h3", t("changes.toc.title", { n: detail.pagesCompared })));
   const list = document.createElement("ol");
   for (const entry of toc) {
     const li = document.createElement("li");
@@ -3382,22 +3455,24 @@ const drawChangeHead = (detail) => {
   back.className = "change-back";
   const toList = document.createElement("a");
   toList.href = "#changes";
-  toList.textContent = "← 変化の一覧";
+  toList.textContent = t("changes.head.back");
   back.append(toList);
   head.append(back);
   const h2 = document.createElement("h2");
-  h2.append(tag("span", detail.scheduleName ?? "予定"));
+  h2.append(tag("span", detail.scheduleName ?? t("changes.head.noName")));
   const said = changeOf(detail);
   h2.append(tag("span", said.text, `state ${said.kind}`));
   head.append(h2);
   // 比べた 2 回。前の回の時刻は v0.95.0 より前の capture-ledger には無い
-  const runs = [`今回 ${runTimeText(detail)}`];
-  if (detail.prev?.startedAt) runs.push(`前の回 ${runTimeText(detail.prev)}`);
-  head.append(tag("p", runs.join(" ・ "), "change-runs mono"));
+  const now = runTimeText(detail);
+  const runs = detail.prev?.startedAt
+    ? t("changes.head.runs", { now, prev: runTimeText(detail.prev) })
+    : t("changes.head.run", { now });
+  head.append(tag("p", runs, "change-runs mono"));
   head.append(tag("p", summaryLine(detail.summary), "muted"));
   if (detail.headline) head.append(tag("p", detail.headline, "change-headline"));
   if (detail.error) head.append(tag("p", detail.error, "state bad"));
-  if (detail.restricted) head.append(tag("p", "見てよくない WACZ を含むページは出していません。", "muted"));
+  if (detail.restricted) head.append(tag("p", t("changes.head.restricted"), "muted"));
 };
 
 /** 回の答えから、頭・目次・右のページを描く。`pageId` だけが替わったときは目次の印と右のページだけ。 */
@@ -3407,7 +3482,7 @@ const drawChangeDetail = (pageId, { fresh }) => {
   if (fresh) drawChangeHead(detail);
   if (detail.state === "no_previous") {
     body.hidden = true;
-    if (fresh) $("change-head").append(tag("p", "前の回が無いので比べていません。", "empty"));
+    if (fresh) $("change-head").append(tag("p", t("changes.head.noPrevious"), "empty"));
     return;
   }
   body.hidden = false;

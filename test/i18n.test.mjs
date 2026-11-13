@@ -9,7 +9,21 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { IntlMessageFormat } from "../public/vendor/intl-messageformat.js";
-import { dateTime, errorText, has, key, langOf, LANGS, setLang, t, timeOfDay, tNodes } from "../public/i18n.js";
+import {
+  chooseLang,
+  dateTime,
+  errorText,
+  has,
+  key,
+  langOf,
+  LANGS,
+  phraseText,
+  setLang,
+  switchedUrl,
+  t,
+  timeOfDay,
+  tNodes,
+} from "../public/i18n.js";
 import { stateOf, statsOf } from "../public/format.js";
 import { jaLines, keysInHtml, keysInJs, problemsOf, readInput, stripComments, stripHtmlComments } from "../scripts/check-i18n.mjs";
 
@@ -31,6 +45,51 @@ test("試験の言語は日本語に固定してある（流す機械の言語�
   assert.deepEqual([...LANGS], ["ja", "en"]);
   assert.throws(() => setLang("fr"), /unknown language/);
   assert.equal(langOf(), "ja");
+});
+
+test("言語を選ぶ順: ?lang= → 覚えた選び → ブラウザの言語 → 英語", () => {
+  // ?lang= は、覚えた選びにもブラウザの言語にも勝つ（その回だけ）
+  assert.equal(chooseLang({ query: "ja", stored: "en", languages: ["en-US"] }), "ja");
+  assert.equal(chooseLang({ query: "en", stored: "ja", languages: ["ja"] }), "en");
+  // 覚えた選びは、ブラウザの言語に勝つ
+  assert.equal(chooseLang({ stored: "ja", languages: ["en-US", "en"] }), "ja");
+  assert.equal(chooseLang({ stored: "en", languages: ["ja"] }), "en");
+  // ブラウザの言語は、並びで最初に当たる物。地域つき（ja-JP・en-GB）は頭で読む
+  assert.equal(chooseLang({ languages: ["ja-JP", "en"] }), "ja");
+  assert.equal(chooseLang({ languages: ["fr", "en"] }), "en");
+  assert.equal(chooseLang({ languages: ["fr", "ja", "en"] }), "ja");
+  assert.equal(chooseLang({ languages: ["EN-gb"] }), "en");
+  // 英語でも日本語でもなければ英語。何も無くても英語
+  assert.equal(chooseLang({ languages: ["de", "fr"] }), "en");
+  assert.equal(chooseLang({}), "en");
+  assert.equal(chooseLang(), "en");
+  // 知らない値は、無いのと同じ
+  assert.equal(chooseLang({ query: "fr", stored: "ja" }), "ja");
+  assert.equal(chooseLang({ query: "", stored: "de", languages: ["ja"] }), "ja");
+});
+
+test("切り替えた後の URL: ?lang= を外す（残すと、覚えた選びより勝つ）。覚えられなければ ?lang= で運ぶ", () => {
+  assert.equal(switchedUrl("http://127.0.0.1:7080/?lang=ja#start", "en", true), "http://127.0.0.1:7080/#start");
+  assert.equal(switchedUrl("http://127.0.0.1:7080/#crawls", "en", true), "http://127.0.0.1:7080/#crawls");
+  // ほかの query は残す
+  assert.equal(switchedUrl("http://127.0.0.1:7080/?x=1&lang=ja", "en", true), "http://127.0.0.1:7080/?x=1");
+  assert.equal(switchedUrl("http://127.0.0.1:7080/?lang=ja#search/a", "en", false), "http://127.0.0.1:7080/?lang=en#search/a");
+});
+
+test("届いたデータの句: 辞書に在れば訳し、無ければ届いた字のまま", () => {
+  assert.equal(phraseText("crawls.reason", "closed from the schedules view"), "定期実行の画面から締めた");
+  assert.equal(
+    inEnglish(() => phraseText("crawls.reason", "closed from the schedules view")),
+    "Closed from the schedules view",
+  );
+  // ほかのシステムの字と、辞書を足す前に保存された字は言い換えない
+  assert.equal(phraseText("crawls.reason", "the flow failed without saying why"), "the flow failed without saying why");
+  assert.equal(phraseText("crawls.reason", "定期実行の画面から締めた"), "定期実行の画面から締めた");
+  assert.equal(phraseText("crawls.reason", null), null);
+});
+
+test("言語の名前は、どちらの画面でもその言語の字で出す", () => {
+  for (const name of ["common.lang.ja", "common.lang.en"]) assert.equal(t(name), inEnglish(() => t(name)));
 });
 
 test("辞書の文は、2 つの言語とも全部 compile できる", () => {
@@ -151,7 +210,6 @@ const sample = (over = {}) => ({
   scripts: { "public/x.js": 'export const f = (n) => t("a.one", { n });\n' },
   html: { "public/index.html": "<p></p>\n" },
   phrases: ["json only"],
-  baseline: undefined,
   ...over,
 });
 
@@ -203,7 +261,7 @@ test("見張り 3: 辞書に無い鍵・使っていない鍵・組み立てた�
   assert.deepEqual(problemsOf(ledger), []);
 });
 
-test("見張り 4: コメントの外の日本語は赤。控えより多くても、少なくても赤", () => {
+test("見張り 4: コメントの外の日本語は、1 行でも赤", () => {
   const direct = sample({ scripts: { "public/x.js": 't("a.one", { n: 1 });\n// コメントは見ない\nconst s = "直書き";\n' } });
   assert.match(problemsOf(direct)[0], /^直書きの日本語: 1 行（public\/x\.js:3）/);
   // 全角の句読点だけの文字列も
@@ -211,18 +269,9 @@ test("見張り 4: コメントの外の日本語は赤。控えより多くて�
   assert.match(problemsOf(punct)[0], /^直書きの日本語: 1 行（public\/x\.js:2）/);
   const html = sample({ html: { "public/index.html": "<!-- コメントは見ない -->\n<p>字</p>\n" } });
   assert.match(problemsOf(html)[0], /^直書きの日本語: 1 行（public\/index\.html:2）/);
-  // 控え
+  // 何行でも、ファイルごとに 1 件で言う
   const two = 't("a.one", { n: 1 });\nconst a = "一";\nconst b = "二";\n';
-  assert.deepEqual(problemsOf(sample({ scripts: { "public/x.js": two }, baseline: { "//": "注記", "public/x.js": 2 } })), []);
-  assert.match(
-    problemsOf(sample({ scripts: { "public/x.js": two }, baseline: { "public/x.js": 1 } }))[0],
-    /^直書きの日本語が増えた: public\/x\.js は 2 行（控えは 1 行）/,
-  );
-  assert.match(
-    problemsOf(sample({ scripts: { "public/x.js": two }, baseline: { "public/x.js": 3 } }))[0],
-    /^控えを減らす: public\/x\.js は 2 行（控えは 3 行）/,
-  );
-  assert.deepEqual(problemsOf(sample({ baseline: { "public/gone.js": 1 } })), ["控えに、見ていないファイルが在る: public/gone.js"]);
+  assert.match(problemsOf(sample({ scripts: { "public/x.js": two } }))[0], /^直書きの日本語: 2 行（public\/x\.js:2 public\/x\.js:3）/);
 });
 
 test("走査: コメントだけを空白にし、文字列・雛形・正規表現の中は残す", () => {

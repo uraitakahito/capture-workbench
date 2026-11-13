@@ -6,8 +6,15 @@ description: What each view shows — crawls, start, schedules, changes, archive
 capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
 which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`; in the search view it also
 names the words searched, in the changes view the run and page opened, and in the script collection view what you are reading). The WACZ tab only appears once you
-enter it with 開く (open) on an archive row. The workbench itself is in Japanese; the tab names are
-クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索, スクリプト集 and WACZ.
+enter it with **Open** (開く) on an archive row. The tabs are **Crawls** (クロール), **New crawl**
+(新しいクロール), **Schedules** (定期実行), **Changes** (変化), **Archives** (アーカイブ), **Search** (検索),
+**Script collection** (スクリプト集) and WACZ.
+
+The workbench comes in Japanese and English. You switch at the top right, and until you do, the
+browser's language decides ([Language](#language)). This page uses the words of the English screen.
+**The pictures on this page were taken on the Japanese screen**, so where a label first comes up, the
+Japanese that the pictures show follows in parentheses, and the notes under a picture name what is
+in it in Japanese.
 
 The pictures on this page are taken against the stand-in ledger (the
 [sandbox](/development/#opening-the-workbench-in-the-sandbox)). Its scripts are copies from capture-scripts,
@@ -26,8 +33,32 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
 | WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
 
-The top of the screen says who you are signed in as (`<user> (<groups>) としてサインインしています`),
-with a サインアウト (sign out) link. The footer shows how many rows are listed and how often the lists are fetched again.
+The top of the screen says who you are signed in as (`Signed in as <user> (<groups>)`), with a
+**Sign out** (サインアウト) link and the language switch next to it. The footer shows how many rows are listed and how often the lists are fetched again.
+
+## Language
+
+The workbench is in Japanese and English. The words on the screen come from one dictionary per
+language ([Development](/development/#the-text-on-the-screen)).
+
+- **The switch is at the top right, next to Sign out:** 日本語 / English. The language in use
+  cannot be pressed. Pressing the other one remembers the choice in the browser (`localStorage`,
+  under `workbench.lang`), takes `?lang=` off the URL and reloads the page. If the new crawl view
+  holds something you have written (seed URLs, your script or its name, the User-Agent, a
+  variable's value, a schedule's name), it asks first, because reloading loses it.
+- **The language is decided when the page loads,** in this order: `?lang=ja` or `?lang=en` in the
+  URL (for that load only; the remembered choice stays as it was), the choice the switch
+  remembered, the first of the browser's languages that is Japanese or English, and English when
+  none of them says. A browser that will not store the choice gets it carried in `?lang=`
+  instead.
+- **Some text is not translated.** What capture-ledger, BrowserHive, Windmill and the daemon return
+  is shown as it arrived (states such as `captured`, step names, log lines, failure reasons), and
+  so are proper names. Claude's summaries in the changes view are in Japanese, because
+  capture-ledger had them written in Japanese; on the English screen the view adds
+  `The summary is written in Japanese.`
+- **The validation report follows the screen.** The workbench hands the screen's language to the
+  daemon, so validating an archive on the English screen returns an English report
+  ([Inspecting a WACZ](/wacz/#the-validation-report)).
 
 ## The lists are one page of the ledger
 
@@ -36,15 +67,16 @@ workbench does not fetch further pages. For archives, the ledger returns only th
 that your identity may view, so there can be fewer rows than a page holds. The counts in the
 footer are the rows on screen, not everything the ledger has.
 
-The ページ (pages) table of an opened crawl, the list of the pages the ledger recorded for it, also
-starts with the one batch the ledger returns. Further pages are fetched only when you press 続きを読む (read on), and
+The **Pages** (ページ) table of an opened crawl, the list of the pages the ledger recorded for it, also
+starts with the one batch the ledger returns. Further pages are fetched only when you press **Read on** (続きを読む), and
 what you have read stays listed when the table is fetched again.
 
 ## Crawls
 
-Each row is one crawl. It shows the state, the first 8 characters of the id, who started it and
-for which organization, the first seed URL, pages captured, links (リンク), the number of
-WACZ files and the time taken. "run ↗" at the right end opens the Windmill run in a new tab, and
+Each row is one crawl. It shows the state (**State**, 状態), the first 8 characters of the id, who
+started it and for which organization (**Started by**, 始めた人), the first seed URL (**Seed**, 起点),
+pages captured (**Captured**, 撮れた), links (**Links**, リンク), the number of WACZ files and the time
+taken (**Time taken**, かかった). Under **Open in** (行き先) at the right end, "run ↗" opens the Windmill run in a new tab, and
 "ReplayWeb.page ↗" and "Web Capture ↗" next to it open the whole crawl in replay as one archive, once the ledger has written
 the crawl's bundle.
 
@@ -71,9 +103,10 @@ the crawl's bundle.
 - **When a level was sent to Windmill again, the state says so.** When capture-ledger cannot
   confirm that Windmill took a level, it sends it again with the same level key (CAPTURE-180). If
   the newest level was sent twice or more, or a last error is left, the state cell gets a mark such as
-  「段 1 を Windmill に送り直し 3 回」 (level 1 sent to Windmill again 3 times), and hovering the mark
-  shows the last error. A level given up after 10 minutes is red: 「段 1 を Windmill に渡せず諦めた（21
-  回送った）」 (level 1 could not be handed to Windmill, given up after 21 sends). A level taken at the
+  `Level 1 sent to Windmill again 3 times` (段 1 を Windmill に送り直し 3 回), and hovering the mark
+  shows the last error. A level given up after 10 minutes is red:
+  `Level 1 could not be handed to Windmill, given up after 21 sends` (段 1 を Windmill に渡せず諦めた（21
+  回送った）). A level taken at the
   first send shows nothing. The numbers come from the ledger's `dispatch` (the newest level's
   `attempts` and `lastError`); the resends are the sends minus one.
 - **ReplayWeb.page ↗ / Web Capture ↗ open the crawl as one archive.** After each level, the ledger writes the crawl's
@@ -90,7 +123,7 @@ the crawl's bundle.
   `test/replayweb.test.mjs`.
 - **A version written mid-crawl says so.** While a crawl runs, ReplayWeb.page ↗ / Web Capture ↗ open the version the
   ledger has written so far. Pages captured in later levels are not in it, so a link to one ends
-  in Not Found in replay. The links therefore read `ReplayWeb.page r1（途中）↗ and Web Capture r1（途中）↗` ("mid-crawl"), in the warning
+  in Not Found in replay. The links therefore read `ReplayWeb.page r1 (mid-crawl) ↗` and `Web Capture r1 (mid-crawl) ↗` (`r1（途中）↗` in the picture above), in the warning
   color, with an explanation on hover. A finished row reads the same while the version it points at
   is older than the end of the crawl (`builtAt` before `finishedAt`): the flow runs `report` (the
   crawl ends here) before `replay_bundle` (the last version is written here), so the last version
@@ -102,36 +135,36 @@ the crawl's bundle.
 ![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the values passed and the secrets used (one hidden in the WARC, one kept), the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
 
 ① what ran (in run order)\
-② 欄に戻す (back to the form)\
-③ 渡した値 (the values passed: variables) and 使ったシークレット (the secrets used)\
+② 欄に戻す (Back to the form)\
+③ 渡した値 (Values passed), the variables, and 使ったシークレット (Secrets used)\
 ④ the count per rule\
-⑤ Windmill で調べる (inspect in Windmill), the link to inspect_crawl
+⑤ Windmill で調べる (Inspect in Windmill), the link to inspect_crawl
 
 - **Click a row to see why it failed, what ran in the page, which values it was given, and the
   URLs that could not be fetched.** Only then does the workbench fetch `/api/crawls/:id`. The ledger's
   `error` comes first, in its own words (a level sent to Windmill again comes even before it, with
   the count and the last error): a crawl that failed at the compile step captured nothing, so
   its list of failed pages is empty and would otherwise read like a success. Next is what ran, in the
-  order it ran: registered scripts with their version and a 読む (read) link to the
-  [script collection view](#script-collection) at the version the crawl ran, and scripts written in the form marked その場
-  (written on the spot) with their size in bytes, each with a 欄に戻す (back to the form) button that
+  order it ran: registered scripts with their version and a **Read** (読む) link to the
+  [script collection view](#script-collection) at the version the crawl ran, and scripts written in the form marked
+  `your script` (その場) with their size in bytes, each with a **Back to the form** (欄に戻す) button that
   takes you to the [new crawl view](#start-a-crawl). A site script carries its sites, as a chip such as
-  `laws.e-gov.go.jp 用`. Then come the values: the variables the crawl was started with (the ledger's
+  `for laws.e-gov.go.jp` (`laws.e-gov.go.jp 用`). Then come the values: the variables the crawl was started with (the ledger's
   `variables`, name and value) and the secrets it used (`secrets`: the name, the path of the Windmill
   variable, its `edited_at` when the ledger checked that it existed, and whether its value stays in
   the WARC, `archive`). A secret's value never appears: only Windmill holds it, the ledger does not,
   and it is gone from the snapshots, the page text and title, and the logs. What the WARC keeps is
-  up to the declaration. A secret marked WARC で隠す (hidden in the WARC) had its value replaced by
-  `***` in the WARC, whether the script put it on the wire or the site sent it back. WARC に残す（keep）
-  (kept in the WARC) is a secret declared with `archive: "keep"`: its value stays as it is in the
+  up to the declaration. A secret marked **Hidden in the WARC** (WARC で隠す) had its value replaced by
+  `***` in the WARC, whether the script put it on the wire or the site sent it back. **Kept in the WARC (keep)**
+  (WARC に残す（keep）) is a secret declared with `archive: "keep"`: its value stays as it is in the
   record of the traffic (the WARC's request, response and metadata records, and their URLs). In the
   picture above `api_token` is hidden and `login` is kept (crawl `5b0c0007` of the stand-in's
   scenario). Hiding started with BrowserHive v29.0.0: in a capture made before it, a value put on the
   wire is still in the WARC, yet the ledger answers `archive: null` for those rows too, so they read
-  WARC で隠す (the mark says so when the pointer rests on it). If the Windmill variable was
+  **Hidden in the WARC** (the mark says so when the pointer rests on it). If the Windmill variable was
   rewritten while the crawl ran, the row says from which level. Above them is the `User-Agent` the crawl
-  asked for, as typed, or HeadlessChrome のまま (still HeadlessChrome). A crawl given nothing reads 渡した値:
-  なし (values passed: none), and a row from an older ledger without values shows nothing here. Last
+  asked for, as typed, or `User-Agent: still HeadlessChrome` (HeadlessChrome のまま). A crawl given nothing reads
+  `Values passed: none` (渡した値: なし), and a row from an older ledger without values shows nothing here. Last
   are the pages that failed, the latest 5 that the ledger returns (the state column gives the total); if none did, it says so and lists the seed
   URLs.
 - **A crawl that failed the type check shows all of its type errors, and can ask for a fix.** When the
@@ -139,39 +172,39 @@ the crawl's bundle.
   `/api/crawls/:id/diagnostics`: the ledger sends the crawl's scripts to ts-compile-service again, and
   the table lists every error with its script, line and column, code and message (the `error` is cut
   at the ledger's limit and names only the first few). The table does not call Claude. An inline
-  script with errors gets 直し方を訊く (ask for a fix) next to 欄に戻す: only pressing it calls Claude,
+  script with errors gets **Ask for a fix** (直し方を訊く) next to **Back to the form**: only pressing it calls Claude,
   through the ledger, which returns a fix only if it passes the same check. The answer shows the
   reasons, the replaced lines (removed and added, with line numbers), the rounds and the cost, and
-  直した版を欄に戻す (put the fixed version in the form), which works like 欄に戻す with the fixed
+  **Put the fixed version in the form** (直した版を欄に戻す), which works like **Back to the form** with the fixed
   source (the name and phase stay as they were). Only the types were checked: read the diff, and
   capture once to see that the script still does what it did. Any other answer (nothing to fix, no fix
   passed, this month's limit reached, a ledger without the route) is one line, in the ledger's words.
 - **An opened row also shows what the crawl's rules decided** (the ledger's
   `/api/crawls/:id/decisions`, fetched together with the detail). First, per rule, the distinct URLs it
-  matched, counted per level and added up (a URL found on two levels counts twice); a rule that never matched is marked 当たっていません (not hit),
+  matched, counted per level and added up (a URL found on two levels counts twice); a rule that never matched is marked **Never matched** (当たっていません),
   since a rule that never fires usually does not say what its author meant. Then what was dropped,
   by host name: by a rule, by no rule, and the pages robots.txt kept the crawl from taking. A crawl
   that looked at no links says so in one line instead of listing rules that all show 0. Last is a
-  link, Windmill で調べる (inspect in Windmill), to the script `f/waggle/inspect_crawl` in Windmill
+  link, **Inspect in Windmill** (Windmill で調べる), to the script `f/waggle/inspect_crawl` in Windmill
   with this crawl's id already filled in (Windmill keeps a run's arguments in the URL's hash).
 
 ![The pages table of an opened crawl: four pages with their URL, outcome (ReplayWeb.page ↗ / Web Capture ↗ after the captured ones) and warn and error counts, and the log of the page that timed out, opened, with lines from a script, an exception in the captured page and BrowserHive's timeout](../../assets/screens/crawl-pages.webp)
 
 ① the outcome (the ledger's state and reason), with ReplayWeb.page ↗ / Web Capture ↗ for a page in the crawl's bundle\
 ② the warn and error counts\
-③ ログ (log): opens the page's log, and closes it on a second press\
+③ ログ (Log): opens the page's log, and closes it on a second press\
 ④ the level filter
 
 - **An opened row also lists the crawl's pages** (the ledger's `/api/crawls/:id/pages`, fetched
   together with the detail), after what the rules decided. They come in the order the ledger
   recorded them, each with its URL, its outcome, the number of warn and error lines in its log, and
-  a ログ (log) button. The outcome is the ledger's state (`captured`, `failed` and so on), not
+  a **Log** (ログ) button. The outcome is the ledger's state (`captured`, `failed` and so on), not
   reworded, followed by the reason a page was skipped or failed, if any. The ledger keeps a page
   that never got a report as `pending` (whether it was captured is unknown), so in a crawl that has
-  ended such a page reads `pending（報告なし —— クロールが先に終わった）` (no report: the crawl
-  ended first) — a crawl that failed the type check captured nothing, and its seed would otherwise
-  look like it is still waiting. A page that has a capture's answer (captured or failed) has 経緯
-  (trace) after its outcome, which opens [that one capture's trace](#one-captures-trace). A page whose WACZ is in the bundle the ledger points at has
+  ended such a page reads `pending (no report: the crawl ended first)`
+  (`pending（報告なし —— クロールが先に終わった）`) — a crawl that failed the type check captured nothing, and its seed would otherwise
+  look like it is still waiting. A page that has a capture's answer (captured or failed) has **Trace**
+  (経緯) after its outcome, which opens [that one capture's trace](#one-captures-trace). A page whose WACZ is in the bundle the ledger points at has
   ReplayWeb.page ↗ / Web Capture ↗ after its outcome: it opens that page inside the crawl's bundle, at the time it was
   captured (`#view=replay&url=…&ts=…`). What decides it is the ledger's `bundledRev`, the first
   version of the bundle that the page's WACZ went into: the link appears when it is no later than
@@ -180,23 +213,23 @@ the crawl's bundle.
   warn and error counts are what the ledger counted in that capture's `.result.json`; a page whose
   counts the ledger has
   not read shows "—", which is not the same as 0. The table holds one batch from the ledger, with
-  続きを読む (read on) when there is more. A ledger without the pages route gets a one-line note.
-- **ログ (log) shows the log lines of that page.** The workbench fetches the ledger's
+  **Read on** when there is more. A ledger without the pages route gets a one-line note.
+- **Log shows the log lines of that page.** The workbench fetches the ledger's
   `/api/crawls/:id/pages/:page/log` once, when you press it (closing and opening again fetches
   again). The lines come in the order they arrived: the milliseconds since the capture started, the
   source (`script` and the script's id for a script's lines, `page` for the captured page's console
   and exceptions, `browserhive` for BrowserHive's own lines), the level, the message and the data.
   BrowserHive attaches whose line it is, so a script never writes its id. Messages are not reworded,
-  and the data follows the message as JSON. The filter starts at すべて (all), and offers warn 以上
-  (warn and above) and error だけ (error only); its numbers are how many lines each one shows. A line
-  BrowserHive cut at its per-line limit is marked 途中で切った (cut short), and when lines were
-  not kept, the box says how many (N 行は残していない（上限か方針で）, N lines not kept, by the limit or a policy):
+  and the data follows the message as JSON. The filter starts at **All** (すべて), and offers **warn and above**
+  (warn 以上) and **error only** (error だけ); its numbers are how many lines each one shows. A line
+  BrowserHive cut at its per-line limit is marked `cut short` (途中で切った), and when lines were
+  not kept, the box says how many (`N lines not kept (by the limit or a policy)`, N 行は残していない（上限か方針で）):
   lines dropped over the limit for the capture, and lines a document withheld by a policy wrote to its
   console. A browserhive line in the log says which. For a page whose log
   cannot be read, the box gives the ledger's reason, as a short sentence and the reason itself (not
   captured yet or not captured, no `.result.json` recorded, missing from the store or not matching
   the contract, or captured by a BrowserHive from before logs were kept).
-  When the page has a WACZ, WACZ の画面で開く (open in the WACZ view) above the box opens the same
+  When the page has a WACZ, **Open in the WACZ view** (WACZ の画面で開く) above the box opens the same
   lines sealed in the WACZ (`logs/capture.jsonl`) in the WACZ view. A WACZ line is the answer's line
   with `profile` added, and the signature covers it. A WACZ BrowserHive took before WACZ Profile
   1.19.0 has no such entry.
@@ -209,7 +242,7 @@ the crawl's bundle.
 ### Link structure
 
 Clicking the links number on the list opens that crawl's link structure (the URL is
-`#links/<crawl id>`). The tab stays クロール; the view replaces the list, and ← クロールの一覧 goes
+`#links/<crawl id>`). The tab stays **Crawls**; the view replaces the list, and **← Crawl list** (← クロールの一覧) goes
 back. The numbers and outcomes are what the ledger kept, one row per link, at each level report
 (`GET /api/crawls/:id/links`); the workbench only draws them.
 
@@ -219,23 +252,25 @@ back. The numbers and outcomes are what the ledger kept, one row per link, at ea
 ② the selected page (its links are listed below)\
 ③ a box of links that were not captured
 
-- **The bar on top says what became of the distinct URLs the crawl found.** Captured, not
-  captured (failed or deferred), cut by the page limit (枚数で切った), cut by the depth limit
-  (深さで切った), dropped by a rule (規則で落とした). A URL counts once however many pages link to
+- **The bar on top says what became of the distinct URLs the crawl found.** Its parts are
+  **Captured** (撮った), **Not captured (failed or skipped)** (取れず・見送り), **Pending** (これから),
+  **Cut by the page limit** (枚数で切った), **Cut by the depth limit** (深さで切った),
+  **Crawl already closed** (締まっていた) and **Dropped by a rule** (規則で落とした); a part that is 0 is
+  left out. A URL counts once however many pages link to
   it, so the parts add up to the distinct URLs found. Seeds are not counted.
 - **The figure has one column per depth.** A box is a captured page; columns run from depth 0 (the
   seeds) to the right. A solid line is how a page was found (the link that put it into the next
   level). Links that were not captured are gathered into one box per reason, to the right of the
-  page that found them first (＋14 本 枚数で切った). URLs a rule dropped are one box in all (the
+  page that found them first (`+14 cut by pages`; ＋14 本 枚数で切った in the picture). URLs a rule dropped are one box in all (the
   line below the figure lists them per host name).
 - **Clicking a box lists that page's links below.** The pages that link to it, and its own links
-  grouped as 次の段に入れた (entered the next level), もう行がある (already had a row),
-  枚数で切った, 深さで切った and 規則で落とした (`GET /api/crawls/:id/links/<page id>`). The URL
+  grouped as **Entered the next level** (次の段に入れた), **Already had a row** (もう行がある),
+  **Cut by the page limit**, **Cut by the depth limit** and **Dropped by a rule** (`GET /api/crawls/:id/links/<page id>`). The URL
   becomes `#links/<crawl id>/<page id>`. In the figure the lines touching that page stand out, and
   the edges that are not in the tree (links to a page that already had a row, dotted) appear;
-  木に無い辺を全部出す shows them all without a selection.
-- **▾ folds what is under a page.** A folded box says how many pages it hides (＋17 枚). A figure
-  with more than 60 rows opens with everything below depth 1 folded. 深さ 1 より下を畳む folds
+  **Show all edges not in the tree** (木に無い辺を全部出す) shows them all without a selection.
+- **▾ folds what is under a page.** A folded box says how many pages it hides (`+17 pg`; ＋17 枚). A figure
+  with more than 60 rows opens with everything below depth 1 folded. **Fold everything below depth 1** (深さ 1 より下を畳む) folds
   all of it, and unfolds all on the next click.
 - **A crawl with no link record shows only the tree.** That is a crawl from before capture-ledger
   v0.99.0 that was not backfilled. Boxes and solid lines appear; the bar, the boxes of uncaptured
@@ -248,9 +283,9 @@ The layout and wording are in `public/links.js` (`layoutOf` and others), pinned 
 
 ### One capture's trace
 
-経緯 (trace), after a page's outcome in the pages table, opens the trace of that one capture (the
-URL is `#trace/<crawl id>/<page id>`). The tab stays クロール; the view replaces the list, and
-← クロールの一覧 goes back. The link is there for pages that have a capture's answer (captured or
+**Trace** (経緯), after a page's outcome in the pages table, opens the trace of that one capture (the
+URL is `#trace/<crawl id>/<page id>`). The tab stays **Crawls**; the view replaces the list, and
+**← Crawl list** goes back. The link is there for pages that have a capture's answer (captured or
 failed), not for pages still waiting or skipped.
 
 It reads one route of the ledger, `GET /api/crawls/:id/pages/:page/trace`, and, for a capture
@@ -260,38 +295,41 @@ ledger; the workbench only lays it out.
 
 ![The trace of one page's capture: a figure on a time axis on top (rows for the capture's steps, their details, the wait, the requests and the snapshots), and the list of requests below. The axis is seconds from the start of the capture](../../assets/screens/trace.webp)
 
-① the bars of the capture's steps② the wait after loading, with marks where things went quiet③ the request marks (when Chromium sent each request)④ the list of requests (pressing one shows its fields below)
+① the bars of the capture's steps\
+② the wait after loading, with marks where things went quiet\
+③ the request marks (when Chromium sent each request)\
+④ the list of requests (pressing one shows its fields below)
 
 - **The axis is seconds from the start of the capture.** Zero is when BrowserHive started the
   capture: the time of the first log line minus that line's `ms`. A capture without a log uses
   the time it ended (`timestamp`) minus its processing time (`captureProcessingTimeMs`). The
-  heading line gives the total seconds, the document's HTTP status and WACZ の画面で開く.
-- **The bars come from the lines BrowserHive wrote to the log.** 取り込みの段 (steps) runs from
-  the line written on entering a step (`step load-pages` and so on) to the next step's line. 細部
-  (details) runs from a mark inside a step (a debug line) to the next mark. スクリプト (scripts)
+  heading line gives the total seconds, the document's HTTP status and **Open in the WACZ view**.
+- **The bars come from the lines BrowserHive wrote to the log.** **Steps** (取り込みの段) runs from
+  the line written on entering a step (`step load-pages` and so on) to the next step's line. **Details**
+  (細部) runs from a mark inside a step (a debug line) to the next mark. **Scripts** (スクリプト)
   pairs a script's start line with its end line; a script with no end line runs to the end of the
   axis. console marks the lines the captured page and the scripts wrote. A capture without a log
   (BrowserHive before v24.0.0) has no bars.
-- **待ち (wait) is the time spent waiting for the page to go quiet after loading.** The bar runs
+- **Wait (待ち) is the time spent waiting for the page to go quiet after loading.** The bar runs
   from the start of the wait to its end, and the marks are load, the network going quiet, the DOM
   going quiet and the CPU going quiet (the answer's `settle`). What never went quiet has no mark,
-  and pressing the bar says 静まらなかった.
+  and pressing the bar lists it as `never` (静まらなかった).
 - **The request marks come from the records inside the WACZ.** A filled mark is a request paired
   with its response (a WARC request and response), placed at `WARC-Date` — when Chromium sent the
   request. A hollow mark is the record of a request that was not paired (a WARC metadata): one of
-  終わらなかった (did not finish), 失敗した (failed), 止めた (denied) and 残さなかった (not
-  archived). **It is placed at the time BrowserHive wrote that record, not at the start of the
+  **Did not finish** (終わらなかった), **Failed** (失敗した), **Denied** (止めた) and **Not archived**
+  (残さなかった). **It is placed at the time BrowserHive wrote that record, not at the start of the
   request** (a request that did not finish sits where recording stopped). Which of the four it
   is, is written in the metadata's body, so the first 40 are read when the view opens and the
-  rest when pressed in the list (until then they say 読んでいない). The end of a request and how
+  rest when pressed in the list (until then they say **Not read yet**, 読んでいない). The end of a request and how
   long it took are not shown: today's WACZ has no record that says so.
 - **The list of requests is in time order.** One row has the seconds, the status (or the kind of
   record), the URL and the position on the axis; pressing it shows fields below. A paired request
   shows its MIME type and, when the body was not kept, why. An unpaired one shows the reason, the
   error, the policy it matched, the resource type and the method (those the record has). The line
-  on top is the counts: 要求 N is the paired ones, counted the same way as the answer's
+  on top is the counts: `Requests N` (要求 N) is the paired ones, counted the same way as the answer's
   `waczStats.totalRecorded`.
-- **写し (snapshots) is when each DOM snapshot was taken.** Pressing one shows the snapshot's
+- **Snapshots (写し) is when each DOM snapshot was taken.** Pressing one shows the snapshot's
   stage and links that open it in replay (only when the WACZ may be viewed).
 - **Pressing a bar or a mark in the figure shows its fields below**: the start and length of a
   bar, or the time of a mark, in seconds.
@@ -300,15 +338,15 @@ ledger; the workbench only lays it out.
   0.3 seconds, measured on a local stack).
 - **A capture that failed says which step it stopped in.** The answer of a timeout or a failure
   does not carry the step's name. It is read from the last step line of the log, and the heading
-  line gives 止まった段 and the reason. A capture with no WACZ has no list of requests (requests
+  line gives `stopped in step` (止まった段) with the step's name, and the reason. A capture with no WACZ has no list of requests (requests
   are read from the WACZ).
 - **A page whose trace cannot be read shows the ledger's reason**: no answer from a capture, no
   recorded place for `.result.json`, nothing at that place in the store, or a file the contract
   rejects. An identity that may not view the WACZ gets the bars and the log, not the requests.
-- **The same capture's log is listed below**, in the same box as ログ in the pages table, with
+- **The same capture's log is listed below**, in the same box as **Log** in the pages table, with
   the same filter.
-- **This view is not under the signature.** It lays out what it read from `.result.json` in the
-  store and from the WACZ. What stands as the record is what is inside the WACZ.
+- **The signature does not cover this view.** It lays out what it read from `.result.json` in the
+  store and from the WACZ. The records to show as evidence are the ones inside the WACZ.
 
 The arithmetic (axis, bars, marks, counts) is `public/timeline.js`, pinned by
 `test/timeline.test.mjs` against real answers from capturing capture-fixtures on a local stack.
@@ -317,49 +355,50 @@ The arithmetic (axis, bars, marks, counts) is `public/timeline.js`, pinned by
 
 `state` alone is not enough. `succeeded` mixes crawls that followed everything to the end with
 crawls that were cut at the depth or page limit. The workbench words them apart using `stopReason`
-(完走 for completed, 打ち切り for cut at a limit), and shows an unknown `stopReason` as it
+(**Completed**, 完走, when everything was followed; **Cut (depth)** and **Cut (pages)**, 打ち切り (深さ) and
+打ち切り (枚数), when a limit cut it), and shows an unknown `stopReason` as it
 is, in parentheses. A depth-0 crawl asked not to follow links, so it is not cut even if links are
-left over: it reads このページだけ (the ledger's `maxDepth` on the list). A crawl asked to follow links that found
-none the rules let through reads リンクなし, in the warning colour (capture-ledger's `no_links`): it never got past its
-seeds, and that is kept apart from a green 完走. If some pages could not be fetched it adds the count (the ledger's
-`pagesFailed`), as in 完走・2 枚取れず, and the row is not green even if everything was followed. A
-crawl that captured nothing is closed as `failed` by the ledger, so it reads 失敗.
+left over: it reads **This page only** (このページだけ; the ledger's `maxDepth` on the list). A crawl asked to follow links that found
+none the rules let through reads **No links** (リンクなし), in the warning colour (capture-ledger's `no_links`): it never got past its
+seeds, and that is kept apart from a green **Completed**. If some pages could not be fetched it adds the count (the ledger's
+`pagesFailed`), as in `Completed · 2 pages failed` (完走・2 枚取れず), and the row is not green even if everything was followed. A
+crawl that captured nothing is closed as `failed` by the ledger, so it reads **Failed** (失敗).
 
 The wording rules are `stateOf` in `public/format.js`, pinned by `test/format.test.mjs`. The
 tests read the same file the browser reads, so there is no copy to rot.
 
 ## Start a crawl
 
-The 新しいクロール (new crawl) view starts a crawl. The left column holds the seed URLs, the registered scripts, the User-Agent box,
-the per-crawl values (when a ticked script declares any), the depth and the 始める (start) button; the
+The **New crawl** view starts a crawl. The left column holds the seed URLs, the registered scripts, the User-Agent box,
+the per-crawl values (when a ticked script declares any), the depth and the **Start** (始める) button; the
 right column holds the box for a script of your own, and how to follow links. The box
 stretches to the bottom of the window and has line numbers on its left, so a large script can be
-pasted, read, fixed a little and run. Write the seed URLs one per line, choose このページだけ (this
-page only) or リンクを辿る (follow links), and press 始める. The right column has tabs: it switches to
-a window for reading a registered script, and, while リンクを辿る is chosen, to 辿り方 (how to
-follow).
+pasted, read, fixed a little and run. Write the seed URLs one per line, choose **This page only**
+(このページだけ) or **Follow links** (リンクを辿る), and press **Start**. The right column has tabs: it switches to
+a window for reading a registered script, and, while **Follow links** is chosen, to **How to follow**
+(辿り方).
 
 ![The left column of the new crawl view: the seed URL (e-Gov Law Search), script rows (a run-order number, a checkbox, and ↑↓) including the row for your own script, the site script egov-law-search, and autofetch left unticked as 既定では走らない, the field for the variable query that egov-law-search declares, the User-Agent box with its button, this page only or follow links, and 始める](../../assets/screens/start.webp)
 
 ① seed URLs\
-② スクリプト (scripts): the run-order numbers, the checkboxes and 読む (read), and ↑↓\
-③ クロールごとの値 (per-crawl values): the fields for the variables the ticked scripts declare\
-④ User-Agent: the box and the button that fills in the form without Headless\
-⑤ 始める (start)
+② スクリプト (Scripts): the run-order numbers, the checkboxes and 読む (Read), and ↑↓\
+③ クロールごとの値 (Per-crawl values): the fields for the variables the ticked scripts declare\
+④ User-Agent: the box and the button that fills in the pattern without Headless\
+⑤ 始める (Start)
 
 ![The right column of the new crawl view: the tab その場の TS, the name of the script, when it runs, and the script box](../../assets/screens/start-js.webp)
 
 ① the right column's tabs\
-② スクリプトの名前 (name of the script)\
+② スクリプトの名前 (Name of the script)\
 ③ the script box
 
 - **It sends the seed URLs, whether the depth is 0, what runs — only when it differs from the
-  default — and the per-crawl variables, only those with a value.** このページだけ sends `maxDepth: 0`; リンクを辿る sends the rules, and the depth
+  default — and the per-crawl variables, only those with a value.** **This page only** sends `maxDepth: 0`; **Follow links** sends the rules, and the depth
   and the page limit only when they are written (empty, they are the ledger's defaults). With the default set the seeds decide (of the scripts in
   the default, those without sites and the site scripts for a seed's host) ticked and unmoved, and no script of your own, the form
   sends no `scripts`, and the ledger picks the same set in the same order from the seeds. A ledger with no scripts is still a
   400, and so, with its own message, is one in which no script fits the seeds. Otherwise it
-  sends `scripts` in the order of the numbers (a script of your own set to 遷移の前 goes first);
+  sends `scripts` in the order of the numbers (a script of your own set to **Before navigation**, 遷移の前, goes first);
   unticking all of them sends `[]`, which runs nothing. The workbench checks neither the URLs
   nor the script's name; the ledger says what is wrong with a 400, naming the ids it refused.
 - **The numbers show the order the scripts run in, and ↑↓ change it.** The ticked rows are numbered
@@ -367,25 +406,25 @@ follow).
   [capture-scripts](https://github.com/uraitakahito/capture-scripts) (from ledger v0.75.0), so ticking
   `autofetch` alone runs it after `autoscroll`. ↑↓ swap numbered rows. Unticking leaves the row where it is and only
   takes away its number and arrows. Site scripts that fit no seed collect at the bottom. A script of
-  your own set to 読み込みの後 (after load) gets a row when you write it, first at the top, and moves
-  with the others; one set to 遷移の前 (before navigation) gets no row and always runs first. The
+  your own set to **After load** (読み込みの後) gets a row when you write it, first at the top, and moves
+  with the others; one set to **Before navigation** gets no row and always runs first. The
   order you set survives re-fetching the list and starting a crawl; reloading the page resets it.
 - **A site script can be ticked only when a seed is on its site.** A script with sites can be
   ticked only while one of the seeds is on one of those hosts. The seed's hostname must match
   exactly and its port is ignored (`laws.e-gov.go.jp` and `www.e-gov.go.jp` are different hosts).
   Writing a seed ticks the site scripts that fit it; the others cannot be ticked and say why, as in
-  起点に laws.e-gov.go.jp がありません (no seed on laws.e-gov.go.jp). With no seed yet, they say
-  起点を書くと選べます (write a seed to choose). A box you unticked stays unticked when the seeds
+  `No seed on laws.e-gov.go.jp` (起点に laws.e-gov.go.jp がありません). With no seed yet, they say
+  `Write a seed to choose` (起点を書くと選べます). A box you unticked stays unticked when the seeds
   change. The rule is the ledger's: naming a site script that fits no seed gets a 400 from it.
   The example is `egov-law-search` from capture-scripts (sites `laws.e-gov.go.jp`), which searches law titles
   within [e-Gov Law Search](https://laws.e-gov.go.jp/) for the word in the required variable `query`; seed
   `https://laws.e-gov.go.jp/` to choose it, as in the picture above.
 - **The User-Agent box sets the crawl's `User-Agent`.** Left empty, nothing is sent and the browser's
-  own value (with `HeadlessChrome`) goes out. The button Headless を外す型を入れる (put in the form without Headless)
+  own value (with `HeadlessChrome`) goes out. The button **Put in the pattern without Headless** (Headless を外す型を入れる)
   fills in `{chrome} BrowserHive`: BrowserHive turns `{chrome}` into the browser's own value without Headless, so
   a site that refuses Headless can be captured, and the text never goes stale when the browser is upgraded.
   For example, the [Prime Minister's Office of Japan](https://www.kantei.go.jp/) answers HTTP 404 to text containing
-  `HeadlessChrome`. Started with the box empty and このページだけ (this page only), the page ends in
+  `HeadlessChrome`. Started with the box empty and **This page only**, the page ends in
   `failed: http_error: HTTP 404: Not Found`: nothing is captured and no ReplayWeb.page ↗ / Web Capture ↗ appears. Fill in
   `{chrome} BrowserHive` with the button and it is captured and opens with ReplayWeb.page ↗ / Web Capture ↗ (checked on 2026-11-07; what a
   site answers can change). Whether to include the word `BrowserHive` is up to whoever types: with it, a site can tell that BrowserHive took the page and
@@ -394,17 +433,17 @@ follow).
   shows its sentence as it is. The text stays in the box after starting, like the variables and the
   script. The opened row of the crawls view shows the text as typed; the value actually sent is in the WACZ's
   `settings.userAgent`.
-- **When a ticked script or your own script declares values, the クロールごとの値 (per-crawl values) box
+- **When a ticked script or your own script declares values, the Per-crawl values (クロールごとの値) box
   appears.** A script declares the variables it reads in its source with
   `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))`. For a script in
   [capture-scripts](https://github.com/uraitakahito/capture-scripts) the declarations are also in the
   `params` of its `catalog.json`; the ledger keeps them with each version and `GET /api/scripts`
   carries them. For your own script, the view asks the ledger once the box has stopped changing for
-  800 ms (`POST /api/scripts/check`), so the field also appears after a file is read, 欄に戻す (back to
-  the form) and 下敷きにする (use as a template). A variable (`kind: variable`) becomes one row with its
+  800 ms (`POST /api/scripts/check`), so the field also appears after a file is read, **Back to
+  the form** and **Use as a template** (下敷きにする). A variable (`kind: variable`) becomes one row with its
   name, its description and a field for the value, or a choice when the declaration is a `z.enum`:
   `query` in the picture above is declared by `egov-law-search` as the search word. A required declaration
-  (no `.optional()`) is marked 必須 (required). Only the fields with a value are sent, as `variables`;
+  (no `.optional()`) is marked `required` (必須). Only the fields with a value are sent, as `variables`;
   an empty optional field is not sent and the script reads `undefined`.
   The values are remembered: after a 202, and when unticking a script removes its rows, they stay,
   and come back when the script is ticked again. The workbench does not check them: the spelling of a
@@ -412,12 +451,12 @@ follow).
   per crawl, values up to 4,096 characters and the shape the script declared are the ledger's rules. When a
   required field is empty, a name no script declared is sent or a value does not fit, the ledger answers
   400 naming it before it creates a row (under the left column you read something like
-  `400 —— missing variables: query`). When your own script's declaration cannot be read, or the ledger
+  `400 — missing variables: query`). When your own script's declaration cannot be read, or the ledger
   cannot be asked, the reason is under the box in red: `BH0002` (the form cannot be read without running it),
-  `BH0004` (a script that runs before navigation has nowhere to read a variable), or 宣言を確かめられません
-  (could not check the declarations) with the ledger's sentence. Ordinary type errors are not shown
+  `BH0004` (a script that runs before navigation has nowhere to read a variable), or `Cannot check the declarations`
+  (宣言を確かめられません) with the ledger's sentence. Ordinary type errors are not shown
   there; the compile step reports them when the crawl runs. A secret (`kind: secret`) is
-  listed under 使うシークレット (secrets used) by name only, with no field, and beside the name whether
+  listed under **Secrets used** (使うシークレット) by name only, with no field, and beside the name whether
   the WARC hides or keeps it (the declaration's `archive`; left out, it hides): its value is put by a
   person into the Windmill variable `f/waggle_secrets/<name>`, the ledger checks that it exists
   (otherwise a 400 naming it with its path), and Windmill resolves it for the script on every crawl.
@@ -428,13 +467,13 @@ follow).
   capture-scripts README). When a hidden secret is used while the deployment's formats (the ledger's
   `CAPTURE_LEDGER_CAPTURE_FORMATS`) include PNG, WebP, HTML or MHTML, none of which can have the value
   replaced, the ledger refuses with a 400 before it creates a row, naming the secrets and how to fix it
-  (under the left column: `400 —— formats that cannot hide secrets: api_token（CAPTURE_LEDGER_CAPTURE_FORMATS の png は値を置き換えられない …）`).
+  (under the left column: `400 — formats that cannot hide secrets: api_token (CAPTURE_LEDGER_CAPTURE_FORMATS の png は値を置き換えられない …)`; the part in parentheses is the ledger's hint, which the ledger writes in Japanese).
   Declaring one name as kept in one script and hidden in another gives
-  `400 —— conflicting params: api_token`. No bundled script declares a secret,
+  `400 — conflicting params: api_token`. No bundled script declares a secret,
   so this view passes variables only; your own script can declare a secret (`inline.params`) only when
   calling the ledger's API directly.
-- **A script left out of the default is listed unticked.** It reads 既定では走らない (does not run
-  by default) beside its name, as autofetch does in the picture above: a script whose entry in the
+- **A script left out of the default is listed unticked.** It reads **Does not run by default**
+  (既定では走らない) beside its name, as autofetch does in the picture above: a script whose entry in the
   `catalog.json` of [capture-scripts](https://github.com/uraitakahito/capture-scripts) says
   `"default": false`, every version of which the ledger keeps disabled. A crawl that names no
   scripts does not run it. Tick it and the form names it, and the ledger runs its newest version. A
@@ -442,9 +481,9 @@ follow).
 - **It shows the size before sending.** Under the box are the number of lines, the size of the body
   it will send (UTF-8 bytes) and how much of the limit that is. The limit is the one the writing
   route enforces, handed out by the server as `writeLimit` in `/healthz`. Over it, the line turns
-  red and 始める cannot be pressed.
-- **The name of your script becomes its id.** Write it in the box labelled スクリプトの名前 (name of the
-  script) in the right column. The `inline-` in front stays: `close-banner` gives the id
+  red and **Start** cannot be pressed.
+- **The name of your script becomes its id.** Write it in the box labelled **Name of the script**
+  (スクリプトの名前) in the right column. The `inline-` in front stays: `close-banner` gives the id
   `inline-close-banner`. Start with a lowercase letter, then use only lowercase letters, digits and
   `-`, up to 57 characters (the ledger's rule). This view does not check it: a wrong or empty name is
   refused by the ledger with a 400, and under the left column you read something like
@@ -452,7 +491,7 @@ follow).
   the box holds a script; with an empty box it is not used. The id appears in a crawl's list of what
   ran, as the source of its lines in a page's log, and in the archive's `behaviors/custom.jsonl`.
   BrowserHive attaches it to the lines your script logs (`__bh.log.info(…)` and so on) and reports
-  (`__bh.report(…)`), so the script itself never writes it. 欄に戻す (back to the form) fetches your
+  (`__bh.report(…)`), so the script itself never writes it. **Back to the form** fetches your
   script back by this name.
 - **A script of your own is type-checked as strict TypeScript** at the first level's compile step,
   and a single error fails the crawl; open its row to read the number of diagnostics and the first
@@ -460,46 +499,47 @@ follow).
   `export`: compile stops it with `BH0006`, because the page would get a syntax error and nothing
   would run.
 - **It can use Zod.** Start with `import { z } from "zod"` or `import * as z from "zod/mini"`. Compile
-  stops any other form with `BH0003`, and stops it before navigation (遷移の前) with `BH0004`.
+  stops any other form with `BH0003`, and stops a script set to **Before navigation** with `BH0004`.
   ts-compile-service bundles only the names in use into the JavaScript, which adds about 85 KB to the
   script (15 KB for `zod/mini`). A crawl still succeeds when a value has the wrong shape, so use
   `safeParse` and `__bh.log.error` rather than `parse`.
-- **For a bundled script, tick 型を検査しない (skip the type check).** Ticking it puts
+- **For a bundled script, tick Skip the type check (型を検査しない).** Ticking it puts
   `// @ts-nocheck` on the first line of the box, and unticking takes it off: what you see is what is
   sent, and the ledger's sha256 covers it too. A pasted script that already starts with that line
   shows the box ticked.
 - **The box does not wrap lines,** so the line numbers stay in step; long lines scroll sideways.
-  読み込みの後 (after load) runs once in the main frame; 遷移の前 (before navigation) runs in every
-  frame on every navigation and has no `__bh`. ファイルを読む (read a file) loads a file into the
+  **After load** runs once in the main frame; **Before navigation** runs in every
+  frame on every navigation and has no `__bh`. **Read a file** (ファイルを読む) loads a file into the
   box, in the browser only; if the name box is empty, it takes the file name without its extension.
   Fix it before starting if it breaks the rule above (capital letters or `_`).
-- **A registered script can be read in the right column.** Press 読む (read) next to its checkbox:
+- **A registered script can be read in the right column.** Press **Read** next to its checkbox:
   a second tab opens in the right column, named like `autoscroll v2`, with the source of that
   version in colour. The view does not change. The box is only hidden: your script, its scroll
-  position and the cursor stay, and the その場の TS (your script) tab brings it back. You can tick
+  position and the cursor stay, and the **Your script** (その場の TS) tab brings it back. You can tick
   and untick while reading, and read a site script whose checkbox is disabled. One script is open
-  at a time; another 読む replaces it, and × closes it. The window has 写す (copy), 下敷きにする
-  (use as a template) and a link that opens the script in the [script collection view](#script-collection), which alone
+  at a time; another **Read** replaces it, and × closes it. The window has **Copy** (写す), **Use as a template**
+  and a link that opens the script in the [script collection view](#script-collection), which alone
   has the version chips and line URLs. With ⌘ or Ctrl held, the browser opens the script collection view in
   another tab instead.
 
 ![The right column of the new crawl view, reading the script autoscroll v2 in colour](../../assets/screens/start-read.webp)
 
-- **リンクを辿る opens the 辿り方 (how to follow) tab.** It holds the depth and the page limit, the
-  presets, and the rules. A rule is an action — 撮って辿る (capture and follow), 撮るだけ (capture
-  only) or 落とす (drop) — and what it matches: `same-origin`, `same-host`, `same-site` or `any`
+- **Follow links opens the How to follow tab.** It holds the depth and the page limit, the
+  presets, and the rules. A rule is an action — **Capture and follow** (撮って辿る), **Capture only**
+  (撮るだけ) or **Drop** (落とす) — and what it matches: `same-origin`, `same-host`, `same-site` or `any`
   (compared with the seeds), a lower-case host name (that host and the subdomains under it), or an
   `http(s)` URL (a prefix). The ledger tries the rules from the top, the first match decides, and a
-  link no rule matches is dropped. The tab starts with ホストの中 (within the host); the presets
-  サイトの中 (within the site), サイトの中＋外は 1 歩 (within the site, one step outside),
-  ホストの中 and どこでも (anywhere) each hold a 撮って辿る rule, because the ledger refuses seeds
-  that do not land on one. ＋ 落とす行を足す adds a drop rule at the top — below a broad 撮って辿る
+  link no rule matches is dropped. The tab starts with **Within the host** (ホストの中); the presets
+  **Within the site** (サイトの中), **Within the site, one step outside** (サイトの中＋外は 1 歩),
+  **Within the host** and **Anywhere** (どこでも) each hold a **Capture and follow** rule, because the ledger refuses seeds
+  that do not land on one. **+ Add a drop rule (goes at the top)** (＋ 落とす行を足す（いちばん上に入る）) puts
+  a drop rule at the top — below a broad **Capture and follow**
   rule it could never match. The ↑ ↓ × buttons name their row for screen readers, and focus follows
   the row that moved.
 
 ![The 辿り方 tab of the new crawl view: depth 3 and 200 pages, the presets, four rules with the last one marked as covered by the third, and the sentence that restates them](../../assets/screens/start-rules.webp)
 
-① 辿り方 (how to follow)\
+① 辿り方 (How to follow)\
 ② the presets\
 ③ the action of each rule\
 ④ the ledger's check of each rule\
@@ -508,10 +548,10 @@ follow).
 
 - **The ledger checks the rules as you write them.** After a 300 ms pause the view asks the ledger's
   `GET /api/crawl-rules/check` (it writes nothing, so it rides the same pass-through as the
-  lists). Each row then says what the ledger read — 範囲 (scope), ドメイン (domain) or 前方一致
-  (prefix) — or, in red, that it cannot be read or that an earlier row covers it; the sentence
+  lists). Each row then says what the ledger read — `scope` (範囲), `domain (and its subdomains)` (ドメイン（その下も）) or `prefix`
+  (前方一致) — or, in red, that it cannot be read or that an earlier row covers it; the sentence
   under the table restates what will be followed, in the ledger's reading (a URL prefix appears
-  normalised). While the ledger says the rules cannot start, 始める cannot be pressed. When the
+  normalised). While the ledger says the rules cannot start, **Start** cannot be pressed. When the
   ledger cannot be asked, nothing is blocked: starting gets its answer instead.
 - **A 202 or a 409 takes you to the crawls view.** When the crawl is accepted, its row gets a mark;
   if a crawl is already running, the row in the way gets the mark (the ledger runs one crawl at a
@@ -520,19 +560,19 @@ follow).
   under the left column.
 - **After a 202 the seed URLs are cleared; your script and the values of the variables are kept,**
   since the usual next step is to fix it and run again.
-- **欄に戻す (back to the form) brings you back here.** Open a row in the crawls view and press
-  欄に戻す on a script of your own: this view opens with its name, phase and source. The source
+- **Back to the form brings you back here.** Open a row in the crawls view and press
+  **Back to the form** on a script of your own: this view opens with its name, phase and source. The source
   comes from the ledger's `/api/crawls/:id/inline/:name` (a crawl's detail only carries its size).
   The seed URLs and the ticked scripts are left alone. If the right column was showing a registered
-  script, it switches back to the その場の TS tab.
-- **下敷きにする (use as a template) in the [script collection view](#script-collection) brings a registered script
+  script, it switches back to the **Your script** tab.
+- **Use as a template in the [script collection view](#script-collection) brings a registered script
   here** as a script of your own, named `my-<id>` unless the name box already has one. Only the form
   that names the script's own id, `__bh.opts["<id>"]` (where it reads its options), is changed to
   `inline-<name>`; reports and log lines take no id, so they are left alone. The message under the
   left column says on which lines. The original is unticked,
   so it does not run twice. If the box already holds a script, the script collection view asks before
-  replacing it. 下敷きにする in the right column's reading window does the same, and asks inside
-  that window; afterwards the その場の TS tab is in front, and the reading window stays open for
+  replacing it. **Use as a template** in the right column's reading window does the same, and asks inside
+  that window; afterwards the **Your script** tab is in front, and the reading window stays open for
   comparing. A site script's sites do not come along: a script of your own runs from any seed,
   and the check at the top of the script (comparing `location.hostname`) keeps it idle on other
   sites.
@@ -559,21 +599,21 @@ for actions.
   a running crawl, and for 10 minutes (quiet) after the ledger starts and after the latest crawl. The
   due time does not move while it waits, and the run starts afterwards.
 - **Runs missed while the ledger was down merge into one.** It captures once when it comes back, and
-  the merged count shows as 欠け.
-- **A run where only some pages failed says 一部失敗.** It stays off the band: a site that fails every
+  the merged count shows under **Missed** (欠け).
+- **A run where only some pages failed says Partly failed (一部失敗).** It stays off the band: a site that fails every
   day would keep the band up, and nobody would read it.
-- **いま撮る (run now) does not wait for quiet.** It queues behind a running crawl, and works on a
+- **Run now (いま撮る) does not wait for quiet.** It queues behind a running crawl, and works on a
   paused schedule.
 - **How to capture is pinned when the schedule is made.** A new script version does not change what a
-  run does (it shows as `autoscroll@1（新しい版 2）`). 固定し直す (repin) moves it up.
+  run does (it shows as `autoscroll@1 (newer version 2)`; `autoscroll@1（新しい版 2）` on the Japanese screen). **Repin** (固定し直す) moves it up.
 - **A row left running is not closed for you,** so that a run that really is running does not get
-  closed. If it blocks the next run, 締める (close) appears, and closes that crawl as failed.
+  closed. If it blocks the next run, **Close the row … left running** (走ったままの行 … を締める) appears, and closes that crawl as failed.
 - **Schedules are made on the new crawl view.** Fill in the form, write a name and a cron expression
-  (5 fields, Asia/Tokyo), and press 定期にする. The checks are the same as 始める, with the same words
+  (5 fields, Asia/Tokyo), and press **Make a schedule** (定期にする). The checks are the same as **Start**, with the same words
   when refused. The ledger sets the minimum gap between runs (60 minutes by default). There is no
   editing: delete and make it again.
 
-Rows on the crawls view carry a 定期 mark, and 定期・欠け 2 when runs were merged.
+Rows on the crawls view carry a `scheduled` (定期) mark, and `scheduled · 2 missed` (定期・欠け 2) when runs were merged.
 
 ## Changes
 
@@ -581,29 +621,32 @@ How a scheduled run differs from the previous run of the same schedule with the 
 (`#changes`, `#changes/<crawl id>`, `#changes/<crawl id>/<WACZ id of this run>`). Comparing and summarizing happen in
 [capture-ledger](https://github.com/uraitakahito/capture-ledger); this view only reads.
 
-The list's 始まった (started) column is when the run started. The list is in that order, and only a run that started a
-minute or more late adds its due time and the delay, as in （本来 11-08 04:00・2 日遅れ）. Clicking a row hides the list and
-opens the run; 「← 変化の一覧」 goes back.
+The list's **Started** (始まった) column is when the run started. The list is in that order, and only a run that started a
+minute or more late adds its due time and the delay, as in `(due 11-08 04:00 · 2 days late)` (（本来 11-08 04:00・2 日遅れ）). Clicking a row hides the list and
+opens the run; **← Change list** (← 変化の一覧) goes back.
 
 ![A run opened in the changes view. Under the heading, the times of this run and the previous one and the note that Claude's summary is not evidence; on the left, the pages by weight (content, small, nothing that matters, the same); on the right, one page's diff, Claude's line and quotes, and ReplayWeb.page ↗ / Web Capture ↗ for before and after](../../assets/screens/changes.webp)
 
 - **Every page on the left, one page on the right.** The list holds every page the run compared, by weight (a
   change of content, a small change, nothing that matters, a diff without a summary, a diff that could not be built),
-  then the pages that were the same (同じ). The first one opens. The rows and 「← 前のページ」 / 「次のページ →」 rewrite
+  then the pages that were the same (**The same**, 同じ). The first one opens. The rows and **← Previous page** / **Next page →** (← 前のページ / 次のページ →) rewrite
   the URL, so the browser's back button returns to the previous page and a shared URL opens the same page. When the
   named page is not in the run (a WACZ you may not view, an old URL), the view says so and shows the first page. A
   narrow window puts the list above the page.
 - **The diff comes from the evidence; the summary only makes it easier to read.** capture-ledger
   builds the diff from the two WACZ files without Claude. The run's summary carries
-  「Claude の要約（証拠ではない）」 (Claude's summary, not evidence) with the model, the prompt version and
-  the cost, and each page's line from Claude carries （証拠ではない）. To check, open both with the two viewer links
-  after 「前:」 and 「今:」.
+  `Claude's summary (not evidence)` (Claude の要約（証拠ではない）) with the model, the prompt version and
+  the cost, and each page's line from Claude carries `(not evidence)`. To check, open both with the two viewer links
+  after **Before:** and **After:** (前: and 今:).
+- **Claude's summary and lines are in Japanese on either screen.** capture-ledger has them written in
+  Japanese, and the workbench does not translate them. On the English screen, a page's line from
+  Claude is followed by `The summary is written in Japanese.`
 - **Clicking a quote moves to its line.** A diff line holding a quote from Claude is marked on the left.
 - **Pages that were the same** (same text, or only blank lines and indentation changed) show only the viewer links.
   Pages that were not compared (in only one run, withheld, without a text digest) are not listed.
 - **Three weights:** nothing that matters (only a time moved; green), a small change (a promotion swapped; amber),
   and a change of content (an article or a fact; blue). Claude decides and can be wrong; the diff stays.
-- **Quotes that are not in the diff are marked** in red with （差分に無い）.
+- **Quotes that are not in the diff are marked** in red with `(not in the diff)` (（差分に無い）).
 - **A stalled summary shows on the band** — when the latest run's summary hits the monthly limit, or
   failed three times. A change of content itself never raises the band.
 - **Pages with a WACZ you may not view are left out.**
@@ -615,13 +658,14 @@ The WACZ files you can see, newest capture first.
 
 ![The archives view: WACZ files, two of them validated (問題なし and 失敗 1)](../../assets/screens/archives.webp)
 
-- **A `—` under 完全か (complete?) means "unknown".** The ledger's `waczComplete` is null for
-  that row, which is not the same as 欠けあり (incomplete).
-- **検証 (validate) only runs when you press it.** Opening the list does not run it. The result
-  also stays in the row's 仕様どおりか (conforms?) cell, so after looking at several archives you
-  can tell how each one did without pressing again. Reloading the page clears them. What the report shows is in
+- **A `—` under Complete? (完全か) means "unknown".** The ledger's `waczComplete` is null for
+  that row, which is not the same as **Incomplete** (欠けあり).
+- **Validate (検証) only runs when you press it.** Opening the list does not run it. The result
+  also stays in the row's **Conforms?** (仕様どおりか) cell, so after looking at several archives you
+  can tell how each one did without pressing again. Reloading the page clears them. The report comes
+  back in the language of the screen. What it shows is in
   [Inspecting a WACZ](/wacz/).
-- **開く (open) enters the WACZ view** (`#wacz/<archiveId>`).
+- **Open (開く) enters the WACZ view** (`#wacz/<archiveId>`).
 - **"ReplayWeb.page ↗" and "Web Capture ↗" open the captured URL in a viewer.** The link is built from the replay origin the
   server hands out through `/healthz`, the `objectKey` the ledger returns, and the row's URL and
   capture time (`#view=replay&url=…&ts=…`). The page's own scripts run there, so pictures that the
@@ -647,8 +691,8 @@ The view that searches the titles and text of captured pages with the ledger's f
 - **ReplayWeb.page ↗ / Web Capture ↗ open a document hit at the captured URL, and a snapshot hit at the snapshot itself.**
   The document opens with the page's scripts running; a snapshot is the DOM copy without scripts,
   the page as it was at that stage.
-- **開く (open) enters the WACZ view** (only for archives listed in the archives view).
-- **It fetches only when you press 探す (search) or open a search URL.** It does not poll like the
+- **Open enters the WACZ view** (only for archives listed in the archives view).
+- **It fetches only when you press Search (探す) or open a search URL.** It does not poll like the
   other views.
 - **It needs the ledger's full-text search (OpenSearch).** When that does not answer, the reason is
   shown in one red line (the ledger's `CAPTURE_LEDGER_OPENSEARCH_URL`).
@@ -659,11 +703,11 @@ The scripts that run inside the pages being captured, to read before writing one
 to see exactly what a crawl ran. On the left is a list in four groups: the scripts that run by
 default (the newest enabled version of each id without sites, which is what a crawl runs when it
 names none), the site scripts (those with sites, which run only when a seed is on their site), the
-scripts that do not run by default (under 既定では走らない, those with no enabled version, whose
-newest version runs when a crawl names them), and, under 書くための型 (types to write against),
+scripts that do not run by default (under **Do not run by default (run when chosen)**, 既定では走らない（選べば走る）, those with no enabled version, whose
+newest version runs when a crawl names them), and, under **Types to write against** (書くための型),
 `host.d.ts`, the types of `__bh`, the object the capture server puts in the page for scripts to
-use. All but `host.d.ts` also appear as checkboxes under スクリプト (scripts) in the
-[new crawl view](#start-a-crawl) (those that do not run by default unticked), where 読む (read)
+use. All but `host.d.ts` also appear as checkboxes under **Scripts** in the
+[new crawl view](#start-a-crawl) (those that do not run by default unticked), where **Read**
 next to one opens it in the right column.
 
 ![The list on the left of the script collection view: autoscroll (open) runs by default, the site script egov-law-search with its chip laws.e-gov.go.jp, autofetch under 既定では走らない, and host.d.ts under 書くための型](../../assets/screens/scripts.webp)
@@ -681,12 +725,12 @@ On the right is the TypeScript the ledger keeps, before it becomes JavaScript, w
 | `#scripts/types/host.d.ts` | the types of `__bh` |
 
 - **The heading says which version you are reading.** Chips list every version of the id, the
-  default one marked 既定 and disabled ones 無効. Under them are the line count, the size, the start of the sha256, the day
+  default one marked `(default)` (既定) and disabled ones `(disabled)` (無効). Under them are the line count, the size, the start of the sha256, the day
   it was imported, the options it is given (`{}` means the defaults written in the code), and
   whether it is the version that runs by default. A site script has its sites beside its name, and
-  its default version reads 起点に laws.e-gov.go.jp があれば既定で走る版 (runs by default when a seed
-  is on laws.e-gov.go.jp). A disabled version reads 無効（既定では走らない） (disabled; does not run
-  by default).
+  its default version reads `Runs by default when a seed is on laws.e-gov.go.jp`
+  (起点に laws.e-gov.go.jp があれば既定で走る版). A disabled version reads `Disabled (does not run by default)`
+  (無効（既定では走らない）).
 - **Sites mark a script that only makes sense on certain sites.** The sites (`sites`) are a list
   of hostnames, written in the `catalog.json` of
   [capture-scripts](https://github.com/uraitakahito/capture-scripts) and kept by the ledger with
@@ -696,7 +740,7 @@ On the right is the TypeScript the ledger keeps, before it becomes JavaScript, w
   elsewhere.
 - **Click a line to put it in the URL,** to send someone straight to it. This adds nothing to the
   browser history and does not redraw the view.
-- **写す (copy) puts the source on the clipboard.** 下敷きにする (use as a template) takes it to the
+- **Copy (写す) puts the source on the clipboard.** **Use as a template** takes it to the
   [new crawl view](#start-a-crawl) as a script of your own.
 - **The source is colored.** The colors come from [Shiki](https://shiki.style) with the same
   TypeScript grammar as VS Code, in GitHub Light High Contrast or GitHub Dark Default to follow
@@ -707,7 +751,7 @@ On the right is the TypeScript the ledger keeps, before it becomes JavaScript, w
   the source says so, and the source stays readable in one color.
 - **The lines are the TypeScript's.** A crawl runs the compiled JavaScript, which is what the archive
   keeps in `behaviors/custom.jsonl`, and its lines are a few off from these in places.
-- **読む (read) in a crawl's detail opens the version that crawl ran,** and carries the start of its
+- **Read in a crawl's detail opens the version that crawl ran,** and carries the start of its
   sha256 as well. Version numbers can be reused (removing the newest version and adding one again
   gives the number to different bytes), so when the bytes differ, the view says so above the source.
 - **Only what you open is fetched.** The list comes with the regular fetch and is redrawn only when

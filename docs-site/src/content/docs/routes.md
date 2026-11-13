@@ -88,7 +88,7 @@ cannot call it directly, the server relays it to make it same-origin.
   not track the token's lifetime: when the IdP's pool is made again its keys change, so a clock
   that says "still valid" cannot be trusted. A 401 says both "expired" and "the keys changed" in
   the same way. If the refresh token gets nothing, the session is dropped and the answer is a 401
-  (`サインインが切れました`) that sends you to sign in again.
+  (`sign-in expired`, which the page words as `The sign-in has expired`) that sends you to sign in again.
 - The ledger's status, `content-type` and body are returned as they are.
 
 Which ledger routes are read is decided by the workbench (`public/app.js`); the server does not
@@ -103,7 +103,7 @@ since the relay returns only the status, `content-type` and body, and drops the 
 
 ## POST /api/crawls — the route that starts a crawl
 
-This is one of the routes of the workbench's server that write. The form on the crawls view
+This is one of the routes of the workbench's server that write. The form on the new crawl view
 ([Screens](/screens/)) uses it. The server does not check the contents: it hands the body that
 passed the checks below to the ledger's `POST /api/crawls` as it is, and returns the answer as
 it is. The ledger is the one that checks and decides the seed URLs, the policy (depth, page
@@ -118,7 +118,7 @@ secret's value (it lives in a Windmill variable, and is neither in the form nor 
   stops a page from another site from making your browser send the POST (CSRF). It does not
   rely on Chrome's Private Network Access.
 - The access token is attached, and a 401 retried, the same way as for `/api/*` above.
-- **The page puts a key (`Idempotency-Key`) on "Start", and the server carries that header, and
+- **The page puts a key (`Idempotency-Key`) on Start (始める), and the server carries that header, and
   only that one, to capture-ledger.** The browser makes the key when you press the button
   (`crypto.randomUUID()`). While no answer has arrived (no connection, or a 5xx), pressing again
   with the same body sends the same key. capture-ledger remembers the first answer for each key, so
@@ -156,7 +156,7 @@ is `{ source, phase }`. The ledger creates no row: it asks ts-compile-service an
 
 ## POST /api/schedules — the routes for schedules
 
-The schedules view ([Screens](/screens/)) and 定期にする on the new crawl view use these. There are
+The schedules view ([Screens](/screens/)) and **Make a schedule** (定期にする) on the new crawl view use these. There are
 three shapes: `POST /api/schedules` makes a schedule, `POST /api/schedules/:id/<action>` acts on one,
 and `POST /api/crawls/:id/failed` closes a crawl left running. Reading is `GET /api/schedules`, passed
 through like any other read.
@@ -170,7 +170,7 @@ through like any other read.
 
 ## POST /api/crawls/:id/inline/:name/fix — asking how to fix an inline script
 
-This is also a route that writes. 直し方を訊く (ask for a fix), on an opened crawl that failed the type
+This is also a route that writes. **Ask for a fix** (直し方を訊く), on an opened crawl that failed the type
 check, uses it for an inline script with type errors ([Screens](/screens/)). The body is `{}`. The ledger asks
 Claude, and returns **only a fix that passes the same type check** the crawl failed, with the reasons,
 the replaced lines, the rounds and the cost; the workbench only draws the answer.
@@ -235,7 +235,7 @@ turns a phrase into a sentence in its own language with its dictionary (the key
 `workbench.error.<phrase>`, see [Development](/development/#the-text-on-the-screen)), so the
 sentence that says how to fix it is in the dictionary too. An answer that the browser shows
 without the page (`/login`, `/callback`, and the 405 text) cannot choose a language, so it is
-written in English and Japanese side by side, separated by ` / `.
+written in English and Japanese side by side, separated by ` / ` or on two lines.
 
 | Status | When | Body |
 | --- | --- | --- |

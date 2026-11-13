@@ -428,7 +428,7 @@ export const summaryOf = (answer, follow) => {
   // 文と文の間は、言語の区切り（日本語は詰め、英語は空白）で繋ぐ
   const sentences = [told, limitsOf(follow), ...problems, ...(problems.length > 0 ? [t("start.summary.cannotStart")] : [])];
   return {
-    text: sentences.join(t("start.summary.sep")),
+    text: sentences.join(t("common.sep.sentence")),
     bad: problems.length > 0 || answer.rules.length === 0,
   };
 };

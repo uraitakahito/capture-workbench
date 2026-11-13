@@ -2579,3 +2579,26 @@ tr.detail .pagelist .outcome a.trace-link {
     grid-template-columns: 6em minmax(0, 1fr);
   }
 }
+
+/* 言語の切り替え（頭の右）。字のリンクに見せ、いまの言語の側は太字で押せない */
+.lang {
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+.lang button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.lang button:disabled {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: default;
+}

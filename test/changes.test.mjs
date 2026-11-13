@@ -7,6 +7,7 @@ import {
   changesError,
   changesHash,
   hunkLines,
+  japaneseNote,
   neighborsOf,
   pageClaudeLine,
   parseChangesHash,
@@ -17,6 +18,17 @@ import {
   tocOf,
   versionNote,
 } from "../public/changes.js";
+import { setLang } from "../public/i18n.js";
+
+/** 英語で 1 つ試し、終わりに日本語へ戻す（ほかの試験は日本語を期待する）。 */
+const inEnglish = (fn) => {
+  setLang("en");
+  try {
+    return fn();
+  } finally {
+    setLang("ja");
+  }
+};
 
 const ID = "11111111-1111-4111-8111-111111111111";
 const PAGE = "22222222-2222-4222-8222-222222222222";
@@ -194,5 +206,54 @@ describe("変化の詳細の目次と 1 ページ（CAPTURE-236）", () => {
     assert.deepEqual(quoteLineOf(hunks, "古い"), { hunk: 0, line: 1 });
     assert.equal(quoteLineOf(hunks, "告知"), undefined);
     assert.equal(quoteLineOf(hunks, "無い字"), undefined);
+  });
+});
+
+describe("前回からの変化の英語の字（CAPTURE-294）", () => {
+  it("回の変化: 比べたページの数で単数と複数を分ける", () => {
+    const text = (over) => inEnglish(() => changeOf(change(over)).text);
+    assert.equal(text({ state: "unchanged", pagesCompared: 1 }), "No change (1 page)");
+    assert.equal(text({ state: "unchanged", pagesCompared: 2 }), "No change (2 pages)");
+    assert.equal(text({ significance: "content" }), "Change of content (3 / 5 pages)");
+    assert.equal(text({ significance: "none", pagesChanged: 1, pagesCompared: 1 }), "Nothing that matters (1 / 1 page)");
+    assert.equal(text({ state: "diffed" }), "Diff in 3 / 5 pages, no summary");
+    assert.equal(text({ state: "budget_wait" }), "Diff in 3 / 5 pages, summary stopped at the monthly limit");
+    assert.equal(text({ state: "no_previous" }), "First run (no previous run)");
+  });
+
+  it("知らない重さと知らない状態は、届いた字のまま", () => {
+    assert.equal(changeOf(change({ significance: "huge" })).text, "huge（3 / 5 ページ）");
+    assert.equal(inEnglish(() => changeOf(change({ significance: "huge" })).text), "huge (3 / 5 pages)");
+    assert.equal(changeOf(change({ state: "later" })).text, "later");
+    assert.equal(inEnglish(() => changeOf(change({ state: "later" })).text), "later");
+  });
+
+  it("要約とページの 1 行は、英語でも「証拠ではない」と言う", () => {
+    assert.equal(
+      inEnglish(() => summaryLine({ model: "claude-opus-5-5", promptVersion: "change-v1", usd: 0.015 })),
+      "Claude's summary (not evidence) · claude-opus-5-5 · change-v1 · $0.0150",
+    );
+    assert.equal(inEnglish(() => summaryLine(null)), "No summary (diff only)");
+    assert.equal(inEnglish(() => pageClaudeLine("記事が加わった")), "Claude's line (not evidence): 記事が加わった");
+  });
+
+  it("要約が日本語だという断りは、日本語の画面には出さない", () => {
+    assert.equal(japaneseNote(), undefined);
+    assert.equal(inEnglish(() => japaneseNote()), "The summary is written in Japanese.");
+  });
+
+  it("目次・帯・読めないときの文", () => {
+    assert.deepEqual(
+      inEnglish(() => tocOf(DETAIL)).map((row) => row.text),
+      ["Change of content", "Small change", "Small change", "Nothing that matters", "The same"],
+    );
+    const schedule = { name: "毎朝", recentRuns: [{ change: change({ state: "failed" }) }] };
+    assert.deepEqual(inEnglish(() => changeBandLines([schedule])), [
+      'Schedule "毎朝": the summary of the change since the previous run failed',
+    ]);
+    assert.match(inEnglish(() => changesError(404, {})), /before v0\.93\.0/);
+    assert.equal(inEnglish(() => changesError(404, { error: "not found" })), "404 — not found");
+    assert.equal(inEnglish(() => changesError(500, {})), "500 — Could not be read");
+    assert.equal(changesError(500, {}), "500 —— 読めませんでした");
   });
 });
