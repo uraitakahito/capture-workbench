@@ -306,7 +306,8 @@ const SHOTS = [
       { n: 2, at: ".start-run legend" },
       { n: 3, at: ".start-values legend" },
       { n: 4, at: "#start-ua legend" },
-      { n: 5, at: "#start-go", edge: "box" },
+      { n: 5, at: "#start-random-box legend" },
+      { n: 6, at: "#start-go", edge: "box" },
     ],
   },
   {

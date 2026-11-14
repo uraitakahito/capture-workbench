@@ -122,6 +122,8 @@ import {
   marksOf as traceMarksOf,
   parseTraceHash,
   percentOf,
+  randomOf,
+  randomText,
   readRecords,
   readsRecords,
   readsScreenshots,
@@ -227,11 +229,13 @@ const $ = (id) => document.getElementById(id);
 // index.html は字を書かず、鍵（data-i18n）を書く。描く前に、いまの言語の字を入れる
 applyI18n();
 
-/** 新しいクロールの画面に、読み直すと消える書きかけが在るか（起点・その場の TS・User-Agent・変数の値・予定の名前）。 */
+/** 新しいクロールの画面に、読み直すと消える書きかけが在るか（起点・その場の TS・User-Agent・「乱数を控える」・変数の値・予定の名前）。 */
 const startDraft = () =>
   ["start-seeds", "start-inline-source", "start-inline-name", "start-ua-text", "schedule-name"].some(
     (id) => $(id).value.trim() !== "",
-  ) || [...document.querySelectorAll("#start-vars input")].some((box) => box.value !== "");
+  ) ||
+  $("start-random").checked ||
+  [...document.querySelectorAll("#start-vars input")].some((box) => box.value !== "");
 
 // 言語の切り替え。選びを覚えて頁を読み直すので、書きかけが在れば先に確かめる
 for (const b of document.querySelectorAll("#lang button")) {
@@ -542,6 +546,8 @@ const valuesOf = (one) => {
       ? tag("p", `User-Agent: ${one.userAgent}`)
       : tag("p", t("crawls.detail.uaDefault"), "muted"),
   );
+  // ページの JS が受け取った乱数を控えるよう頼んだクロールだけ（capture-ledger v0.105.0 から。前の行と、頼まなかった行は何も足さない）
+  if (one.recordRandom === true) box.append(tag("p", t("crawls.detail.recordRandom")));
   const vars = Object.entries(one.variables ?? {});
   const secrets = one.secrets ?? [];
   if (vars.length === 0 && secrets.length === 0) {
@@ -1315,7 +1321,7 @@ const variablesNow = () => variablesOf(declaredNow("variable"), values);
 
 /** いまの欄から capture-ledger へ送る本文。「始める」と「定期にする」と、大きさの行が同じ物を見る。 */
 const startBodyNow = () =>
-  startBody($("start-seeds").value, followOf(), runOf(), variablesNow(), $("start-ua-text").value);
+  startBody($("start-seeds").value, followOf(), runOf(), variablesNow(), $("start-ua-text").value, $("start-random").checked);
 
 /** 最後に描いた宣言の形。同じなら描き直さない —— 打っている欄を手の下で作り直さない。 */
 let valuesKey;
@@ -4119,6 +4125,8 @@ const drawTraceHead = () => {
   const facts = [
     axis === undefined ? undefined : t("trace.facts.total", { took: secondsText(axis.endMs) }),
     typeof capture.httpStatusCode === "number" ? `HTTP ${String(capture.httpStatusCode)}` : undefined,
+    // ページの JS が受け取った乱数の控え。頼まなかった取り込みと、欄の無い取り込みには何も足さない
+    randomText(randomOf(capture)),
   ].filter((fact) => fact !== undefined);
   const line = tag("p", facts.join(t("common.sep.dot")), "trace-facts");
   const stopped = stoppedStepOf(answer);

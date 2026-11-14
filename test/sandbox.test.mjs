@@ -1457,6 +1457,8 @@ const LEDGER_CAPTURE_KEYS = new Set([
   // CAPTURE-270 の第 4 部: 節目のスクリーンショットの成り行き（BrowserHive v30.2.0 から）と、失敗の時点の絵が在るか
   "screenshots",
   "failureScreenshot",
+  // CAPTURE-378: ページの JS が受け取った乱数の控えの要約（BrowserHive WACZ Profile 1.26.0。capture-ledger v0.105.0 から）
+  "random",
 ]);
 const TRACE_SAMPLE = "trace-timeline.wacz";
 const SAMPLE_NAMES = readdirSync(new URL("../sandbox/samples/", import.meta.url)).filter((name) => name.endsWith(".wacz"));
@@ -1777,6 +1779,28 @@ test("User-Agent は capture-ledger と同じ文で断る。行は立たない",
   };
   assert.deepEqual(refused("クローラー"), [400, "userAgent must be printable ASCII, at most 512 characters"]);
   assert.deepEqual(refused(1), [400, "body/userAgent must be string"]);
+});
+
+// ── 乱数を控えるか（capture-ledger v0.105.0 の recordRandom。CAPTURE-378）──────────────
+
+test("recordRandom は行に残り、詳しい答えが真偽で返す。省けば false。真偽でなければ断り、行は立たない", () => {
+  const start = (body) => {
+    const rows = [];
+    const answer = submitCrawl(rows, { seeds: ["https://site.test/"], ...body }, NOW, RUNS, versions, WINDMILL);
+    return { answer, rows };
+  };
+  const asked = start({ recordRandom: true });
+  assert.equal(asked.answer.status, 202);
+  assert.equal(crawlDetail(asked.rows[0]).recordRandom, true);
+  for (const body of [{}, { recordRandom: false }]) {
+    const none = start(body);
+    assert.equal(none.answer.status, 202);
+    assert.equal(crawlDetail(none.rows[0]).recordRandom, false);
+  }
+  const refused = start({ recordRandom: "true" });
+  assert.equal(refused.rows.length, 0);
+  assert.equal(refused.answer.status, 400);
+  assert.equal(refused.answer.body.message ?? refused.answer.body.error, "body/recordRandom must be boolean");
 });
 
 /**

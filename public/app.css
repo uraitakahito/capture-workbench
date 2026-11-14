@@ -970,7 +970,8 @@ body[data-face="start"] main {
 }
 
 /* 左の列は縦に並ぶ flex なので、枠は潰さない。箱は打つと伸びる（field-sizing の効かないブラウザでは 2 行のまま流して読む） */
-#start-ua {
+#start-ua,
+#start-random-box {
   flex-shrink: 0;
 }
 

@@ -199,8 +199,16 @@ export const fixOf = (c, name) => {
     : { status: answer.status, body: answer.body };
 };
 
-/** クロールごとの値 (capture-ledger v0.67.0 の行の `variables`・`secrets`)。台本の行に無ければ、何も渡さなかったクロール。 */
-const valuesIn = (c) => ({ variables: c.variables ?? {}, secrets: c.secrets ?? [], userAgent: c.userAgent ?? null });
+/**
+ * クロールごとの値 (capture-ledger v0.67.0 の行の `variables`・`secrets`。`userAgent` と、v0.105.0 の `recordRandom` も)。
+ * 台本の行に無ければ、何も渡さなかったクロール。
+ */
+const valuesIn = (c) => ({
+  variables: c.variables ?? {},
+  secrets: c.secrets ?? [],
+  userAgent: c.userAgent ?? null,
+  recordRandom: c.recordRandom === true,
+});
 
 /**
  * /api/crawls/:id。capture-ledger はほかの欄 (上限など) も返すが、workbench が読むのは seeds・rules・finishedAt・
@@ -233,6 +241,8 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   variables: values.variables,
   secrets: values.secrets,
   userAgent: values.userAgent ?? null,
+  // ページの JS が受け取った乱数を控えるよう頼んだか (capture-ledger v0.105.0。CAPTURE-378)。頼まなければ false
+  recordRandom: values.recordRandom === true,
 });
 
 /**
@@ -469,6 +479,9 @@ const CAPTURE_FIELDS = [
   "document",
   "windowsNotOpened",
   "screenshots",
+  // ページの JS が受け取った乱数の控えの要約 (BrowserHive WACZ Profile 1.26.0 の `browserhive:capture.random`。capture-ledger
+  // v0.105.0 が通す。CAPTURE-378)。それより前の取り込みのページには書かない (鍵ごと出ない)
+  "random",
 ];
 
 /** 失敗の時点の絵の形式。BrowserHive が置くのは WebP だけ。 */
@@ -791,7 +804,7 @@ const VALUE_NAME = /^[a-z][a-z0-9_]*$/;
 /** 宣言したシークレットを置く Windmill のフォルダ (capture-ledger と capture-scheduler の決まり)。 */
 const SECRETS_FOLDER = "f/waggle_secrets/";
 /** `POST /api/crawls` の body の鍵 (capture-ledger v0.67.0 の schema。`additionalProperties: false`)。外の鍵は 400。 */
-const BODY_KEYS = ["userAgent", "seeds", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
+const BODY_KEYS = ["userAgent", "recordRandom", "seeds", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
 /** Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。試験が渡さなければ、何も置いていない Windmill。 */
 const NO_WINDMILL = { secrets: [], variables: [], editedAt: null };
 /**
@@ -1445,6 +1458,8 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   if (userAgent !== "" && !/^[\x20-\x7e]{1,512}$/.test(userAgent)) {
     return { status: 400, body: { error: "userAgent must be printable ASCII, at most 512 characters" } };
   }
+  // ページの JS が受け取った乱数を控えるか (capture-ledger v0.105.0。schema は真偽だけを受け、省けば false)
+  if ("recordRandom" in body && typeof body.recordRandom !== "boolean") return schemaError("body/recordRandom must be boolean");
   if (body.seeds.length === 0) return schemaError("body/seeds must NOT have fewer than 1 items");
   if (!body.seeds.every(httpUrl)) {
     return { status: 400, body: { error: "every seed must be an http(s) URL" } };
@@ -1481,6 +1496,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
     variables: valued.variables,
     secrets: valued.secrets,
     userAgent: userAgent === "" ? null : userAgent,
+    recordRandom: body.recordRandom === true,
     maxDepth: body.maxDepth ?? 2,
   };
   rows.unshift(row);
@@ -1891,6 +1907,7 @@ const handle = (req, res, raw) => {
         : crawlDetail(submittedRow(mine, Date.now()), mine.scripts, mine.rules, {
             variables: mine.variables,
             userAgent: mine.userAgent,
+            recordRandom: mine.recordRandom,
             secrets: mine.secrets,
           });
     send(res, detail === undefined ? 404 : 200, detail ?? { error: "not found" });

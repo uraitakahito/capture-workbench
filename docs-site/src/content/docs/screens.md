@@ -167,7 +167,8 @@ the crawl's bundle.
   wire is still in the WARC, yet the ledger answers `archive: null` for those rows too, so they read
   **Hidden in the WARC** (the mark says so when the pointer rests on it). If the Windmill variable was
   rewritten while the crawl ran, the row says from which level. Above them is the `User-Agent` the crawl
-  asked for, as typed, or `User-Agent: still HeadlessChrome` (HeadlessChrome のまま). A crawl given nothing reads
+  asked for, as typed, or `User-Agent: still HeadlessChrome` (HeadlessChrome のまま). A crawl that asked to record
+  random values (ledger v0.105.0) adds `Recorded random values` (乱数を控えた) under it; one that did not adds nothing. A crawl given nothing reads
   `Values passed: none` (渡した値: なし), and a row from an older ledger without values shows nothing here. Last
   are the pages that failed, the latest 5 that the ledger returns (the state column gives the total); if none did, it says so and lists the seed
   URLs.
@@ -414,6 +415,15 @@ reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
   screenshots are records inside the BrowserHive WACZ, so in a signed WACZ the signature covers them. The
   screenshot at the failure is a file outside the WACZ (a failed capture builds no WACZ), and the
   signature does not cover it. Both hold what the captured page was showing, as it was.
+- **The heading line says how many random values were recorded.** From ledger v0.105.0 the answer's
+  `capture.random` passes on BrowserHive's summary
+  ([`browserhive:capture.random`](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.26.0/#random)). A capture that recorded values shows
+  `N random values recorded` (乱数の控え N 回; N is the answer's `draws`, the value lines in
+  `random/values.jsonl`), with `(may be incomplete)` (欠けがありうる) when the answer's `truncated` says lines may be
+  missing. A capture that was asked to record but has none says why: `withheld` (the document was withheld, so its
+  lines are not kept; 文書を伏せたので残さない) or `failed` (could not be recorded; 控えられなかった). A reason the view does
+  not know is shown as it arrived. A capture that was not asked (`not-requested`), and one whose answer has no
+  `random` field (an older ledger or BrowserHive), get nothing.
 - **Pressing a bar or a mark in the figure shows its fields below**: the start and length of a
   bar, or the time of a mark, in seconds.
 - **A capture that failed says which step it stopped in.** The answer of a timeout or a failure
@@ -437,7 +447,7 @@ The arithmetic (axis, bars, marks, request bars, counts, where the screenshots a
 `public/timeline.js`, pinned by `test/timeline.test.mjs` and `test/timeline-trace.test.mjs` against
 real answers from capturing capture-fixtures on a local stack. The screenshot part is pinned by
 `test/timeline-shots.test.mjs` against real WACZ files made by BrowserHive captures
-(`sandbox/samples/`).
+(`sandbox/samples/`), and the random values line by `test/timeline-random.test.mjs`.
 
 ### The state is worded together with stopReason
 
@@ -458,7 +468,7 @@ tests read the same file the browser reads, so there is no copy to rot.
 ## Start a crawl
 
 The **New crawl** view starts a crawl. The left column holds the seed URLs, the registered scripts, the User-Agent box,
-the per-crawl values (when a ticked script declares any), the depth and the **Start** (始める) button; the
+the **Record random values** (乱数を控える) checkbox, the per-crawl values (when a ticked script declares any), the depth and the **Start** (始める) button; the
 right column holds the box for a script of your own, and how to follow links. The box
 stretches to the bottom of the window and has line numbers on its left, so a large script can be
 pasted, read, fixed a little and run. Write the seed URLs one per line, choose **This page only**
@@ -466,13 +476,14 @@ pasted, read, fixed a little and run. Write the seed URLs one per line, choose *
 a window for reading a registered script, and, while **Follow links** is chosen, to **How to follow**
 (辿り方).
 
-![The left column of the new crawl view: the seed URL (e-Gov Law Search), script rows (a run-order number, a checkbox, and ↑↓) including the row for your own script, the site script egov-law-search, and autofetch left unticked as 既定では走らない, the field for the variable query that egov-law-search declares, the User-Agent box with its button, this page only or follow links, and 始める](../../assets/screens/start.webp)
+![The left column of the new crawl view: the seed URL (e-Gov Law Search), script rows (a run-order number, a checkbox, and ↑↓) including the row for your own script, the site script egov-law-search, and autofetch left unticked as 既定では走らない, the field for the variable query that egov-law-search declares, the User-Agent box with its button, the checkbox 乱数を控える, this page only or follow links, and 始める](../../assets/screens/start.webp)
 
 ① seed URLs\
 ② スクリプト (Scripts): the run-order numbers, the checkboxes and 読む (Read), and ↑↓\
 ③ クロールごとの値 (Per-crawl values): the fields for the variables the ticked scripts declare\
 ④ User-Agent: the box and the button that fills in the pattern without Headless\
-⑤ 始める (Start)
+⑤ 乱数 (Random values): the checkbox 乱数を控える (Record random values)\
+⑥ 始める (Start)
 
 ![The right column of the new crawl view: the tab その場の TS, the name of the script, when it runs, and the script box](../../assets/screens/start-js.webp)
 
@@ -521,6 +532,15 @@ a window for reading a registered script, and, while **Follow links** is chosen,
   shows it under the left column (`400 — The User-Agent must be printable ASCII, at most 512 characters`). The text stays in the box after starting, like the variables and the
   script. The opened row of the crawls view shows the text as typed; the value actually sent is in the BrowserHive WACZ's
   `settings.userAgent`.
+- **Record random values (乱数を控える) keeps the random values the captured page's JS received.** Unticked (the
+  default), nothing is sent and the ledger's default (not recording) applies. Ticked, the form sends `recordRandom: true`
+  (ledger v0.105.0), for **Start** and **Make a schedule** (定期にする) alike. BrowserHive then puts a recorder script into
+  the page before the page's own JS, and writes the values the page's JS got from `Math.random`,
+  `crypto.getRandomValues` and `crypto.randomUUID` to `random/values.jsonl` in the
+  [BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.26.0/#random-directory). Replay in Web Capture ↗ (capture-player) returns
+  the recorded values, so a page that picks what it shows at random shows what it picked when it was captured;
+  ReplayWeb.page ↗ does not return them. The opened row of the crawls view says `Recorded random values`
+  (乱数を控えた), and the trace of each capture says how many values were recorded.
 - **When a ticked script or your own script declares values, the Per-crawl values (クロールごとの値) box
   appears.** A script declares the variables it reads in its source with
   `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))`. For a script in

@@ -3,9 +3,11 @@
  * クロールの行とページの行はクロールの合本を開く（CAPTURE-54）。
  *
  * replay は、`?source=` だけで開くとページ一覧を出し、一覧を日付の新しい順に並べる。WACZ の `mainPageURL` は読まない。
- * BrowserHive v23 からの WACZ では、一覧に並ぶのは DOM の写し（`urn:browserhive:snapshot:…`）で、写しには頁の script が
- * 無い。JS が出し入れする絵（apple.com/jp のヒーローなど）は、写しでは出ない（CAPTURE-29）。だから取り込んだ URL を、
- * 撮った時刻で直に開く。写し（読み込みの後・スクリプトの後）は、replay の Pages タブから開ける。
+ * BrowserHive v25 からの WACZ では、一覧に並ぶのは、取り込んだ文書の行（頼まれた URL。時刻は取り込みの始まり）と、その後に
+ * 撮った DOM の写しの行（`urn:browserhive:snapshot:…`。時刻は写しのレコードの `WARC-Date`）で、新しい順の一覧では写しが
+ * 文書より上に来る。写しには頁の script が無く、JS が出し入れする絵（apple.com/jp のヒーローなど）は、写しでは出ない
+ * （CAPTURE-29）。だから取り込んだ URL を、撮った時刻で直に開く。写し（読み込みの後・スクリプトの後）は、replay の
+ * Pages タブから開ける。
  *
  * link の字と説明は辞書（`i18n/*.json`）に在る。再生の名前（ReplayWeb.page・Web Capture）は固有の名前なので、訳さない。
  */
