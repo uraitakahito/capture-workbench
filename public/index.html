@@ -104,8 +104,9 @@
 
       <!--
         新しいクロールの画面。左に設定、右にその場の TS。画面は窓の高さに収め、TS の箱がその残りを全部使う
-        （巨大な JS を貼って、読んで、少し直して始めるため）。送るのは起点の URL・「このページだけ
-        （maxDepth: 0）」・走らせるもので、ほかは capture-ledger の既定。走らせるものは、既定のまま（起点で決まる
+        （巨大な JS を貼って、読んで、少し直して始めるため）。送るのは起点の URL・「このページだけ（maxDepth: 0）」か
+        「リンクを辿る」の規則と書いた深さ・枚数・走らせるもの・変数・User-Agent・「乱数を控える」で、書かなかった物は
+        capture-ledger の既定（public/start.js の startBody）。走らせるものは、既定のまま（起点で決まる
         既定の顔ぶれを全部選び、その場の TS が空）なら送らない。URL もスクリプトの名前も検査しない（capture-ledger が 400 で言う）。
         本文が上限（/healthz の writeLimit）を超えたら、送る前に止める。答えは左の列の下に 1 行で。
         202 と 409 は一覧の画面へ移り、行に印を付ける。右の列はタブで、その場の TS と読む窓（スクリプトの 1 版か
@@ -291,6 +292,7 @@
         <table>
           <thead>
             <tr>
+              <th data-i18n="archives.col.look"></th>
               <th data-i18n="archives.col.source"></th>
               <th data-i18n="archives.col.label"></th>
               <th data-i18n="archives.col.capturedAt"></th>

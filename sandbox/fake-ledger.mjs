@@ -24,11 +24,11 @@
  * capture-ledger と同じく読み、行に写す。隠すシークレットを送るのに配備の形式 (台本の `captureFormats`) が値を置き換えられない物を
  * 頼むなら、capture-ledger と同じ文で 400。
  *
- * ページのエンドポイント (CAPTURE-18 で capture-ledger が足す `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
+ * ページのエンドポイント (CAPTURE-18。capture-ledger v0.69.0 の `GET /api/crawls/:id/pages` と `…/pages/:page/log`) にも、台本の行の `pages` から
  * 答える。ログは台本のページの `log` (BrowserHive の答えの log の形) で、無ければ読めない理由を返す。
  *
- * 型で落ちた行の、型の誤りの取り直し (`GET /api/crawls/:id/diagnostics`) と直し方 (`POST …/inline/:name/fix`。
- * CAPTURE-49) にも、台本の行の `diagnosed` と `fixes` から答える。**代役は Claude を呼ばない。**
+ * 型で落ちた行の、型の誤りの取り直し (`GET /api/crawls/:id/diagnostics`。capture-ledger v0.69.0) と直し方
+ * (`POST …/inline/:name/fix`。v0.71.0。CAPTURE-49) にも、台本の行の `diagnosed` と `fixes` から答える。**代役は Claude を呼ばない。**
  *
  * 検索のエンドポイント (`GET /api/search`。CAPTURE-53) にも、台本の `searchPages` から答える。**代役は OpenSearch を持たない** ——
  * 語を含む行を拾うだけで、点数も分かち書きも無い。
@@ -37,7 +37,7 @@
  * `replayBundle` (台本の行の `replayBundle` から。鍵は capture-ledger と同じ形に組む) と、ページの行の `capturedAt`・`bundledRev`
  * (台本のページから)。**代役は合本を書かない** —— 保管庫も replay も無いので、再生のリンクの先には何も無い。
  *
- * 経緯の答えの絵の欄 (CAPTURE-270 の第 4 部。BrowserHive v30.2.0 から) も返す —— 取り込みの欄の `screenshots` (節目の
+ * 経緯の答えの絵の欄 (CAPTURE-270 の第 4 部。capture-ledger v0.103.0・BrowserHive v30.2.0 から) も返す —— 取り込みの欄の `screenshots` (節目の
  * スクリーンショットの成り行き。筋書きの `capture` に書かれたまま) と `failureScreenshot` (失敗の時点の絵が在るかの真偽)。
  * 失敗の時点の絵そのもの (`GET /api/crawls/:id/pages/:page/trace/failure-screenshot`) は、筋書きのページの
  * `failureScreenshot` が名指す sandbox/ の下の WebP を、`{ contentType, base64 }` で返す。
@@ -76,8 +76,9 @@ export const idOf = (name) =>
     .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12}).*/, "$1-$2-$3-$4-$5");
 
 /**
- * 行の合本の欄 (`replayBundle`)。形は CAPTURE-56 で capture-ledger が足す src/api/crawls.ts の replayBundleOf と同じ ——
- * 書けた版も、書けなかった記録も無ければ null。台本の行の `replayBundle` は `{ rev, pages, builtSecondsAgo, error }` で
+ * 行の合本の欄 (`replayBundle`)。形は capture-ledger の src/api/crawls.ts の replayBundleOf (v0.73.0。CAPTURE-56) と同じ形 ——
+ * 署名の 3 欄 (`signedRev`・`digestKey`・`signError`。v0.74.0 から) は workbench が読まないので、台本が書かなければ null
+ * (署名していない版と同じ形)。書けた版も、書けなかった記録も無ければ null。台本の行の `replayBundle` は `{ rev, pages, builtSecondsAgo, error }` で
  * （`builtAt` は `scenarioAt` が組む）、鍵は capture-ledger と同じ置き場 (`org/<orgId>/crawls/<crawlId>/r<rev>/replay.json`) に組む。`rev` を省いた行は失敗だけの行
  * (鍵・版・ページの数・時刻が null)。受けた行 (`submittedRow`) は null を持つ。
  */
@@ -92,6 +93,9 @@ export const replayBundleOf = (c) => {
     pages: rev === null ? null : said.pages,
     builtAt: rev === null ? null : said.builtAt,
     error,
+    signedRev: said?.signedRev ?? null,
+    digestKey: said?.digestKey ?? null,
+    signError: said?.signError ?? null,
   };
 };
 
@@ -115,8 +119,9 @@ export const scenarioAt = (c, now) => ({
 });
 
 /**
- * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.57.4) と同じ。合本の欄 (`replayBundle`) は
- * CAPTURE-56 の形から、`pagesFailed` は v0.77.0 から (capture-ledger と同じく、ページの行の failed を数える)。
+ * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.107.0) と同じ。v0.57.4 の欄に、合本の欄
+ * (`replayBundle`) が v0.73.0 から、`pagesFailed` が v0.77.0 から (capture-ledger と同じく、ページの行の failed を数える)、
+ * 定期の回の欄が v0.87.0 から、`dispatch` が v0.98.0 から、`linksRecorded` が v0.99.0 から足された。
  * 時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
  */
 export const crawlRow = (c, now) => ({
@@ -200,7 +205,7 @@ export const fixOf = (c, name) => {
 };
 
 /**
- * クロールごとの値 (capture-ledger v0.67.0 の行の `variables`・`secrets`。`userAgent` と、v0.105.0 の `recordRandom` も)。
+ * クロールごとの値 (capture-ledger v0.67.0 の行の `variables`・`secrets`。v0.79.0 の `userAgent` と、v0.105.0 の `recordRandom` も)。
  * 台本の行に無ければ、何も渡さなかったクロール。
  */
 const valuesIn = (c) => ({
@@ -211,13 +216,13 @@ const valuesIn = (c) => ({
 });
 
 /**
- * /api/crawls/:id。capture-ledger はほかの欄 (上限など) も返すが、workbench が読むのは seeds・rules・finishedAt・
- * error・scripts・replayBundle・dispatch・failures・variables・secrets なので、そこまでにしてある。受けた行は走らせたものと値を行に
+ * /api/crawls/:id。capture-ledger の答え (v0.107.0) のうち、workbench が読まない `perHostDelayMs`・`hostParallelism`・
+ * `startedAt`・`lastJob`・`schedule`・`scheduledFor`・`scheduleMissed` は返さない (ほかの欄は capture-ledger と同じ名前)。受けた行は走らせたものと値を行に
  * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ capture-ledger の既定。
  * `replayBundle` は一覧の行と同じ形 (capture-ledger も同じ関数で組む)。
  * `secrets` は capture-ledger v0.90.0 と同じく `{ name, path, editedAt, rotated, archive }` の列で、値は無い (`archive` は宣言の
  * 写しで、`"keep"` か null。台本の行も、この形で書く)。`failures` の要素は
- * `{ url, depth, reason, page }` (page はページの行の id。CAPTURE-18 で capture-ledger が足す)。
+ * `{ url, depth, reason, page }` (page はページの行の id。CAPTURE-18。capture-ledger v0.69.0 から)。
  */
 export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEFAULT_RULES, values = valuesIn(c)) => ({
   crawlId: c.crawlId,
@@ -367,7 +372,7 @@ export const linkGraphOf = (c) => {
  * そのページへのリンクを持つページ。台本の行に無いページは 404。`linkPages` の無い行のページは、出入りとも空。
  */
 export const pageLinksOf = (c, pageId) => {
-  if (!DIGITS.test(pageId)) return { status: 400, body: { error: "params/page must match pattern" } };
+  if (!PAGE_ID.test(pageId)) return schemaError('params/page must match pattern "^[0-9]{1,18}$"');
   const pages = c.linkPages ?? c.pages ?? [];
   const page = pages.find((p) => p.id === pageId);
   if (page === undefined) return { status: 404, body: { error: "not found" } };
@@ -400,10 +405,12 @@ const countsOf = (log) =>
   log.counts ?? Object.fromEntries(LEVELS.map((level) => [level, log.lines.filter((line) => line.level === level).length]));
 
 /**
- * ページの 1 行。欄は CAPTURE-18 で capture-ledger が足す `GET /api/crawls/:id/pages` の形と同じ (id は数字だけの文字列)。
+ * ページの 1 行。欄は capture-ledger の `pageOf` (src/api/crawls.ts。v0.69.0 から。CAPTURE-18) と同じ (id は数字だけの文字列)。
  * `logCounts` は台本の `log` から組み (level ごとの数と dropped)、`log` の無いページは null (数を読んでいない)。
  * `capturedAt` と `bundledRev` (CAPTURE-56) は WACZ の撮った時刻と、その WACZ が最初に入った合本の版で、台本の
- * ページから (WACZ の無いページ・どの版にも入っていないページは null)。
+ * ページから (WACZ の無いページ・どの版にも入っていないページは null)。`screenshot` は読み込みの後の節目のスクリーンショット
+ * (capture-ledger の src/api/stage-screenshot.ts の `screenshotOf`。CAPTURE-432) で、筋書きのページが書いたまま。書かないページは
+ * null (記録が無い —— 絵の欄の無い WACZ・WACZ の無いページ)。
  */
 export const pageRow = (p) => ({
   id: p.id,
@@ -416,9 +423,11 @@ export const pageRow = (p) => ({
   capturedAt: p.capturedAt ?? null,
   bundledRev: p.bundledRev ?? null,
   logCounts: p.log === undefined ? null : { ...countsOf(p.log), dropped: p.log.dropped ?? 0 },
+  screenshot: p.screenshot ?? null,
 });
 
-const DIGITS = /^[0-9]+$/;
+/** ページの id の綴り (capture-ledger の src/api/crawls.ts の `PAGE_ID`。v0.69.0 から。bigserial を 18 桁までの字で持つ)。 */
+const PAGE_ID = /^[0-9]{1,18}$/;
 
 /** capture-ledger の id の並び (bigserial を文字列で持つので、数として比べる)。 */
 const byId = (a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : BigInt(a.id) > BigInt(b.id) ? 1 : 0);
@@ -426,12 +435,12 @@ const byId = (a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : BigInt(a.id) > BigInt
 /**
  * /api/crawls/:id/pages。台本の行 `c` の `pages` を id の昇順で、`after` の後から `limit` 件 (既定 100・最大 500)。
  * `next` は続きが在れば返した最後の id、無ければ null。limit が整数でない・範囲の外、after が数字だけでなければ、
- * 行を探す前に 400 (Fastify の schema の形。capture-ledger の実物の文は、エンドポイントが出たら写す)。行が無ければ 404。
+ * 行を探す前に 400 (Fastify の schema の形と文。id の綴りは capture-ledger の `PAGE_ID`)。行が無ければ 404。
  */
 export const pageList = (c, query) => {
   const after = query.get("after");
   const limit = query.get("limit");
-  if (after !== null && !DIGITS.test(after)) return schemaError('querystring/after must match pattern "^[0-9]+$"');
+  if (after !== null && !PAGE_ID.test(after)) return schemaError('querystring/after must match pattern "^[0-9]{1,18}$"');
   if (limit !== null && !/^-?[0-9]+$/.test(limit)) return schemaError("querystring/limit must be integer");
   if (limit !== null && Number(limit) < 1) return schemaError("querystring/limit must be >= 1");
   if (limit !== null && Number(limit) > 500) return schemaError("querystring/limit must be <= 500");
@@ -448,7 +457,7 @@ export const pageList = (c, query) => {
  * `logReason`、省けば taskId の無いページは not-captured、在れば no-log (ログを残す前の BrowserHive の取り込み)。
  */
 export const pageLog = (c, raw) => {
-  if (!DIGITS.test(raw)) return schemaError('params/page must match pattern "^[0-9]+$"');
+  if (!PAGE_ID.test(raw)) return schemaError('params/page must match pattern "^[0-9]{1,18}$"');
   const p = (c?.pages ?? []).find((x) => x.id === raw);
   if (p === undefined) return { status: 404, body: { error: "not found" } };
   if (p.log === undefined) {
@@ -460,7 +469,8 @@ export const pageLog = (c, raw) => {
 };
 
 /**
- * 取り込みの欄。capture-ledger の `captureOf` (src/api/trace.ts。v0.100.0) が `.result.json` から選ぶ 10 個と同じ名前で、
+ * 取り込みの欄。capture-ledger の `captureOf` (src/api/trace.ts。v0.100.0 から) が `.result.json` から選ぶ欄と同じ名前で
+ * (`screenshots` は v0.103.0、`random` は v0.105.0 から)、
  * 台本に無い欄は鍵ごと出さない。下位の object は台本に書かれたまま。
  *
  * `screenshots` (節目のスクリーンショットの成り行き。CAPTURE-270 の第 4 部) は、BrowserHive v30.2.0 からの答えが持つ欄で、
@@ -501,7 +511,7 @@ const FAILURE_SCREENSHOT_TYPE = "image/webp";
  * 絵のファイルを名指していれば true)。場所は返さない。
  */
 export const pageTrace = (c, raw, names = []) => {
-  if (!DIGITS.test(raw)) return schemaError('params/page must match pattern "^[0-9]+$"');
+  if (!PAGE_ID.test(raw)) return schemaError('params/page must match pattern "^[0-9]{1,18}$"');
   const p = (c?.pages ?? []).find((x) => x.id === raw);
   if (p === undefined) return { status: 404, body: { error: "not found" } };
   const page = { ...pageRow(p), submittedAt: p.submittedAt ?? null, finishedAt: p.finishedAt ?? null };
@@ -529,28 +539,69 @@ export const pageTrace = (c, raw, names = []) => {
  * (sandbox/ からの相対)。`read` はファイルを Buffer で読む関数 (試験が偽物を渡せるように)。
  */
 export const pageFailureScreenshot = (c, raw, read = (file) => readFileSync(new URL(`./${file}`, SCENARIO))) => {
-  if (!DIGITS.test(raw)) return schemaError('params/page must match pattern "^[0-9]+$"');
+  if (!PAGE_ID.test(raw)) return schemaError('params/page must match pattern "^[0-9]{1,18}$"');
   const p = (c?.pages ?? []).find((x) => x.id === raw);
   if (p === undefined || typeof p.failureScreenshot !== "string") return { status: 404, body: { error: "not found" } };
   return { status: 200, body: { contentType: FAILURE_SCREENSHOT_TYPE, base64: read(p.failureScreenshot).toString("base64") } };
 };
 
+/** 撮った時刻の新しい順。同じ時刻なら名前の順 (capture-ledger は `capturedAt` の降順だけで、同じ時刻の並びは決めない)。 */
+const byCapturedAt = (a, b) =>
+  Date.parse(b.row.capturedAt) - Date.parse(a.row.capturedAt) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+
 /**
- * /api/archives の行。欄は capture-ledger の src/api/routes.ts (v0.57.4) と同じ。
- * 置き場の WACZ に、台本の「見えない」行 (hidden) を足し、台本の archives で欄を上書きする。
+ * /api/archives の行。欄は capture-ledger の src/api/routes.ts と同じ (`screenshot` は CAPTURE-432 から。読み込みの後の
+ * 節目のスクリーンショットで、形はページの行と同じ。書かない行は null)。
+ * 置き場の WACZ に、台本の「見えない」行 (hidden) を足し、台本の archives で欄を上書きする。並びは capture-ledger と同じく
+ * 撮った時刻の新しい順 (同じなら名前の順)。
  * 見えない行は一覧に出るが、署名は出ない (capture-ledger の「見てよくない」と同じ 404 になる)。
  */
 export const archiveRows = (names, s) =>
-  [...names, ...(s.hidden ?? [])].map((name) => ({
-    id: idOf(name),
-    taskId: idOf(`task:${name}`),
-    sourceUrl: `https://sandbox.test/${name}`,
-    labels: ["sandbox"],
-    waczComplete: true,
-    capturedAt: s.capturedAt,
-    objectKey: `sandbox/${name}`,
-    ...(s.archives?.[name] ?? {}),
-  }));
+  [...names, ...(s.hidden ?? [])]
+    .map((name) => ({
+      name,
+      row: {
+        id: idOf(name),
+        taskId: idOf(`task:${name}`),
+        sourceUrl: `https://sandbox.test/${name}`,
+        labels: ["sandbox"],
+        waczComplete: true,
+        capturedAt: s.capturedAt,
+        objectKey: `sandbox/${name}`,
+        screenshot: null,
+        ...(s.archives?.[name] ?? {}),
+      },
+    }))
+    .sort(byCapturedAt)
+    .map(({ row }) => row);
+
+/** 節目のスクリーンショットの時点 (BrowserHive WACZ Profile の `#screenshots`。capture-ledger の schema の enum と同じ)。 */
+const SCREENSHOT_STAGES = ["after-load", "after-behaviors"];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 節目のスクリーンショットの答えの見出し (capture-ledger の `GET /api/archives/:id/screenshots/:stage` と同じ 4 つ)。 */
+export const SCREENSHOT_HEADERS = Object.freeze({
+  "content-type": "image/webp",
+  "x-content-type-options": "nosniff",
+  "content-security-policy": "sandbox",
+  "cache-control": "private, max-age=300, immutable",
+});
+
+/**
+ * /api/archives/:id/screenshots/:stage (capture-ledger CAPTURE-432)。絵は、筋書きの `stageScreenshots` (アーカイブ → 時点 →
+ * sandbox/ からの相対のファイル) が名指す WebP を、そのまま返す。アーカイブは置き場の名前 (id は名前から決まる) か、id の
+ * 字そのもので書く (置き場に無いページの WACZ のため)。id が UUID でない・知らない時点は 400 (Fastify の schema の形)、
+ * 名指していなければ 404 —— capture-ledger は、見てよくない・行が無い・残さなかった時点・位置を引けなかった時点を分けずに
+ * 404 で言う。`read` はファイルを Buffer で読む関数 (試験が偽物を渡せるように)。
+ */
+export const stageScreenshotOf = (s, id, stage, read = (file) => readFileSync(new URL(`./${file}`, SCENARIO))) => {
+  if (!UUID.test(id)) return schemaError('params/id must match format "uuid"');
+  if (!SCREENSHOT_STAGES.includes(stage)) return schemaError("params/stage must be equal to one of the allowed values");
+  const named = Object.entries(s.stageScreenshots ?? {}).find(([key]) => key === id || idOf(key) === id)?.[1];
+  const file = named?.[stage];
+  if (typeof file !== "string") return { status: 404, body: { error: "not found" } };
+  return { status: 200, picture: read(file) };
+};
 
 /**
  * 当たった所の断片。OpenSearch の highlight と同じく、本文の当たった所を `<em>` で包み、前後を少し残す
@@ -569,17 +620,15 @@ const fragmentOf = (text, q) => {
  * `{ hits, total }` で、total は返した当たりの数。台本の `searchPages` を、capture-ledger と同じ決まりで引く ——
  * 写しの行が在るアーカイブでは写しの行だけ（文書の行は引かない。CAPTURE-48）、見えない行（`hidden`）は
  * 答えに出さない（capture-ledger は OpenFGA の can_view で落とす）。当たりは題か本文に、大小を問わず語を含む行。
- * capture-ledger は 400 で `q` の無い・空の・ほかの欄のある問いを断る（Fastify の schema の文）。
+ * capture-ledger は 400 で `q` の無い・空の・ほかの欄のある問いを断る（v0.107.0 の src/api/search.ts の schema。Fastify の文で、
+ * 見る順は q の有無 → ほかの欄 → q の長さ）。
  */
 export const searchOf = (names, s, params) => {
   const keys = [...params.keys()];
   const q = params.get("q");
-  if (keys.some((k) => k !== "q")) {
-    return { status: 400, body: { error: "Bad Request", message: "querystring must NOT have additional properties" } };
-  }
-  if (q === null || q === "") {
-    return { status: 400, body: { error: "Bad Request", message: "querystring/q must NOT have fewer than 1 characters" } };
-  }
+  if (q === null) return schemaError("querystring must have required property 'q'");
+  if (keys.some((k) => k !== "q")) return schemaError("querystring must NOT have additional properties");
+  if (q === "") return schemaError("querystring/q must NOT have fewer than 1 characters");
   const hidden = new Set(s.hidden ?? []);
   const rows = archiveRows(names, s);
   const nameOf = (row) => [...names, ...(s.hidden ?? [])].find((n) => idOf(n) === row.id);
@@ -799,11 +848,19 @@ export const crawlRulesCheck = (seedTexts, ruleTexts) => {
 
 /** その場の TS の名前の綴り (capture-ledger の schema と同じ。`inline-` と合わせて 64 字まで)。 */
 const INLINE_NAME = /^[a-z][a-z0-9-]*$/;
-/** クロールごとの値の名前の綴り (capture-ledger v0.67.0 の schema と capture-scripts の check.mjs と同じ。64 字まで)。 */
+/**
+ * クロールごとの値の名前の綴り (capture-ledger v0.67.0 の schema と capture-scripts の check.mjs と同じ。64 字まで)。**綴りは同じだが、
+ * 長すぎる名前の文は写していない** —— capture-ledger の Ajv は長さ (`must NOT have more than 64 characters`) を綴りより先に見る。
+ * 代役は綴りの文で断る (その場の TS の名前の 57 字も同じ)。`variables` の名前の誤りも、capture-ledger は
+ * `must match pattern …, body/variables property name must be valid` の 2 文で言うが、代役は後ろの 1 文だけ。
+ */
 const VALUE_NAME = /^[a-z][a-z0-9_]*$/;
 /** 宣言したシークレットを置く Windmill のフォルダ (capture-ledger と capture-scheduler の決まり)。 */
 const SECRETS_FOLDER = "f/waggle_secrets/";
-/** `POST /api/crawls` の body の鍵 (capture-ledger v0.67.0 の schema。`additionalProperties: false`)。外の鍵は 400。 */
+/**
+ * `POST /api/crawls` の body の鍵 (capture-ledger の src/crawl/prepare.ts の `CRAWL_BODY_SCHEMA`。`additionalProperties: false`)。
+ * 外の鍵は 400。v0.67.0 の鍵に、`userAgent` が v0.79.0 から、`recordRandom` が v0.105.0 から足された。
+ */
 const BODY_KEYS = ["userAgent", "recordRandom", "seeds", "rules", "maxDepth", "maxPages", "perHostDelayMs", "hostParallelism", "scripts", "variables"];
 /** Windmill の代わり (台本の `windmillSecrets`・`windmillVariables`)。試験が渡さなければ、何も置いていない Windmill。 */
 const NO_WINDMILL = { secrets: [], variables: [], editedAt: null };
@@ -817,7 +874,7 @@ const FORMATS_WITHOUT_REPLACEMENT = ["png", "webp", "html", "mhtml"];
 
 /**
  * 断りの文の鍵 → その文に埋める値の名前。**capture-ledger の `src/types/hint.ts` の `HINT_KEYS` の写し** ——
- * CAPTURE-294 の段 5 (hints を足した版。枝 `feat/c294-hint-keys` の commit `736a6f7`) から写した。
+ * CAPTURE-294 の段 5 で写し、capture-ledger v0.107.0 の hint.ts と鍵と値の名前が同じことを照らした (hints は v0.102.0 から)。
  * 鍵と値の名前は capture-ledger との約束で、workbench の辞書 (`public/i18n/*.json` の `ledger.hint.<鍵>`) はこの一覧と
  * 両方向で一致する (`test/ledger-text.test.mjs`)。capture-ledger が鍵を足したら、ここと辞書の両方に足す。
  * 代役が実際に返すのは、このうち `variables.*`・`formats.cannotHideSecrets`・`inlineParams.secretsOnly`・
@@ -885,7 +942,8 @@ const RUN_NOTHING_ON_PURPOSE = "(run nothing on purpose: send scripts: [])";
 
 /**
  * Fastify が schema の誤りで返す本文の形 (capture-ledger の 400 と同じ。workbench は `message` を出す)。
- * 文は capture-ledger v0.58.0 の実物から写した —— 要素は鍵が 1 つの object なので、誤りの場所だけが出る。
+ * 文は capture-ledger v0.58.0 の実物から写した —— 要素は鍵が 1 つの object なので、誤りの場所だけが出る。capture-ledger は
+ * 数・真偽の読み替え (Ajv の coerceTypes) で、`userAgent: 5` や `recordRandom: "true"` も通すが、代役は断る。
  */
 const schemaError = (message) => ({
   status: 400,
@@ -1187,7 +1245,7 @@ const resolveValues = (variables = {}, run, windmill, formats = DEFAULT_FORMATS)
     const withheld = hintOf(
       "formats.cannotHideSecrets",
       `CAPTURE_LEDGER_CAPTURE_FORMATS の ${asked.join("・")} は値を置き換えられない (BrowserHive が断る)。` +
-        `形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く`,
+        `形式から外すか、値を BrowserHive WARC に残すなら宣言に archive: "keep" と書く`,
       { formats: asked },
     );
     return refuse({
@@ -1273,7 +1331,7 @@ const resolveRun = (scripts, versions, hosts) => {
 };
 
 /**
- * 既定を頼まれたのに、既定が空。文は capture-ledger v0.61.3 の src/api/crawls.ts と同じ —— スクリプトは在るのに
+ * 既定を頼まれたのに、既定が空。文は capture-ledger v0.61.3 から同じ (いまは src/crawl/prepare.ts。v0.86.1 で移った) —— スクリプトは在るのに
  * 全部が別のサイト用なら、「スクリプトが無い」とは言わない (取り込み直しても直らない)。
  * `hints` は capture-ledger の `crawl/prepare.ts` と同じ形: 鍵の無い組で、終わりの案内も 1 つの組。**`hint` は終わりの
  * 案内を空白 1 つで繋ぐ**ので、`hints` を ` / ` で繋いだ字とは違う。
@@ -1305,7 +1363,8 @@ const emptyDefault = (versions) => {
 /**
  * 台本のスクリプト（版の並び）に source を読み込む。source は sandbox/catalog の写し（capture-scripts のファイル）で、
  * sha256 と bytes は capture-ledger と同じく source から数える（手で書いた sha256 は、本物の
- * 中身と結び付かない）。欄は capture-ledger v0.61.0 の 1 版のエンドポイント（`GET /api/scripts/:id/versions/:version`）と同じ。
+ * 中身と結び付かない）。欄は capture-ledger の 1 版のエンドポイント（`GET /api/scripts/:id/versions/:version`。v0.61.0 から。
+ * `params` は v0.67.0 から）と同じ。
  */
 export const catalogOf = (s, read = readBeside) =>
   (s.catalog ?? []).map((v) => {
@@ -1398,7 +1457,8 @@ export const versionsOf = (versions, id) => {
 
 /**
  * GET /api/scripts/:id/versions/:version。版が 1 以上の整数でなければ 400（文は capture-ledger v0.60.0 の実物から
- * 写した）、無ければ 404。有効かどうかは見ない。
+ * 写した。ただし負の数は、capture-ledger が `must be >= 1` で言うのを、代役は `must be integer` で言う）、無ければ 404。
+ * 有効かどうかは見ない。
  */
 export const versionOf = (versions, id, raw) => {
   if (!/^\d+$/.test(raw)) return schemaError("params/version must be integer");
@@ -1426,8 +1486,10 @@ export const hostTypesOf = (s, read = readBeside) => {
 /**
  * `POST /api/crawls` を真似る。受けたら `rows` の先頭に足す (新しい順)。
  *
- * 答えの文と形は capture-ledger の src/api/crawls.ts から写した (v0.58.0。対象サイトの 400 と既定が空の 400 は
- * v0.61.0。試験が固定する)。
+ * 答えの文と形は capture-ledger から写した (v0.58.0。対象サイトの 400 と既定が空の 400 は v0.61.0。試験が固定する。確かめる所は
+ * v0.86.1 で src/api/crawls.ts から src/crawl/prepare.ts の `prepareCrawl` に移った)。**写していない物**: `Idempotency-Key` の
+ * 無い頼みの 400 (v0.97.0。代役は鍵を見ない)、乱数を控える頼みに配備の形式の wacz が無いときの 400 (v0.105.0)。
+ * 順も一部違う —— capture-ledger は schema の誤り (userAgent の型・起点が空・scripts の形) を `seeds is required` より先に言う。
  * **走行中の 1 本は、受けた行だけで数える** —— 台本の走行中の行は飾りで、それで 409 に
  * すると何も始められない。409 を見たいなら、走っている間にもう 1 度始める。
  *
@@ -1452,7 +1514,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   if (!Array.isArray(body?.seeds)) {
     return { status: 400, body: { error: "seeds is required" } };
   }
-  // capture-ledger と同じ順と文 (schema は文字列だけを見て、形は handler が読める文で断る)
+  // capture-ledger と同じ文 (schema は文字列だけを見て、形は handler が読める文で断る。順の違いは submitCrawl の注記)
   if ("userAgent" in body && typeof body.userAgent !== "string") return schemaError("body/userAgent must be string");
   const userAgent = (body.userAgent ?? "").trim();
   if (userAgent !== "" && !/^[\x20-\x7e]{1,512}$/.test(userAgent)) {
@@ -1915,6 +1977,18 @@ const handle = (req, res, raw) => {
   }
   if (req.method === "GET" && pathname === "/api/archives") {
     send(res, 200, { archives: archiveRows(samples(), s) });
+    return;
+  }
+  // 節目のスクリーンショット (capture-ledger CAPTURE-432)。絵は WebP のバイト列で、見出しは capture-ledger と同じ 4 つ
+  const shot = /^\/api\/archives\/([^/]+)\/screenshots\/([^/]+)$/.exec(pathname);
+  if (req.method === "GET" && shot !== null) {
+    const answer = stageScreenshotOf(s, decodeURIComponent(shot[1]), decodeURIComponent(shot[2]));
+    if (answer.picture === undefined) {
+      send(res, answer.status, answer.body);
+      return;
+    }
+    res.writeHead(200, { ...SCREENSHOT_HEADERS, "content-length": String(answer.picture.length) });
+    res.end(answer.picture);
     return;
   }
   if (req.method === "GET" && pathname === "/api/search") {

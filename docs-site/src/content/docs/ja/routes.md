@@ -17,6 +17,7 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 | `POST /api/schedules` | capture-ledger へ（書き込み。定期実行の予定を作る） |
 | `POST /api/schedules/:id/<操作>` | capture-ledger へ（書き込み。`pause`・`resume`・`run`・`repin`・`delete`） |
 | `POST /api/crawls/:id/failed` | capture-ledger へ（書き込み。走ったままのクロールを締める） |
+| `GET /api/archives/:id/screenshots/:stage` | capture-ledger へ素通し（節目のスクリーンショット。字でなく WebP のバイト列のまま通す） |
 | `/api/*`（ほか） | capture-ledger へ素通し（GET だけ） |
 | `/wacz/:id/…` | capture-ledger に署名をもらい、daemon へ |
 | それ以外 | `public/` のファイル |
@@ -83,10 +84,16 @@ capture-ledger は CORS（Cross-Origin Resource Sharing。別のオリジンの�
   401 は、期限切れも鍵替わりも同じ形で言います。
   refresh token でも取れなければセッションを消し、401（`sign-in expired`。画面の字は「サインインが切れました」）でサインインし直してもらいます。
 - capture-ledger の答えは、状態と `content-type` と本文をそのまま返します。
+  本文は字として読んで返します。
+- **例外は、節目のスクリーンショットの `GET /api/archives/:id/screenshots/:stage` だけ。**
+  答えは WebP のバイト列なので、字として読まず、状態と見出し（下の[通すヘッダ](#通すヘッダ)の allowlist）と本文のバイト列をそのまま流します。
+  字として読むと、UTF-8 として読めないバイトが置き換わり、絵が壊れます。
+  形は `src/lib.mjs` の `isScreenshotRoute` に在ります。id は 36 字の 16 進の数字とハイフン、時点は `after-load` と `after-behaviors` だけで、query も末尾の足しも `%` も通しません（通らない形は、ほかと同じく字として素通しします）。
+  アーカイブの一覧とページの表の「見た目」（[画面](/screens/)）が `<img>` で引きます。
 
 どのエンドポイントを読むかは workbench（`public/app.js`）が決め、サーバは選びません。
 エンドポイントの一覧（allowlist）は持っていません。
-だから capture-ledger の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）と `GET /api/crawls/:id/pages/:page/trace`（1 ページの取り込みの経緯）と `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`（その取り込みの失敗の時点の絵）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）、`GET /api/search`（検索の画面が引く全文検索）も、ここでは何も要りません。どれも読み取りのエンドポイントで、一覧と同じく素通しです。
+だから capture-ledger の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）と `GET /api/crawls/:id/pages/:page/trace`（1 ページの取り込みの経緯）と `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`（その取り込みの失敗の時点の絵）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）、`GET /api/search`（検索の画面が引く全文検索）、`GET /api/archives/:id/screenshots/:stage`（撮った時の絵。返し方だけが上の例外）も、ここでは何も要りません。どれも読み取りのエンドポイントで、一覧と同じく素通しです。
 ページの表の続きは、capture-ledger が本文の `next` で言います（中継が返すのは状態と `content-type` と本文だけで、ほかのヘッダは落ちるため）。
 
 ## POST /api/crawls —— クロールを始める
@@ -198,9 +205,11 @@ WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）を�
 
 ## 通すヘッダ
 
-上流（capture-ledger か daemon）の答えから通すヘッダは allowlist で、`src/server.mjs` の `PASS_HEADERS` が決めます。
+上流（capture-ledger か daemon）の答えから通すヘッダは allowlist で、`src/lib.mjs` の `PASS_HEADERS` が決めます（`content-type`・`content-length`・`x-content-type-options`・`content-security-policy`・`cache-control`）。
 daemon の `date` や `connection` は、workbench の応答に混ぜません。
-画像の実体は bytes のまま、daemon が付けた印（`nosniff`・`sandbox`・`no-store`）ごと通します。
+画像の実体（`/wacz/:id/record/body`）は bytes のまま、daemon が付けた印（`nosniff`・`sandbox`・`no-store`）ごと通します。
+節目のスクリーンショット（`GET /api/archives/:id/screenshots/:stage`）も bytes のまま、capture-ledger が付けた印（`nosniff`・`sandbox`・`private, max-age=300, immutable`）ごと通します。
+ほかの `/api/*` の答えから通すのは `content-type` だけです。
 
 ## 失敗の形
 

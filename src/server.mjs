@@ -43,8 +43,6 @@ import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
 import { cookieValue, createAuth, SESSION_COOKIE, sessionCookie, whoOf } from "./auth.mjs";
@@ -56,7 +54,10 @@ import {
   hostAllowed,
   isWriteRoute,
   optional,
+  pass,
   readBody,
+  relay,
+  relayFor,
   safePath,
   Told,
   TooLarge,
@@ -144,36 +145,6 @@ const toDaemon = async (path, body) => {
   } catch (err) {
     throw new Told("validator unreachable", { url: VALIDATOR, cause: causeOf(err) });
   }
-};
-
-/**
- * 上流の答えを流す。通すヘッダは allowlist —— daemon の `date` や `connection` を
- * workbench の応答に混ぜない。画像の実体（`/record/body`）は bytes のまま、印
- * （`nosniff` · `sandbox` · `no-store`）ごと通す。
- */
-const PASS_HEADERS = ["content-type", "content-length", "x-content-type-options", "content-security-policy", "cache-control"];
-
-const pass = async (reply, upstream) => {
-  const headers = {};
-  for (const name of PASS_HEADERS) {
-    const value = upstream.headers.get(name);
-    if (value !== null) headers[name] = value;
-  }
-  headers["content-type"] ??= "application/json; charset=utf-8";
-  reply.writeHead(upstream.status, headers);
-  if (upstream.body === null) {
-    reply.end();
-    return;
-  }
-  await pipeline(Readable.fromWeb(upstream.body), reply);
-};
-
-/** capture-ledger の答えを、状態と content-type と本文のまま返す。 */
-const relay = async (reply, res) => {
-  reply.writeHead(res.status, {
-    "content-type": res.headers.get("content-type") ?? "application/json; charset=utf-8",
-  });
-  reply.end(await res.text());
 };
 
 const sendJson = (reply, status, body) => {
@@ -353,8 +324,9 @@ const server = createServer((request, reply) => {
       );
       return;
     }
+    // 節目のスクリーンショット（`lib.mjs` の `isScreenshotRoute`）だけはバイト列のまま、ほかは字のまま返す
     void toLedger(url, "GET", undefined, session)
-      .then((res) => relay(reply, res))
+      .then((res) => relayFor(url)(reply, res))
       .catch((err) => {
         failed(reply, err);
       });

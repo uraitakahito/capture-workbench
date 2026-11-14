@@ -1,14 +1,15 @@
 /**
  * 外と話さない部分の試験。
  *
- * **ここで見るのは「配ってよい path か」「知っている形式か」「門が通すか」だけ。** 中継は
+ * **ここで見るのは「配ってよい path か」「知っている形式か」「門が通すか」と、上流の答えの流し方だけ。** 流し方
+ * （`pass`・`relay`・`relayFor`）は、偽の応答（`Response`）と偽の返し先を渡して見る。capture-ledger へ繋ぐ所と振り分けは
  * http の側（`server.mjs`）に在り、あれは動かさないと確かめられない（反証は手で当てる）。名乗り（`src/auth.mjs`）は、
  * `auth.test.mjs` が偽の IdP を渡して見る。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
-import { Readable } from "node:stream";
+import { Readable, Writable } from "node:stream";
 
 import {
   contentType,
@@ -16,9 +17,14 @@ import {
   errorBody,
   forwardedHeaders,
   hostAllowed,
+  isScreenshotRoute,
   isWriteRoute,
   optional,
+  pass,
+  PASS_HEADERS,
   readBody,
+  relay,
+  relayFor,
   safePath,
   Told,
   TooLarge,
@@ -208,4 +214,119 @@ test("中継で運ぶ見出しは、POST /api/crawls の Idempotency-Key だけ"
   // ほかの書き込みには運ばない・鍵が無ければ何も足さない
   assert.deepEqual(forwardedHeaders("/api/schedules", headers), {});
   assert.deepEqual(forwardedHeaders("/api/crawls", { cookie: "s=1" }), {});
+});
+
+// ── 節目のスクリーンショットの中継（CAPTURE-432）────────────────────────────
+const ARCHIVE = "5e6d1ed0-c5b0-35a7-b71b-517fa8aa6b97";
+
+test("絵のエンドポイントの形は、capture-ledger の 2 つの時点と 36 字の id だけ", () => {
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-load`), true);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-behaviors`), true);
+  // 知らない時点・時点の無い形・35 字と 37 字の id
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/during-load`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE.slice(1)}/screenshots/after-load`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}0/screenshots/after-load`), false);
+});
+
+test("絵のエンドポイントは、末尾の足し・query・% と . で capture-ledger のほかのエンドポイントへ回り込む形を通さない", () => {
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-load/`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-load?x=1`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-load/x`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-load%2F`), false);
+  // fetch は .. を畳む。id の 36 字を .. と / で埋めた形は、ほかの archive やほかのエンドポイントに届く
+  assert.equal(isScreenshotRoute("/api/archives/../../../../../../../../../crawls/screenshots/after-load"), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE.slice(0, 33)}/../screenshots/after-load`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/%2e%2e${ARCHIVE.slice(6)}/screenshots/after-load`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/%61fter-load`), false);
+  assert.equal(isScreenshotRoute(`/xapi/archives/${ARCHIVE}/screenshots/after-load`), false);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE.toUpperCase()}/screenshots/after-load`), false);
+});
+
+test("中継の返し方は、絵のエンドポイントだけがバイト列（pass）、ほかは字（relay）", () => {
+  assert.equal(relayFor(`/api/archives/${ARCHIVE}/screenshots/after-load`), pass);
+  assert.equal(relayFor(`/api/archives/${ARCHIVE}/screenshots/after-behaviors`), pass);
+  for (const url of ["/api/archives", `/api/archives/${ARCHIVE}/url`, "/api/crawls", `/api/archives/${ARCHIVE}/screenshots/after-load?x=1`]) {
+    assert.equal(relayFor(url), relay, url);
+  }
+});
+
+/** node の http の応答の代わり。writeHead の状態と見出しと、書かれたバイト列を覚える。 */
+const replyCatcher = () => {
+  const chunks = [];
+  const reply = new Writable({
+    write(chunk, _encoding, done) {
+      chunks.push(Buffer.from(chunk));
+      done();
+    },
+  });
+  reply.writeHead = (status, headers) => {
+    reply.head = { status, headers };
+    return reply;
+  };
+  reply.bytes = () => Buffer.concat(chunks);
+  return reply;
+};
+
+/** WebP の頭と、UTF-8 として読めないバイト（0xff・0xfe・孤立した 0x80・途中で切れた 3 バイト列）を含む見本。 */
+const WEBP = Buffer.concat([
+  Buffer.from("RIFF"),
+  Buffer.from([0x0c, 0x00, 0x00, 0x00]),
+  Buffer.from("WEBPVP8L"),
+  Buffer.from([0xff, 0xfe, 0x80, 0x00, 0xe3, 0x81, 0xc0, 0xaf]),
+]);
+
+const finished = (reply) => new Promise((done) => reply.on("finish", done));
+
+test("pass は絵のバイト列を 1 バイトも変えずに通し、見出しは allowlist の物だけ", async () => {
+  const upstream = new Response(WEBP, {
+    status: 200,
+    headers: {
+      "content-type": "image/webp",
+      "content-length": String(WEBP.length),
+      "x-content-type-options": "nosniff",
+      "content-security-policy": "sandbox",
+      "cache-control": "private, max-age=300, immutable",
+      "set-cookie": "s=1",
+      date: "Sun, 15 Nov 2026 00:00:00 GMT",
+      "x-powered-by": "fastify",
+    },
+  });
+  const reply = replyCatcher();
+  const done = finished(reply);
+  await pass(reply, upstream);
+  await done;
+  assert.ok(reply.bytes().equals(WEBP), "バイト列のまま");
+  assert.equal(reply.head.status, 200);
+  assert.deepEqual(reply.head.headers, {
+    "content-type": "image/webp",
+    "content-length": String(WEBP.length),
+    "x-content-type-options": "nosniff",
+    "content-security-policy": "sandbox",
+    "cache-control": "private, max-age=300, immutable",
+  });
+  assert.deepEqual(Object.keys(reply.head.headers).sort(), [...PASS_HEADERS].sort());
+  // 字として読むと壊れる見本であること（relay では通せない）
+  assert.equal(Buffer.from(WEBP.toString("utf8"), "utf8").equals(WEBP), false);
+});
+
+test("pass は capture-ledger の 404 も状態と本文のまま通し、content-type が無ければ JSON と言う", async () => {
+  const reply = replyCatcher();
+  const done = finished(reply);
+  // 字の本文だと Response が text/plain を足すので、バイト列で渡す（content-type の無い答え）
+  await pass(reply, new Response(Buffer.from('{"error":"not found"}'), { status: 404, headers: { "x-other": "1" } }));
+  await done;
+  assert.equal(reply.head.status, 404);
+  assert.equal(reply.head.headers["content-type"], "application/json; charset=utf-8");
+  assert.equal(reply.bytes().toString("utf8"), '{"error":"not found"}');
+});
+
+test("relay は状態と content-type と本文の字を返す（ほかの見出しは落とす）", async () => {
+  const reply = replyCatcher();
+  const done = finished(reply);
+  await relay(reply, new Response('{"archives":[]}', { status: 200, headers: { "content-type": "application/json; charset=utf-8", "set-cookie": "s=1" } }));
+  await done;
+  assert.deepEqual(reply.head, { status: 200, headers: { "content-type": "application/json; charset=utf-8" } });
+  assert.equal(reply.bytes().toString("utf8"), '{"archives":[]}');
 });

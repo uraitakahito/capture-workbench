@@ -18,6 +18,7 @@ not.
 | `POST /api/schedules/:id/<action>` | the ledger (writes: `pause`, `resume`, `run`, `repin`, `delete`) |
 | `POST /api/crawls/:id/failed` | the ledger (writes: closes a crawl left running) |
 | `POST /api/scripts/check` | the ledger (asks what an inline script declares; writes nothing, and goes through the same checks because the source travels in the body) |
+| `GET /api/archives/:id/screenshots/:stage` | passed through to the ledger (a stage screenshot; passes as WebP bytes, not as text) |
 | `/api/*` (the rest) | passed through to the ledger (GET only) |
 | `/wacz/:id/…` | signed by the ledger, then answered by the daemon |
 | anything else | the files in `public/` |
@@ -89,7 +90,16 @@ cannot call it directly, the server relays it to make it same-origin.
   that says "still valid" cannot be trusted. A 401 says both "expired" and "the keys changed" in
   the same way. If the refresh token gets nothing, the session is dropped and the answer is a 401
   (`sign-in expired`, which the page words as `The sign-in has expired`) that sends you to sign in again.
-- The ledger's status, `content-type` and body are returned as they are.
+- The ledger's status, `content-type` and body are returned as they are. The body is read as
+  text.
+- **The one exception is the stage screenshot, `GET /api/archives/:id/screenshots/:stage`.** Its
+  answer is WebP bytes, so it is not read as text: the status, the headers (the allowlist in
+  [Headers that pass](#headers-that-pass)) and the bytes of the body stream through as they are.
+  Read as text, the bytes that are not valid UTF-8 would be replaced and the picture broken. The
+  shape is `isScreenshotRoute` in `src/lib.mjs`: a 36-character id of hex digits and hyphens, and
+  only the stages `after-load` and `after-behaviors`, with no query, nothing after it and no `%`
+  (anything else passes through as text, like the rest). The **Look** (見た目) of the archives
+  list and of the pages table ([Screens](/screens/)) loads it with an `<img>`.
 
 Which ledger routes are read is decided by the workbench (`public/app.js`); the server does not
 choose. It keeps no list of allowed routes. So the ledger's `GET /api/crawl-rules/check` (the new
@@ -98,8 +108,9 @@ opened crawl's rules decided), `GET /api/crawls/:id/pages` (an opened crawl's pa
 `GET /api/crawls/:id/pages/:page/log` (one page's log), `GET /api/crawls/:id/pages/:page/trace`
 (the trace of one page's capture) and `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`
 (the screenshot at that capture's failure), `GET /api/crawls/:id/diagnostics` (the type
-errors of a crawl that failed the type check) and `GET /api/search` (the search view's full-text
-search) need nothing here: they are reads, and pass through like the lists. The ledger says where the pages table continues in the body (`next`),
+errors of a crawl that failed the type check), `GET /api/search` (the search view's full-text
+search) and `GET /api/archives/:id/screenshots/:stage` (the picture as captured; only how it is
+returned is the exception above) need nothing here: they are reads, and pass through like the lists. The ledger says where the pages table continues in the body (`next`),
 since the relay returns only the status, `content-type` and body, and drops the other headers.
 
 ## POST /api/crawls — the route that starts a crawl
@@ -224,9 +235,13 @@ change `OPS`, `paramsFor` and this table.
 ## Headers that pass
 
 Which headers of the upstream answer (the ledger's or the daemon's) pass through is an
-allowlist, `PASS_HEADERS` in `src/server.mjs`. The daemon's `date` and `connection` are not mixed
-into the workbench's response. The image itself passes as bytes, together with the marks the daemon
-put on it (`nosniff`, `sandbox`, `no-store`).
+allowlist, `PASS_HEADERS` in `src/lib.mjs` (`content-type`, `content-length`,
+`x-content-type-options`, `content-security-policy`, `cache-control`). The daemon's `date` and
+`connection` are not mixed into the workbench's response. The image itself (`/wacz/:id/record/body`)
+passes as bytes, together with the marks the daemon put on it (`nosniff`, `sandbox`, `no-store`).
+A stage screenshot (`GET /api/archives/:id/screenshots/:stage`) also passes as bytes, with the marks
+the ledger put on it (`nosniff`, `sandbox`, `private, max-age=300, immutable`). From the other
+`/api/*` answers only `content-type` passes.
 
 ## What failures look like
 

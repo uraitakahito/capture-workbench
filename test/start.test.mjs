@@ -576,14 +576,14 @@ test("シークレットの 400（capture-ledger v0.90.0）: 残すかの食い�
     names: ["api_token", "session"],
     hint:
       "CAPTURE_LEDGER_CAPTURE_FORMATS の png・html は値を置き換えられない (BrowserHive が断る)。" +
-      '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く',
+      '形式から外すか、値を BrowserHive WARC に残すなら宣言に archive: "keep" と書く',
   });
   assert.equal(refused.kind, "bad");
   assert.equal(
     refused.text,
     "400 —— いまの形式では隠せないシークレットがあります: api_token, session" +
       "（CAPTURE_LEDGER_CAPTURE_FORMATS の png・html は値を置き換えられない (BrowserHive が断る)。" +
-      '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く）',
+      '形式から外すか、値を BrowserHive WARC に残すなら宣言に archive: "keep" と書く）',
   );
 });
 

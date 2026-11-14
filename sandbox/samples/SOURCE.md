@@ -1,6 +1,6 @@
 # サンドボックスの WACZ の標本
 
-出どころは 3 つ: 検証の結果を見るための 5 本（corpus から）、経緯の画面を見るための 1 本（BrowserHive の取り込み）、節目のスクリーンショットを見るための 3 本（BrowserHive の e2e の取り込み）。
+出どころは 3 つ: 検証の結果を見るための 5 本（corpus から）、経緯の画面を見るための 1 本（BrowserHive の取り込み）、節目のスクリーンショットを見るための 3 本（BrowserHive の e2e の取り込み）。後ろの 2 つの節は、WACZ の外に置いた絵の出どころ。
 
 ## corpus から写した 5 本
 
@@ -64,10 +64,21 @@ v30.2.0 になった変更を、タグを打つ前に建てた build）が、cap
 WACZ に無い欄（`status`・`timestamp`・`captureProcessingTimeMs`・`httpStatusCode`）は、筋書きが組んだ
 （`timestamp` は `datapackage.json` の `created`）。**WACZ を差し替えるなら、筋書きの答えも同じ取り込みの物に替える。**
 
-名前を `with-`・`without-` で始めてあるのは、アーカイブの画面の並び（名前の順）で corpus の標本の後ろに置くため
-（docs の絵 `archives` は表の頭から決まった高さまでを写す）。
+アーカイブの画面の並びは、capture-ledger と同じく撮った時刻の新しい順（同じ時刻なら名前の順）。筋書きはこの 3 本と
+`trace-timeline.wacz` に本当の撮った時刻（同じ WACZ を指す筋書きのページの `capturedAt`）を書くので、4 本は corpus の標本
+（筋書きの既定の時刻）より前に来る。docs の絵 `archives` は表の頭から 5 行を写し、その中に絵の在る行・絵を残さなかった行
+（`withheld`・`secret`）・記録の無い行が並ぶ。
 
 中に在るのは capture-fixtures の頁だけ（e2e のスタックの中の名前 `capture-fixtures-N-a.browserhive:8080` で撮った）。
+
+## 一覧の行の絵
+
+`sandbox/screenshots/marked-search-after-load.webp`（5,624 バイト・sha256 `fcce557a46dcbd1e26c2a051683605e0541fa241089a4a24685621554480fca9`）は、
+`with-screenshots.wacz` の `after-load` の節目のスクリーンショット —— WARC の resource レコード
+（`urn:browserhive:screenshot:after-load:…`）の本文を、1 バイトも変えずに取り出した物。代役の
+`GET /api/archives/:id/screenshots/after-load` が、筋書きの `stageScreenshots` の名指しで返す（capture-ledger は同じ本文を
+保管庫の WACZ から読んで返す）。`test/sandbox.test.mjs` が、WACZ の中のレコードの本文と同じバイト列かを照らす。
+**`with-screenshots.wacz` を差し替えるなら、この絵も取り出し直す。**
 
 ## 失敗の時点の絵
 

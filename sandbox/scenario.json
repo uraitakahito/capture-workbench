@@ -6,6 +6,12 @@
     "        running の行は終わりが無く、かかった時間が引くたびに伸びる。",
     "        crawlId は頭の 8 字で違える (画面の id の欄は、頭の 8 字しか出さない)。",
     "archives: アーカイブの行は WACZ の置き場から作る。ここに書いた名前の行は、欄を上書きする。",
+    "        並びは capture-ledger と同じく撮った時刻 (capturedAt。省けば上の capturedAt) の新しい順で、同じ時刻なら名前の順。BrowserHive の",
+    "        見本の 4 本 (trace-timeline・with-screenshots・without-screenshots-*) は、同じ WACZ を指す 5b0c000b のページの capturedAt を書き、表の頭に来る。",
+    "        screenshot は読み込みの後の節目のスクリーンショット (capture-ledger CAPTURE-432 の形。{ stage, bytes }・{ stage, skipped }・{ stage, problem })。省けば null (記録が無い)。",
+    "stageScreenshots: 節目のスクリーンショットの絵 (GET /api/archives/:id/screenshots/:stage が返す WebP)。アーカイブ (置き場の名前か、id の字そのもの) → 時点 →",
+    "        sandbox/ からの相対のファイル。名指していない組は 404。screenshots/marked-search-after-load.webp は with-screenshots.wacz の after-load の",
+    "        レコードの本文そのまま (出どころは sandbox/samples/SOURCE.md)。5b0c0009 の 1201 の WACZ (置き場に無い id) にも同じ絵を充てる。",
     "hidden: 一覧には出るが、署名は出ない行 (capture-ledger の「見てよくない archive」と同じ 404 になる)。",
     "searchPages: 検索のエンドポイント (GET /api/search) が引く、アーカイブごとのページ一覧の行 (WACZ の pages/pages.jsonl の形)。",
     "        stage の無い行が文書の行、stage の在る行が写しの行。capture-ledger と同じく、写しの行が在るアーカイブでは文書の行を引かず、",
@@ -65,7 +71,9 @@
     "        書かないページは、欄の無い取り込み (v30.1.0 以前)。絵そのものは、ページの archiveId が指す置き場の WACZ の中のレコード。",
     "        failureScreenshot は失敗の時点の絵のファイル (sandbox/ からの相対。本物の .result.json では保管庫の場所)。代役は、経緯の答えでは",
     "        在るかどうかの真偽にし、絵は GET /api/crawls/:id/pages/:page/trace/failure-screenshot で { contentType, base64 } にして返す。",
-    "        5b0c000b の 1304 は絵が 2 枚、1305 と 1306 は絵を残さなかった取り込み (withheld・secret)、1307 は文書が 503 を返して失敗の時点の絵が在る取り込み。"
+    "        5b0c000b の 1304 は絵が 2 枚、1305 と 1306 は絵を残さなかった取り込み (withheld・secret)、1307 は文書が 503 を返して失敗の時点の絵が在る取り込み。",
+    "crawls の pages の screenshot: ページの行の読み込みの後の節目のスクリーンショット (アーカイブの行と同じ形。CAPTURE-432)。省けば null。",
+    "        5b0c000b の 1304〜1306 は同じ WACZ のアーカイブの行と同じ値、5b0c0009 の 1201 は絵 (stageScreenshots が絵を充てる)・1203 は withheld。"
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,
@@ -1040,6 +1048,10 @@
                 }
               }
             ]
+          },
+          "screenshot": {
+            "stage": "after-load",
+            "bytes": 5624
           }
         },
         {
@@ -1177,6 +1189,10 @@
               "error": 0
             },
             "dropped": 1204
+          },
+          "screenshot": {
+            "stage": "after-load",
+            "skipped": "withheld"
           }
         },
         {
@@ -2508,6 +2524,10 @@
               "evicted": 0
             },
             "dropped": 0
+          },
+          "screenshot": {
+            "stage": "after-load",
+            "bytes": 5624
           }
         },
         {
@@ -2842,6 +2862,10 @@
               "evicted": 0
             },
             "dropped": 0
+          },
+          "screenshot": {
+            "stage": "after-load",
+            "skipped": "withheld"
           }
         },
         {
@@ -3150,6 +3174,10 @@
               "evicted": 0
             },
             "dropped": 0
+          },
+          "screenshot": {
+            "stage": "after-load",
+            "skipped": "secret"
           }
         },
         {
@@ -3719,6 +3747,38 @@
     },
     "wacz-missing-indexes.wacz": {
       "waczComplete": null
+    },
+    "trace-timeline.wacz": {
+      "capturedAt": "2026-11-13T08:12:20.522Z"
+    },
+    "with-screenshots.wacz": {
+      "capturedAt": "2026-11-13T16:36:33.023Z",
+      "screenshot": {
+        "stage": "after-load",
+        "bytes": 5624
+      }
+    },
+    "without-screenshots-withheld.wacz": {
+      "capturedAt": "2026-11-13T16:38:54.208Z",
+      "screenshot": {
+        "stage": "after-load",
+        "skipped": "withheld"
+      }
+    },
+    "without-screenshots-secret.wacz": {
+      "capturedAt": "2026-11-13T16:36:50.105Z",
+      "screenshot": {
+        "stage": "after-load",
+        "skipped": "secret"
+      }
+    }
+  },
+  "stageScreenshots": {
+    "with-screenshots.wacz": {
+      "after-load": "screenshots/marked-search-after-load.webp"
+    },
+    "a5b0c120-1201-4000-8000-000000001201": {
+      "after-load": "screenshots/marked-search-after-load.webp"
     }
   },
   "hidden": [
