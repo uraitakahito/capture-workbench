@@ -78,7 +78,7 @@ what you have read stays listed when the table is fetched again.
 ## Crawls
 
 Each row is one crawl. It shows the state (**State**, 状態), the first 8 characters of the id, who
-started it and for which organization (**Started by**, 始めた人), the first seed URL (**Seed**, 起点),
+started it and for which organization (**Started by**, 始めた人), the seed URL (**Seed**, 起点),
 pages captured (**Captured**, 撮れた), links (**Links**, リンク), the number of WACZ files and the time
 taken (**Time taken**, かかった). Under **Open in** (行き先) at the right end, "run ↗" opens the Windmill run in a new tab, and
 "ReplayWeb.page ↗" and "Web Capture ↗" next to it open the whole crawl in replay as one archive, once the ledger has written
@@ -89,6 +89,12 @@ the crawl's bundle.
 ① state\
 ② the link to the run
 
+- **The seed URL takes two lines.** The top line is the path and query, and the bottom line, in
+  smaller type, is the origin (scheme, host and port); the two together are the URL. A seed whose
+  path is only `/` (such as `https://laws.e-gov.go.jp/`) is told apart by its host, so it shows the
+  whole URL on one line. A line that does not fit ends in "…"; hover over the cell to read the whole
+  URL. A crawl with more than one seed shows the first one followed by how many more there are
+  (such as `+5`), and hovering lists every seed, one per line.
 - **Pages captured and links are separate columns.** The links column (`pagesDiscovered`) is the
   number of distinct URLs the rules let through among the links on the captured pages (seeds are
   not counted). URLs that were not captured count too, so it is not the denominator of pages
@@ -768,6 +774,8 @@ The WACZ files you can see, newest capture first.
 
 ![The archives view: WACZ files, two of them validated (問題なし and 失敗 1)](../../assets/screens/archives.webp)
 
+- **The URL under Captured (撮れたもの) takes the same two lines as a crawl's seed.** The top line is
+  the path and query, the bottom line the origin. Hover over the cell to read the whole URL.
 - **A `—` under Complete? (完全か) means "unknown".** The ledger's `waczComplete` is null for
   that row, which is not the same as **Incomplete** (欠けあり).
 - **Validate (検証) only runs when you press it.** Opening the list does not run it. The result

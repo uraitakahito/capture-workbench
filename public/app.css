@@ -171,6 +171,37 @@ td.wide {
   text-overflow: ellipsis;
 }
 
+/*
+ * URL の欄（一覧の 2 行。CAPTURE-404）。上の行は path と query、下の行は origin を小さく薄く。幅の上限は td でなく
+ * 中の箱に付ける（表のセルの max-width は CSS 2.1 で未定義）。入らない字は、行ごとに末尾を省く（全文は td の title）
+ */
+.url-box {
+  display: block;
+  max-width: 34ch;
+}
+.url-line {
+  display: flex;
+  align-items: baseline;
+}
+.url-top,
+.url-bottom {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.url-bottom {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.url-more {
+  flex: none;
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12.5px;
@@ -439,7 +470,8 @@ tr.detail .drops td {
 
 /*
  * ページの表（URL・結末・warn と error・ログ）も中身の幅に（.vals・.drops と同じく、table の既定の 100%・720px を
- * 継がない）。URL と結末は長いので、幅に上限を付けて折り返す（td の max-width は効かないので、中の span に付ける）
+ * 継がない）。URL と結末は長いので、幅に上限を付けて折り返す。上限は中の span に付ける —— 表のセルの max-width は
+ * CSS 2.1 で未定義で（Chrome は効かせるが、上の td.wide のように幅 100% の表では余りの幅の配分に負ける）、頼らない
  */
 tr.detail .pagelist {
   width: auto;
@@ -1581,6 +1613,18 @@ button:focus-visible {
 
 .vrecords td.mark {
   width: 1.5em;
+}
+
+/*
+ * URI の列に、表の余りの幅を全部渡す（CAPTURE-404）。表は幅 100% なので、td.wide の 34ch の上限は余りの配分に負け、
+ * 余りは content-type などの列にも配られていた。width: 100% と max-width: 0 で、ほかの列を中身の幅に縮める
+ * （表のセルの max-width は CSS 2.1 で未定義。Chrome 152 で確かめた）。入らない字は末尾を省き、全文は title
+ */
+.vrecords td.uri {
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vrecords tr.sel td {

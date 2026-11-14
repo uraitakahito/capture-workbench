@@ -212,3 +212,40 @@ test("リンクの数の但し書き: 記録の無いクロールの数は延べ
   // 欄を返さない古い capture-ledger: 分からないので何も言わない
   assert.equal(linksNoteOf({ pagesCaptured: 30, pagesDiscovered: 62 }), undefined);
 });
+
+// ── URL の欄の 2 行（CAPTURE-404・試作）──
+import { urlLinesOf } from "../public/format.js";
+
+test("URL は、上の行が path と query、下の行が origin", () => {
+  assert.deepEqual(urlLinesOf("http://capture-fixtures.capture-ledger:8080/links/fan-out?n=30"), {
+    top: "/links/fan-out?n=30",
+    bottom: "http://capture-fixtures.capture-ledger:8080",
+  });
+});
+
+test("path が無いか / だけの URL は、全文を上の行に出す（下の行は無い）", () => {
+  assert.deepEqual(urlLinesOf("https://laws.e-gov.go.jp/"), { top: "https://laws.e-gov.go.jp/", bottom: undefined });
+  assert.deepEqual(urlLinesOf("https://laws.e-gov.go.jp"), { top: "https://laws.e-gov.go.jp", bottom: undefined });
+});
+
+test("字を足しも直しもしない（下の行 + 上の行は、元の字）", () => {
+  for (const url of [
+    "HTTP://Example.TEST:80/A/b?Q=1#F",
+    "http://[::1]:8080/x",
+    "http://u:p@h.test/?a=/b",
+    "http://h.test?x=1",
+    "http://h.test#top",
+  ]) {
+    const { top, bottom } = urlLinesOf(url);
+    assert.equal(`${bottom}${top}`, url);
+  }
+  assert.equal(urlLinesOf("http://h.test?x=1").top, "?x=1");
+});
+
+test("URL の形でない字は、そのまま上の行", () => {
+  assert.deepEqual(urlLinesOf("urn:browserhive:snapshot:after-load:http://h.test/a"), {
+    top: "urn:browserhive:snapshot:after-load:http://h.test/a",
+    bottom: undefined,
+  });
+  assert.deepEqual(urlLinesOf(""), { top: "", bottom: undefined });
+});

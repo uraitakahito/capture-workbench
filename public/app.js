@@ -10,7 +10,7 @@
  * `outerHTML` のようなほかの API は見ない。
  */
 import { applyI18n, dateTime, errorText, key, langOf, phraseText, refusalTexts, switchLang, t, timeOfDay, tNodes } from "/i18n.js";
-import { checkVerdict, count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, verdict } from "/format.js";
+import { checkVerdict, count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, urlLinesOf, verdict } from "/format.js";
 import {
   ACTIONS,
   actionText,
@@ -293,6 +293,24 @@ const tag = (name, text, className) => {
 };
 
 const cell = (text, className) => tag("td", text, className);
+
+/**
+ * URL の欄（一覧の 2 行。CAPTURE-404）。上の行に path と query、下の行に origin を小さく（`urlLinesOf`）。
+ * 全文は title に（`urls` が 2 本以上なら全部を行で）。2 本目からは出さず、上の行の後ろに数だけを出す。
+ */
+const urlCell = (urls, className) => {
+  const td = tag("td", "", className === undefined ? "url" : `url ${className}`);
+  const lines = urlLinesOf(urls[0] ?? "");
+  const box = tag("span", "", "url-box");
+  const first = tag("span", "", "url-line");
+  first.append(tag("span", lines.top, "url-top"));
+  if (urls.length > 1) first.append(tag("span", `+${String(urls.length - 1)}`, "url-more"));
+  box.append(first);
+  if (lines.bottom !== undefined) box.append(tag("span", lines.bottom, "url-bottom"));
+  td.append(box);
+  td.title = urls.join("\n");
+  return td;
+};
 
 /** workbench の外への行き先。新しいタブで開く。 */
 const link = (href, text) => {
@@ -1065,7 +1083,7 @@ const drawCrawls = () => {
       who.append(" ", badge);
     }
     row.append(who);
-    row.append(cell(crawl.seeds[0] ?? "", "wide"));
+    row.append(urlCell(crawl.seeds));
     // **2 つの数を 1 つの欄に混ぜない。** リンクの数は撮れた数の分母ではない（`linksOf`）
     row.append(cell(String(crawl.pagesCaptured), "num mono"));
     // 数を押すと、リンクの構成（#links/<クロールの id>）。1 枚も撮れていない行（−）は link にしない
@@ -2008,7 +2026,7 @@ const drawArchives = () => {
   for (const archive of archives) {
     const row = document.createElement("tr");
     row.dataset.archive = archive.id;
-    row.append(cell(archive.sourceUrl, "wide"));
+    row.append(urlCell([archive.sourceUrl]));
     row.append(cell(archive.labels.join(" ")));
     row.append(cell(dateTime(new Date(archive.capturedAt)), "mono"));
     // **null は「分からない」。** 「不完全」と同じに描かない。
@@ -3052,7 +3070,7 @@ const drawRecords = () => {
       cell(cells.type),
       cell(cells.status, "mono num"),
       cell(cells.mime, "mono"),
-      cell(cells.uri, "mono wide"),
+      Object.assign(cell(cells.uri, "mono uri"), { title: cells.uri }),
     );
     tr.className = "head";
     tr.onclick = () => {
