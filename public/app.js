@@ -209,11 +209,12 @@ import {
   flattenTree,
   formatBytes,
   isWarc,
+  kindCounts,
   lineLabel,
   parseWaczHash,
   recordCells,
-  recordKind,
   recordOpener,
+  rowsOfKind,
   typeName,
   waczHash,
   warcinfoNote,
@@ -3015,8 +3016,7 @@ const drawRecords = () => {
   for (const record of warcinfoOf(wacz.report, path)) content.append(warcinfoPanel(record));
 
   // 種別の絞り。数は読んだ窓の中の数（全体の数は total）。
-  const counts = new Map();
-  for (const row of rows) counts.set(recordKind(row), (counts.get(recordKind(row)) ?? 0) + 1);
+  const counts = kindCounts(rows);
   const chips = document.createElement("div");
   chips.className = "chips";
   const chip = (label, value) => {
@@ -3038,8 +3038,7 @@ const drawRecords = () => {
   const head = document.createElement("tr");
   for (const text of ["", t("wacz.records.col.type"), t("wacz.records.col.status"), "content-type", "URI"]) head.append(tag("th", text));
   table.append(head);
-  for (const row of rows) {
-    if (filter !== undefined && recordKind(row) !== filter) continue;
+  for (const row of rowsOfKind(rows, filter)) {
     const cells = recordCells(row);
     const tr = document.createElement("tr");
     tr.append(
