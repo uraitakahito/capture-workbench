@@ -1,8 +1,9 @@
 /**
  * 外と話さない部分の試験。
  *
- * **ここで見るのは「配ってよい path か」「知っている形式か」「門が通すか」だけ。** 中継も
- * 名乗りも http の側（`server.mjs`）に在り、あれは動かさないと確かめられない（反証は手で当てる）。
+ * **ここで見るのは「配ってよい path か」「知っている形式か」「門が通すか」だけ。** 中継は
+ * http の側（`server.mjs`）に在り、あれは動かさないと確かめられない（反証は手で当てる）。名乗り（`src/auth.mjs`）は、
+ * `auth.test.mjs` が偽の IdP を渡して見る。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -128,7 +129,7 @@ test("書き込みのエンドポイントは、定期実行の予定を作る�
   assert.equal(isWriteRoute("/api/crawls/../failed"), false);
 });
 
-test("書き込みのエンドポイントは、クロールを始めるエンドポイントと、その場の TS の直し方を訊くエンドポイントと、宣言を訊くエンドポイントの 3 つの形だけ", () => {
+test("書き込みのエンドポイントは、クロールを始める・その場の TS の直し方を訊く・宣言を訊く POST を通し、末尾の足し・query・ほかの段を断る", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   assert.equal(isWriteRoute("/api/crawls"), true);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner/fix`), true);

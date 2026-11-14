@@ -117,6 +117,9 @@ export const hostAllowed = (host, port) =>
  *   （CAPTURE-49。capture-ledger は型の検査に通った案だけを返し、費用を数える）
  * - `/api/scripts/check` —— 書いている途中のその場の TS が宣言した変数を訊く。**書かない**が、source を本文で送るので
  *   POST で、JSON だけを通す門も要る（よそのページから叩かれると、ts-compile-service を働かせられる）
+ * - `/api/schedules` —— 定期実行の予定を作る
+ * - `/api/schedules/<id>/<操作>` —— 予定を操作する（`pause`・`resume`・`run`・`repin`・`delete`）
+ * - `/api/crawls/<id>/failed` —— 走ったままのクロールを締める
  *
  * **端を固めて照らす** —— 末尾の足し・query・`%`（`%2F` も `%2e%2e` も）・`.` を通さない。id と名前の字まで絞るのは、
  * fetch が URL の `..` を畳み、capture-ledger のほかのエンドポイントに届かせないため。判断は capture-ledger がする —— ここは中継する形を絞るだけ。

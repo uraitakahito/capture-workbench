@@ -20,9 +20,9 @@
  *
  * ## 書き込みのエンドポイント
  *
- * 書くのは `POST /api/crawls`（クロールを始める）と、`POST /api/crawls/:id/inline/:name/fix`（型で落ちた
- * その場の TS の直し方を訊く）だけで、中身は検査せずに capture-ledger へ渡す。起点の URL も方針も、直しが検査に通るかも、
- * 決めるのは capture-ledger。代わりに門を通す —— 全部のエンドポイントで Host を見て（DNS rebinding）、書き込みのエンドポイントでは workbench の
+ * capture-ledger へ渡す POST は、`lib.mjs` の `WRITE_ROUTES` の形だけ（クロールを始める・その場の TS の直し方を訊く・
+ * 宣言を訊く・定期実行の予定を作る／操作する・走ったままのクロールを締める）で、中身は検査せずに capture-ledger へ渡す。
+ * 起点の URL も方針も、直しが検査に通るかも、決めるのは capture-ledger。代わりに門を通す —— 全部のエンドポイントで Host を見て（DNS rebinding）、書き込みのエンドポイントでは workbench の
  * ページからの JSON だけを受ける（CSRF）。書き込みのエンドポイントの形と門の判定は `lib.mjs` に在り、試験から直接呼べる。
  *
  * ## 7080 であって 7000 ではない
