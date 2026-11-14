@@ -68,6 +68,8 @@ import {
   scriptRows,
   searchOf,
   signedUrlOf,
+  SCREENSHOT_HEADERS,
+  stageScreenshotOf,
   checkInline,
   readDeclared,
   submitCrawl,
@@ -77,7 +79,8 @@ import {
   linkGraphOf,
   pageLinksOf,
 } from "../sandbox/fake-ledger.mjs";
-import { zipEntry } from "./wacz-entry.mjs";
+import { warcRecord, zipEntry } from "./wacz-entry.mjs";
+import { lookOf } from "../public/looks.js";
 
 const scenario = JSON.parse(readFileSync(new URL("../sandbox/scenario.json", import.meta.url), "utf8"));
 /** 台本のスクリプト（版の並び。source は sandbox/catalog の写し —— capture-scripts のファイル）。 */
@@ -115,7 +118,7 @@ const LEDGER_CRAWL_KEYS = [
 /** 行と詳しい所の `replayBundle` の欄（null でなければ。CAPTURE-56 の src/api/crawls.ts の replayBundleOf）。 */
 const LEDGER_BUNDLE_KEYS = ["key", "rev", "pages", "builtAt", "error"].sort();
 
-/** capture-ledger の src/api/routes.ts が /api/archives の 1 行に返す欄 (v0.57.4)。 */
+/** capture-ledger の src/api/routes.ts が /api/archives の 1 行に返す欄 (`screenshot` は v0.107.0 から。CAPTURE-432)。 */
 const LEDGER_ARCHIVE_KEYS = [
   "id",
   "taskId",
@@ -124,7 +127,14 @@ const LEDGER_ARCHIVE_KEYS = [
   "waczComplete",
   "capturedAt",
   "objectKey",
+  "screenshot",
 ].sort();
+/**
+ * 一覧の行の `screenshot` の形 (capture-ledger v0.107.0 の src/api/stage-screenshot.ts の `screenshotOf`)。null でなければ、
+ * `stage` と、`bytes`・`skipped`・`problem` のどれか 1 つ。
+ */
+const LEDGER_SCREENSHOT_KEYS = [["stage", "bytes"], ["stage", "skipped"], ["stage", "problem"]].map((keys) => keys.sort().join(" "));
+const screenshotShaped = (shot) => shot === null || LEDGER_SCREENSHOT_KEYS.includes(Object.keys(shot).sort().join(" "));
 
 /** capture-ledger の src/api/schedules.ts が /api/schedules の 1 行に返す欄 (CAPTURE-173)。 */
 const LEDGER_SCHEDULE_KEYS = [
@@ -1118,7 +1128,10 @@ test("行の詳しい所は variables と secrets を必ず持つ —— 台本�
 
 test("アーカイブの 1 行は、capture-ledger の /api/archives と同じ欄を持ち、台本で上書きできる", () => {
   const rows = archiveRows(["good.wacz", "datapackage-bad-hash.wacz"], scenario);
-  for (const row of rows) assert.deepEqual(Object.keys(row).sort(), LEDGER_ARCHIVE_KEYS, row.objectKey);
+  for (const row of rows) {
+    assert.deepEqual(Object.keys(row).sort(), LEDGER_ARCHIVE_KEYS, row.objectKey);
+    assert.ok(screenshotShaped(row.screenshot), row.objectKey);
+  }
   const bad = rows.find((row) => row.objectKey === "sandbox/datapackage-bad-hash.wacz");
   assert.equal(bad.waczComplete, false);
 });
@@ -1316,6 +1329,8 @@ const LEDGER_PAGE_KEYS = [
   "capturedAt",
   "bundledRev",
   "logCounts",
+  // 読み込みの後の節目のスクリーンショット (capture-ledger v0.107.0 の pageOf。CAPTURE-432)
+  "screenshot",
 ].sort();
 /** ページの行の logCounts の欄（BrowserHive の答えの log.counts と dropped）。 */
 const LOG_COUNTS_KEYS = ["debug", "info", "warn", "error", "dropped"].sort();
@@ -1334,6 +1349,7 @@ test("ページの一覧は { pages, next } で、1 行の欄と logCounts の�
       assert.deepEqual(Object.keys(row).sort(), LEDGER_PAGE_KEYS, `${c.crawlId} ${row.id}`);
       assert.match(row.id, /^[0-9]+$/);
       if (row.logCounts !== null) assert.deepEqual(Object.keys(row.logCounts).sort(), LOG_COUNTS_KEYS);
+      assert.ok(screenshotShaped(row.screenshot), `${c.crawlId} ${row.id}`);
     }
   }
   // pages の無い行は空（代役の省略）
@@ -1646,6 +1662,99 @@ test("筋書きの 1307 は文書が 503 を返した取り込みで、失敗の
   // 絵のファイルは、筋書きのページが名指す（読み手を差し替えられる）
   const read = (file) => Buffer.from(`read:${file}`);
   assert.equal(Buffer.from(pageFailureScreenshot(c, "1307", read).body.base64, "base64").toString(), `read:${c.pages.find((p) => p.id === "1307").failureScreenshot}`);
+});
+
+// ── 一覧の行の絵（capture-ledger v0.107.0 の行の screenshot と GET /api/archives/:id/screenshots/:stage。CAPTURE-432）──────
+/** 置き場の WACZ の、節目のスクリーンショットのレコードの本文（索引の行から引く）。 */
+const shotRecordOf = (name, stage) => {
+  const wacz = readFileSync(new URL(`../sandbox/samples/${name}`, import.meta.url));
+  const line = zipEntry(wacz, "indexes/index.cdxj")
+    .toString("utf8")
+    .split("\n")
+    .find((l) => l.startsWith(`urn:browserhive:screenshot:${stage}:`));
+  const at = JSON.parse(line.slice(line.indexOf("{")));
+  return warcRecord(zipEntry(wacz, `archive/${at.filename}`), Number(at.offset), Number(at.length));
+};
+
+test("代役の絵は、見本の WACZ の after-load のレコードの本文と同じバイト列で、見出しは capture-ledger と同じ 4 つ", () => {
+  const answer = stageScreenshotOf(scenario, idOf("with-screenshots.wacz"), "after-load");
+  assert.equal(answer.status, 200);
+  const record = shotRecordOf("with-screenshots.wacz", "after-load");
+  assert.equal(record.headers.get("content-type"), "image/webp");
+  assert.ok(answer.picture.equals(record.body), "レコードの本文と 1 バイトも違わない");
+  // SOURCE.md に書いた大きさと sha256
+  assert.equal(answer.picture.length, 5624);
+  assert.equal(createHash("sha256").update(answer.picture).digest("hex"), "fcce557a46dcbd1e26c2a051683605e0541fa241089a4a24685621554480fca9");
+  // 置き場に無い id（5b0c0009 の 1201 の WACZ）にも、同じ絵を充てる
+  const other = stageScreenshotOf(scenario, crawlOf("5b0c0009").pages.find((p) => p.id === "1201").archiveId, "after-load");
+  assert.ok(other.picture.equals(record.body));
+  assert.deepEqual(SCREENSHOT_HEADERS, {
+    "content-type": "image/webp",
+    "x-content-type-options": "nosniff",
+    "content-security-policy": "sandbox",
+    "cache-control": "private, max-age=300, immutable",
+  });
+  // 読み手を差し替えられる（筋書きが名指すファイルを読む）
+  const read = (file) => Buffer.from(`read:${file}`);
+  assert.equal(stageScreenshotOf(scenario, idOf("with-screenshots.wacz"), "after-load", read).picture.toString(), "read:screenshots/marked-search-after-load.webp");
+});
+
+test("代役の絵のエンドポイントは、行の screenshot が絵を言うアーカイブとページにだけ 200。ほかの時点と行は 404、形の違う id と時点は 400", () => {
+  const rows = [
+    ...archiveRows(SAMPLE_NAMES, scenario).map((row) => ({ at: row.objectKey, id: row.id, screenshot: row.screenshot })),
+    ...scenario.crawls.flatMap((c) =>
+      (c.pages ?? []).filter((p) => typeof p.archiveId === "string").map((p) => ({ at: `${c.crawlId} ${p.id}`, id: p.archiveId, screenshot: pageRow(p).screenshot })),
+    ),
+  ];
+  for (const row of rows) {
+    const pictured = typeof row.screenshot?.bytes === "number" && row.screenshot.skipped === undefined;
+    assert.equal(stageScreenshotOf(scenario, row.id, "after-load").status, pictured ? 200 : 404, row.at);
+    // 一覧に出すのは after-load だけ。筋書きは after-behaviors の絵を名指さない
+    assert.equal(stageScreenshotOf(scenario, row.id, "after-behaviors").status, 404, row.at);
+  }
+  assert.ok(rows.some((row) => typeof row.screenshot?.bytes === "number"), "絵の在る行が在る");
+  assert.deepEqual(stageScreenshotOf(scenario, idOf("good.wacz"), "after-load"), { status: 404, body: { error: "not found" } });
+  assert.equal(stageScreenshotOf(scenario, "not-a-uuid", "after-load").status, 400);
+  assert.equal(stageScreenshotOf(scenario, idOf("with-screenshots.wacz"), "during-load").status, 400);
+});
+
+test("BrowserHive の見本 4 本のアーカイブの行は、同じ WACZ を指す 5b0c000b のページと、撮った時刻と screenshot が同じ。絵の成り行きは WACZ の中のまま", () => {
+  const rows = archiveRows(SAMPLE_NAMES, scenario);
+  const pages = crawlOf("5b0c000b").pages.filter((p) => typeof p.archiveId === "string");
+  for (const name of ["trace-timeline.wacz", "with-screenshots.wacz", "without-screenshots-withheld.wacz", "without-screenshots-secret.wacz"]) {
+    const row = rows.find((r) => r.id === idOf(name));
+    const same = pages.filter((p) => p.archiveId === row.id);
+    assert.ok(same.length > 0, name);
+    for (const page of same) {
+      assert.equal(row.capturedAt, page.capturedAt, `${name} ${page.id}`);
+      assert.deepEqual(row.screenshot, pageRow(page).screenshot, `${name} ${page.id}`);
+    }
+    // datapackage.json の after-load の項目と同じ（bytes か skipped）。欄の無い WACZ は null（記録が無い）
+    const wacz = readFileSync(new URL(`../sandbox/samples/${name}`, import.meta.url));
+    const inside = JSON.parse(zipEntry(wacz, "datapackage.json").toString("utf8"))["browserhive:capture"].screenshots;
+    const item = inside?.find((one) => one.stage === "after-load");
+    assert.deepEqual(
+      row.screenshot,
+      item === undefined ? null : item.skipped === undefined ? { stage: "after-load", bytes: item.bytes } : { stage: "after-load", skipped: item.skipped },
+      name,
+    );
+  }
+});
+
+test("代役のアーカイブの一覧は撮った時刻の新しい順（同じなら名前の順）で、頭の 5 行に絵・残さなかった理由 2 つ・記録なしが並ぶ", () => {
+  const rows = archiveRows(SAMPLE_NAMES, scenario);
+  for (let i = 1; i < rows.length; i += 1) {
+    const [a, b] = [rows[i - 1], rows[i]];
+    assert.ok(Date.parse(a.capturedAt) > Date.parse(b.capturedAt) || (a.capturedAt === b.capturedAt && a.objectKey < b.objectKey), `${a.objectKey} → ${b.objectKey}`);
+  }
+  const head = rows.slice(0, 5).map((row) => {
+    const look = lookOf({ screenshot: row.screenshot, archiveId: row.id });
+    return look.kind === "picture" ? "絵" : look.why;
+  });
+  assert.deepEqual(head, ["（伏せた応答）", "（シークレット）", "絵", "（記録なし）", "（記録なし）"]);
+  // 筋書きの 5b0c0009 の 1201 は絵、1203 は伏せた応答、WACZ の無い 1202・1204 には何も出さない
+  const looks = pageList(crawlOf("5b0c0009"), query()).body.pages.map((p) => lookOf(p)?.kind ?? "-");
+  assert.deepEqual(looks, ["picture", "-", "none", "-"]);
 });
 
 test("経緯を読めないページは capture: null と理由 —— taskId の無いページは not-captured、capture の無いページは no-manifest", () => {

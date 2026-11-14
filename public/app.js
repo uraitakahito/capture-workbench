@@ -191,6 +191,7 @@ import {
   toggleLog,
   viewOf,
 } from "/pages.js";
+import { lookFor, lookOf, lookUnreadable } from "/looks.js";
 import {
   defaultVersionOf,
   labelOf,
@@ -295,11 +296,10 @@ const tag = (name, text, className) => {
 const cell = (text, className) => tag("td", text, className);
 
 /**
- * URL の欄（一覧の 2 行。CAPTURE-404）。上の行に path と query、下の行に origin を小さく（`urlLinesOf`）。
- * 全文は title に（`urls` が 2 本以上なら全部を行で）。2 本目からは出さず、上の行の後ろに数だけを出す。
+ * URL の 2 行の箱（CAPTURE-404）。上の行に path と query、下の行に origin を小さく（`urlLinesOf`）。2 本目からは出さず、
+ * 上の行の後ろに数だけを出す。一覧の URL の欄（`urlCell`）と、開いた行のページの表の URL の欄が使う。
  */
-const urlCell = (urls, className) => {
-  const td = tag("td", "", className === undefined ? "url" : `url ${className}`);
+const urlBox = (urls) => {
   const lines = urlLinesOf(urls[0] ?? "");
   const box = tag("span", "", "url-box");
   const first = tag("span", "", "url-line");
@@ -307,9 +307,48 @@ const urlCell = (urls, className) => {
   if (urls.length > 1) first.append(tag("span", `+${String(urls.length - 1)}`, "url-more"));
   box.append(first);
   if (lines.bottom !== undefined) box.append(tag("span", lines.bottom, "url-bottom"));
-  td.append(box);
+  return box;
+};
+
+/** URL の欄（一覧の 2 行）。全文は title に（`urls` が 2 本以上なら全部を行で）。 */
+const urlCell = (urls, className) => {
+  const td = tag("td", "", className === undefined ? "url" : `url ${className}`);
+  td.append(urlBox(urls));
   td.title = urls.join("\n");
   return td;
+};
+
+/** 絵の無い行の点線の箱（「絵なし」と短い理由の 2 行。全文は title）。`box` を渡せば、その要素を箱に替える。 */
+const noLookBox = (look, box = document.createElement("span")) => {
+  box.className = "look none";
+  box.replaceChildren(tag("span", t("looks.none")), tag("span", look.why, "look-why"));
+  box.title = look.title;
+  return box;
+};
+
+/**
+ * 行の「見た目」の要素（`public/looks.js` の `lookOf` の物から）。絵は `<img>` を包んだ箱で、**id で覚えて移す**
+ * （`lookFor`。表を作り直すたびに作ると、絵を引き直す）。引けなかった絵（`<img>` の error）は、覚えた箱ごと点線の箱
+ * 「（読めず）」に替える —— 作り直すたびに引き直さない。絵の無い行の箱は覚えない（引く物が無い）。
+ */
+const lookElement = (look, map, id) => {
+  if (look.kind !== "picture") return noLookBox(look);
+  return lookFor(map, id, () => {
+    const box = tag("span", "", "look");
+    const img = document.createElement("img");
+    img.width = 96;
+    img.height = 60;
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.alt = t("looks.picture");
+    img.title = t("looks.picture");
+    img.onerror = () => {
+      noLookBox(lookUnreadable(), box);
+    };
+    img.src = look.src;
+    box.append(img);
+    return box;
+  });
 };
 
 /** workbench の外への行き先。新しいタブで開く。 */
@@ -823,6 +862,9 @@ const restoreScroll = () => {
  * 2 つを引く間に capture-ledger が次の版を書いても、指す版に無いページを開かせない）。**列は足さない** —— 出るのはふつう
  * 撮れたページ（結末が `captured` の 1 語）で、結末の列の幅の中に収まる。列を足すと表が広がり、docs の画面の絵
  * （本文の幅）に収まらなかった（2026-11-05 に測った）。同じ理由で、途中の版でも字は増やさず、色と説明だけを付ける。
+ *
+ * 撮った時の絵（capture-ledger の行の `screenshot`。CAPTURE-432）も列を足さず、URL の欄の中の左に出す。URL はその右で、
+ * 一覧と同じ 2 行にする（1 行のままでは、絵の分だけ表が docs の絵の幅を超えた）。
  */
 const pagesOf = (one) => {
   const box = document.createElement("div");
@@ -839,7 +881,10 @@ const pagesOf = (one) => {
   }
   box.append(tag("p", t("crawls.pages.title")));
   const table = document.createElement("table");
-  table.className = "pagelist";
+  // 「見た目」は URL の欄の中（列は足さない）。どの行にも出す物が無ければ（欄の無い古い capture-ledger）、枠ごと出さない
+  const rows = rowsOf(views, one.crawlId, list).map((row) => ({ ...row, look: lookOf(row.page) }));
+  const looks = rows.some((row) => row.look !== undefined);
+  table.className = looks ? "pagelist looks" : "pagelist";
   const head = document.createElement("tr");
   head.append(
     tag("th", "URL"),
@@ -849,10 +894,18 @@ const pagesOf = (one) => {
     tag("th", t("crawls.pages.colLog")),
   );
   table.append(head);
-  for (const { page, log } of rowsOf(views, one.crawlId, list)) {
+  for (const { page, log, look } of rows) {
     const row = document.createElement("tr");
-    const url = document.createElement("td");
-    url.append(tag("span", String(page.url), "mono url"));
+    // URL は一覧と同じ 2 行（上が path と query、下が origin）。1 行のままでは表が docs の絵の幅（632px）を超える
+    const url = tag("td", "", "page-url");
+    url.title = String(page.url);
+    const line = tag("span", "", "page-line");
+    if (looks) {
+      // WACZ の無い行（pending・failed・skipped）は箱を出さず、幅だけ空ける（URL の頭を揃える）
+      line.append(look === undefined ? tag("span", "", "look blank") : lookElement(look, viewOf(views, one.crawlId).looks, page.id));
+    }
+    line.append(urlBox([String(page.url)]));
+    url.append(line);
     const outcome = document.createElement("td");
     const said = tag("span", outcomeOf(page, one.state), "outcome");
     for (const viewer of VIEWERS) {
@@ -1953,6 +2006,7 @@ const checks = new Map();
 /** 「仕様どおりか」の欄。結論はここに残る（報告を閉じても、引き直しをまたいでも）。 */
 const verdictCellOf = (id) => {
   const td = document.createElement("td");
+  td.className = "verdict";
   const v = checkVerdict(checks.get(id)?.answer);
   if (v !== undefined) td.append(tag("span", v.text, `state ${v.kind}`));
   return td;
@@ -1964,7 +2018,7 @@ const checkRow = (id) => {
   row.className = "detail";
   row.dataset.archive = id;
   const td = document.createElement("td");
-  td.colSpan = 8;
+  td.colSpan = 9;
   const { answer, asking } = checks.get(id) ?? {};
   if (asking || answer === undefined) td.textContent = t("archives.check.asking");
   else if (answer instanceof Error) td.textContent = failedText(answer);
@@ -1980,7 +2034,7 @@ const redrawCheck = (id) => {
     (tr) => tr.dataset.archive === id,
   );
   if (row === undefined) return;
-  row.children[4].replaceWith(verdictCellOf(id));
+  row.querySelector("td.verdict")?.replaceWith(verdictCellOf(id));
   const next = row.nextElementSibling;
   if (next?.classList.contains("detail")) next.remove();
   if (checks.get(id)?.open) row.after(checkRow(id));
@@ -2019,6 +2073,20 @@ const toggleCheck = async (id) => {
 // ── アーカイブ ─────────────────────────────────────────────────────
 let archives = [];
 
+/**
+ * 一覧の「見た目」の絵の箱（アーカイブの id → 要素。`lookElement`）。**表を作り直しても同じ要素を移す**。
+ * 忘れるのは、アーカイブが一覧から消えた時とページを読み直した時（`checks` と同じ）。
+ */
+const archiveLooks = new Map();
+
+/** 一覧の「見た目」の欄。出す物が無ければ（欄の無い古い capture-ledger）空の欄。 */
+const lookCell = (archive) => {
+  const td = tag("td", "", "look-cell");
+  const look = lookOf({ screenshot: archive.screenshot, archiveId: archive.id });
+  if (look !== undefined) td.append(lookElement(look, archiveLooks, archive.id));
+  return td;
+};
+
 const drawArchives = () => {
   const body = $("archives");
   body.replaceChildren();
@@ -2026,6 +2094,7 @@ const drawArchives = () => {
   for (const archive of archives) {
     const row = document.createElement("tr");
     row.dataset.archive = archive.id;
+    row.append(lookCell(archive));
     row.append(urlCell([archive.sourceUrl]));
     row.append(cell(archive.labels.join(" ")));
     row.append(cell(dateTime(new Date(archive.capturedAt)), "mono"));
@@ -5085,6 +5154,7 @@ const refresh = async () => {
     drawCrawls();
     refreshOpened();
     forgetMissing(checks, archives.map((x) => x.id));
+    forgetMissing(archiveLooks, archives.map((x) => x.id));
     drawArchives();
     reading.latest = s.scripts;
     drawReadingList();

@@ -403,7 +403,9 @@ const countsOf = (log) =>
  * ページの 1 行。欄は CAPTURE-18 で capture-ledger が足す `GET /api/crawls/:id/pages` の形と同じ (id は数字だけの文字列)。
  * `logCounts` は台本の `log` から組み (level ごとの数と dropped)、`log` の無いページは null (数を読んでいない)。
  * `capturedAt` と `bundledRev` (CAPTURE-56) は WACZ の撮った時刻と、その WACZ が最初に入った合本の版で、台本の
- * ページから (WACZ の無いページ・どの版にも入っていないページは null)。
+ * ページから (WACZ の無いページ・どの版にも入っていないページは null)。`screenshot` は読み込みの後の節目のスクリーンショット
+ * (capture-ledger の src/api/stage-screenshot.ts の `screenshotOf`。CAPTURE-432) で、筋書きのページが書いたまま。書かないページは
+ * null (記録が無い —— 絵の欄の無い WACZ・WACZ の無いページ)。
  */
 export const pageRow = (p) => ({
   id: p.id,
@@ -416,6 +418,7 @@ export const pageRow = (p) => ({
   capturedAt: p.capturedAt ?? null,
   bundledRev: p.bundledRev ?? null,
   logCounts: p.log === undefined ? null : { ...countsOf(p.log), dropped: p.log.dropped ?? 0 },
+  screenshot: p.screenshot ?? null,
 });
 
 const DIGITS = /^[0-9]+$/;
@@ -535,22 +538,63 @@ export const pageFailureScreenshot = (c, raw, read = (file) => readFileSync(new 
   return { status: 200, body: { contentType: FAILURE_SCREENSHOT_TYPE, base64: read(p.failureScreenshot).toString("base64") } };
 };
 
+/** 撮った時刻の新しい順。同じ時刻なら名前の順 (capture-ledger は `capturedAt` の降順だけで、同じ時刻の並びは決めない)。 */
+const byCapturedAt = (a, b) =>
+  Date.parse(b.row.capturedAt) - Date.parse(a.row.capturedAt) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+
 /**
- * /api/archives の行。欄は capture-ledger の src/api/routes.ts (v0.57.4) と同じ。
- * 置き場の WACZ に、台本の「見えない」行 (hidden) を足し、台本の archives で欄を上書きする。
+ * /api/archives の行。欄は capture-ledger の src/api/routes.ts と同じ (`screenshot` は CAPTURE-432 から。読み込みの後の
+ * 節目のスクリーンショットで、形はページの行と同じ。書かない行は null)。
+ * 置き場の WACZ に、台本の「見えない」行 (hidden) を足し、台本の archives で欄を上書きする。並びは capture-ledger と同じく
+ * 撮った時刻の新しい順 (同じなら名前の順)。
  * 見えない行は一覧に出るが、署名は出ない (capture-ledger の「見てよくない」と同じ 404 になる)。
  */
 export const archiveRows = (names, s) =>
-  [...names, ...(s.hidden ?? [])].map((name) => ({
-    id: idOf(name),
-    taskId: idOf(`task:${name}`),
-    sourceUrl: `https://sandbox.test/${name}`,
-    labels: ["sandbox"],
-    waczComplete: true,
-    capturedAt: s.capturedAt,
-    objectKey: `sandbox/${name}`,
-    ...(s.archives?.[name] ?? {}),
-  }));
+  [...names, ...(s.hidden ?? [])]
+    .map((name) => ({
+      name,
+      row: {
+        id: idOf(name),
+        taskId: idOf(`task:${name}`),
+        sourceUrl: `https://sandbox.test/${name}`,
+        labels: ["sandbox"],
+        waczComplete: true,
+        capturedAt: s.capturedAt,
+        objectKey: `sandbox/${name}`,
+        screenshot: null,
+        ...(s.archives?.[name] ?? {}),
+      },
+    }))
+    .sort(byCapturedAt)
+    .map(({ row }) => row);
+
+/** 節目のスクリーンショットの時点 (BrowserHive WACZ Profile の `#screenshots`。capture-ledger の schema の enum と同じ)。 */
+const SCREENSHOT_STAGES = ["after-load", "after-behaviors"];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 節目のスクリーンショットの答えの見出し (capture-ledger の `GET /api/archives/:id/screenshots/:stage` と同じ 4 つ)。 */
+export const SCREENSHOT_HEADERS = Object.freeze({
+  "content-type": "image/webp",
+  "x-content-type-options": "nosniff",
+  "content-security-policy": "sandbox",
+  "cache-control": "private, max-age=300, immutable",
+});
+
+/**
+ * /api/archives/:id/screenshots/:stage (capture-ledger CAPTURE-432)。絵は、筋書きの `stageScreenshots` (アーカイブ → 時点 →
+ * sandbox/ からの相対のファイル) が名指す WebP を、そのまま返す。アーカイブは置き場の名前 (id は名前から決まる) か、id の
+ * 字そのもので書く (置き場に無いページの WACZ のため)。id が UUID でない・知らない時点は 400 (Fastify の schema の形)、
+ * 名指していなければ 404 —— capture-ledger は、見てよくない・行が無い・残さなかった時点・位置を引けなかった時点を分けずに
+ * 404 で言う。`read` はファイルを Buffer で読む関数 (試験が偽物を渡せるように)。
+ */
+export const stageScreenshotOf = (s, id, stage, read = (file) => readFileSync(new URL(`./${file}`, SCENARIO))) => {
+  if (!UUID.test(id)) return schemaError('params/id must match format "uuid"');
+  if (!SCREENSHOT_STAGES.includes(stage)) return schemaError("params/stage must be equal to one of the allowed values");
+  const named = Object.entries(s.stageScreenshots ?? {}).find(([key]) => key === id || idOf(key) === id)?.[1];
+  const file = named?.[stage];
+  if (typeof file !== "string") return { status: 404, body: { error: "not found" } };
+  return { status: 200, picture: read(file) };
+};
 
 /**
  * 当たった所の断片。OpenSearch の highlight と同じく、本文の当たった所を `<em>` で包み、前後を少し残す
@@ -1915,6 +1959,18 @@ const handle = (req, res, raw) => {
   }
   if (req.method === "GET" && pathname === "/api/archives") {
     send(res, 200, { archives: archiveRows(samples(), s) });
+    return;
+  }
+  // 節目のスクリーンショット (capture-ledger CAPTURE-432)。絵は WebP のバイト列で、見出しは capture-ledger と同じ 4 つ
+  const shot = /^\/api\/archives\/([^/]+)\/screenshots\/([^/]+)$/.exec(pathname);
+  if (req.method === "GET" && shot !== null) {
+    const answer = stageScreenshotOf(s, decodeURIComponent(shot[1]), decodeURIComponent(shot[2]));
+    if (answer.picture === undefined) {
+      send(res, answer.status, answer.body);
+      return;
+    }
+    res.writeHead(200, { ...SCREENSHOT_HEADERS, "content-length": String(answer.picture.length) });
+    res.end(answer.picture);
     return;
   }
   if (req.method === "GET" && pathname === "/api/search") {

@@ -91,14 +91,26 @@ const press = (page, scope, text) =>
     text,
   );
 
-/** アーカイブの 1 行（sourceUrl の終わりで選ぶ）の「検証」を押す。 */
+/** アーカイブの 1 行（「撮れたもの」の欄の title ＝ sourceUrl の終わりで選ぶ）の「検証」を押す。 */
 const pressValidate = (page, file) =>
   page.evaluate((f) => {
     const row = [...document.querySelectorAll("#archives tr")].find((tr) =>
-      tr.firstElementChild?.title.endsWith(`/${f}`),
+      tr.querySelector("td.url")?.title.endsWith(`/${f}`),
     );
     [...row.querySelectorAll("button")].find((b) => b.textContent === "検証").click();
   }, file);
+
+/**
+ * 撮った時の絵（「見た目」。CAPTURE-432）を、窓の中へ送ってから描き終えるまで待つ。絵は `loading=lazy` なので、窓の外に
+ * あるうちは引かれない。`decode()` は、引いた絵を描ける形にし終えたときに返る（読めなかった絵は投げる）。
+ */
+const decodeLooks = async (page, scope) => {
+  await page.evaluate(async (s) => {
+    const imgs = [...document.querySelectorAll(`${s} .look img`)];
+    for (const img of imgs) img.scrollIntoView({ block: "nearest" });
+    await Promise.all(imgs.map((img) => img.decode()));
+  }, scope);
+};
 
 /** 新しいクロールの左の列（起点）と右の列（その場の TS）に書く。start と start-js は同じ状態の両側。 */
 const writeStart = async (page) => {
@@ -236,7 +248,8 @@ const SHOTS = [
     name: "crawl-pages",
     hash: "#crawls",
     box: "#crawls tr.detail .pages",
-    // 開いた行の「ページ」の表（台本の 5b0c0009）。時間切れのページのログを開いて写す。表は中身の幅で、COLUMN に収まる。
+    // 開いた行の「ページ」の表（台本の 5b0c0009）。時間切れのページのログを開いて写す。表は中身の幅で、COLUMN に収まる
+    // （URL の欄は、左に撮った時の絵、右に 2 行の URL。CAPTURE-432。URL が 1 行のままでは約 719px になった）。
     // 合本に入った 2 ページは、結末の後ろに ReplayWeb.page ↗ と Web Capture ↗
     maxWidth: COLUMN,
     prepare: async (page) => {
@@ -244,20 +257,25 @@ const SHOTS = [
         [...document.querySelectorAll("#crawls tr.head")].find((tr) => tr.textContent.includes("5b0c0009")).click();
       });
       await page.waitForFunction(() => document.querySelector("#crawls tr.detail .pagelist") !== null);
+      // URL の欄は 2 行（字が path と origin に分かれる）。行は欄の title（URL の全文）で選ぶ
       await page.evaluate(() => {
         [...document.querySelector("#crawls tr.detail .pagelist").rows]
-          .find((tr) => tr.cells[0]?.textContent.endsWith("/slow"))
+          .find((tr) => tr.cells[0]?.title.endsWith("/slow"))
           .querySelector("button")
           .click();
       });
       await page.waitForFunction(() => document.querySelector("#crawls tr.detail .logbox .loglines") !== null);
+      await decodeLooks(page, "#crawls tr.detail .pagelist");
     },
     ready: () =>
       document.querySelector("#crawls tr.detail .logbox .chip.on")?.textContent === "すべて 4" &&
       document.querySelectorAll("#crawls tr.detail .logbox .loglines tr").length === 4 &&
       // 合本に入った 2 ページ × 2 つの再生（ReplayWeb.page ↗・Web Capture ↗）と、取り込みの答えが在る 3 ページの「経緯」
       document.querySelectorAll("#crawls tr.detail .pagelist .outcome a:not(.trace-link)").length === 4 &&
-      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a.trace-link").length === 3,
+      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a.trace-link").length === 3 &&
+      // 撮った時の絵: 読めた絵が 1 枚（1201。撮った viewport は 1280×800）と、伏せた応答の点線の箱が 1 つ（1203）
+      [...document.querySelectorAll("#crawls tr.detail .pagelist .look img")].filter((i) => i.complete && i.naturalWidth === 1280).length === 1 &&
+      document.querySelectorAll("#crawls tr.detail .pagelist .look.none").length === 1,
     marks: [
       { n: 1, at: "#crawls tr.detail .pagelist th:nth-child(2)" },
       { n: 2, at: "#crawls tr.detail .pagelist tr:nth-child(2) td:nth-child(3)" },
@@ -383,25 +401,45 @@ const SHOTS = [
     name: "archives",
     hash: "#archives",
     box: "#face-archives table",
-    // 2 行の行（60.8）の 5 行目の下で切る（CAPTURE-404）。行の途中で切ると、撮る前の見張りが止める
-    maxHeight: 345,
+    // 頭の 5 行の下で切る（行の下の端に合わせる）。行は撮った時の絵（60px。CAPTURE-432）で約 69px になり、見出し（約 36px）と
+    // 5 行で約 381px。上限はそこに少し足した値で、6 行目は入らない。代役の並びは撮った時刻の新しい順で、頭の 5 行に
+    // 伏せた応答・シークレット・絵・記録なし 2 本が並ぶ（sandbox/samples/SOURCE.md）
+    snap: "#archives > tr",
+    maxHeight: 390,
     wide: true,
-    // 検証の答えは行に残る。報告の行（かかった ms が出る）は、もう 1 度押して閉じる。
+    // 検証の答えは行に残る。報告の行（かかった ms が出る）は、もう 1 度押して閉じる。検証するのは、写る 5 行の中の 2 本
+    // （with-screenshots は問題なし、cdxj-length-mismatch は失敗 1）。
     // 行き先の欄に再生の link が 2 つ並ぶと（CAPTURE-102）、表が main の中で横に流れて右端が切れる。crawls と同じく止めて撮る
     prepare: async (page) => {
       await page.evaluate(() => {
         document.querySelector("main").style.overflowX = "visible";
       });
-      for (const file of ["good.wacz", "datapackage-bad-hash.wacz"]) await pressValidate(page, file);
+      const files = ["with-screenshots.wacz", "cdxj-length-mismatch.wacz"];
+      for (const file of files) await pressValidate(page, file);
       await page.waitForFunction(
-        () => [...document.querySelectorAll("#archives td span.state")].filter((s) => !/中|…/.test(s.textContent)).length >= 2,
+        () => [...document.querySelectorAll("#archives td.verdict span.state")].filter((s) => !/中|…/.test(s.textContent)).length >= 2,
       );
-      for (const file of ["good.wacz", "datapackage-bad-hash.wacz"]) await pressValidate(page, file);
+      for (const file of files) await pressValidate(page, file);
+      await decodeLooks(page, "#archives");
+      // 絵の所まで送った窓を頭へ戻す（切り口は、ページの座標で組む）
+      await page.evaluate(() => window.scrollTo(0, 0));
     },
-    ready: () =>
-      document.querySelectorAll("#archives tr.detail").length === 0 &&
-      document.getElementById("archives").textContent.includes("問題なし") &&
-      document.getElementById("archives").textContent.includes("失敗 1"),
+    ready: () => {
+      const head = [...document.querySelectorAll("#archives > tr")].slice(0, 5);
+      const verdicts = head.map((tr) => tr.querySelector("td.verdict")?.textContent ?? "");
+      return (
+        document.querySelectorAll("#archives tr.detail").length === 0 &&
+        // 結論は「仕様どおりか」の欄に在る
+        verdicts.includes("問題なし") &&
+        verdicts.includes("失敗 1") &&
+        // 撮った時の絵が読めている（撮った viewport は 1280×800）。ほかの 4 行は点線の箱
+        head.filter((tr) => {
+          const img = tr.querySelector(".look img");
+          return img !== null && img.complete && img.naturalWidth === 1280;
+        }).length === 1 &&
+        head.filter((tr) => tr.querySelector(".look.none") !== null).length === 4
+      );
+    },
   },
   {
     name: "search",

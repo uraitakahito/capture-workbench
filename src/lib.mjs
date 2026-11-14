@@ -3,9 +3,11 @@
  *
  * http の側（`server.mjs`）に混ぜないのは、混ぜた部分が「動かしてみないと
  * 分からない」側に入ってしまうため。path の組み立てと content-type と門の判定は、
- * 動かさずに確かめられる。
+ * 動かさずに確かめられる。上流の答えの流し方（`pass`・`relay`）も、偽の応答を渡せば確かめられるので、ここに置く。
  */
 import { normalize, resolve, sep } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 /**
  * 画面の JS（`public/`）が受け取る誤りの句。**server は文を書かず、句と値を返す**（`{ error: 句, params: { … } }`）。
@@ -134,6 +136,61 @@ const WRITE_ROUTES = [
 ];
 
 export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url));
+
+/**
+ * 節目のスクリーンショットのエンドポイント（capture-ledger の `GET /api/archives/:id/screenshots/:stage`。CAPTURE-432）。
+ * **`/api/*` の読み取りの中で、字でなくバイト列を返すのはこの形だけ**（WebP）。中継は、この形だけをバイト列のまま通す
+ * （`relayFor`）。id は capture-ledger の UUID の 36 字、時点は BrowserHive WACZ Profile の 2 つ。
+ *
+ * 端の固め方は `isWriteRoute` と同じ —— 末尾の足し・query・`%`・`.` を通さない。通らない形も素通しには残る（字として
+ * 中継する）ので、ここで絞るのは「バイト列として通すか」だけ。判断は capture-ledger がする。
+ */
+const SCREENSHOT_ROUTE = /^\/api\/archives\/[0-9a-f-]{36}\/screenshots\/(?:after-load|after-behaviors)$/;
+
+export const isScreenshotRoute = (url) => SCREENSHOT_ROUTE.test(url);
+
+/**
+ * 上流（capture-ledger か daemon）の答えから通す見出し。allowlist —— daemon の `date` や `connection` を workbench の
+ * 応答に混ぜない。画像の実体（`/wacz/:id/record/body` と節目のスクリーンショット）は、上流が付けた印（`nosniff`・
+ * `sandbox`・`cache-control`）ごと通す。
+ */
+export const PASS_HEADERS = Object.freeze([
+  "content-type",
+  "content-length",
+  "x-content-type-options",
+  "content-security-policy",
+  "cache-control",
+]);
+
+/** 上流の答えを、状態と allowlist の見出しと本文のバイト列のまま流す（`reply` は node の http の応答）。 */
+export const pass = async (reply, upstream) => {
+  const headers = {};
+  for (const name of PASS_HEADERS) {
+    const value = upstream.headers.get(name);
+    if (value !== null) headers[name] = value;
+  }
+  headers["content-type"] ??= "application/json; charset=utf-8";
+  reply.writeHead(upstream.status, headers);
+  if (upstream.body === null) {
+    reply.end();
+    return;
+  }
+  await pipeline(Readable.fromWeb(upstream.body), reply);
+};
+
+/**
+ * capture-ledger の答えを、状態と content-type と本文の字のまま返す。**字として読む**（`res.text()`）ので、
+ * バイト列（絵）はこれで通さない —— UTF-8 として読めないバイトが置き換わり、絵が壊れる（`relayFor`）。
+ */
+export const relay = async (reply, res) => {
+  reply.writeHead(res.status, {
+    "content-type": res.headers.get("content-type") ?? "application/json; charset=utf-8",
+  });
+  reply.end(await res.text());
+};
+
+/** `/api/*` の GET の答えの返し方。節目のスクリーンショットの形だけはバイト列のまま（`pass`）、ほかは字（`relay`）。 */
+export const relayFor = (url) => (isScreenshotRoute(url) ? pass : relay);
 
 /**
  * 書き込みの中継で capture-ledger へ運ぶ、要求の見出し。**運ぶのは `POST /api/crawls` の `Idempotency-Key` だけ**

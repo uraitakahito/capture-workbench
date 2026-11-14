@@ -28,7 +28,7 @@ the same ones a real ledger lists; only autoscroll v2 is the stand-in's own vers
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
 | Schedules | schedules and their runs; pause, resume, run now, repin and delete a schedule. A run that did not capture shows on a band on every view |
 | Changes | how a scheduled run differs from the previous one — one line per run; an opened run lists every page on the left and shows one page on the right: the diff, Claude's line (not evidence) and ReplayWeb.page ↗ / Web Capture ↗ for before and after |
-| Archives | the WACZ files you can see; from a row, validate, open it in the WACZ view, or open in [replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser) |
+| Archives | the WACZ files you can see, with a picture of each as captured; from a row, validate, open it in the WACZ view, or open in [replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser) |
 | Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replayweb-server |
 | Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
 | WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
@@ -201,7 +201,7 @@ the crawl's bundle.
   link, **Inspect in Windmill** (Windmill で調べる), to the script `f/waggle/inspect_crawl` in Windmill
   with this crawl's id already filled in (Windmill keeps a run's arguments in the URL's hash).
 
-![The pages table of an opened crawl: four pages with their URL, outcome (ReplayWeb.page ↗ / Web Capture ↗ after the captured ones) and warn and error counts, and the log of the page that timed out, opened, with lines from a script, an exception in the captured page and BrowserHive's timeout](../../assets/screens/crawl-pages.webp)
+![The pages table of an opened crawl: four pages with their URL (the picture as captured or a "no picture" box on the left, the URL in two lines on the right), outcome (ReplayWeb.page ↗ / Web Capture ↗ after the captured ones) and warn and error counts, and the log of the page that timed out, opened, with lines from a script, an exception in the captured page and BrowserHive's timeout](../../assets/screens/crawl-pages.webp)
 
 ① the outcome (the ledger's state and reason), with ReplayWeb.page ↗ / Web Capture ↗ for a page in the crawl's bundle\
 ② the warn and error counts\
@@ -227,6 +227,14 @@ the crawl's bundle.
   counts the ledger has
   not read shows "—", which is not the same as 0. The table holds one batch from the ledger, with
   **Read on** when there is more. A ledger without the pages route gets a one-line note.
+- **The URL cell starts with the picture as captured.** It is the same picture or dashed box as
+  **Look** (見た目) in the [archives view](#archives), from the `screenshot` of the ledger's page row.
+  The URL follows on the right in the same two lines as a crawl's seed (the path and query on top,
+  the origin below), and the top line wraps instead of being cut. Hover over the cell to read the
+  whole URL. A page without a WACZ (not captured yet, failed, or skipped) gets no box, only the
+  space for one. When the ledger does not return the field (before v0.107.0), there is no space
+  for the picture at all. The picture sits inside the URL cell rather than in a column of its own:
+  with another column, the table would not fit the width of the pictures on this page.
 - **Log shows the log lines of that page.** The workbench fetches the ledger's
   `/api/crawls/:id/pages/:page/log` once, when you press it (closing and opening again fetches
   again). The lines come in the order they arrived: the milliseconds since the capture started, the
@@ -249,8 +257,9 @@ the crawl's bundle.
 - **An opened row stays open.** The table is rebuilt on every fetch, so the workbench remembers the
   open rows by id and opens them again from the last answer. It fetches a row again only while the
   crawl is running or when its state has changed. Opened logs are remembered by page id too, and
-  their boxes are moved rather than rebuilt, so they keep their scroll position and filter. They are
-  forgotten when you close the row or when the crawl leaves the list.
+  their boxes are moved rather than rebuilt, so they keep their scroll position and filter. The
+  pictures in the URL cells are remembered by page id and moved the same way, so a fetch does not
+  load them again. They are forgotten when you close the row or when the crawl leaves the list.
 
 ### Link structure
 
@@ -774,7 +783,29 @@ opens the run; **← Change list** (← 変化の一覧) goes back.
 
 The WACZ files you can see, newest capture first.
 
-![The archives view: WACZ files, two of them validated (問題なし and 失敗 1)](../../assets/screens/archives.webp)
+![The archives view: WACZ files, with the picture as captured or a "no picture" box (伏せた応答, シークレット, 記録なし) in the first column, Look (見た目), and two of them validated (問題なし and 失敗 1)](../../assets/screens/archives.webp)
+
+- **Look (見た目) is the picture as captured.** It is the stage screenshot after load inside the
+  BrowserHive WACZ (from BrowserHive v30.2.0), shrunk to 96×60. It comes from the ledger: from where
+  it recorded the picture when it inspected the WACZ, `GET /api/archives/:id/screenshots/after-load`
+  returns the body of the WARC record ([Routes](/routes/)). The picture is the bytes as captured,
+  not drawn again by a replay, and it shows only the viewport: the lower part of a long page is not
+  in it. Hover over it to see it four times larger above the table. A picture is loaded once its
+  row comes near the window (lazy loading), and the same picture is moved when the table is
+  rebuilt, so it is not loaded again.
+- **A row without a picture shows a dashed box, "No picture" (絵なし), and a short reason.** Hover
+  over it to read the whole reason.
+
+  | Box | Meaning |
+  | --- | --- |
+  | (withheld response) （伏せた応答） | a policy withheld a document, an image or media, so BrowserHive kept no screenshot (what was withheld could show) |
+  | (secret) （シークレット） | the capture was given a secret, so BrowserHive kept no screenshot (its value could show) |
+  | (turned off) （設定が切） | BrowserHive is not set to take screenshots (`--stage-screenshots` is off) |
+  | (not taken) （撮れず） | it could not be taken, keeping it would put the capture over its byte limit, or a reason the workbench does not know |
+  | (unreadable) （読めず） | the ledger could not find where the picture is in the WACZ, or did not return it |
+  | (no record) （記録なし） | there is no record of stage screenshots (a WACZ from a capture before BrowserHive v30.2.0, or one the ledger has not inspected yet) |
+
+  When the ledger does not return the field (before v0.107.0), the column is empty.
 
 - **The URL under Captured (撮れたもの) takes the same two lines as a crawl's seed.** The top line is
   the path and query, the bottom line the origin. Hover over the cell to read the whole URL.

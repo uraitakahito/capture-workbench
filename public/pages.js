@@ -151,13 +151,15 @@ export const reasonText = (reason) => REASONS.get(reason)?.() ?? t("crawls.log.u
  *   want  「続きを読む」で覆う件数（0 は capture-ledger の 1 回分）
  *   logs  開いているログ（ページの id → 箱の状態 `{ answer, filter, scrollTop, box }`）。answer はエンドポイントの答え
  *         （引いている間は undefined、引けなければ Error）。box は app.js が作る DOM の箱で、作り直さずに移す
+ *   looks URL の欄の左の絵（ページの id → app.js が作る絵の箱。`public/looks.js` の `lookFor`）。作り直すと絵を引き直すので、
+ *         作り直さずに移す。アーカイブの一覧の絵とは別に覚える
  *
  * 忘れるのは、行を閉じた時と、クロールが一覧から消えた時（開いた行の `opened` と同じ所）。
  */
 export const viewOf = (views, crawlId) => {
   let view = views.get(crawlId);
   if (view === undefined) {
-    view = { want: 0, logs: new Map() };
+    view = { want: 0, logs: new Map(), looks: new Map() };
     views.set(crawlId, view);
   }
   return view;
