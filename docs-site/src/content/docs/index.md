@@ -37,8 +37,8 @@ The browser talks to the workbench (same origin), and to the IdP (identity provi
 sign-in page. Locally the IdP is [Floci](https://github.com/floci-io/floci) (a Cognito emulator),
 which capture-ledger's compose runs as the service `idp`; in production it is Amazon Cognito. The
 workbench turns the code that comes back from the sign-in into an access token (authorization code
-with PKCE, Proof Key for Code Exchange) and passes `/api/*` straight through to the ledger with it. The writes are
-`POST /api/crawls`, when you start a crawl from the form, and the routes for schedules ([Routes](/routes/)), sent the same way. For
+with PKCE, Proof Key for Code Exchange) and passes `/api/*` straight through to the ledger with it. The writes
+(`POST /api/crawls`, when you start a crawl from the form, and the others listed in the table on [Routes](/routes/)) are sent the same way. For
 validating a WACZ and reading its contents, it asks the ledger to sign a URL and hands that URL to
 the daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a WACZ rule by rule), which reads the archive itself. replayweb-server, capture-player and Windmill are only linked to from the rows.
 

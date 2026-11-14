@@ -34,7 +34,7 @@ flowchart LR
 手元の IdP は [Floci](https://github.com/floci-io/floci)（Cognito を真似るもの）で、capture-ledger の compose がサービス `idp` として動かします。
 本番は Amazon Cognito です。
 workbench はサインインから戻ってきた code をアクセストークンに替え（authorization code と PKCE。PKCE は Proof Key for Code Exchange）、それを付けて `/api/*` をそのまま capture-ledger へ通します。
-書くのは、新しいクロールの画面から始めるときの `POST /api/crawls` と、定期実行の予定を作って操作するエンドポイント（HTTP の method と path の組。[エンドポイントの一覧](/routes/)）で、同じ道で capture-ledger へ通します。
+書くエンドポイント（HTTP の method と path の組。新しいクロールの画面から始めるときの `POST /api/crawls` など。全部は[エンドポイントの一覧](/routes/)の表に在ります）も、同じ道で capture-ledger へ通します。
 WACZ の検証と中身は、capture-ledger に署名してもらった URL を [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon に渡して読ませます。
 replayweb-server・capture-player と Windmill へは、画面の行からリンクで飛ぶだけです。
 

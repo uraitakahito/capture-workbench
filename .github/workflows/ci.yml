@@ -6,9 +6,9 @@ name: ci
 # intl-messageformat.js) は commit してあるので、試験はそれをそのまま読む。依存が在るのは docs-site/ と highlighter/ (束を作る元) で、監査は audit.yml、
 # docs の検査は site.yml、公開は docs.yml、束の作り直しは vendor.yml が持つ。
 #
-# 走らせるのは `npm run check` (中身は package.json の `check`)。**中継と名乗りは
-# ここでは見ない** —— あれは capture-ledger と issuer が立っていないと確かめられないので、
-# 証拠は手で当てて PR に貼る。
+# 走らせるのは `npm run check` (中身は package.json の `check`)。**中継と、本物の IdP との往復は
+# ここでは見ない** —— あれは capture-ledger と IdP が立っていないと確かめられないので、
+# 証拠は手で当てて PR に貼る。名乗りの部品 (src/auth.mjs) は、偽の IdP を渡す試験 (test/auth.test.mjs) が見る。
 
 on:
   push:
