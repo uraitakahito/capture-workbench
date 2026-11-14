@@ -285,12 +285,20 @@ export const KINDS = Object.keys(KIND_TEXT);
 export const kindText = (kind) => (Object.hasOwn(KIND_TEXT, kind) ? KIND_TEXT[kind]() : String(kind));
 
 /**
+ * 写しの resource の URI の頭（BrowserHive WARC Profile 1.5.0 の #snapshots）。**枠の写し**（同じ時点の、同じ origin の
+ * 子フレームの文書。`urn:browserhive:frame-snapshot:<時点>:<番号>:<子の文書の URL>`・BrowserHive v31.2.0 から）は頭が違い、
+ * 時点の印にしない —— 「写し」の行は、取り込みのページの時点ごとに 1 つ。枠の写しの metadata も URI が `urn:` で始まるので、
+ * 要求の印にもならない。
+ */
+const SNAPSHOT_URN = "urn:browserhive:snapshot:";
+
+/**
  * レコードの一覧（本ごと）を、軸に置く物にする。
  *
  * - `exchanges`: request と response の対（始まりの印）。BrowserHive は 1 つの交信を response・request・（本文を
  *   省いたときは）metadata の順に続けて書き、3 つは同じ URI と時刻を持つ。対の後ろの metadata は `attached` に持つ
  * - `notes`: ほかの metadata（記録した時刻の印の候補）。本文を読むまで種類は `unread`
- * - `snapshots`: DOM の写しの resource（`urn:browserhive:snapshot:<時点>:<文書の URL>`）
+ * - `snapshots`: DOM の写しの resource（`urn:browserhive:snapshot:<時点>:<文書の URL>`）。枠の写しは入れない
  *
  * `files` は `[{ path, records }]`。位置は `Date.parse(date) − originMs`。
  */
@@ -316,8 +324,8 @@ export const marksOf = (files, originMs) => {
           one.attached = { path, offset: records[i].offset, length: records[i].length };
         }
         exchanges.push(one);
-      } else if (record.type === "resource" && uri.startsWith("urn:browserhive:snapshot:")) {
-        const rest = uri.slice("urn:browserhive:snapshot:".length);
+      } else if (record.type === "resource" && uri.startsWith(SNAPSHOT_URN)) {
+        const rest = uri.slice(SNAPSHOT_URN.length);
         const colon = rest.indexOf(":");
         snapshots.push({ stage: rest.slice(0, colon), documentUrl: rest.slice(colon + 1), uri, ms: at(record.date) });
       } else if (record.type === "metadata" && !uri.startsWith("urn:")) {

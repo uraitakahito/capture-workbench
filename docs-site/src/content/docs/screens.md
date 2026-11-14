@@ -374,7 +374,9 @@ reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
   log line BrowserHive writes when it takes the snapshot; without one, at the time of the
   snapshot's record inside the BrowserHive WACZ. Pressing one shows the snapshot's stage and links that open
   it in replay (only when the WACZ may be viewed). The document URL it opens is the answer's
-  `document.url` (the URL after any redirect).
+  `document.url` (the URL after any redirect). There is one mark per stage, for the captured page's
+  snapshot only: the snapshots of child frames' documents (type **frame snapshot**, 枠の写し, in the
+  WACZ view; from BrowserHive v31.2.0) get no mark.
 - **Stage screenshots (節目のスクリーンショット) are listed below the figure.** From BrowserHive
   v30.2.0, a BrowserHive server set to take screenshots keeps a picture (WebP) of the captured page's viewport
   at the same stages it snapshots the DOM: `after-load` (after loading) and `after-behaviors`

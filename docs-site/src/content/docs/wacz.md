@@ -104,14 +104,20 @@ asks for it, the findings on that entry) and its contents.
 - **Record list**: this is what you get for a `.warc.gz`. One row per record, walking the WARC
   from the start, 200 at a time, filterable by type. ▪ marks a record the index (CDXJ) points
   to, ▫ one the index does not. The records BrowserHive leaves for what it did not or could not
-  capture (`WARC-Type: metadata`) are only visible here. A [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/#archive-files) has two kinds of
+  capture (`WARC-Type: metadata`) are only visible here. A [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/#archive-files) has three kinds of
   `WARC-Type: resource` record, and the list names them by the start of the URI. A record of type
   **snapshot** (写し; the URI starts with `urn:browserhive:snapshot:`) is a copy BrowserHive made of
   the captured page's DOM, after the page loaded and after the capture's scripts ran, not a server
-  response; the paired **metadata** (記録) record says so. A record of type **screenshot** (節目の絵;
+  response; the paired **metadata** (記録) record says so. A record of type **frame snapshot** (枠の写し;
+  the URI starts with `urn:browserhive:frame-snapshot:`, from BrowserHive v31.2.0) is a copy of the
+  document of a same-origin child frame (`<iframe>`, `<frame>`) of the captured page, taken at the same
+  stage. Its URI has the form `urn:browserhive:frame-snapshot:<stage>:<number>:<child document URL>`,
+  where the number is the frame's place in the order of that stage
+  ([BrowserHive WARC Profile 1.5.0](https://uraitakahito.github.io/browserhive-warc-spec/1.5.0/#frame-snapshots)).
+  A record of type **screenshot** (節目の絵;
   the URI starts with `urn:browserhive:screenshot:`, from BrowserHive v30.2.0) is a stage screenshot,
-  a picture of the viewport at the same two stages. A resource record whose URI starts with neither
-  is shown as **resource**, the WARC-Type's own name. The type filter counts each of the three
+  a picture of the viewport at the same two stages. A resource record whose URI starts with none of these
+  is shown as **resource**, the WARC-Type's own name. The type filter counts each of the four
   apart. Above the list, the
   WARC's warcinfo (the record in which a WARC describes itself) is shown field by field, in the
   order written. When a field's name is a Dublin Core term or a WARC 1.1 warcinfo field, the

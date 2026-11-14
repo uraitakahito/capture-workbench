@@ -367,6 +367,35 @@ test("本文をまだ読んでいない metadata は「読んでいない」の�
   });
 });
 
+/**
+ * 手で作った一覧: 交信の対 → 写しと記録 → 枠の写し 2 つと記録（BrowserHive v31.2.0 から。URI は BrowserHive WARC
+ * Profile 1.5.0 の #frame-snapshot-records の形）。枠の写しの頭の後ろは「時点:番号:URL」で、写しの頭で読むと番号が
+ * URL の始まりに見える。
+ */
+const F = "2026-11-13T00:00:02.000Z";
+const withFrames = [
+  { offset: 0, length: 10, type: "response", uri: "https://shop.test/", date: "2026-11-13T00:00:00.100Z", status: 200, mime: "text/html" },
+  { offset: 10, length: 10, type: "request", uri: "https://shop.test/", date: "2026-11-13T00:00:00.100Z" },
+  { offset: 20, length: 10, type: "resource", uri: "urn:browserhive:snapshot:after-load:https://shop.test/", date: F },
+  { offset: 30, length: 10, type: "metadata", uri: "urn:browserhive:snapshot:after-load:https://shop.test/", date: F },
+  { offset: 40, length: 10, type: "resource", uri: "urn:browserhive:frame-snapshot:after-load:1:https://shop.test/menu.html", date: F },
+  { offset: 50, length: 10, type: "metadata", uri: "urn:browserhive:frame-snapshot:after-load:1:https://shop.test/menu.html", date: F },
+  { offset: 60, length: 10, type: "resource", uri: "urn:browserhive:frame-snapshot:after-load:2:https://shop.test/promo.html", date: F },
+  { offset: 70, length: 10, type: "metadata", uri: "urn:browserhive:frame-snapshot:after-load:2:https://shop.test/promo.html", date: F },
+];
+
+test("枠の写しは時点の印にも要求の印にもしない。写しの印は時点ごとに 1 つで、開く先は写しの URI", () => {
+  const marks = marksOf([{ path: WARC, records: withFrames }], Date.parse("2026-11-13T00:00:00.000Z"));
+  assert.deepEqual(marks.snapshots, [
+    { stage: "after-load", documentUrl: "https://shop.test/", uri: "urn:browserhive:snapshot:after-load:https://shop.test/", ms: 2000 },
+  ]);
+  assert.equal(marks.exchanges.length, 1);
+  assert.equal(marks.notes.length, 0);
+  // 枠の写しの記録の本文（snapshot・frame・parent）を読んでも、印は増えない
+  const bodies = new Map([[`${WARC} 50`, "snapshot: after-load\r\nframe: 1\r\nparent: 0\r\ndocument-uri: https://shop.test/menu.html\r\n"]]);
+  assert.deepEqual(tallyOf(applyMetadata(marks, bodies)), tallyOf(marks));
+});
+
 /** 一覧を返す偽物。`answers` は path → 答えの並び（1 回ごと）。呼ばれた path を残す。 */
 const fakeFetch = (answers) => {
   const calls = [];

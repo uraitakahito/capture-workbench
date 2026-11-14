@@ -711,6 +711,7 @@
   "wacz.type.request": "request",
   "wacz.type.metadata": "metadata",
   "wacz.type.snapshot": "snapshot",
+  "wacz.type.frameSnapshot": "frame snapshot",
   "wacz.type.screenshot": "screenshot",
   "wacz.warcinfo.tag": "warcinfo · record {n}",
   "wacz.warcinfo.tagDated": "warcinfo · record {n} · {date}",
