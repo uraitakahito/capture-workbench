@@ -95,7 +95,7 @@ const press = (page, scope, text) =>
 const pressValidate = (page, file) =>
   page.evaluate((f) => {
     const row = [...document.querySelectorAll("#archives tr")].find((tr) =>
-      tr.firstElementChild?.textContent.endsWith(`/${f}`),
+      tr.firstElementChild?.title.endsWith(`/${f}`),
     );
     [...row.querySelectorAll("button")].find((b) => b.textContent === "検証").click();
   }, file);
@@ -140,6 +140,9 @@ const SHOTS = [
     name: "crawls",
     hash: "#crawls",
     box: "#face-crawls table",
+    // 起点の欄が 2 行で行が高い（CAPTURE-404）。11 行を全部写すと絵の予算を超えるので、8 行（見出し 36.6 ＋ 59.8 × 7 ＋ 41.4）で切る。
+    // 走行中・打ち切り・失敗・完走の行と、番号の丸の 2 つは、この中に入る
+    maxHeight: 500,
     // 表は折り返さない欄で、中身の幅に伸びる。開いた行は crawl-detail。合本の在る行は run ↗ の後に ReplayWeb.page ↗ と Web Capture ↗（先頭の走行中の行は途中の版）
     wide: true,
     // 撮る窓より表が広いと、main の中で横に流れて右端が切れる。絵には表の全部を写す
@@ -380,7 +383,8 @@ const SHOTS = [
     name: "archives",
     hash: "#archives",
     box: "#face-archives table",
-    maxHeight: 360,
+    // 2 行の行（60.8）の 5 行目の下で切る（CAPTURE-404）。行の途中で切ると、撮る前の見張りが止める
+    maxHeight: 345,
     wide: true,
     // 検証の答えは行に残る。報告の行（かかった ms が出る）は、もう 1 度押して閉じる。
     // 行き先の欄に再生の link が 2 つ並ぶと（CAPTURE-102）、表が main の中で横に流れて右端が切れる。crawls と同じく止めて撮る

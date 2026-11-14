@@ -193,3 +193,18 @@ export const resendOf = (dispatch) => {
   const kind = dispatch.state === "abandoned" ? "bad" : "warn";
   return { text, kind, error: dispatch.lastError };
 };
+
+/**
+ * URL を、一覧の欄の 2 行に分ける（CAPTURE-404）。上の行（`top`）は見分けに使う path と query、下の行
+ * （`bottom`）は origin（scheme・host・port）。**字を足しも直しもしない** —— `bottom + top` は元の字と同じ
+ * （`new URL` は host を小文字にし、既定の port を落とすので使わない）。
+ *
+ * path が無いか `/` だけの URL は、見分けに使うのが host なので、全文を上の行に出し、下の行は無い。
+ * URL の形でない字（`urn:` など）も、そのまま上の行。
+ */
+const URL_SHAPE = /^([a-z][a-z0-9+.-]*:\/\/[^/?#]*)(.*)$/is;
+export const urlLinesOf = (text) => {
+  const shape = URL_SHAPE.exec(text);
+  if (shape === null || shape[2] === "" || shape[2] === "/") return { top: text, bottom: undefined };
+  return { top: shape[2], bottom: shape[1] };
+};
