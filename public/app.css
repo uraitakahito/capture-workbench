@@ -1359,6 +1359,15 @@ button:focus-visible {
   min-width: 760px;
 }
 
+/*
+ * WACZ の画面の木の列は、木の一番長い行の幅まで広げる（下限は 300px）。木は pre で折り返さないので、300px に
+ * 留めると長い行が右の列に重なる —— BrowserHive WACZ の中の名前（`data-000.browserhive.warc.gz` と大きさ）は
+ * 300px を超える（CAPTURE-341）。スクリプト集の画面の一覧は折り返すので、`.vgrid` のままにする
+ */
+.vgrid.vgrid-tree {
+  grid-template-columns: minmax(300px, max-content) minmax(0, 1fr);
+}
+
 /* 木。罫線は文字なので pre。行はクリックできる */
 .vtree {
   margin: 0;
