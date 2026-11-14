@@ -103,20 +103,26 @@ export const lineLabel = (line) => {
   return line.cut ? t("wacz.lines.cut", { text: line.text, size: formatBytes(line.bytes) }) : line.text;
 };
 
-/** BrowserHive WARC の resource の URI の頭（BrowserHive WARC Profile 1.4.0 の #snapshots・#screenshots）。 */
+/**
+ * BrowserHive WARC の resource の URI の頭（BrowserHive WARC Profile 1.5.0 の #snapshots・#frame-snapshot-records・
+ * #screenshots）。枠の写しの頭は写しの頭で始まらない（`frame-snapshot:` と `snapshot:`）ので、どの順で比べても混ざらない。
+ */
 const SNAPSHOT_URI = "urn:browserhive:snapshot:";
+const FRAME_SNAPSHOT_URI = "urn:browserhive:frame-snapshot:";
 const SCREENSHOT_URI = "urn:browserhive:screenshot:";
 
 /**
  * 一覧の 1 レコードの種別。WARC-Type のまま —— ただし resource は、`WARC-Target-URI` の頭で分ける。
- * BrowserHive WARC の resource は 2 つ在る: DOM の写し（読み込みの後とスクリプトの後）と、節目のスクリーンショット
- * （BrowserHive v30.2.0 から）。頭がどちらでもない resource（ほかの作り手の WARC など）は `resource` のまま。
- * 種別の絞りも、この値で分ける（写しと絵を別々に数える）。
+ * BrowserHive WARC の resource は 3 つ在る: DOM の写し（読み込みの後とスクリプトの後）・枠の写し（同じ時点の、
+ * 同じ origin の子フレームの文書。BrowserHive v31.2.0 から）・節目のスクリーンショット（BrowserHive v30.2.0 から）。
+ * 頭がどれでもない resource（ほかの作り手の WARC など）は `resource` のまま。種別の絞りも、この値で分ける
+ * （写し・枠の写し・絵を別々に数える）。
  */
 export const recordKind = (row) => {
   if (row.type !== "resource") return row.type;
   const uri = row.uri ?? "";
   if (uri.startsWith(SNAPSHOT_URI)) return "resource:snapshot";
+  if (uri.startsWith(FRAME_SNAPSHOT_URI)) return "resource:frame-snapshot";
   if (uri.startsWith(SCREENSHOT_URI)) return "resource:screenshot";
   return "resource";
 };
@@ -146,6 +152,7 @@ export const typeName = (kind) => {
   if (kind === "request") return t("wacz.type.request");
   if (kind === "metadata") return t("wacz.type.metadata");
   if (kind === "resource:snapshot") return t("wacz.type.snapshot");
+  if (kind === "resource:frame-snapshot") return t("wacz.type.frameSnapshot");
   if (kind === "resource:screenshot") return t("wacz.type.screenshot");
   return kind;
 };

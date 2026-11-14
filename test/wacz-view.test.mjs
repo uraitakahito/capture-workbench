@@ -136,6 +136,48 @@ test("BrowserHive WARC の節目のスクリーンショット（resource）は�
   assert.equal(inEnglish(() => recordCells(NEW_WARC_RESOURCES.screenshot).type), "screenshot");
 });
 
+/**
+ * 枠の写し（BrowserHive v31.2.0 から）の resource と記録。URI は BrowserHive WARC Profile 1.5.0 の
+ * #frame-snapshot-records の形（`urn:browserhive:frame-snapshot:<時点>:<番号>:<子の文書の URL>`）。同じ時点の写しと並べる。
+ */
+const FRAME_SNAPSHOT = {
+  type: "resource",
+  contentType: "text/html; charset=utf-8",
+  uri: "urn:browserhive:frame-snapshot:after-load:1:https://shop.test/menu.html",
+  indexed: true,
+  offset: 22762,
+  length: 322,
+};
+const FRAME_WINDOW = [
+  NEW_WARC_RESOURCES.snapshot,
+  { type: "metadata", uri: NEW_WARC_RESOURCES.snapshot.uri, indexed: false },
+  FRAME_SNAPSHOT,
+  { type: "metadata", uri: FRAME_SNAPSHOT.uri, indexed: false },
+  { ...FRAME_SNAPSHOT, uri: "urn:browserhive:frame-snapshot:after-load:2:https://shop.test/promo.html", offset: 23084 },
+  { type: "metadata", uri: "urn:browserhive:frame-snapshot:after-load:2:https://shop.test/promo.html", indexed: false },
+];
+
+test("BrowserHive WARC の枠の写し（resource）は「枠の写し」と呼び、写しと別に数えて絞る", () => {
+  assert.equal(recordKind(FRAME_SNAPSHOT), "resource:frame-snapshot");
+  assert.equal(recordCells(FRAME_SNAPSHOT).type, "枠の写し");
+  assert.equal(inEnglish(() => recordCells(FRAME_SNAPSHOT).type), "frame snapshot");
+  // 枠の写しの記録は、写しの記録と同じく metadata
+  assert.equal(recordKind(FRAME_WINDOW[3]), "metadata");
+  assert.deepEqual(
+    [...kindCounts(FRAME_WINDOW)],
+    [
+      ["resource:snapshot", 1],
+      ["metadata", 3],
+      ["resource:frame-snapshot", 2],
+    ],
+  );
+  assert.deepEqual(rowsOfKind(FRAME_WINDOW, "resource:snapshot"), [NEW_WARC_RESOURCES.snapshot]);
+  assert.deepEqual(
+    rowsOfKind(FRAME_WINDOW, "resource:frame-snapshot").map((row) => row.uri),
+    [FRAME_SNAPSHOT.uri, "urn:browserhive:frame-snapshot:after-load:2:https://shop.test/promo.html"],
+  );
+});
+
 test("URI の頭が BrowserHive の物でない resource は、WARC-Type の名前のまま", () => {
   const other = { type: "resource", contentType: "text/html", uri: "https://x/result", indexed: true };
   assert.equal(recordKind(other), "resource");
@@ -281,11 +323,19 @@ test("英語: 木の印と「なぜ要るか」。単位と罫線は言語で変
 test("英語: レコードの種別は WARC-Type の名前。metadata を record と言わない", () => {
   assert.deepEqual(
     inEnglish(() =>
-      ["response", "request", "metadata", "resource:snapshot", "resource:screenshot", "resource", "warcinfo", "revisit"].map(
-        typeName,
-      ),
+      [
+        "response",
+        "request",
+        "metadata",
+        "resource:snapshot",
+        "resource:frame-snapshot",
+        "resource:screenshot",
+        "resource",
+        "warcinfo",
+        "revisit",
+      ].map(typeName),
     ),
-    ["response", "request", "metadata", "snapshot", "screenshot", "resource", "warcinfo", "revisit"],
+    ["response", "request", "metadata", "snapshot", "frame snapshot", "screenshot", "resource", "warcinfo", "revisit"],
   );
   assert.equal(inEnglish(() => recordCells({ type: "metadata", indexed: false }).type), "metadata");
   assert.equal(typeName("warcinfo"), "warcinfo");

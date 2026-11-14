@@ -190,6 +190,7 @@ had used two words for one thing, the dictionary takes one.
 | a run | 回 | run (of a schedule), times (how often) | |
 | the seed | 起点 | seed | |
 | the snapshot | 写し | snapshot | Copy is the 写す button |
+| `wacz.type.frameSnapshot` | 枠の写し | frame snapshot | the specification's Japanese says フレームの写し |
 
 ## What the tests see, and what they do not
 

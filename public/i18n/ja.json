@@ -711,6 +711,7 @@
   "wacz.type.request": "要求",
   "wacz.type.metadata": "記録",
   "wacz.type.snapshot": "写し",
+  "wacz.type.frameSnapshot": "枠の写し",
   "wacz.type.screenshot": "節目の絵",
   "wacz.warcinfo.tag": "warcinfo · {n} 件目のレコード",
   "wacz.warcinfo.tagDated": "warcinfo · {n} 件目のレコード · {date}",

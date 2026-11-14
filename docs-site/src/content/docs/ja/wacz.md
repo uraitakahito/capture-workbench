@@ -99,10 +99,11 @@ wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力�
   WARC を頭から歩いた 1 件 1 行で、200 件ずつ読み、種別で絞れます。
   ▪ は索引（CDXJ）が指すレコード、▫ は索引に無いものです。
   BrowserHive が残す「撮らなかった・撮れなかった」記録（`WARC-Type: metadata`）は、ここでしか見えません。
-  [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/#archive-files) の `WARC-Type: resource` のレコードは 2 種類で、一覧は URI の頭で呼び分けます。
+  [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/#archive-files) の `WARC-Type: resource` のレコードは 3 種類で、一覧は URI の頭で呼び分けます。
   種別の「写し」（URI が `urn:browserhive:snapshot:` で始まる）は、BrowserHive が読み込みの後と、スクリプトを走らせた後の取り込みのページを DOM のまま写した物で、サーバの応答ではありません（組の「記録」がそう言います）。
+  種別の「枠の写し」（URI が `urn:browserhive:frame-snapshot:` で始まる。BrowserHive v31.2.0 から）は、同じ時点に、取り込みのページの同じ origin の子フレーム（`<iframe>`・`<frame>`）の文書を写した物です。URI は `urn:browserhive:frame-snapshot:<時点>:<番号>:<子の文書の URL>` の形で、番号はその時点のフレームの順です（[BrowserHive WARC Profile 1.5.0](https://uraitakahito.github.io/browserhive-warc-spec/1.5.0/ja/#frame-snapshots)）。
   種別の「節目の絵」（URI が `urn:browserhive:screenshot:` で始まる。BrowserHive v30.2.0 から）は、節目のスクリーンショット（同じ 2 つの時点の viewport の絵）です。
-  頭がどちらでもない resource のレコードは、WARC-Type の名前のまま「resource」と出ます。種別の絞りも、3 つを別々に数えます。
+  頭がどれでもない resource のレコードは、WARC-Type の名前のまま「resource」と出ます。種別の絞りも、4 つを別々に数えます。
   一覧の上には、その WARC の warcinfo（WARC が自分自身を説明するレコード）の欄を、書かれた順に出します。
   欄の名前が Dublin Core の語か WARC 1.1 の warcinfo の欄なら、3 列目にそう出て、その定義へリンクします。
   どちらでもない名前（作り手が決めた名前）は空です。

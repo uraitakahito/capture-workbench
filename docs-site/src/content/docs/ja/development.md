@@ -144,6 +144,7 @@ docs が 1 つの物に 2 つの語を当てていた所は、辞書で 1 つに
 | 回 | 回 | run（予定の 1 回）・times（数える回） | |
 | 起点 | 起点 | seed | |
 | 写し | 写し | snapshot | Copy はボタン「写す」 |
+| `wacz.type.frameSnapshot` | 枠の写し | frame snapshot | 仕様の和訳は「フレームの写し」 |
 
 ## 試験が見るもの、見ないもの
 
