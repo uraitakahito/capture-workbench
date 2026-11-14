@@ -289,9 +289,10 @@ export const userAgentOf = (text) => text.replace(/\s*\n\s*/g, " ").trim();
  * 「このページだけ」（`follow` が null）なら `maxDepth: 0` を足す。「リンクを辿る」なら規則の並びを
  * 必ず送り、深さと枚数は書いたときだけ送る —— 空なら capture-ledger の既定に任せ、既定の数を workbench に写さない。
  * 走らせるものは `scriptsOf`。クロールごとの変数（`variablesOf`）は、1 つでも在るときだけ送る（空の object は送らない）。
- * User-Agent（`userAgentOf`）も、書いたときだけ送る。
+ * User-Agent（`userAgentOf`）も、書いたときだけ送る。「乱数を控える」（`recordRandom`）も、入れたときだけ `true` を送る ——
+ * 外したときは鍵ごと送らず、capture-ledger の既定（`false`）に任せる。
  */
-export const startBody = (text, follow, run = NOTHING_CHOSEN, variables = {}, userAgentText = "") => {
+export const startBody = (text, follow, run = NOTHING_CHOSEN, variables = {}, userAgentText = "", recordRandom = false) => {
   const scripts = scriptsOf(run);
   const userAgent = userAgentOf(userAgentText);
   return {
@@ -306,6 +307,7 @@ export const startBody = (text, follow, run = NOTHING_CHOSEN, variables = {}, us
     ...(scripts !== undefined && { scripts }),
     ...(Object.keys(variables).length > 0 && { variables }),
     ...(userAgent !== "" && { userAgent }),
+    ...(recordRandom && { recordRandom: true }),
   };
 };
 

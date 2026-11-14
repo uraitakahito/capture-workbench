@@ -685,6 +685,45 @@ export const screenshotSkipLines = (shots) => {
   return skipped.map((shot) => ({ stage: shot.stage, skipped: shot.skipped }));
 };
 
+/**
+ * 答えの `capture.random`（BrowserHive の要約を capture-ledger v0.105.0 が通した物。BrowserHive WACZ Profile 1.26.0 の
+ * `browserhive:capture.random`）。ページの JS が `Math.random`・`crypto` から受け取った値を `random/values.jsonl` に控えたか。
+ *
+ * **欄の無い答え（それより前の取り込み）と、読めない形は undefined** —— 画面は何も足さない。
+ *
+ * - 控えた: `{ recorded: true, draws, truncated }`。`draws` は値の行の数、`truncated` は行が欠けているかもしれないか
+ * - 控えなかった: `{ recorded: false, skipped }`。`skipped` は理由（`not-requested`・`withheld`・`failed`。無ければ空の字）
+ */
+export const randomOf = (capture) => {
+  const random = capture?.random;
+  if (random === null || typeof random !== "object") return undefined;
+  if (random.recorded === true && typeof random.draws === "number") {
+    return { recorded: true, draws: random.draws, truncated: random.truncated === true };
+  }
+  if (random.recorded === false) return { recorded: false, skipped: typeof random.skipped === "string" ? random.skipped : "" };
+  return undefined;
+};
+
+const RANDOM_SKIP_TEXT = {
+  withheld: () => t("trace.random.withheld"),
+  failed: () => t("trace.random.failed"),
+};
+
+/**
+ * 経緯の画面の頭の 1 項目（`randomOf` の物から）。控えた取り込みは値の行の数と、欠けているかもしれないときの印。
+ * 控えなかった取り込みは、文書を伏せたか、控えられなかったかを言う。**頼まなかった取り込み（`not-requested`）と、欄の無い
+ * 取り込みは undefined**（何も足さない）。知らない理由は届いた字のまま。
+ */
+export const randomText = (random) => {
+  if (random === undefined) return undefined;
+  if (random.recorded) {
+    return random.truncated ? t("trace.random.drawsTruncated", { n: random.draws }) : t("trace.random.draws", { n: random.draws });
+  }
+  if (random.skipped === "not-requested") return undefined;
+  if (Object.hasOwn(RANDOM_SKIP_TEXT, random.skipped)) return RANDOM_SKIP_TEXT[random.skipped]();
+  return t("trace.random.other", { why: random.skipped === "" ? t("trace.shots.skipped.unsaid") : random.skipped });
+};
+
 /** WACZ の索引（CDXJ）の名前。BrowserHive は、圧縮しない 1 本をここに書く。 */
 export const INDEX_PATH = "indexes/index.cdxj";
 

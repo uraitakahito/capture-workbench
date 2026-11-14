@@ -127,7 +127,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   上の絵では `api_token` が隠す物、`login` が残す物です（代役のクロール `5b0c0007`）。
   隠すのは BrowserHive v29.0.0 からです。それより前の取り込みでは、通信に載せた値が WARC に残っています。capture-ledger はそのころの行にも `archive: null` を返すので、印は「WARC で隠す」と出ます（印にポインタを重ねると、そのことも出ます）。
   クロールの途中で Windmill の変数が書き換えられていれば、どの段から替わったかが付きます。
-  その上に、頼んだ `User-Agent` を打った字のまま出します（頼まなければ「HeadlessChrome のまま」）。
+  その上に、頼んだ `User-Agent` を打った字のまま出します（頼まなければ「HeadlessChrome のまま」）。乱数を控えるよう頼んだクロール（capture-ledger v0.105.0 から）は、その下に「乱数を控えた」と出ます。頼まなかったクロールには何も出ません。
   何も渡していないクロールは「渡した値: なし」の 1 行で、値を持たない古い capture-ledger の行には何も出ません。
   最後が取れなかったページで、並ぶのは capture-ledger が返す新しい 5 件です（全部の数は状態の欄の「N 枚取れず」で分かります）。
   1 つも無ければ、そう言って起点の URL を並べます。
@@ -275,6 +275,11 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   取り込みの答え（capture-ledger の `capture.failureScreenshot`）は、在るかどうかだけを言います。在れば、capture-ledger の `GET /api/crawls/:id/pages/:page/trace/failure-screenshot` から絵を受けて、節目のスクリーンショットと同じ形で出します（押すと元の大きさ）。capture-ledger が言う形式が `image/webp` でない答えは、絵として出さずに、そう言います。
 - **節目のスクリーンショットは署名の下に在り、失敗の時点の絵は無い。**
   節目のスクリーンショットは BrowserHive WACZ の中の記録なので、署名した WACZ では署名が覆います。失敗の時点の絵は WACZ の外のファイルで（取れなかった取り込みは WACZ を作りません）、署名の下にありません。どちらも、取り込みのページが見せていた物をそのまま持ちます。
+- **題の行が、乱数を控えた数を言う。**
+  capture-ledger v0.105.0 から、答えの `capture.random` が BrowserHive の要約（[`browserhive:capture.random`](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.26.0/ja/#random)）を運びます。
+  控えた取り込みは「乱数の控え N 回」です（N は答えの `draws`。`random/values.jsonl` の値の行の数）。答えの `truncated` が行の欠けうることを言うときは「（欠けがありうる）」が付きます。
+  控えるよう頼んだのに控えの無い取り込みは、理由を言います。`withheld` は「乱数は控えていない（文書を伏せたので残さない）」、`failed` は「乱数を控えられなかった」です。画面の知らない理由は、届いた字のまま出します。
+  頼まなかった取り込み（`not-requested`）と、答えに `random` の欄が無い取り込み（古い capture-ledger か BrowserHive）には、何も出ません。
 - **図の帯と印は、押すと下に欄が出る。**
   始まりと長さ（帯）か、時刻（印）を、秒で言います。
 - **取れなかった取り込みは、止まった段を言う。**
@@ -286,7 +291,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
 - **この画面は、署名の下にない。**
   保管庫の `.result.json`（と、`trace` の無い取り込みでは WACZ）を読んで並べた物です。同じ要求の行は、BrowserHive WACZ の中の `trace/events.jsonl` にも在ります（BrowserHive v30.1.0 から。署名した WACZ では、署名の下）。示すための正は、WACZ の中の記録です。
 
-計算（軸・帯・印・棒・数・絵の位置）は `public/timeline.js` で、`test/timeline.test.mjs` と `test/timeline-trace.test.mjs` が、手元の capture-fixtures を撮った本物の答えで固定しています。絵の所は `test/timeline-shots.test.mjs` が、BrowserHive の取り込みが作った本物の WACZ（`sandbox/samples/`）で固定しています。
+計算（軸・帯・印・棒・数・絵の位置）は `public/timeline.js` で、`test/timeline.test.mjs` と `test/timeline-trace.test.mjs` が、手元の capture-fixtures を撮った本物の答えで固定しています。絵の所は `test/timeline-shots.test.mjs` が、BrowserHive の取り込みが作った本物の WACZ（`sandbox/samples/`）で固定しています。乱数の控えの行は `test/timeline-random.test.mjs` が固定しています。
 
 ### 状態は stopReason と合わせて言う
 
@@ -304,18 +309,19 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 ## 新しいクロール
 
 タブ「新しいクロール」の画面から、クロールを始めます。
-左の列に起点の URL・スクリプト・クロールごとの値（チェックしたスクリプトが宣言していれば）・User-Agent の箱・深さと「始める」、右の列にその場の TS の箱と辿り方が並びます。
+左の列に起点の URL・スクリプト・クロールごとの値（チェックしたスクリプトが宣言していれば）・User-Agent の箱・「乱数を控える」のチェック・深さと「始める」、右の列にその場の TS の箱と辿り方が並びます。
 右の列はタブで、スクリプトを読む窓に切り替わり、「リンクを辿る」を選んでいる間は「辿り方」にも切り替わります。
 箱は窓の高さいっぱいまで伸び、左に行番号が付きます。巨大な JS を貼って、読んで、少し直して始めるための形です。
 起点の URL を 1 行に 1 本書き、「このページだけ」か「リンクを辿る」を選んで「始める」を押します。
 
-![新しいクロールの画面の左の列。起点の URL（e-Gov 法令検索）・スクリプトの行（走る順の番号・チェック・↑↓。その場の TS の行、サイト用の egov-law-search、外れた「既定では走らない」autofetch を含む）・egov-law-search が宣言した変数 query の欄・User-Agent の箱とボタン・このページだけかリンクを辿るか・始める](../../../assets/screens/start.webp)
+![新しいクロールの画面の左の列。起点の URL（e-Gov 法令検索）・スクリプトの行（走る順の番号・チェック・↑↓。その場の TS の行、サイト用の egov-law-search、外れた「既定では走らない」autofetch を含む）・egov-law-search が宣言した変数 query の欄・User-Agent の箱とボタン・「乱数を控える」のチェック・このページだけかリンクを辿るか・始める](../../../assets/screens/start.webp)
 
 ① 起点の URL\
 ② スクリプト（走る順の番号・チェックと「読む」・↑↓）\
 ③ クロールごとの値（チェックしたスクリプトが宣言した変数の欄）\
 ④ User-Agent（箱と、Headless を外す型を入れるボタン）\
-⑤ 始める
+⑤ 乱数（「乱数を控える」のチェック）\
+⑥ 始める
 
 ![新しいクロールの画面の右の列。タブ「その場の TS」・スクリプトの名前・読み込みの後か遷移の前か・TS の箱](../../../assets/screens/start-js.webp)
 
@@ -346,6 +352,11 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   `BrowserHive` の語を含めるかは打つ人が決めます。含むと、相手のサイトに BrowserHive が撮っていると分かり、robots.txt もその名前の規則で読みます。含まなければ `*` の規則だけを読みます。
   workbench は字を検査しません。形（印字可能な ASCII・512 字以下）に合わない字は capture-ledger が 400 で断り、左の列の下に `400 —— User-Agent は、表示できる ASCII で 512 字までです` と出ます。
   始めた後も、字は変数やスクリプトと同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は BrowserHive WACZ の `settings.userAgent` で読めます。
+- **「乱数を控える」で、取り込みのページの JS が受け取った乱数を残す。**
+  外したまま（既定）なら何も送らず、capture-ledger の既定（控えない）です。入れると `recordRandom: true` を送ります（capture-ledger v0.105.0 から）。「始める」でも「定期にする」でも同じです。
+  BrowserHive は、ページの JS より先に、乱数を控えるスクリプトをページに入れ、ページの JS が `Math.random`・`crypto.getRandomValues`・`crypto.randomUUID` から受け取った値を、[BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.26.0/ja/#random-directory) の `random/values.jsonl` に書きます。
+  Web Capture ↗（capture-player）の再生は、控えた値を返します。見せる物を乱数で選ぶページも、撮った時に選んだ物を選びます。ReplayWeb.page ↗ は返しません。
+  クロールの画面の開いた行には「乱数を控えた」と出て、取り込みごとの経緯の画面が、控えた数を言います。
 - **チェックしたスクリプトやその場の TS が値を宣言していれば、「クロールごとの値」の欄が出る。**
   スクリプトは読む変数を、ソースの `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))` で宣言します。[capture-scripts](https://github.com/uraitakahito/capture-scripts) のスクリプトは `catalog.json` の `params` にも同じ宣言があり、capture-ledger は版ごとに持ち、`GET /api/scripts` が運びます。
   その場の TS は、箱が 800 ms 止まると capture-ledger に訊きます（`POST /api/scripts/check`）。ファイルを読んだときも、「欄に戻す」でも、「下敷きにする」でも欄が出ます。

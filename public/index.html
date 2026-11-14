@@ -155,6 +155,16 @@
               <div class="start-row"><button type="button" id="start-ua-compatible" data-i18n="start.ua.compatible"></button></div>
               <p class="start-hint" data-i18n="start.ua.hint"></p>
             </fieldset>
+            <!--
+              ページの JS が受け取った乱数（Math.random・crypto）を控えるか（capture-ledger の recordRandom）。外せば送らず、
+              capture-ledger の既定（控えない）。入れると BrowserHive がページの JS より先に控えるスクリプトを入れ、値を WACZ の
+              random/values.jsonl に残す。撮った時の値を返すのは capture-player（Web Capture）で、ReplayWeb.page は返さない
+            -->
+            <fieldset class="start-run" id="start-random-box">
+              <legend data-i18n="start.random.legend"></legend>
+              <label><input type="checkbox" id="start-random" /> <span data-i18n="start.random.label"></span></label>
+              <p class="start-hint" data-i18n="start.random.hint"></p>
+            </fieldset>
             <div class="start-row">
               <label><input type="radio" name="start-depth" id="start-page" checked /> <span data-i18n="start.depth.pageOnly"></span></label>
               <!-- 辿るときは、右の列の「辿り方」のタブで深さ・枚数・規則を決める -->
