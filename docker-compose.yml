@@ -4,8 +4,8 @@
 # **コンテナどうしは話さない。** どちらも host の 127.0.0.1 に出したポートで、workbench から呼ばれる。
 # だから DNS ドメイン (sudo container system dns create) は要らない。
 #
-# - sandbox-ledger: capture-ledger と開発用 issuer の代役 (sandbox/fake-ledger.mjs)。何を見せるかは
-#   sandbox/scenario.json が決める
+# - sandbox-ledger: capture-ledger と、手元の IdP (capture-ledger の compose の idp。Floci) のサインインの代役
+#   (sandbox/fake-ledger.mjs)。何を見せるかは sandbox/scenario.json が決める
 # - sandbox-validator: 本物の daemon。image は、隣の ../wacz-validator の Dockerfile の daemon の段から
 #   `npm run sandbox:build` が建てる (`npm run sandbox` は、無いときだけ建てる)。
 #   版は checkout 次第で、更新したら `npm run sandbox:build`

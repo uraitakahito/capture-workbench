@@ -87,7 +87,7 @@ const SAMPLES = [
   {
     key: "formats.cannotHideSecrets",
     params: { formats: ["png", "html"] },
-    text: "CAPTURE_LEDGER_CAPTURE_FORMATS の png・html は値を置き換えられない (BrowserHive が断る)。形式から外すか、値を WARC に残すなら宣言に archive: \"keep\" と書く",
+    text: "CAPTURE_LEDGER_CAPTURE_FORMATS の png・html は値を置き換えられない (BrowserHive が断る)。形式から外すか、値を BrowserHive WARC に残すなら宣言に archive: \"keep\" と書く",
   },
   { key: "inlineParams.secretsOnly", text: "params に書けるのはシークレットだけ。変数は source の defineParams で宣言する" },
   { key: "fix.noEdits", text: "置き換えが 1 つも無い" },

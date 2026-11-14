@@ -2,16 +2,16 @@
  * サンドボックスの代役 (sandbox/fake-ledger.mjs) の、応答を組み立てる部分。
  *
  * 欄の集合を capture-ledger の応答と揃えておくことと、同梱の台本が画面の状態を全部出せることを固定する。
- * capture-ledger の欄は capture-ledger v0.57.4 から写した —— capture-ledger が欄を足したら、ここと代役を直す。
+ * capture-ledger の欄は capture-ledger v0.57.4 から写し始め、v0.107.0 の実物と照らした —— capture-ledger が欄を足したら、ここと代役を直す。
  * スクリプトを読むエンドポイント（版の一覧・1 版・受け皿の型）は v0.60.0 から、対象サイト（`sites`）と起点で選ぶ既定は v0.61.0 から。
  * 規則の並び（`rules`・400 の 3 つ・確かめと判断のエンドポイント）は v0.62.0 から。既定に入らないスクリプト（一覧の
  * `enabled`・名指しは有効かどうかを見ない）は v0.64.0 から。クロールごとの値（版の `params`・頼みの `variables`・
  * 行の `variables`/`secrets`・値の 400 の 4 つ）は v0.67.0 から。シークレットの宣言の `archive`（行の `secrets` の
  * `archive`・食い違いの `conflicting params`・隠せない形式の 400）は v0.90.0 から。ページのエンドポイント（`GET /api/crawls/:id/pages` と
- * `…/pages/:page/log`）と failures の `page` は、CAPTURE-18 で capture-ledger が足す形から（capture-ledger の版は、エンドポイントが出たら書く）。
- * 型の誤りの取り直し（`GET /api/crawls/:id/diagnostics`）と直し方（`POST …/inline/:name/fix`）は CAPTURE-49 の形から。
- * 合本の欄（行と詳しい所の `replayBundle`・ページの行の `capturedAt` と `bundledRev`）は、CAPTURE-56 で capture-ledger が足す形から
- * （capture-ledger の版は、出たら書く）。
+ * `…/pages/:page/log`）と failures の `page` は v0.69.0 から（CAPTURE-18）。
+ * 型の誤りの取り直し（`GET /api/crawls/:id/diagnostics`）は v0.69.0、直し方（`POST …/inline/:name/fix`）は v0.71.0 から（CAPTURE-49）。
+ * 合本の欄（行と詳しい所の `replayBundle`・ページの行の `capturedAt` と `bundledRev`）は v0.73.0 から、署名の 3 欄は v0.74.0 から
+ * （CAPTURE-56）。一覧の行の `screenshot` と絵のエンドポイントは v0.107.0 から（CAPTURE-432）。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -89,7 +89,10 @@ const versions = catalogOf(scenario);
 const at = (list) => list.map((v) => `${v.id}@${String(v.version)}`);
 const NOW = Date.parse("2026-10-12T12:00:00.000Z");
 
-/** capture-ledger の src/api/crawls.ts が /api/crawls の 1 行に返す欄 (v0.57.4。`replayBundle` は CAPTURE-56 から、`pagesFailed` は v0.77.0 から)。 */
+/**
+ * capture-ledger の src/api/crawls.ts が /api/crawls の 1 行に返す欄 (v0.57.4 の欄に、`replayBundle` が v0.73.0、`pagesFailed` が v0.77.0、
+ * 定期の回の欄が v0.87.0、`dispatch` が v0.98.0、`linksRecorded` が v0.99.0 から。v0.107.0 と同じ)。
+ */
 const LEDGER_CRAWL_KEYS = [
   "crawlId",
   "state",
@@ -115,8 +118,11 @@ const LEDGER_CRAWL_KEYS = [
   "scheduledFor",
   "scheduleMissed",
 ].sort();
-/** 行と詳しい所の `replayBundle` の欄（null でなければ。CAPTURE-56 の src/api/crawls.ts の replayBundleOf）。 */
-const LEDGER_BUNDLE_KEYS = ["key", "rev", "pages", "builtAt", "error"].sort();
+/**
+ * 行と詳しい所の `replayBundle` の欄（null でなければ。capture-ledger の src/api/crawls.ts の replayBundleOf。v0.73.0 から、
+ * 署名の 3 欄は v0.74.0 から）。
+ */
+const LEDGER_BUNDLE_KEYS = ["key", "rev", "pages", "builtAt", "error", "signedRev", "digestKey", "signError"].sort();
 
 /** capture-ledger の src/api/routes.ts が /api/archives の 1 行に返す欄 (`screenshot` は v0.107.0 から。CAPTURE-432)。 */
 const LEDGER_ARCHIVE_KEYS = [
@@ -261,7 +267,7 @@ test("クロールの 1 行は、capture-ledger の /api/crawls と同じ欄を�
   }
 });
 
-// ── 始めるエンドポイント（POST /api/crawls）。文は capture-ledger v0.57.5 の src/api/crawls.ts から写した ──
+// ── 始めるエンドポイント（POST /api/crawls）。文は capture-ledger v0.57.5 から写した（いまは src/crawl/prepare.ts）──
 
 const RUNS = 15;
 
@@ -351,7 +357,7 @@ test("同梱の台本は、画面の状態の言い分けを全部出す", () =>
   assert.ok((scenario.hidden ?? []).length > 0, "見えない archive の行");
 });
 
-// ── 合本の欄（CAPTURE-56 で capture-ledger が足す行の replayBundle）────────────────────────────────
+// ── 合本の欄（capture-ledger v0.73.0 の行の replayBundle。CAPTURE-56）────────────────────────────────
 
 test("合本の欄は capture-ledger と同じ形で、行と詳しい所で同じ。鍵は capture-ledger と同じ置き場の版を指す", () => {
   let seen = 0;
@@ -779,7 +785,7 @@ test("知らないスクリプトの id・重ね・形の誤り・scriptIds は�
   assert.equal(post({ scriptIds: ["autofetch"] }).body.message, "body must NOT have additional properties");
 });
 
-// ── クロールごとの値（capture-ledger v0.67.0 の src/api/crawls.ts の形）──────────────
+// ── クロールごとの値（capture-ledger v0.67.0 から。いまは src/crawl/prepare.ts と src/crawl/values.ts）──────────────
 
 /** 台本の Windmill の代わり（windmillSecrets・windmillVariables）。edited_at は台本の撮った時刻。 */
 const WINDMILL = { secrets: scenario.windmillSecrets, variables: scenario.windmillVariables, editedAt: scenario.capturedAt };
@@ -1048,14 +1054,14 @@ test("隠すシークレットを送るのに配備の形式が値を置き換�
       names: ["api_token"],
       hint:
         "CAPTURE_LEDGER_CAPTURE_FORMATS の png・mhtml は値を置き換えられない (BrowserHive が断る)。" +
-        '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く',
+        '形式から外すか、値を BrowserHive WARC に残すなら宣言に archive: "keep" と書く',
       hints: [
         {
           key: "formats.cannotHideSecrets",
           params: { formats: ["png", "mhtml"] },
           text:
             "CAPTURE_LEDGER_CAPTURE_FORMATS の png・mhtml は値を置き換えられない (BrowserHive が断る)。" +
-            '形式から外すか、値を WARC に残すなら宣言に archive: "keep" と書く',
+            '形式から外すか、値を BrowserHive WARC に残すなら宣言に archive: "keep" と書く',
         },
       ],
     },
@@ -1315,7 +1321,7 @@ test("判断のエンドポイントは、台本の行の規則・判断・robot
   assert.deepEqual(decisionsOf({ crawlId: "x" }), { crawlId: "x", rules: [{ follow: "same-origin" }], decisions: [], robots: [] });
 });
 
-// ── ページのエンドポイント（CAPTURE-18 で capture-ledger が足す GET /api/crawls/:id/pages と …/pages/:page/log の形）────────
+// ── ページのエンドポイント（capture-ledger v0.69.0 の GET /api/crawls/:id/pages と …/pages/:page/log の形。CAPTURE-18）────────
 
 /** ページの 1 行の欄（一覧の pages[i] と、ログの答えの page）。 */
 const LEDGER_PAGE_KEYS = [
@@ -1757,6 +1763,27 @@ test("代役のアーカイブの一覧は撮った時刻の新しい順（同�
   assert.deepEqual(looks, ["picture", "-", "none", "-"]);
 });
 
+test("ページの id の綴りは capture-ledger の PAGE_ID（18 桁まで）。外れたら Fastify の schema の文で 400", () => {
+  const c = crawlOf("5b0c0009");
+  const said = 'params/page must match pattern "^[0-9]{1,18}$"';
+  for (const raw of ["13a", "", "1".repeat(19)]) {
+    for (const answer of [pageLog(c, raw), pageTrace(c, raw), pageFailureScreenshot(c, raw), pageLinksOf(c, raw)]) {
+      assert.deepEqual([answer.status, answer.body.message], [400, said], raw);
+    }
+  }
+  assert.equal(pageLog(c, "1".repeat(18)).status, 404);
+  assert.equal(pageList(c, query(`after=${"1".repeat(19)}`)).body.message, 'querystring/after must match pattern "^[0-9]{1,18}$"');
+});
+
+test("検索の 400 は capture-ledger の schema の順と文（q の有無 → ほかの欄 → q の長さ）", () => {
+  const ask = (q) => searchOf(["good.wacz"], scenario, new URLSearchParams(q));
+  assert.equal(ask("").body.message, "querystring must have required property 'q'");
+  assert.equal(ask("size=10").body.message, "querystring must have required property 'q'");
+  assert.equal(ask("q=a&size=10").body.message, "querystring must NOT have additional properties");
+  assert.equal(ask("q=").body.message, "querystring/q must NOT have fewer than 1 characters");
+  assert.equal(ask("q=").body.code, "FST_ERR_VALIDATION");
+});
+
 test("経緯を読めないページは capture: null と理由 —— taskId の無いページは not-captured、capture の無いページは no-manifest", () => {
   const skipped = pageTrace(crawlOf("5b0c0009"), "1204", SAMPLE_NAMES).body;
   assert.deepEqual([skipped.capture, skipped.log, skipped.reason], [null, null, "not-captured"]);
@@ -1855,7 +1882,7 @@ test("代役の 5b0c0008（型で落ちた行）は、起点の頁を pending �
   assert.equal(outcomeOf(answer.body.pages[0], c.state), "pending（報告なし —— クロールが先に終わった）");
 });
 
-// ── クロールごとの User-Agent（capture-ledger の src/api/crawls.ts の形）──────────────
+// ── クロールごとの User-Agent（capture-ledger v0.79.0 から。いまは src/crawl/prepare.ts）──────────────
 
 test("User-Agent は打った字のまま行に残り、詳しい答えが返す。省けば null", () => {
   const start = (body) => {

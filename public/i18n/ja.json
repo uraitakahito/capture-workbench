@@ -809,7 +809,7 @@
   "ledger.hint.variables.notInEnum": "{name} は {values} のどれか",
   "ledger.hint.variables.tooShort": "{name} は {min} 字以上",
   "ledger.hint.variables.tooLong": "{name} は {max} 字まで",
-  "ledger.hint.formats.cannotHideSecrets": "CAPTURE_LEDGER_CAPTURE_FORMATS の {formats} は値を置き換えられない (BrowserHive が断る)。形式から外すか、値を WARC に残すなら宣言に archive: \"keep\" と書く",
+  "ledger.hint.formats.cannotHideSecrets": "CAPTURE_LEDGER_CAPTURE_FORMATS の {formats} は値を置き換えられない (BrowserHive が断る)。形式から外すか、値を BrowserHive WARC に残すなら宣言に archive: \"keep\" と書く",
   "ledger.hint.inlineParams.secretsOnly": "params に書けるのはシークレットだけ。変数は source の defineParams で宣言する",
   "ledger.hint.fix.noEdits": "置き換えが 1 つも無い",
   "ledger.hint.fix.invalidRange": "置き換えの範囲が読めない ({from}〜{to})",
