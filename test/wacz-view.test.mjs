@@ -12,11 +12,13 @@ import {
   flattenTree,
   formatBytes,
   isWarc,
+  kindCounts,
   lineLabel,
   parseWaczHash,
   recordCells,
   recordKind,
   recordOpener,
+  rowsOfKind,
   typeName,
   waczHash,
   warcinfoNote,
@@ -140,6 +142,51 @@ test("URI の頭が BrowserHive の物でない resource は、WARC-Type の名�
   assert.equal(recordCells(other).type, "resource");
   assert.equal(recordCells({ type: "resource", indexed: false }).type, "resource");
   assert.equal(recordKind({ type: "response", uri: "urn:browserhive:snapshot:after-load:https://x/" }), "response");
+});
+
+/**
+ * WACZ の画面の種別の絞り（CAPTURE-385）。dev で撮った /warc/rollover の 2 本目の WARC と同じ並び（warcinfo・応答と要求の 3 組・
+ * 写しと記録・節目の絵と記録）に、頭で分けられない resource を 1 つ足した窓。
+ */
+const MIXED_WINDOW = [
+  { type: "warcinfo", contentType: "application/warc-fields", indexed: false },
+  ...[1, 2, 3].flatMap((n) => [
+    { type: "response", uri: `https://shop.test/noise?seed=${String(n)}`, status: 200, indexed: true },
+    { type: "request", uri: `https://shop.test/noise?seed=${String(n)}`, indexed: false },
+  ]),
+  NEW_WARC_RESOURCES.snapshot,
+  { type: "metadata", uri: NEW_WARC_RESOURCES.snapshot.uri, indexed: false },
+  NEW_WARC_RESOURCES.screenshot,
+  { type: "metadata", uri: NEW_WARC_RESOURCES.screenshot.uri, indexed: false },
+  { type: "resource", contentType: "text/plain", uri: "https://shop.test/other", indexed: true },
+];
+
+test("種別の絞りのボタンの数: 写しと節目の絵を別に数え、並びは窓に初めて出た順", () => {
+  assert.deepEqual(
+    [...kindCounts(MIXED_WINDOW)],
+    [
+      ["warcinfo", 1],
+      ["response", 3],
+      ["request", 3],
+      ["resource:snapshot", 1],
+      ["metadata", 2],
+      ["resource:screenshot", 1],
+      ["resource", 1],
+    ],
+  );
+  assert.equal(kindCounts([]).size, 0);
+});
+
+test("種別で絞る: 節目の絵だけ・写しだけ・頭で分けられない resource だけ、undefined は全部", () => {
+  assert.deepEqual(rowsOfKind(MIXED_WINDOW, "resource:screenshot"), [NEW_WARC_RESOURCES.screenshot]);
+  assert.deepEqual(rowsOfKind(MIXED_WINDOW, "resource:snapshot"), [NEW_WARC_RESOURCES.snapshot]);
+  assert.deepEqual(
+    rowsOfKind(MIXED_WINDOW, "resource").map((row) => row.uri),
+    ["https://shop.test/other"],
+  );
+  assert.equal(rowsOfKind(MIXED_WINDOW, "metadata").length, 2);
+  assert.equal(rowsOfKind(MIXED_WINDOW, undefined), MIXED_WINDOW);
+  assert.deepEqual(rowsOfKind(MIXED_WINDOW, "revisit"), []);
 });
 
 /** wacz-validator v0.39.0 の報告の warcinfo の 1 件（daemon が ja の label を付けた形）。 */

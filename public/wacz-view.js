@@ -122,6 +122,22 @@ export const recordKind = (row) => {
 };
 
 /**
+ * 読んだ窓の行を種別（`recordKind`）ごとに数える（WACZ の画面の種別の絞りのボタン）。Map の並びは、窓に初めて出た順。
+ * 数は読んだ窓の中の数で、WARC 全体の数ではない。
+ */
+export const kindCounts = (rows) => {
+  const counts = new Map();
+  for (const row of rows) {
+    const kind = recordKind(row);
+    counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  }
+  return counts;
+};
+
+/** 行を種別で絞る。`kind` が undefined なら全部（「すべて」のボタン）。 */
+export const rowsOfKind = (rows, kind) => (kind === undefined ? rows : rows.filter((row) => recordKind(row) === kind));
+
+/**
  * 種別（`recordKind`）の言い方。知らない種別と、warcinfo と、頭で分けられない resource はそのまま。
  * 日本語の「記録」は metadata の言い直しで、英語は WARC-Type の名前のまま（レコードの record と同じ字にしない）。
  */
