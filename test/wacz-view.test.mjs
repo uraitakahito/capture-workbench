@@ -15,6 +15,7 @@ import {
   lineLabel,
   parseWaczHash,
   recordCells,
+  recordKind,
   recordOpener,
   typeName,
   waczHash,
@@ -55,9 +56,11 @@ test("中間のディレクトリは entry を持たず、葉だけが持つ", (
 
 test("印: 無い entry は理由つき、指摘は最悪の severity で", () => {
   assert.deepEqual(entryMarker(entry("x", { present: false, expectedBy: ["wacz-spec", "datapackage"] })), {
-    glyph: "(無い — §5.2 が要求)",
+    glyph: "(無い — WACZ 1.1.1 §5.2 が要求)",
     tone: "error",
   });
+  // 理由の無い「無い」は、語を重ねない（英語の (missing) と同じ形）
+  assert.equal(entryMarker(entry("x", { present: false, expectedBy: [] })).glyph, "(無い)");
   assert.equal(entryMarker(entry("x", { issues: [{ severity: "warning" }, { severity: "error" }] })).glyph, "✗");
   assert.equal(entryMarker(entry("x", { issues: [{ severity: "info" }] })).glyph, "");
   assert.equal(entryMarker(undefined).glyph, "");
@@ -72,7 +75,7 @@ test("大きさは 1024 で刻む", () => {
 test("なぜ要るかは、両方なら両方言う", () => {
   assert.equal(expectedLabel([], undefined), "—");
   assert.equal(expectedLabel(["datapackage"], undefined), "datapackage が宣言");
-  assert.equal(expectedLabel(["datapackage", "wacz-spec"], "5.2.1"), "datapackage が宣言、§5.2.1 が要求");
+  assert.equal(expectedLabel(["datapackage", "wacz-spec"], "5.2.1"), "datapackage が宣言、WACZ 1.1.1 §5.2.1 が要求");
 });
 
 test("行の言い方: 切れた行は印と本来の大きさ、binary は大きさだけ", () => {
@@ -96,8 +99,47 @@ test("レコードの列: 種別は日本語、無いものは空", () => {
   assert.equal(recordCells({ type: "revisit", indexed: false }).type, "revisit");
 });
 
-test("BrowserHive が組んだ写し（resource）は「写し」と呼ぶ", () => {
-  assert.equal(recordCells({ type: "resource", contentType: "text/html; charset=utf-8", uri: "https://x/result", indexed: true }).type, "写し");
+/**
+ * BrowserHive v31.0.0 からの名前の WARC（`archive/data-000.browserhive.warc.gz`）の、resource の 2 つ。daemon の
+ * レコードの一覧の行の形（URI は BrowserHive WARC Profile 1.4.0 の #snapshots・#screenshots の形）。
+ */
+const NEW_WARC_RESOURCES = {
+  path: "archive/data-000.browserhive.warc.gz",
+  snapshot: {
+    type: "resource",
+    contentType: "text/html; charset=utf-8",
+    uri: "urn:browserhive:snapshot:after-load:https://shop.test/result",
+    indexed: true,
+    offset: 18342,
+    length: 2210,
+  },
+  screenshot: {
+    type: "resource",
+    contentType: "image/webp",
+    uri: "urn:browserhive:screenshot:after-load:https://shop.test/result",
+    indexed: true,
+    offset: 20552,
+    length: 40118,
+  },
+};
+
+test("BrowserHive WARC の DOM の写し（resource）は「写し」と呼ぶ", () => {
+  assert.equal(recordCells(NEW_WARC_RESOURCES.snapshot).type, "写し");
+  assert.equal(recordKind(NEW_WARC_RESOURCES.snapshot), "resource:snapshot");
+});
+
+test("BrowserHive WARC の節目のスクリーンショット（resource）は「節目の絵」と呼び、写しと別に絞る", () => {
+  assert.equal(recordCells(NEW_WARC_RESOURCES.screenshot).type, "節目の絵");
+  assert.equal(recordKind(NEW_WARC_RESOURCES.screenshot), "resource:screenshot");
+  assert.equal(inEnglish(() => recordCells(NEW_WARC_RESOURCES.screenshot).type), "screenshot");
+});
+
+test("URI の頭が BrowserHive の物でない resource は、WARC-Type の名前のまま", () => {
+  const other = { type: "resource", contentType: "text/html", uri: "https://x/result", indexed: true };
+  assert.equal(recordKind(other), "resource");
+  assert.equal(recordCells(other).type, "resource");
+  assert.equal(recordCells({ type: "resource", indexed: false }).type, "resource");
+  assert.equal(recordKind({ type: "response", uri: "urn:browserhive:snapshot:after-load:https://x/" }), "response");
 });
 
 /** wacz-validator v0.39.0 の報告の warcinfo の 1 件（daemon が ja の label を付けた形）。 */
@@ -179,11 +221,11 @@ test("英語: 木の印と「なぜ要るか」。単位と罫線は言語で変
   const missing = (expectedBy) => entryMarker(entry("x", { present: false, expectedBy })).glyph;
   assert.deepEqual(
     inEnglish(() => [missing(["wacz-spec", "datapackage"]), missing(["datapackage"]), missing([])]),
-    ["(missing — required by §5.2)", "(missing — declared in datapackage)", "(missing)"],
+    ["(missing — required by WACZ 1.1.1 §5.2)", "(missing — declared in datapackage)", "(missing)"],
   );
   assert.equal(
     inEnglish(() => expectedLabel(["datapackage", "wacz-spec"], "5.2.1")),
-    "declared in datapackage, required by §5.2.1",
+    "declared in datapackage, required by WACZ 1.1.1 §5.2.1",
   );
   assert.equal(inEnglish(() => expectedLabel([], undefined)), "—");
   assert.equal(inEnglish(() => formatBytes(404697)), "395.2 KiB");
@@ -191,8 +233,12 @@ test("英語: 木の印と「なぜ要るか」。単位と罫線は言語で変
 
 test("英語: レコードの種別は WARC-Type の名前。metadata を record と言わない", () => {
   assert.deepEqual(
-    inEnglish(() => ["response", "request", "metadata", "resource", "warcinfo", "revisit"].map(typeName)),
-    ["response", "request", "metadata", "snapshot", "warcinfo", "revisit"],
+    inEnglish(() =>
+      ["response", "request", "metadata", "resource:snapshot", "resource:screenshot", "resource", "warcinfo", "revisit"].map(
+        typeName,
+      ),
+    ),
+    ["response", "request", "metadata", "snapshot", "screenshot", "resource", "warcinfo", "revisit"],
   );
   assert.equal(inEnglish(() => recordCells({ type: "metadata", indexed: false }).type), "metadata");
   assert.equal(typeName("warcinfo"), "warcinfo");

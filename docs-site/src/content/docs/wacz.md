@@ -1,10 +1,10 @@
 ---
 title: Inspecting a WACZ
-description: From an archive row, check whether the capture conforms to the WACZ spec and open its contents — without adding a key anywhere
+description: From an archive row, check whether the capture conforms to WACZ 1.1.1 and open its contents — without adding a key anywhere
 ---
 
-An archive row offers two things. **Validate** (検証) checks whether the capture conforms to the WACZ
-spec (WACZ is the archive format that packs captured pages into one ZIP), and **Open** (開く) takes
+An archive row offers two things. **Validate** (検証) checks whether the capture conforms to WACZ
+1.1.1 (WACZ is the archive format that packs captured pages into one ZIP), and **Open** (開く) takes
 you inside the WACZ. Both are answered by the daemon of
 [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a
 WACZ rule by rule). capture-workbench only hands the daemon a URL that the ledger has signed.
@@ -72,8 +72,9 @@ report is in English on the English screen and in Japanese on the Japanese one.
 
 The workbench does not send a profile, so the daemon validates with its default, `spec`. Rules
 that only apply to the capture server (BrowserHive) do not show up here. The report line says
-`profile spec`, so you can see which profile was used. Validating against BrowserHive's own
-profile would need a way for the workbench to send a profile, which does not exist yet.
+`profile spec`, so you can see which profile was used. Validating against the
+[BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/)
+(the daemon's `browserhive` profile) would need a way for the workbench to send a profile, which does not exist yet.
 
 ### The daemon does not rebuild itself
 
@@ -103,13 +104,15 @@ asks for it, the findings on that entry) and its contents.
 - **Record list**: this is what you get for a `.warc.gz`. One row per record, walking the WARC
   from the start, 200 at a time, filterable by type. ▪ marks a record the index (CDXJ) points
   to, ▫ one the index does not. The records BrowserHive leaves for what it did not or could not
-  capture (`WARC-Type: metadata`) are only visible here. A record of type **snapshot** (写し; `WARC-Type:
-  resource`) is a copy BrowserHive made of the captured page's DOM, after the page loaded and
-  after the capture's scripts ran, not a server response; the paired **metadata** (記録) record
-  says so. From BrowserHive v30.2.0, a stage screenshot (a picture of the viewport at the same two
-  stages) is a `WARC-Type: resource` record too, so the list shows it under the same name,
-  **snapshot** (写し). The URI tells them apart: a DOM snapshot's starts with
-  `urn:browserhive:snapshot:`, a stage screenshot's with `urn:browserhive:screenshot:`. Above the list, the
+  capture (`WARC-Type: metadata`) are only visible here. A [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/#archive-files) has two kinds of
+  `WARC-Type: resource` record, and the list names them by the start of the URI. A record of type
+  **snapshot** (写し; the URI starts with `urn:browserhive:snapshot:`) is a copy BrowserHive made of
+  the captured page's DOM, after the page loaded and after the capture's scripts ran, not a server
+  response; the paired **metadata** (記録) record says so. A record of type **screenshot** (節目の絵;
+  the URI starts with `urn:browserhive:screenshot:`, from BrowserHive v30.2.0) is a stage screenshot,
+  a picture of the viewport at the same two stages. A resource record whose URI starts with neither
+  is shown as **resource**, the WARC-Type's own name. The type filter counts each of the three
+  apart. Above the list, the
   WARC's warcinfo (the record in which a WARC describes itself) is shown field by field, in the
   order written. When a field's name is a Dublin Core term or a WARC 1.1 warcinfo field, the
   third column says so (`Dublin Core term` or `WARC 1.1 warcinfo field`, the daemon's words in the

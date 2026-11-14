@@ -212,6 +212,7 @@ import {
   lineLabel,
   parseWaczHash,
   recordCells,
+  recordKind,
   recordOpener,
   typeName,
   waczHash,
@@ -526,7 +527,7 @@ const archiveTag = (archive) => {
 /**
  * 渡した値（capture-ledger の `variables`。始めるときに行へ固定された名前と値）と、使ったシークレット（`secrets`。名前と
  * Windmill の変数の path と、capture-ledger が確かめたときの edited_at。途中で替わっていれば、どの段からか。WARC に残すか）。
- * **値を持つのは変数だけ** —— シークレットの値は capture-ledger に無く、写し・ページの文字・ログからも消える。WARC では、隠す
+ * **値を持つのは変数だけ** —— シークレットの値は capture-ledger に無く、写し・ページの文字・ログからも消える。BrowserHive WARC では、隠す
  * シークレットの値は `***` に置き換わり、`keep` と宣言した物は値のまま残る（`format.js` の `secretArchiveOf`）。
  * どちらも持たない capture-ledger（v0.66 まで）の行は何も出さない。
  */
@@ -534,7 +535,7 @@ const valuesOf = (one) => {
   const box = document.createElement("div");
   box.className = "values";
   if (one.variables === undefined && one.secrets === undefined) return box;
-  // 打った字のまま。解いた字は WACZ の settings.userAgent に在る
+  // 打った字のまま。解いた字は BrowserHive WACZ の settings.userAgent に在る
   box.append(
     typeof one.userAgent === "string"
       ? tag("p", `User-Agent: ${one.userAgent}`)
@@ -714,7 +715,7 @@ const drawLog = (state) => {
   }
   const lost = droppedOf(dropped);
   if (lost !== undefined) bar.append(tag("span", lost, "state warn"));
-  // WACZ に封じた同じ行（profile を除けば答えの行と同じ）を、WACZ の画面で開く。同じタブで（hash の行き先）
+  // BrowserHive WACZ に封じた同じ行（profile を除けば答えの行と同じ）を、WACZ の画面で開く。同じタブで（hash の行き先）
   const sealed = waczLogTarget(answer.page);
   if (sealed !== undefined) {
     const a = document.createElement("a");
@@ -3015,7 +3016,7 @@ const drawRecords = () => {
 
   // 種別の絞り。数は読んだ窓の中の数（全体の数は total）。
   const counts = new Map();
-  for (const row of rows) counts.set(row.type, (counts.get(row.type) ?? 0) + 1);
+  for (const row of rows) counts.set(recordKind(row), (counts.get(recordKind(row)) ?? 0) + 1);
   const chips = document.createElement("div");
   chips.className = "chips";
   const chip = (label, value) => {
@@ -3038,7 +3039,7 @@ const drawRecords = () => {
   for (const text of ["", t("wacz.records.col.type"), t("wacz.records.col.status"), "content-type", "URI"]) head.append(tag("th", text));
   table.append(head);
   for (const row of rows) {
-    if (filter !== undefined && row.type !== filter) continue;
+    if (filter !== undefined && recordKind(row) !== filter) continue;
     const cells = recordCells(row);
     const tr = document.createElement("tr");
     tr.append(

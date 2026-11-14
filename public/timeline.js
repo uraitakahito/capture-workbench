@@ -22,13 +22,13 @@
  * **`trace` が null の取り込み（それより前）** は、WACZ の中の WARC のレコードから読む。印は 2 種類:
  *
  * - **始まりの印**: request と response の対。対の `WARC-Date` は要求の始まり。
- * - **記録した時刻の印**: metadata だけが在る要求（終わらなかった・失敗した・止めた・残さなかった）。この
+ * - **記録した時刻の印**: BrowserHive WARC の metadata だけが在る要求（終わらなかった・失敗した・止めた・残さなかった）。この
  *   `WARC-Date` は BrowserHive がレコードを書いた時刻で、始まりではない（終わらなかった要求なら、記録を止めた時刻）。
  *
  * ## 絵は 2 種類
  *
  * **節目のスクリーンショット（BrowserHive v30.2.0 から）** は、答えの `capture.screenshots` が時点ごとに述べる。
- * 絵そのものは WACZ の中の WARC の resource レコードで、位置は索引（CDXJ）を項目の `url` と `date` で引く。
+ * 絵そのものは BrowserHive WACZ の中の WARC の resource レコードで、位置は索引（CDXJ）を項目の `url` と `date` で引く。
  * **引きに行くのは、絵の項目が在る取り込みだけ** —— 欄が無い答え・全部が「残さなかった」の答えでは、WACZ を読まない。
  *
  * **失敗の時点の絵** は WACZ の外のファイルで、答えは在るかどうか（`capture.failureScreenshot`）だけを言う。
@@ -51,7 +51,11 @@ export const traceHash = (crawlId, pageId) => `#trace/${crawlId}/${pageId}`;
 export const tracePath = (crawlId, pageId) =>
   `/api/crawls/${encodeURIComponent(crawlId)}/pages/${encodeURIComponent(pageId)}/trace`;
 
-/** WACZ の中の WARC の本の名前。BrowserHive は `data-000` から番号を進める。 */
+/**
+ * WACZ の中の WARC の本の名前（古い名前の `data-NNN.warc.gz`）。BrowserHive は `data-000` から番号を進める。
+ * この道は BrowserHive v30.0.0 より前の、古い名前の WACZ だけ（`readsRecords`）。新しい WACZ には trace が必ず在る ——
+ * BrowserHive v31.0.0 からの名前（`data-NNN.browserhive.warc.gz`）の WACZ は、ここを通らない。
+ */
 export const warcName = (n) => `archive/data-${String(n).padStart(3, "0")}.warc.gz`;
 
 /** daemon が 1 回に返すレコードの上限。 */
@@ -706,7 +710,7 @@ export const cdxjTimestamp = (date) => {
 
 /**
  * 絵の項目を引く、索引の行の頭（`<鍵> <時刻> `）。BrowserHive は絵の行の鍵を、絵の URI のまま書く（SURT にしない）
- * ので、項目の `url` と `date` がそのまま鍵と時刻になる（WACZ Profile の #archive-files）。
+ * ので、項目の `url` と `date` がそのまま鍵と時刻になる（BrowserHive WACZ Profile の #archive-files）。
  */
 export const screenshotIndexKey = (shot) => `${shot.url} ${String(cdxjTimestamp(shot.date))} `;
 

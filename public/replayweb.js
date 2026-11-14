@@ -5,7 +5,7 @@
  * replay は、`?source=` だけで開くとページ一覧を出し、一覧を日付の新しい順に並べる。WACZ の `mainPageURL` は読まない。
  * BrowserHive v23 からの WACZ では、一覧に並ぶのは DOM の写し（`urn:browserhive:snapshot:…`）で、写しには頁の script が
  * 無い。JS が出し入れする絵（apple.com/jp のヒーローなど）は、写しでは出ない（CAPTURE-29）。だから取り込んだ URL を、
- * 撮った時刻で直に開く。写し（検索前・検索後）は、replay の Pages タブから開ける。
+ * 撮った時刻で直に開く。写し（読み込みの後・スクリプトの後）は、replay の Pages タブから開ける。
  *
  * link の字と説明は辞書（`i18n/*.json`）に在る。再生の名前（ReplayWeb.page・Web Capture）は固有の名前なので、訳さない。
  */
@@ -111,7 +111,7 @@ export const awaitsFinalBundle = (crawl, now = Date.now()) => {
  * 2 つの再生（CAPTURE-102）。どちらも同じ形の URL（`?source=/wacz/<鍵>#view=…`）を、違う origin に付ける。
  * `setting` は `/healthz` の欄の名前。並びは画面に出る順。
  * - ReplayWeb.page — replayweb-server。改変していない ReplayWeb.page（互換の再生）
- * - Web Capture — capture-player。ReplayWeb.page を改変し、BrowserHive の規格を見せる再生
+ * - Web Capture — capture-player。ReplayWeb.page を改変し、BrowserHive WACZ Profile の足した物も見せる再生
  */
 export const VIEWERS = [
   { setting: "replaywebServerOrigin", label: "ReplayWeb.page" },
