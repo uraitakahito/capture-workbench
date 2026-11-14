@@ -58,7 +58,7 @@ const worst = (issues) => {
   return undefined;
 };
 
-/** present:false の file の印。「なぜ期待されるか」を添える。§5.2 MUST を datapackage より優先。 */
+/** present:false の file の印。「なぜ期待されるか」を添える。WACZ 1.1.1 §5.2 の MUST を datapackage より優先。 */
 const missingGlyph = (entry) => {
   if (entry.expectedBy.includes("wacz-spec")) return t("wacz.tree.missing.spec");
   if (entry.expectedBy.includes("datapackage")) return t("wacz.tree.missing.datapackage");
@@ -103,23 +103,40 @@ export const lineLabel = (line) => {
   return line.cut ? t("wacz.lines.cut", { text: line.text, size: formatBytes(line.bytes) }) : line.text;
 };
 
+/** BrowserHive WARC の resource の URI の頭（BrowserHive WARC Profile 1.4.0 の #snapshots・#screenshots）。 */
+const SNAPSHOT_URI = "urn:browserhive:snapshot:";
+const SCREENSHOT_URI = "urn:browserhive:screenshot:";
+
 /**
- * レコードの種別（WARC-Type）の言い方。知らない種別と warcinfo はそのまま。
- *
- * resource は BrowserHive が組んだ写し（検索前と検索後の DOM の写し。BrowserHive WARC Profile 1.1.0 の #snapshots）。
+ * 一覧の 1 レコードの種別。WARC-Type のまま —— ただし resource は、`WARC-Target-URI` の頭で分ける。
+ * BrowserHive WARC の resource は 2 つ在る: DOM の写し（読み込みの後とスクリプトの後）と、節目のスクリーンショット
+ * （BrowserHive v30.2.0 から）。頭がどちらでもない resource（ほかの作り手の WARC など）は `resource` のまま。
+ * 種別の絞りも、この値で分ける（写しと絵を別々に数える）。
+ */
+export const recordKind = (row) => {
+  if (row.type !== "resource") return row.type;
+  const uri = row.uri ?? "";
+  if (uri.startsWith(SNAPSHOT_URI)) return "resource:snapshot";
+  if (uri.startsWith(SCREENSHOT_URI)) return "resource:screenshot";
+  return "resource";
+};
+
+/**
+ * 種別（`recordKind`）の言い方。知らない種別と、warcinfo と、頭で分けられない resource はそのまま。
  * 日本語の「記録」は metadata の言い直しで、英語は WARC-Type の名前のまま（レコードの record と同じ字にしない）。
  */
-export const typeName = (type) => {
-  if (type === "response") return t("wacz.type.response");
-  if (type === "request") return t("wacz.type.request");
-  if (type === "metadata") return t("wacz.type.metadata");
-  if (type === "resource") return t("wacz.type.resource");
-  return type;
+export const typeName = (kind) => {
+  if (kind === "response") return t("wacz.type.response");
+  if (kind === "request") return t("wacz.type.request");
+  if (kind === "metadata") return t("wacz.type.metadata");
+  if (kind === "resource:snapshot") return t("wacz.type.snapshot");
+  if (kind === "resource:screenshot") return t("wacz.type.screenshot");
+  return kind;
 };
 
 /** 一覧の 1 レコードの列（種別・状態・content-type・URI）。 */
 export const recordCells = (row) => ({
-  type: typeName(row.type),
+  type: typeName(recordKind(row)),
   status: row.status === undefined ? "" : String(row.status),
   mime: row.mime ?? row.contentType ?? "",
   uri: row.uri ?? "",

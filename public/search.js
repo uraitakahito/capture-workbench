@@ -2,7 +2,7 @@
  * 検索の画面（CAPTURE-53）の、画面に依らない部分。capture-ledger の全文検索（`GET /api/search?q=`）の答えを、行に組む形に
  * するだけで、並べ替えも言い換えもしない。ブラウザは `/search.js` として読み、試験は `node --test` から import する。
  *
- * capture-ledger は、WACZ のページ一覧（`pages/pages.jsonl`）の 1 行を索引の 1 件にする。写しの行がある WACZ では
+ * capture-ledger は、WACZ のページ一覧（`pages/pages.jsonl`）の 1 行を索引の 1 件にする。写しの行がある BrowserHive WACZ では
  * 写しの行（`stage` が `after-load`・`after-behaviors`）だけを入れ、写しの無い取り込みは文書の行（`stage` が
  * null）を入れる（CAPTURE-48）。だから当たりは「アーカイブの 1 時点」で、同じアーカイブが時点ごとに並ぶ。
  * 返るのは見せてよいアーカイブの物だけ（capture-ledger が OpenFGA の can_view で絞る）。

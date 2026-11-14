@@ -122,7 +122,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   その次が渡した値です。
   始めるときに渡した変数（capture-ledger の `variables`）の名前と値と、使ったシークレット（`secrets`）の名前・Windmill の変数の path・capture-ledger が在るかを確かめたときの `edited_at`・WARC に値を残すか（`archive`）が並びます。
   シークレットの値は出ません。値は Windmill にだけ在って capture-ledger には無く、写し・ページの文字と題・ログからも消えます。
-  WARC での扱いは宣言が決めます。「WARC で隠す」のシークレットは、スクリプトが通信に載せた値もサイトが返した値も、WARC の中で `***` に置き換わっています。
+  WARC での扱いは宣言が決めます。「WARC で隠す」のシークレットは、スクリプトが通信に載せた値もサイトが返した値も、[BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/#archive-files) の中で `***` に置き換わっています。
   「WARC に残す（keep）」は宣言に `archive: "keep"` と書いたシークレットで、値は通信の記録（WARC の request・response・metadata と、その URL）に値のまま残ります。
   上の絵では `api_token` が隠す物、`login` が残す物です（代役のクロール `5b0c0007`）。
   隠すのは BrowserHive v29.0.0 からです。それより前の取り込みでは、通信に載せた値が WARC に残っています。capture-ledger はそのころの行にも `archive: null` を返すので、印は「WARC で隠す」と出ます（印にポインタを重ねると、そのことも出ます）。
@@ -175,7 +175,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   絞り込みは「すべて」が既定で、「warn 以上」「error だけ」も選べます。数は、その絞り込みで並ぶ行の数です。
   BrowserHive が 1 行の上限で切った行には「途中で切った」が付き、残さなかった行があれば「N 行は残していない（上限か方針で）」が出ます（取り込みの上限を超えて捨てた行と、方針で伏せた文書が console に書いた行。どちらの理由かは、ログの中の browserhive の行が言います）。
   ログを読めないページは、capture-ledger が言う理由を短い文と理由の字で出します（まだ撮っていない・撮らなかった、`.result.json` の場所が無い・保管庫に無い・契約に合わない、ログを残す前の BrowserHive で撮った）。
-  ページに WACZ が在れば、箱の上の「WACZ の画面で開く」から、WACZ に封じた同じ行（`logs/capture.jsonl`）を WACZ の画面で開けます。WACZ の行は答えの行に `profile` を足しただけで、署名が覆います。BrowserHive が WACZ Profile 1.19.0 より前に撮った WACZ には、この entry はありません。
+  ページに WACZ が在れば、箱の上の「WACZ の画面で開く」から、[BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/) に封じた同じ行（`logs/capture.jsonl`）を WACZ の画面で開けます。WACZ の行は答えの行に `profile` を足しただけで、署名が覆います。BrowserHive WACZ Profile 1.19.0 より前の BrowserHive WACZ には、この entry はありません。
 - **開いた行は、引き直しても閉じない。**
   表は引くたびに作り直すので、開いている行を id で覚えておき、最後の答えで開き直します。
   引き直すのは、走行中か、状態が変わった行だけです。
@@ -247,16 +247,16 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
 - **`trace` の無い取り込みでは、要求の印を WACZ の中の記録から置く。**
   BrowserHive v30.0.0 より前の取り込みと、WACZ を求めなかった取り込みです。要求は印だけで、棒になりません（終わりと長さを言う記録が、WACZ に無いため）。
   塗った印は、応答と対になった要求（WARC の request と response）で、位置は `WARC-Date` —— Chromium がその要求を送り出した時刻です。帯は BrowserHive の時計、この印は Chromium の時計なので、少しずれることがあります（手元で測った差は 0.2〜0.3 秒）。
-  抜いた印は、対にならなかった要求の記録（WARC の metadata）で、「終わらなかった」「失敗した」「止めた」「残さなかった」のどれかです。**位置は BrowserHive がその記録を書いた時刻で、要求の始まりではありません。** どれなのかは metadata の本文に書いてあるので、最初の 40 本までは開いたときに読み、残りは要求の並びで押したときに読みます（読むまでは「読んでいない」）。終わりを観測できない要求は、この読み方では「終わらなかった」に入ります。
+  抜いた印は、対にならなかった要求の記録（BrowserHive WARC の metadata）で、「終わらなかった」「失敗した」「止めた」「残さなかった」のどれかです。**位置は BrowserHive がその記録を書いた時刻で、要求の始まりではありません。** どれなのかは metadata の本文に書いてあるので、最初の 40 本までは開いたときに読み、残りは要求の並びで押したときに読みます（読むまでは「読んでいない」）。終わりを観測できない要求は、この読み方では「終わらなかった」に入ります。
   上の 1 行の「要求 N」は応答と対になった物で、取り込みの答えの `waczStats.totalRecorded` と同じ数え方です。
 - **「写し」は、DOM の写しを撮った時刻。**
-  `trace` の在る取り込みでは、BrowserHive が写しを取るときにログへ書く行の位置に置きます。無い取り込みでは、WACZ の中の写しのレコードの時刻です。
+  `trace` の在る取り込みでは、BrowserHive が写しを取るときにログへ書く行の位置に置きます。無い取り込みでは、BrowserHive WACZ の中の写しのレコードの時刻です。
   押すと、写しの段の名前と、その写しを replay で開く link が出ます（WACZ を見てよいときだけ）。開く先の文書の URL は、取り込みの答えの `document.url`（リダイレクトの後の URL）です。
 - **図の下に、節目のスクリーンショットが並ぶ。**
   BrowserHive v30.2.0 から、絵を撮る設定の BrowserHive は、DOM を写すのと同じ時点（読み込みの後の `after-load`・スクリプトの後の `after-behaviors`）に、取り込みのページの viewport の絵（WebP）を残します。取り込みの答えの `screenshots` が、時点ごとに、残した絵か、残さなかった理由を言います。
   絵は小さく並び（時点の順。`after-load` が先）、押すとその場で元の大きさになります（もう 1 度押すと戻ります。窓より広い絵は、箱の中で横に流れます）。絵の下は、時点・撮り始めた時刻（軸の上の秒と、レコードの `WARC-Date`）・大きさ（バイト）と、同じ時点の DOM の写しを replay で開く link です（WACZ を見てよいときだけ。写しの URI は、絵の URI の文書の URL から組みます）。
   図の「節目の絵」の行には、撮り始めた時刻の印が並びます。押すと、その絵に枠が付き、下に欄（時点・時刻・大きさ・文書の URL・レコードの ID）が出ます。
-  絵そのものは、WACZ の中の WARC の resource レコードです。位置は、WACZ の索引（CDXJ）を絵の URI と時刻で引いて決め（索引の行の窓を 1 つ。索引が 500 行より長いか、絵の行が長いときだけ、もう少し読みます）、絵は 1 枚ずつ `<img>` が引きます。**絵を 1 枚も残さなかった取り込みでは、絵のために WACZ を読みません。** WACZ を見る許可が無い名乗りには、絵を出さずにそう言います（capture-ledger が WACZ の鍵を返さないので、読みにも行きません）。
+  絵そのものは、BrowserHive WACZ の中の WARC の resource レコードです。位置は、WACZ の索引（CDXJ）を絵の URI と時刻で引いて決め（索引の行の窓を 1 つ。索引が 500 行より長いか、絵の行が長いときだけ、もう少し読みます）、絵は 1 枚ずつ `<img>` が引きます。**絵を 1 枚も残さなかった取り込みでは、絵のために WACZ を読みません。** WACZ を見る許可が無い名乗りには、絵を出さずにそう言います（capture-ledger が WACZ の鍵を返さないので、読みにも行きません）。
 - **絵を残さなかった時点は、理由を 1 行で言う。**
   理由は BrowserHive が答えに書いた `skipped` で、5 つです。
 
@@ -274,7 +274,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   絵を撮る設定の BrowserHive は、文書が 4xx・5xx を返した取り込みと、文書が届いた後で失敗した取り込みで、取り込みのページの絵を 1 枚残します。文書が届く前に読み込みが時間切れになった取り込みには、ありません。
   取り込みの答え（capture-ledger の `capture.failureScreenshot`）は、在るかどうかだけを言います。在れば、capture-ledger の `GET /api/crawls/:id/pages/:page/trace/failure-screenshot` から絵を受けて、節目のスクリーンショットと同じ形で出します（押すと元の大きさ）。capture-ledger が言う形式が `image/webp` でない答えは、絵として出さずに、そう言います。
 - **節目のスクリーンショットは署名の下に在り、失敗の時点の絵は無い。**
-  節目のスクリーンショットは WACZ の中の記録なので、署名した WACZ では署名が覆います。失敗の時点の絵は WACZ の外のファイルで（取れなかった取り込みは WACZ を作りません）、署名の下にありません。どちらも、取り込みのページが見せていた物をそのまま持ちます。
+  節目のスクリーンショットは BrowserHive WACZ の中の記録なので、署名した WACZ では署名が覆います。失敗の時点の絵は WACZ の外のファイルで（取れなかった取り込みは WACZ を作りません）、署名の下にありません。どちらも、取り込みのページが見せていた物をそのまま持ちます。
 - **図の帯と印は、押すと下に欄が出る。**
   始まりと長さ（帯）か、時刻（印）を、秒で言います。
 - **取れなかった取り込みは、止まった段を言う。**
@@ -284,7 +284,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
 - **下に、同じ取り込みのログが並ぶ。**
   ページの表の「ログ」と同じ箱で、絞り込みも同じです。
 - **この画面は、署名の下にない。**
-  保管庫の `.result.json`（と、`trace` の無い取り込みでは WACZ）を読んで並べた物です。同じ要求の行は、WACZ の中の `trace/events.jsonl` にも在ります（BrowserHive v30.1.0 から。署名した WACZ では、署名の下）。示すための正は、WACZ の中の記録です。
+  保管庫の `.result.json`（と、`trace` の無い取り込みでは WACZ）を読んで並べた物です。同じ要求の行は、BrowserHive WACZ の中の `trace/events.jsonl` にも在ります（BrowserHive v30.1.0 から。署名した WACZ では、署名の下）。示すための正は、WACZ の中の記録です。
 
 計算（軸・帯・印・棒・数・絵の位置）は `public/timeline.js` で、`test/timeline.test.mjs` と `test/timeline-trace.test.mjs` が、手元の capture-fixtures を撮った本物の答えで固定しています。絵の所は `test/timeline-shots.test.mjs` が、BrowserHive の取り込みが作った本物の WACZ（`sandbox/samples/`）で固定しています。
 
@@ -345,7 +345,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   たとえば[首相官邸の公式サイト](https://www.kantei.go.jp/)は、`HeadlessChrome` を含む字に HTTP 404 を返します。欄を空のまま「このページだけ」で始めると、ページの結末が `failed: http_error: HTTP 404: Not Found` になり、1 枚も撮れず ReplayWeb.page ↗・Web Capture ↗ も出ません。ボタンで `{chrome} BrowserHive` を入れて始めると撮れて、ReplayWeb.page ↗・Web Capture ↗ で開けます（2026-11-07 に確かめました。相手のサイトの答えは変わることがあります）。
   `BrowserHive` の語を含めるかは打つ人が決めます。含むと、相手のサイトに BrowserHive が撮っていると分かり、robots.txt もその名前の規則で読みます。含まなければ `*` の規則だけを読みます。
   workbench は字を検査しません。形（印字可能な ASCII・512 字以下）に合わない字は capture-ledger が 400 で断り、左の列の下に `400 —— User-Agent は、表示できる ASCII で 512 字までです` と出ます。
-  始めた後も、字は変数やスクリプトと同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は WACZ の `settings.userAgent` で読めます。
+  始めた後も、字は変数やスクリプトと同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は BrowserHive WACZ の `settings.userAgent` で読めます。
 - **チェックしたスクリプトやその場の TS が値を宣言していれば、「クロールごとの値」の欄が出る。**
   スクリプトは読む変数を、ソースの `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))` で宣言します。[capture-scripts](https://github.com/uraitakahito/capture-scripts) のスクリプトは `catalog.json` の `params` にも同じ宣言があり、capture-ledger は版ごとに持ち、`GET /api/scripts` が運びます。
   その場の TS は、箱が 800 ms 止まると capture-ledger に訊きます（`POST /api/scripts/check`）。ファイルを読んだときも、「欄に戻す」でも、「下敷きにする」でも欄が出ます。
@@ -356,7 +356,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   その場の TS の宣言を読めないときと、capture-ledger に訊けないときは、箱の下に赤で理由が出ます。`BH0002`（走らせずに読める形でない）、`BH0004`（「遷移の前」のスクリプトには変数を読む先が無い）、「宣言を確かめられません」と状態の数と capture-ledger の答え（句は、辞書に在れば訳します）、のどれかです。ふつうの型の誤りはここには出ません。走らせたときに compile の段が言います。
   シークレット（`kind: secret`）の宣言は「使うシークレット」として名前だけが並び、値の欄はありません。名前の横に、WARC で隠すか残すか（宣言の `archive`。省けば隠す）が出ます。
   値は Windmill の変数 `f/waggle_secrets/<名前>` に人が置きます。capture-ledger が在るかを確かめ（無ければ 400 で名前と path を名指します）、クロールのたびに Windmill の中で解いてスクリプトに渡します。値は workbench にも capture-ledger にも残りません。
-  WACZ では、隠すシークレットの値は WARC の中で `***` に置き換わり、`archive: "keep"` と宣言した物は値のまま残ります。どちらも写し・ページの文字と題・ログからは消えます。隠す値は 8 字以上が要り、短い値を渡した取り込みは BrowserHive が断ります（capture-scripts の README の「WARC に残すか」）。
+  BrowserHive WACZ では、隠すシークレットの値は WARC の中で `***` に置き換わり、`archive: "keep"` と宣言した物は値のまま残ります。どちらも写し・ページの文字と題・ログからは消えます。隠す値は 8 字以上が要り、短い値を渡した取り込みは BrowserHive が断ります（capture-scripts の README の「WARC に残すか」）。
   隠すシークレットを使うのに、配備の形式（capture-ledger の `CAPTURE_LEDGER_CAPTURE_FORMATS`）に PNG・WebP・HTML・MHTML のどれかがあると、値を置き換えられないので capture-ledger が行を立てる前に 400 で断ります。左の列の下に `400 —— いまの形式では隠せないシークレットがあります: api_token（CAPTURE_LEDGER_CAPTURE_FORMATS の png は値を置き換えられない …）` のように、名前と直し方が出ます。括弧の中は capture-ledger の理由の文で、英語の画面では英語になります（v0.102.0 より前の capture-ledger は日本語の文しか返さないので、英語の画面でも日本語のまま出ます）。
   同じ名前を、残す宣言と隠す宣言の両方ですると `400 —— 同じ名前の宣言が食い違っています: api_token` です。
   同梱のスクリプトにシークレットを宣言する物は無く、この画面から渡せるのは変数だけです。その場の TS がシークレットを宣言する（`inline.params`）のは、capture-ledger の API に直に送るときだけです。
@@ -546,7 +546,7 @@ capture-ledger の全文検索で、撮ったページの題と文字を探す�
 
 - **1 件はアーカイブの 1 時点。**
   capture-ledger は、WACZ のページ一覧の 1 行を索引の 1 件にします。
-  写しの行がある WACZ では写しの行（`after-load`・`after-behaviors`）だけを、写しの無い取り込み（方針で伏せた文書など）は文書の行を入れます。
+  写しの行がある BrowserHive WACZ では写しの行（`after-load`・`after-behaviors`）だけを、写しの無い取り込み（方針で伏せた文書など）は文書の行を入れます。
   同じアーカイブの読み込みの後とスクリプトの後が両方当たれば、2 件並びます。
 - **見せてよいアーカイブの物だけが並ぶ。**
   capture-ledger が、アーカイブの一覧と同じ認可で絞ります。

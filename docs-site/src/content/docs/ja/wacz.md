@@ -1,10 +1,10 @@
 ---
 title: WACZ を見る
-description: アーカイブの行から、撮れたものが仕様どおりかを検証し、WACZ の中身を開く —— 鍵はどこにも増えない
+description: アーカイブの行から、撮れたものが WACZ 1.1.1 どおりかを検証し、WACZ の中身を開く —— 鍵はどこにも増えない
 ---
 
 アーカイブの行からは、2 つのことができます。
-「検証」で撮れたものが WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の仕様どおりかを確かめ、「開く」で WACZ の中身に入ります。
+「検証」で撮れたものが WACZ 1.1.1（WACZ は撮ったページを 1 つの ZIP にまとめたアーカイブ）どおりかを確かめ、「開く」で WACZ の中身に入ります。
 どちらも [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon が答えます。
 capture-workbench は、capture-ledger に署名してもらった URL を daemon に渡すだけです。
 
@@ -70,7 +70,7 @@ workbench が渡すのは `locale`（画面の言語。`ja` か `en`）だけで
 workbench は profile を渡さないので、daemon は既定の `spec` で検証します。
 撮影のサーバ（BrowserHive）に限った rule は、workbench には出ません。
 報告の行に `profile spec` と出るので、どの profile で見たかは画面で分かります。
-BrowserHive の規定で見たいなら、workbench から profile を渡す手段が要ります（いまは無い）。
+[BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/) で見たいなら（daemon の `browserhive` profile）、workbench から profile を渡す手段が要ります（いまは無い）。
 
 ### daemon は自分では建て直らない
 
@@ -99,9 +99,10 @@ wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力�
   WARC を頭から歩いた 1 件 1 行で、200 件ずつ読み、種別で絞れます。
   ▪ は索引（CDXJ）が指すレコード、▫ は索引に無いものです。
   BrowserHive が残す「撮らなかった・撮れなかった」記録（`WARC-Type: metadata`）は、ここでしか見えません。
-  種別の「写し」（`WARC-Type: resource`）は、BrowserHive が読み込みの後と、スクリプトを走らせた後の取り込みのページを DOM のまま写した物で、サーバの応答ではありません（組の「記録」がそう言います）。
-  BrowserHive v30.2.0 からは、節目のスクリーンショット（同じ 2 つの時点の viewport の絵）も同じ `WARC-Type: resource` のレコードなので、一覧では同じ「写し」の名前で出ます。
-  見分けるのは URI で、DOM の写しは `urn:browserhive:snapshot:`、節目のスクリーンショットは `urn:browserhive:screenshot:` で始まります。
+  [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/#archive-files) の `WARC-Type: resource` のレコードは 2 種類で、一覧は URI の頭で呼び分けます。
+  種別の「写し」（URI が `urn:browserhive:snapshot:` で始まる）は、BrowserHive が読み込みの後と、スクリプトを走らせた後の取り込みのページを DOM のまま写した物で、サーバの応答ではありません（組の「記録」がそう言います）。
+  種別の「節目の絵」（URI が `urn:browserhive:screenshot:` で始まる。BrowserHive v30.2.0 から）は、節目のスクリーンショット（同じ 2 つの時点の viewport の絵）です。
+  頭がどちらでもない resource のレコードは、WARC-Type の名前のまま「resource」と出ます。種別の絞りも、3 つを別々に数えます。
   一覧の上には、その WARC の warcinfo（WARC が自分自身を説明するレコード）の欄を、書かれた順に出します。
   欄の名前が Dublin Core の語か WARC 1.1 の warcinfo の欄なら、3 列目にそう出て、その定義へリンクします。
   どちらでもない名前（作り手が決めた名前）は空です。

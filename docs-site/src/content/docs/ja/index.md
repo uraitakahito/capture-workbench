@@ -12,7 +12,7 @@ capture-workbench は、[Web Capture](https://uraitakahito.github.io/capture-led
 走らせるのは [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)（クロールを Windmill の flow で回す）、
 撮れたものを置くのは [seaweedfs](https://github.com/uraitakahito/seaweedfs)（Web Capture が共有する S3 互換の store）、
 開いて読むのは 2 つの再生です。[replayweb-server](https://github.com/uraitakahito/replayweb-server)（改変していない ReplayWeb.page で WACZ をブラウザで再生する画面）と、
-[capture-player](https://github.com/uraitakahito/capture-player)（ReplayWeb.page を改変し、BrowserHive が WACZ に足した物も見せる画面）です。
+[capture-player](https://github.com/uraitakahito/capture-player)（ReplayWeb.page を改変し、[BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/) が足した物も見せる画面）です。
 WACZ（Web Archive Collection Zipped）は、撮ったページを 1 つの ZIP にまとめたアーカイブの形式です。
 
 ## 配線

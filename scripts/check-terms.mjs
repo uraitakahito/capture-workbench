@@ -1,5 +1,5 @@
 /**
- * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 14 個。
+ * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 15 個。
  *
  * ## なぜ要るのか
  *
@@ -65,8 +65,18 @@
  *   DB に入ったことは「capture-ledger に載る」。2 字が 5 つの物（システム・DB の行・置き場・BrowserHive の中の記録・
  *   呼び手の記録）を兼ね、帳簿の語なのに「台帳が 400 で断る」と動く主語になっていた。許す語は無いので、字を全部見る。
  *   capture-ledger・capture-scheduler・browserhive も見張っている
+ * - **BrowserHive WACZ Profile に適合する WACZ は「BrowserHive WACZ」、その中の WARC は「BrowserHive WARC」と書く。**
+ *   2026-11 に（Jira CAPTURE-341）、別名を決めた（英語は a BrowserHive WACZ・a BrowserHive WARC file）。「BrowserHive の
+ *   WACZ」「BrowserHive's WARC」は、作り手が BrowserHive なだけの WACZ（Profile に適合するとは限らない）と、Profile に
+ *   適合する WACZ の両方に読める。仕様の名前（BrowserHive の WACZ Profile）は別の物なので、後ろに Profile が続く形は
+ *   外す。ただの WACZ・WARC（どの作り手の物にも成り立つ文）と、「BrowserHive が WACZ に足した物」のような言い回しは見ない
  *
  * 書き手（人と Claude）は長くこの形で書いてきたので、見張らなければ戻ってくる。
+ *
+ * ## 何も見ていない緑を拒む
+ *
+ * 規則は、当たらねばならない見本（`hits`）と当たってはいけない見本（`misses`）を持てる。どちらかに食い違えば、走査の
+ * 前に落とす（正規表現の書き損じで、何も見ていない緑になるのを止める）。形は browserhive の scripts/check-terms.mjs と同じ。
  *
  * ## 何を見るか
  *
@@ -147,6 +157,11 @@ const OLD_VIEW =
  */
 const OLD_INLINE =
   /その場の JS|その場で書いた JS|JS の名前|JS の箱|書きかけの JS|この JS の id|その JS の id|\binline JS\b/u;
+/**
+ * 別名の無い、作り手の名前を付けただけの形（CAPTURE-341）。後ろに Profile が続く形（仕様の名前）は外す。
+ * 足すときは、規則の `misses` に当たらないことを確かめる（走査の前に照らす）。
+ */
+const BH_ARCHIVE = /BrowserHive\s*(?:の|'s)\s*WA(?:RC|CZ)(?!\s*Profile)/u;
 /** replayweb-server の旧い名前の形。語の replay は禁じない（上の注記）。 */
 const OLD_REPLAY_NAMES =
   /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b/u;
@@ -244,7 +259,33 @@ const RULES = [
       "「台帳」が残っています。システムは capture-ledger、置き場は「登録済みのスクリプト」（登録する・登録されていない・登録 v3）、" +
       "DB に入ったことは「capture-ledger に載る」と書きます（CAPTURE-186）。",
   },
+  {
+    find: (line) => BH_ARCHIVE.test(line),
+    say:
+      "「BrowserHive の WACZ」「BrowserHive's WARC」の形が残っています。BrowserHive WACZ Profile に適合する物は" +
+      "「BrowserHive WACZ」「BrowserHive WARC」（英語は a BrowserHive WACZ・a BrowserHive WARC file）と書きます。" +
+      "どの作り手の物にも成り立つ文は、ただの WACZ・WARC のまま（CAPTURE-341）。",
+    hits: ["BrowserHive の WACZ に封じた行", "BrowserHive's WARC keeps the value", "BrowserHiveのWARC"],
+    misses: [
+      "BrowserHive の WACZ Profile 1.25.0",
+      "BrowserHive's WARC Profile 1.4.0",
+      "BrowserHive WACZ の logs/capture.jsonl",
+      "a BrowserHive WARC file",
+      "BrowserHive が WACZ に足した物",
+    ],
+  },
 ];
+
+// 見本と食い違う規則（上の「何も見ていない緑を拒む」）。file は見本の置き場ではないので空にする。
+const broken = RULES.flatMap((rule, r) => [
+  ...(rule.hits ?? []).filter((hit) => !rule.find(hit, "")).map((hit) => `規則 ${String(r + 1)} が見本「${hit}」に当たらない`),
+  ...(rule.misses ?? []).filter((miss) => rule.find(miss, "")).map((miss) => `規則 ${String(r + 1)} が正しい用法「${miss}」に当たる`),
+]);
+if (broken.length > 0) {
+  console.error("check:terms: 見本と食い違う規則があります（書き損じ）:");
+  for (const message of broken) console.error(`  ${message}`);
+  process.exit(1);
+}
 
 // 追跡している物と、まだ add していない新しい物（`repo-files.mjs`）。
 const files = repoFiles(ROOT).filter(

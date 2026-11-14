@@ -14,7 +14,7 @@ that decides which URLs get captured and records what came back), run by
 [capture-scheduler](https://github.com/uraitakahito/capture-scheduler) (which drives crawls with
 Windmill flows), stored in [seaweedfs](https://github.com/uraitakahito/seaweedfs) (the
 S3-compatible store Web Capture shares) and opened with
-two viewers: [replayweb-server](https://github.com/uraitakahito/replayweb-server) (unmodified ReplayWeb.page, which plays a WACZ back in the browser) and [capture-player](https://github.com/uraitakahito/capture-player) (a modified ReplayWeb.page that also shows what BrowserHive adds to a WACZ). A WACZ
+two viewers: [replayweb-server](https://github.com/uraitakahito/replayweb-server) (unmodified ReplayWeb.page, which plays a WACZ back in the browser) and [capture-player](https://github.com/uraitakahito/capture-player) (a modified ReplayWeb.page that also shows what a [BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/) adds). A WACZ
 (Web Archive Collection Zipped) is the archive format that packs the captured pages into a single
 ZIP.
 

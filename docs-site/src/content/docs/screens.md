@@ -159,7 +159,7 @@ the crawl's bundle.
   the WARC, `archive`). A secret's value never appears: only Windmill holds it, the ledger does not,
   and it is gone from the snapshots, the page text and title, and the logs. What the WARC keeps is
   up to the declaration. A secret marked **Hidden in the WARC** (WARC で隠す) had its value replaced by
-  `***` in the WARC, whether the script put it on the wire or the site sent it back. **Kept in the WARC (keep)**
+  `***` in the [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/#archive-files), whether the script put it on the wire or the site sent it back. **Kept in the WARC (keep)**
   (WARC に残す（keep）) is a secret declared with `archive: "keep"`: its value stays as it is in the
   record of the traffic (the WARC's request, response and metadata records, and their URLs). In the
   picture above `api_token` is hidden and `login` is kept (crawl `5b0c0007` of the stand-in's
@@ -236,9 +236,9 @@ the crawl's bundle.
   captured yet or not captured, no `.result.json` recorded, missing from the store or not matching
   the contract, or captured by a BrowserHive from before logs were kept).
   When the page has a WACZ, **Open in the WACZ view** (WACZ の画面で開く) above the box opens the same
-  lines sealed in the WACZ (`logs/capture.jsonl`) in the WACZ view. A WACZ line is the answer's line
-  with `profile` added, and the signature covers it. A WACZ BrowserHive took before WACZ Profile
-  1.19.0 has no such entry.
+  lines sealed in the [BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/) (`logs/capture.jsonl`) in the WACZ view. A WACZ line is the answer's line
+  with `profile` added, and the signature covers it. A BrowserHive WACZ from before BrowserHive WACZ
+  Profile 1.19.0 has no such entry.
 - **An opened row stays open.** The table is rebuilt on every fetch, so the workbench remembers the
   open rows by id and opens them again from the last answer. It fetches a row again only while the
   crawl is running or when its state has changed. Opened logs are remembered by page id too, and
@@ -357,7 +357,7 @@ reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
   request paired with its response (a WARC request and response), placed at `WARC-Date` — when
   Chromium sent the request. The bars are placed by BrowserHive's clock and these marks by
   Chromium's, so they can differ a little (0.2 to 0.3 seconds, measured on a local stack). A
-  hollow mark is the record of a request that was not paired (a WARC metadata): one of
+  hollow mark is the record of a request that was not paired (a metadata record of the BrowserHive WARC): one of
   **Did not finish** (終わらなかった), **Failed** (失敗した), **Denied** (止めた) and **Not archived** (残さなかった). **It is placed at the time BrowserHive wrote that record, not at the start of the
   request.** Which of the four it is, is written in the metadata's body, so the first 40 are read
   when the view opens and the rest when pressed in the list (until then they say **Not read yet**, 読んでいない).
@@ -365,7 +365,7 @@ reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
   top line is the paired ones, counted the same way as the answer's `waczStats.totalRecorded`.
 - **Snapshots (写し) is when each DOM snapshot was taken.** With a `trace`, the mark sits at the
   log line BrowserHive writes when it takes the snapshot; without one, at the time of the
-  snapshot's record inside the WACZ. Pressing one shows the snapshot's stage and links that open
+  snapshot's record inside the BrowserHive WACZ. Pressing one shows the snapshot's stage and links that open
   it in replay (only when the WACZ may be viewed). The document URL it opens is the answer's
   `document.url` (the URL after any redirect).
 - **Stage screenshots (節目のスクリーンショット) are listed below the figure.** From BrowserHive
@@ -380,7 +380,7 @@ reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
   the document URL in the screenshot's URI). The **Screenshots** (節目の絵) row of the figure has a
   mark where each was taken; pressing a mark outlines that picture and shows its fields below
   (stage, time, size, document URL, record ID). A picture itself is a WARC resource record inside
-  the WACZ. Its place is found by looking up the WACZ's index (CDXJ) by the screenshot's URI and
+  the BrowserHive WACZ. Its place is found by looking up the WACZ's index (CDXJ) by the screenshot's URI and
   time (one window of index lines; a little more only when the index is longer than 500 lines or
   the screenshot's line is long), and each picture is then fetched by its `<img>`. **For a capture
   that kept no screenshot, the WACZ is not read for screenshots at all.** An identity that may not
@@ -411,7 +411,7 @@ reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
   stage screenshot (pressing it shows the full size). An answer whose type the ledger does not
   give as `image/webp` is not shown as a picture; the view says so instead.
 - **The signature covers stage screenshots, not the screenshot at the failure.** Stage
-  screenshots are records inside the WACZ, so in a signed WACZ the signature covers them. The
+  screenshots are records inside the BrowserHive WACZ, so in a signed WACZ the signature covers them. The
   screenshot at the failure is a file outside the WACZ (a failed capture builds no WACZ), and the
   signature does not cover it. Both hold what the captured page was showing, as it was.
 - **Pressing a bar or a mark in the figure shows its fields below**: the start and length of a
@@ -430,7 +430,7 @@ reads the ledger's `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`.
   the same filter.
 - **The signature does not cover this view.** It lays out what it read from `.result.json` in the
   store (and from the WACZ, for a capture without a `trace`). The same request lines
-  are also inside the WACZ, in `trace/events.jsonl` (from BrowserHive v30.1.0; in a signed WACZ,
+  are also inside the BrowserHive WACZ, in `trace/events.jsonl` (from BrowserHive v30.1.0; in a signed WACZ,
   under its signature). The records to show as evidence are the ones inside the WACZ.
 
 The arithmetic (axis, bars, marks, request bars, counts, where the screenshots are) is
@@ -519,7 +519,7 @@ a window for reading a registered script, and, while **Follow links** is chosen,
   robots.txt is read under that name; without it, only the `*` rules are read. The workbench does not check the text:
   the ledger refuses text of the wrong form (printable ASCII, at most 512 characters) with a 400, and the workbench
   shows it under the left column (`400 — The User-Agent must be printable ASCII, at most 512 characters`). The text stays in the box after starting, like the variables and the
-  script. The opened row of the crawls view shows the text as typed; the value actually sent is in the WACZ's
+  script. The opened row of the crawls view shows the text as typed; the value actually sent is in the BrowserHive WACZ's
   `settings.userAgent`.
 - **When a ticked script or your own script declares values, the Per-crawl values (クロールごとの値) box
   appears.** A script declares the variables it reads in its source with
@@ -549,8 +549,8 @@ a window for reading a registered script, and, while **Follow links** is chosen,
   the WARC hides or keeps it (the declaration's `archive`; left out, it hides): its value is put by a
   person into the Windmill variable `f/waggle_secrets/<name>`, the ledger checks that it exists
   (otherwise a 400 naming it with its path), and Windmill resolves it for the script on every crawl.
-  The value never reaches the workbench or the ledger. In the WACZ, a hidden secret's value is
-  replaced by `***` in the WARC, and one declared with `archive: "keep"` stays as it is; either way it is
+  The value never reaches the workbench or the ledger. In a BrowserHive WACZ, a hidden secret's value is
+  replaced by `***` in its WARC, and one declared with `archive: "keep"` stays as it is; either way it is
   gone from the snapshots, the page text and title, and the logs. A hidden value needs at least 8
   characters, and BrowserHive refuses a capture given a shorter one (see "WARC に残すか" in the
   capture-scripts README). When a hidden secret is used while the deployment's formats (the ledger's
@@ -773,7 +773,7 @@ The view that searches the titles and text of captured pages with the ledger's f
 ![The search view: a search for ランプ (lamp) lists two hits, the first a document row and the second the after-behaviors snapshot, with the matching words marked](../../assets/screens/search.webp)
 
 - **A hit is one stage of one archive.** The ledger indexes each line of a WACZ's page list: for a
-  WACZ with snapshot lines only the snapshots (`after-load`, `after-behaviors`), and for a capture
+  BrowserHive WACZ with snapshot lines only the snapshots (`after-load`, `after-behaviors`), and for a capture
   without snapshots (a document a policy withheld, say) the document's line. When both the
   `after-load` and the `after-behaviors` stage of one archive match, two rows are listed.
 - **Only archives you may see are listed.** The ledger filters with the same authorization as the
