@@ -60,8 +60,9 @@ const bundleKeyOf = (replayBundle) => {
  * （link を出さない）。
  *
  * - **`source` は replayweb-server と同じ origin の path**（`/wacz/<鍵>`。replayweb-server が保管庫へ中継する）。ReplayWeb.page は JSON の
- *   中の `resources[].path` と `pagesQueryUrl` を JSON の URL から解くので、ほかの origin の URL では引けない。綴りは
- *   WACZ 1 本と同じ（`replaywebSourceHref`）
+ *   中の `resources[].path` を JSON の URL から解くが、`pagesQueryUrl`（`/q/…`）は解かずにそのまま問うので、ページの問いは
+ *   ReplayWeb.page の origin へ行く（wabac.js の `src/wacz/multiwacz.ts`）。JSON をほかの origin から配ると、ページの問いだけが
+ *   ReplayWeb.page の側へ行き、JSON を配った側には届かない。綴りは WACZ 1 本と同じ（`replaywebSourceHref`）
  * - replay は `source` が `.json` で終わると合本（複数の WACZ）として開く（拡張子だけで決める）。capture-ledger の鍵は
  *   `replay.json` で終わる
  * - ページの行を渡さなければ一覧（`#view=pages`）。渡せば、そのページを撮った時刻で合本の中で直に開く
