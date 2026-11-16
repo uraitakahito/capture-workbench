@@ -1,7 +1,6 @@
 # capture-workbench
 
 Web Capture を開発するときに手元で開く Web アプリ。
-始める（[capture-ledger](https://github.com/uraitakahito/capture-ledger)）・走らせる（[capture-scheduler](https://github.com/uraitakahito/capture-scheduler) の Windmill）・保存する（[seaweedfs](https://github.com/uraitakahito/seaweedfs)）・再生する（[replayweb-server](https://github.com/uraitakahito/replayweb-server)）の画面を、capture-ledger の API から組み立てる。
 
 ## Documentation
 
