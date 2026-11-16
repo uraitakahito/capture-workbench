@@ -5,9 +5,7 @@ description: The web app you open locally while developing Web Capture — one r
 
 capture-workbench is the web app you open locally while developing
 [Web Capture](https://uraitakahito.github.io/capture-ledger/#web-capture) (the set of repositories
-that captures web pages into archives you can check later). **It shows one crawl as one row.** You
-can also start a new crawl and read the contents of a captured WACZ. The screen is in Japanese
-or English ([Screens](/screens/#language)).
+that captures web pages into archives you can check later).
 
 A crawl is started by [capture-ledger](https://github.com/uraitakahito/capture-ledger) (the ledger
 that decides which URLs get captured and records what came back), run by
@@ -51,18 +49,6 @@ the daemon of [wacz-validator](https://github.com/uraitakahito/wacz-validator) (
   anything that reaches it can make a user and sign in as that user. The sign-in here is a
   convenience, not a protection, and the workbench stays on loopback
   ([Configuration](/configuration/#signing-in)).
-- **It has no npm dependencies.** The workbench is built from the Node standard library and plain
-  JavaScript that runs as-is in the browser, plus two committed bundles in `public/vendor/`: one
-  colors the scripts (`shiki.js`) and one turns the dictionaries of the screen's text into
-  sentences (`intl-messageformat.js`). What has dependencies is the source of this site
-  (`docs-site/`) and what those bundles are built from (`highlighter/`), see
-  [Development](/development/).
-- **It only relays.** None of the workbench's logic lives on the server. The moment it did, there would be a
-  copy of what the ledger knows.
-- **It owns no wording of the validation.** Validation messages, in the language the page asks
-  for, and the spec sections all come back from the daemon already resolved, and are shown as they
-  are. If the workbench rephrased them,
-  it would quietly drift from what the validator has started to say.
 
 ## Not published
 

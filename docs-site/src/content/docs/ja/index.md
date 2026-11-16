@@ -4,9 +4,6 @@ description: Web Capture を開発するときに手元で開く Web アプリ�
 ---
 
 capture-workbench は、[Web Capture](https://uraitakahito.github.io/capture-ledger/ja/#web-capture)（Web ページを撮ってアーカイブに残し、後から確かめられるようにする repo の一式）を開発するときに手元で開く Web アプリです。
-**1 本のクロールを 1 行で見ます。**
-新しいクロールを始めることも、撮れた WACZ の中身を読むこともできます。
-画面の字は、日本語か英語です（[画面](/screens/#言語)）。
 
 クロールを始めるのは [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録するシステム）、
 走らせるのは [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)（クロールを Windmill の flow で回す）、
@@ -47,15 +44,6 @@ replayweb-server・capture-player と Windmill へは、画面の行からリン
 - **手元のサインインは、境界ではない。**
   Floci の管理の API は既定の鍵を通すので、Floci に届くものは利用者を作り、その利用者としてサインインできます。
   ここのサインインは便利さであって守りではなく、workbench は loopback の外に出しません（[設定](/configuration/#サインイン)）。
-- **npm の依存を持たない。**
-  workbench は node の標準ライブラリと、ブラウザで素のまま走る JS、それに commit 済みの束 2 つ（`public/vendor/`。スクリプトに色を付ける `shiki.js` と、画面の文言の辞書を文にする `intl-messageformat.js`）で建っています。
-  依存が在るのは、このサイトの原稿（`docs-site/`）と、その束を作る元（`highlighter/`）です（[開発](/development/)）。
-- **中継するだけ。**
-  workbench のロジックはサーバに置きません。
-  置いた瞬間に「capture-ledger が知っていることの写し」が生まれるからです。
-- **検証の文を持たない。**
-  検証の message も、画面が頼んだ言語の文も、仕様の節も、daemon が解決して返したものをそのまま出します。
-  workbench が言い換えると、検証器が言い始めたことと静かにずれていきます。
 
 ## 公開しない
 
