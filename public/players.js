@@ -1,5 +1,5 @@
 /**
- * 2 つの再生（replayweb-server の ReplayWeb.page 2.5.0 と、capture-player の Web Capture）への link の行き先。アーカイブの行と検索の当たりは WACZ 1 本を（CAPTURE-48）、
+ * 2 つの再生（replayweb-player の ReplayWeb.page 2.5.0 と、capture-player の Web Capture）への link の行き先。アーカイブの行と検索の当たりは WACZ 1 本を（CAPTURE-48）、
  * クロールの行とページの行はクロールの合本を開く（CAPTURE-54）。
  *
  * replay は、`?source=` だけで開くとページ一覧を出し、一覧を日付の新しい順に並べる。WACZ の `mainPageURL` は読まない。
@@ -14,8 +14,8 @@
 import { t } from "./i18n.js";
 
 /**
- * replayweb-server が保管庫へ中継する path（`/wacz/<鍵>`）。鍵は `/` で区切り、区切りごとに符号にして繋ぐ —— replayweb-server
- * （v0.3.0 から）は区切りごとに 1 度だけ解く（replayweb-server の docs/replay-bundle.md の「`/wacz/` の鍵の綴り」）。
+ * replayweb-player が保管庫へ中継する path（`/wacz/<鍵>`）。鍵は `/` で区切り、区切りごとに符号にして繋ぐ —— replayweb-player
+ * （v0.3.0 から）は区切りごとに 1 度だけ解く（replayweb-player の docs/replay-bundle.md の「`/wacz/` の鍵の綴り」）。
  * BrowserHive はラベルを百分率の符号で鍵に入れる（`hello world` → `hello%20world`）ので、鍵の `%` も `%25` にする。
  * 鍵ごと 1 度に符号にすると、`/` が区切りでなくなる。
  */
@@ -59,7 +59,7 @@ const bundleKeyOf = (replayBundle) => {
  * クロールの WACZ を全部束ねた 1 つのアーカイブとして開く（リンクで別の WACZ のページへ行ける）。行き先が無ければ undefined
  * （link を出さない）。
  *
- * - **`source` は replayweb-server と同じ origin の path**（`/wacz/<鍵>`。replayweb-server が保管庫へ中継する）。ReplayWeb.page は JSON の
+ * - **`source` は replayweb-player と同じ origin の path**（`/wacz/<鍵>`。replayweb-player が保管庫へ中継する）。ReplayWeb.page は JSON の
  *   中の `resources[].path` を JSON の URL から解くが、`pagesQueryUrl`（`/q/…`）は解かずにそのまま問うので、ページの問いは
  *   ReplayWeb.page の origin へ行く（wabac.js の `src/wacz/multiwacz.ts`）。JSON をほかの origin から配ると、ページの問いだけが
  *   ReplayWeb.page の側へ行き、JSON を配った側には届かない。綴りは WACZ 1 本と同じ（`replaywebSourceHref`）
@@ -113,11 +113,11 @@ export const awaitsFinalBundle = (crawl, now = Date.now()) => {
 /**
  * 2 つの再生（CAPTURE-102）。どちらも同じ形の URL（`?source=/wacz/<鍵>#view=…`）を、違う origin に付ける。
  * `setting` は `/healthz` の欄の名前。並びは画面に出る順。
- * - ReplayWeb.page — replayweb-server。改変していない ReplayWeb.page（互換の再生）
+ * - ReplayWeb.page — replayweb-player。改変していない ReplayWeb.page（互換の再生）
  * - Web Capture — capture-player。ReplayWeb.page を改変し、BrowserHive WACZ Profile の足した物も見せる再生
  */
 export const VIEWERS = [
-  { setting: "replaywebServerOrigin", label: "ReplayWeb.page" },
+  { setting: "replaywebPlayerOrigin", label: "ReplayWeb.page" },
   { setting: "capturePlayerOrigin", label: "Web Capture" },
 ];
 

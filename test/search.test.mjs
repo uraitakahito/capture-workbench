@@ -1,6 +1,6 @@
 /**
  * 検索の画面（`public/search.js`）の、画面に依らない部分。capture-ledger の `GET /api/search` の答えを行に組む形と、
- * 当たった行の replayweb-server の行き先（CAPTURE-53）。
+ * 当たった行の replayweb-player の行き先（CAPTURE-53）。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";

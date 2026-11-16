@@ -12,7 +12,7 @@ Web Capture を開発するときに手元で開く Web アプリ。
 - [capture-ledger](https://github.com/uraitakahito/capture-ledger)
 - [wacz-validator](https://github.com/uraitakahito/wacz-validator)
 - [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)
-- [replayweb-server](https://github.com/uraitakahito/replayweb-server)
+- [replayweb-player](https://github.com/uraitakahito/replayweb-player)
 - [capture-player](https://github.com/uraitakahito/capture-player)
 
 ## License

@@ -53,7 +53,8 @@
  * - **7080 の Web アプリは capture-workbench、文で短く書くときは workbench と書く。** 2026-11 に dashboard から替えた
  *   （repo の名前・URL・環境変数の `WORKBENCH_*` も）。この repo に、Grafana の dashboard のような別の意味は無いので、
  *   語を全部見る（大文字小文字を問わない）。許す形は無い
- * - **WACZ を開くビューアは replayweb-server と書く。** 2026-11 に replay から替えた（repo の URL・環境変数・`/healthz` の
+ * - **WACZ を開くビューアは replayweb-player と書く。** 2026-11 に replay から replayweb-server へ、同じ月の CAPTURE-465 で replayweb-player へ
+ *   替えた（repo の URL・環境変数・`/healthz` の
  *   欄・ファイルの名前）。語の replay は、合本の形式（replay.json）と capture-ledger の答えの欄（`replayBundle`）に残るので禁じず、旧い名前の形だけを見る
  * - **HTTP の method と path の組は「エンドポイント」、待ち受けの番号は「ポート」、その場の TS が走る時は「phase」と
  *   書く。** 2026-11 に（Jira CAPTURE-184）、1 字の語（docs のページの題「中継の口」など）から意味ごとに替えた。
@@ -162,9 +163,9 @@ const OLD_INLINE =
  * 足すときは、規則の `misses` に当たらないことを確かめる（走査の前に照らす）。
  */
 const BH_ARCHIVE = /BrowserHive\s*(?:の|'s)\s*WA(?:RC|CZ)(?!\s*Profile)/u;
-/** replayweb-server の旧い名前の形。語の replay は禁じない（上の注記）。 */
+/** replayweb-player の旧い名前の形（replay と、2026-11 の CAPTURE-465 までの replayweb-server・public/replayweb.js）。語の replay は禁じない（上の注記）。 */
 const OLD_REPLAY_NAMES =
-  /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b/u;
+  /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b|\breplayweb[-_]server\b|REPLAYWEB_SERVER|\breplaywebServer|\bpublic\/replayweb\.js\b|\btest\/replayweb\.test\.mjs\b/u;
 
 /**
  * 一式の意味の crawler の形（2026-11 まで）。足すときは、動いている識別子（`crawler-storage`・`/w/crawler/`・
@@ -243,8 +244,8 @@ const RULES = [
   {
     find: (line) => OLD_REPLAY_NAMES.test(line),
     say:
-      "replay の旧い名前が残っています。WACZ を開くビューアは replayweb-server（環境変数は WORKBENCH_REPLAYWEB_SERVER_URL、" +
-      "`/healthz` の欄は replaywebServerOrigin）と書きます。",
+      "replay の旧い名前が残っています。WACZ を開くビューアは replayweb-player（環境変数は WORKBENCH_REPLAYWEB_PLAYER_URL、" +
+      "`/healthz` の欄は replaywebPlayerOrigin、2 つのビューアの行き先は public/players.js）と書きます。",
   },
   {
     find: (line) => /注入口/u.test(line) || line.replace(NOT_KUCHI, "").includes("口"),
