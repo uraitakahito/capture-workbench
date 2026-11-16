@@ -10,11 +10,11 @@ URL の `#` が画面を決めます（`#crawls`・`#start`・`#schedules`・`#c
 
 | 画面 | 何が並ぶか |
 | --- | --- |
-| クロール | 1 行 = 1 クロール。状態・撮れた数・リンクの数・WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の数・かかった時間・run と replayweb-server（クロールを 1 つのアーカイブとして）への行き先 |
+| クロール | 1 行 = 1 クロール。状態・撮れた数・リンクの数・WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の数・かかった時間・run と replayweb-player（クロールを 1 つのアーカイブとして）への行き先 |
 | 新しいクロール | 起点の URL・スクリプト・深さを選び、スクリプトが宣言した変数の値を書き、その場の TS を書いて始める。スクリプトは右の列のタブで読める |
 | 定期実行 | 予定と回。予定を止める・再開する・いま撮る・固定し直す・消す。 |
 | 変化 | 予定の回を前の回と比べた結果。 |
-| アーカイブ | 見えている WACZ（一覧）と、撮った時の絵。行から検証・WACZ の画面・[replayweb-server](https://github.com/uraitakahito/replayweb-server)（WACZ をブラウザで再生する画面）へ |
+| アーカイブ | 見えている WACZ（一覧）と、撮った時の絵。行から検証・WACZ の画面・[replayweb-player](https://github.com/uraitakahito/replayweb-player)（WACZ をブラウザで再生する画面）へ |
 | 検索 | 全文検索。 |
 | スクリプト集 | ページの中で走らせるスクリプトと、書くための型。 |
 | WACZ | WACZ 1 本の中。参照: [WACZ を見る](/wacz/) |
@@ -65,12 +65,12 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   1 回で渡せた段には何も出ません。数は capture-ledger の `dispatch`（一番新しい段の `attempts`・`lastError`）で、送った回数から 1 を引いた物が送り直しです。
 - **ReplayWeb.page ↗・Web Capture ↗ は、クロールを 1 つのアーカイブとして開く。**
   capture-ledger は段ごとに、クロールの合本を保管庫へ書きます。
-  合本は、クロールの WACZ を全部並べた `replay.json` と、ページの一覧（`pages.json`）の組です。ReplayWeb.page がページを引くと、replayweb-server がこの一覧から答えます。
+  合本は、クロールの WACZ を全部並べた `replay.json` と、ページの一覧（`pages.json`）の組です。ReplayWeb.page がページを引くと、replayweb-player がこの一覧から答えます。
   replay は合本を 1 つのアーカイブとして開くので、撮ったページのリンクから、別の WACZ に撮ったページへ行けます。
-  行き先は、サーバが `/healthz` で配る replayweb-server の origin と、capture-ledger が指す版の鍵（`replayBundle.key`）から組み、ページ一覧（`#view=pages`）を開きます。
+  行き先は、サーバが `/healthz` で配る replayweb-player の origin と、capture-ledger が指す版の鍵（`replayBundle.key`）から組み、ページ一覧（`#view=pages`）を開きます。
   合本の無いクロール（まだ何も撮っていない・合本を書かない capture-ledger）の行には出ません。
   capture-ledger は、合本を書けなくてもクロールを止めません。開いた行の先頭に書けなかった理由を capture-ledger の文のまま（`replayBundle.error`）出し、ReplayWeb.page ↗・Web Capture ↗ は前に書けた版があればそれを開きます。
-  決まりは `public/replayweb.js` の `replayBundleHref` で、`test/replayweb.test.mjs` が固定しています。
+  決まりは `public/players.js` の `replayBundleHref` で、`test/players.test.mjs` が固定しています。
 - **途中の版は、字で言う。**
   走行中の行の ReplayWeb.page ↗・Web Capture ↗ は、その時点で capture-ledger が書けた途中の版を開きます。
   後の段で撮るページはまだ入っていないので、そのページへのリンクは replay で Not Found になります。
@@ -79,7 +79,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   flow は `report`（ここでクロールが終わる）の後に `replay_bundle`（ここで最後の版を書く）を走らせるので、最後の版は少し遅れて届きます。
   次の版を書けなかった行は、前の版を途中の版として開きます。
   開いた行のページの表は、字を増やさず、色と説明だけを付けます。
-  決まりは `public/replayweb.js` の `isPartialBundle` で、`test/replayweb.test.mjs` が固定しています。
+  決まりは `public/players.js` の `isPartialBundle` で、`test/players.test.mjs` が固定しています。
 
 ![クロールの画面の開いた行。走らせたもの（その場の TS に「欄に戻す」）・渡した値と使ったシークレット（WARC で隠す物と残す物）・規則ごとの数・落とした物・Windmill で調べるリンク](../../../assets/screens/crawl-detail.webp)
 
@@ -551,7 +551,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   報告に何が出るかは [WACZ を見る](/wacz/)に書きました。
 - **「開く」で WACZ の画面に入る**（`#wacz/<archiveId>`）。
 - **「ReplayWeb.page ↗」と「Web Capture ↗」は、取り込んだ URL を replay で直に開く。**
-  行き先は、サーバが `/healthz` で配る replayweb-server の origin、capture-ledger が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
+  行き先は、サーバが `/healthz` で配る replayweb-player の origin、capture-ledger が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
   頁の script が動くので、JS で出す絵も出ます。BrowserHive が撮った DOM の写し（スクリプトの前と後）は、replay の Pages タブにあります。
   replay は自分では最初の頁を選びません。ページ一覧を日付の新しい順に並べ、WACZ の `mainPageURL` は読みません。
   開くのはその WACZ 1 本です。クロールのほかのページへリンクで行くなら、[クロール](#クロール)の画面の行の ReplayWeb.page ↗・Web Capture ↗ から開きます。
