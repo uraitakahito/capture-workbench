@@ -16,8 +16,6 @@ pnpm run dev:up       # 終わると workbench の URL を出す
 open http://127.0.0.1:7080/
 ```
 
-`dev:up` は、この repo が capture-ledger の隣（`../capture-workbench`）に在るものとして起こします。
-別の場所に置いたなら `pnpm run dev:up --workbench <path>` です。
 スタックの起こし方の全体は、capture-ledger の[クイックスタート](https://uraitakahito.github.io/capture-ledger/ja/quickstart/)に在ります。
 
 | したいこと | capture-ledger で打つもの |

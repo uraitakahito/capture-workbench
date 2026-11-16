@@ -18,9 +18,7 @@ pnpm run dev:up       # prints the workbench's URL when it is done
 open http://127.0.0.1:7080/
 ```
 
-`dev:up` expects this repository next to capture-ledger (`../capture-workbench`). If you keep it
-somewhere else, use `pnpm run dev:up --workbench <path>`. How the whole stack comes up is in
-capture-ledger's [quickstart](https://uraitakahito.github.io/capture-ledger/quickstart/).
+How the whole stack comes up is in capture-ledger's [quickstart](https://uraitakahito.github.io/capture-ledger/quickstart/).
 
 | To | Run in capture-ledger |
 | --- | --- |
