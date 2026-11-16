@@ -1,6 +1,6 @@
 {
   "name": "capture-workbench",
-  "version": "0.1.0",
+  "version": "0.57.2",
   "private": true,
   "description": "Web Capture を開発するときに手元で開く Web アプリ。capture-ledger の API を 1 枚に畳んで見る",
   "//": [
