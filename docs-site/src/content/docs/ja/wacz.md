@@ -4,7 +4,7 @@ description: アーカイブの行から、撮れたものが WACZ 1.1.1 どお�
 ---
 
 アーカイブの行からは、2 つのことができます。
-「検証」で撮れたものが WACZ 1.1.1（WACZ は撮ったページを 1 つの ZIP にまとめたアーカイブ）どおりかを確かめ、「開く」で WACZ の中身に入ります。
+「検証」で撮れたものが WACZ 1.1.1どおりかを確かめ、「開く」で WACZ の中身に入ります。
 どちらも [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon が答えます。
 capture-workbench は、capture-ledger に署名してもらった URL を daemon に渡すだけです。
 
