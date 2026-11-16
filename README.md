@@ -10,11 +10,11 @@ Web Capture を開発するときに手元で開く Web アプリ。
 
 ## Related Projects
 
-- [capture-ledger](https://github.com/uraitakahito/capture-ledger) — 読む API の持ち主。`dev:up` が workbench を起こす
-- [wacz-validator](https://github.com/uraitakahito/wacz-validator) — 「検証」と WACZ の画面に答える daemon
-- [capture-scheduler](https://github.com/uraitakahito/capture-scheduler) — クロールの run（Windmill）への行き先
-- [replayweb-server](https://github.com/uraitakahito/replayweb-server) — アーカイブを開く行き先（改変していない ReplayWeb.page。「ReplayWeb.page ↗」）
-- [capture-player](https://github.com/uraitakahito/capture-player) — アーカイブを開くもう 1 つの行き先（ReplayWeb.page を改変した Web Capture のビューア。「Web Capture ↗」）
+- [capture-ledger](https://github.com/uraitakahito/capture-ledger)
+- [wacz-validator](https://github.com/uraitakahito/wacz-validator)
+- [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)
+- [replayweb-server](https://github.com/uraitakahito/replayweb-server)
+- [capture-player](https://github.com/uraitakahito/capture-player)
 
 ## License
 
