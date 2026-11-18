@@ -35,7 +35,7 @@ import {
   stepsOf,
   stoppedStepOf,
 } from "../public/timeline.js";
-import { isPartialBundle, replayBundleHref } from "../public/replayweb.js";
+import { isPartialBundle, replayBundleHref } from "../public/players.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
 import {

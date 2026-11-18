@@ -161,7 +161,7 @@ import {
   VIEWERS,
   viewerText,
   replaywebHref,
-} from "/replayweb.js";
+} from "/players.js";
 import {
   answerOf,
   highlightParts,
@@ -858,7 +858,7 @@ const restoreScroll = () => {
  * 作り直すと流した位置と絞り込みが消える。読めなければ 1 行で言う（capture-ledger が古ければエンドポイントが無い）。
  *
  * 結末の後ろの再生の link は、そのページをクロールの合本の中で開く。合本は詳しい所（`/api/crawls/:id`。ページと
- * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/replayweb.js` の `replayBundleHref`。
+ * 一緒に引く）が指す版で、ページの WACZ がその版に入っている行にだけ出す（`public/players.js` の `replayBundleHref`。
  * 2 つを引く間に capture-ledger が次の版を書いても、指す版に無いページを開かせない）。**列は足さない** —— 出るのはふつう
  * 撮れたページ（結末が `captured` の 1 語）で、結末の列の幅の中に収まる。列を足すと表が広がり、docs の画面の絵
  * （本文の幅）に収まらなかった（2026-11-05 に測った）。同じ理由で、途中の版でも字は増やさず、色と説明だけを付ける。
@@ -1150,7 +1150,7 @@ const drawCrawls = () => {
     row.append(links);
     row.append(cell(String(crawl.waczCount), "num mono"));
     row.append(cell(took(crawl), "num mono"));
-    // 行き先: run と、capture-ledger が合本を書けていれば、クロールを 1 つのアーカイブとして replayweb-server で。**run ↗ が先頭**
+    // 行き先: run と、capture-ledger が合本を書けていれば、クロールを 1 つのアーカイブとして replayweb-player で。**run ↗ が先頭**
     // （docs の画面の絵の印が、この欄の先頭の link を指す）
     const go = linkCell(runHref(crawl), "run ↗");
     for (const viewer of VIEWERS) {
@@ -2166,7 +2166,7 @@ const drawHits = (hits) => {
       tag("div", t("search.hit.source", { url: hit.sourceUrl, at: dateTime(new Date(hit.capturedAt)) }), "hit-note"),
     );
     row.append(what);
-    // 行き先: WACZ の画面（一覧に在るアーカイブだけ）と replayweb-server
+    // 行き先: WACZ の画面（一覧に在るアーカイブだけ）と replayweb-player
     const go = document.createElement("td");
     go.className = "hit-go";
     if (known.has(hit.archiveId)) {

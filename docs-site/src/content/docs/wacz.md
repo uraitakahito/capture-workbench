@@ -4,7 +4,7 @@ description: From an archive row, check whether the capture conforms to WACZ 1.1
 ---
 
 An archive row offers two things. **Validate** (検証) checks whether the capture conforms to WACZ
-1.1.1 (WACZ is the archive format that packs captured pages into one ZIP), and **Open** (開く) takes
+(Web Archive Collection Zipped) 1.1.1, and **Open** (開く) takes
 you inside the WACZ. Both are answered by the daemon of
 [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a
 WACZ rule by rule). capture-workbench only hands the daemon a URL that the ledger has signed.

@@ -1,5 +1,5 @@
 /**
- * 再生のリンク（「ReplayWeb.page ↗」「Web Capture ↗」）の行き先（`public/replayweb.js`）。アーカイブの行は取り込んだ URL を撮った時刻で直に開く
+ * 再生のリンク（「ReplayWeb.page ↗」「Web Capture ↗」）の行き先（`public/players.js`）。アーカイブの行は取り込んだ URL を撮った時刻で直に開く
  * （CAPTURE-48。replay は mainPageURL を読まず、一覧を新しい順に並べるので、行き先で名指す）。クロールの行と
  * ページの行はクロールの合本を開く（CAPTURE-54。`replayBundleHref`。WACZ 1 本の `replaywebHref` とは別に試す）。
  * `source` の綴りは 3 つの組み立て役（検索の当たりの `hitReplaywebHref` も）で同じ —— replay の server（v0.3.0 から）の
@@ -19,7 +19,7 @@ import {
   replaywebTs,
   VIEWERS,
   viewerText,
-} from "../public/replayweb.js";
+} from "../public/players.js";
 import { hitReplaywebHref } from "../public/search.js";
 import { setLang } from "../public/i18n.js";
 
@@ -110,7 +110,7 @@ test("合本の鍵の / は区切りのまま、path ごと source の値とし�
 
 /**
  * ReplayWeb.page の読み方で、行き先から保管庫の鍵の区切りを取り出す。ReplayWeb.page（wabac）が `source` の値を 1 度解き、
- * replayweb-server が `/wacz/` の後ろを区切りごとに 1 度だけ解く（replayweb-server の docs/replay-bundle.md の「`/wacz/` の鍵の綴り」）。
+ * replayweb-player が `/wacz/` の後ろを区切りごとに 1 度だけ解く（replayweb-player の docs/replay-bundle.md の「`/wacz/` の鍵の綴り」）。
  */
 const keySegmentsOf = (href) => {
   const source = sourceOf(href);
@@ -119,7 +119,7 @@ const keySegmentsOf = (href) => {
 };
 
 test("% を含む鍵は、source を 1 度解いて path を区切りごとに 1 度解くと元の鍵に戻る（3 つの組み立て役とも）", () => {
-  // BrowserHive はラベルを百分率の符号で鍵に入れる（replayweb-server の docs の例に、空白・日本語・/ の入ったラベルを足した）。
+  // BrowserHive はラベルを百分率の符号で鍵に入れる（replayweb-player の docs の例に、空白・日本語・/ の入ったラベルを足した）。
   // 鍵の中の %2F は区切りではない —— 区切りの数まで元の鍵と同じかを見る
   const wacz = "org/acme/2026-11/a_c1_hello%20world%2F%E3%83%A9%E3%83%B3%E3%83%97.wacz";
   const bundle = "org/a%2Fb c/crawls/x%25y/r1/replay.json";
@@ -142,7 +142,7 @@ test("% を含む鍵は、source を 1 度解いて path を区切りごとに 1
   for (const [name, href, key] of cases) assert.deepEqual(keySegmentsOf(href), key.split("/"), name);
 });
 
-test("source は replayweb-server と同じ origin の path で、.json で終わる（ReplayWeb.page は拡張子で合本と読む）", () => {
+test("source は replayweb-player と同じ origin の path で、.json で終わる（ReplayWeb.page は拡張子で合本と読む）", () => {
   for (const href of [replayBundleHref(ORIGIN, BUNDLE), replayBundleHref(ORIGIN, BUNDLE, PAGE)]) {
     const url = new URL(href);
     assert.equal(url.origin, ORIGIN);
@@ -213,11 +213,11 @@ test("合本を書けなかった理由は 1 行で、capture-ledger の文の�
 
 const [REPLAYWEB, CAPTURE_PLAYER] = VIEWERS;
 
-test("再生は 2 つで、ReplayWeb.page（replayweb-server）が先、Web Capture（capture-player）が後", () => {
+test("再生は 2 つで、ReplayWeb.page（replayweb-player）が先、Web Capture（capture-player）が後", () => {
   assert.deepEqual(
     VIEWERS.map((v) => [v.setting, viewerText(v)]),
     [
-      ["replaywebServerOrigin", "ReplayWeb.page ↗"],
+      ["replaywebPlayerOrigin", "ReplayWeb.page ↗"],
       ["capturePlayerOrigin", "Web Capture ↗"],
     ],
   );

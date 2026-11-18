@@ -18,9 +18,7 @@ pnpm run dev:up       # prints the workbench's URL when it is done
 open http://127.0.0.1:7080/
 ```
 
-`dev:up` expects this repository next to capture-ledger (`../capture-workbench`). If you keep it
-somewhere else, use `pnpm run dev:up --workbench <path>`. How the whole stack comes up is in
-capture-ledger's [quickstart](https://uraitakahito.github.io/capture-ledger/quickstart/).
+How the whole stack comes up is in capture-ledger's [quickstart](https://uraitakahito.github.io/capture-ledger/quickstart/).
 
 | To | Run in capture-ledger |
 | --- | --- |
@@ -45,14 +43,6 @@ stack, open it in [the sandbox](/development/#opening-the-workbench-in-the-sandb
 `npm run sandbox` starts a stand-in for the ledger and the real daemon in containers, and serves
 the workbench on 7081.
 
-Changes under `public/` take effect when you reload the browser, because the server reads the
-files from disk on every request. After changing `src/`, restart it; restarting drops your session,
-so you sign in again. If the workbench that `dev:up` started already holds 7080, `npm run dev` says
-so and exits (see the table below). To run both side by side, move yours to another port
-(`WORKBENCH_PORT=7081 npm run dev`). Signing in there does not work against Floci, though: the
-callback the IdP knows is the one on 7080, and Floci answers the sign-in with 400
-`redirect_uri is not registered for this client` ([Configuration](/configuration/#signing-in)).
-
 ## Sign in, and grant your user access
 
 Opening the workbench takes you to Floci's sign-in page. Type the user and password in
@@ -72,39 +62,3 @@ The grant goes to the user's `sub` (the ID Floci gave it), not to its name. `dev
 top of the screen says `Not found` in red and the lists stay empty. For a user without the
 permission, the ledger returns an empty list of crawls and a 404 for the scripts, and the
 workbench stops at that 404 without drawing the lists.
-
-## Fix it from the message
-
-The workbench shows its messages in Japanese or English: you switch at the top right, and until
-you do, the browser's language decides ([Screens](/screens/#language)). The table quotes the
-English screen. The
-messages of `/login` and `/callback` reach the browser without the workbench's page, which is where
-the language is chosen, so they carry English and Japanese side by side (separated by ` / `, or on
-two lines). The English half is quoted here. A refusal from the ledger is translated when the
-workbench's dictionary has its phrase (`not found` reads `Not found` here, and 見つかりません on the
-Japanese screen). What the dictionary does not have, such as Fastify's
-`Route POST:/api/crawls not found`, is shown as it arrived on either screen. The two messages
-in the terminal are written in Japanese only.
-
-| Where | Message | What to do |
-| --- | --- | --- |
-| top of the screen (red) | `Not found` | Your user has no permission. Run the `idp:grant` above |
-| `/login` | `Sign-in is not configured: set WORKBENCH_OIDC_ISSUER and WORKBENCH_OIDC_CLIENT_ID …` | The workbench was started without the sign-in settings. Set them ([Configuration](/configuration/)), or let `dev:up` start it |
-| `/login`, or top of the screen (red) | `Cannot reach … (…). Look at the IdP line of pnpm run dev:status in capture-ledger / …` | Floci does not answer. Look at the IdP row of `dev:status` |
-| `/login`, or top of the screen (red) | `The discovery of … answered …. If the Floci pool was recreated, run pnpm run dev:up --from idp in capture-ledger / …` | Floci answers, but not for this issuer: its pool was made again. Run the command it names |
-| `/callback` | `Could not sign in / サインインできませんでした: unknown state: sign in again (/login) / …` | The sign-in took too long, was used twice (the back button), or the workbench restarted in between. Open `/login` again |
-| `/callback` | `Could not sign in / サインインできませんでした: could not exchange the code for a token / …: …` | The IdP refused the code; its answer follows the last colon. Open `/login` again |
-| top of the screen (red) | `Cannot reach … (…). Is pnpm run api running in capture-ledger?` | The ledger's API is not up. Start it with `dev:up` |
-| validation cell, WACZ view | `Cannot reach … (…). Has pnpm run dev:up --from validator been run in capture-ledger?` | The daemon is not up. Run the command it names |
-| sign-in line | `Not signed in` | There is no session. If it stays, the workbench has no sign-in settings; `/login` says which are missing |
-| sign-in line | `The workbench itself cannot be reached` | The workbench's own server has stopped. Start it again |
-| footer | `Could not fetch (the tables above are the last ones drawn)` | The reason is the red message at the top. The tables are the last ones that could be drawn |
-| script collection view (red) | `There are no registered scripts. …` | The ledger has no scripts to run. Import them with the command in the message |
-| new crawl view, under **Start** (始める) | `404 — Not found` | Your user may not start crawls. Run the `idp:grant` above |
-| new crawl view, under **Start** | `404 — Route POST:/api/crawls not found` | The ledger does not know where to send crawls (Windmill). The `dev:up` stack has it |
-| crawls view (it moves there) | the running row is marked | A 409: only one crawl runs at a time, overall. Wait for the marked row to finish |
-| terminal | `127.0.0.1:7080 は、既に動いている workbench です (pid …)。` | Just open it. To restart it, `pnpm run dev:up --from workbench` |
-| terminal | `127.0.0.1:7080 は別のものが握っています …` | Find out what it is with `pnpm run dev:status`, clean up with `pnpm run dev:down` |
-
-When something fails, the workbench keeps its tables. An empty table would read as "there is
-nothing to see", which you could not tell apart from "it could not be fetched".

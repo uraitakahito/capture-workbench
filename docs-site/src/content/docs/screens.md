@@ -4,65 +4,20 @@ description: What each view shows — crawls, start, schedules, changes, archive
 ---
 
 capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
-which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`; in the search view it also
-names the words searched, in the changes view the run and page opened, and in the script collection view what you are reading). The WACZ tab only appears once you
-enter it with **Open** (開く) on an archive row. The tabs are **Crawls** (クロール), **New crawl**
-(新しいクロール), **Schedules** (定期実行), **Changes** (変化), **Archives** (アーカイブ), **Search** (検索),
-**Script collection** (スクリプト集) and WACZ.
-
-The workbench comes in Japanese and English. You switch at the top right, and until you do, the
-browser's language decides ([Language](#language)). This page uses the words of the English screen.
-**The pictures on this page were taken on the Japanese screen**, so where a label first comes up, the
-Japanese that the pictures show follows in parentheses, and the notes under a picture name what is
-in it in Japanese.
-
-The pictures on this page are taken against the stand-in ledger (the
-[sandbox](/development/#opening-the-workbench-in-the-sandbox)). Its scripts are copies from capture-scripts,
-the same ones a real ledger lists; only autoscroll v2 is the stand-in's own version, there to show version chips.
+which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`).
 
 ![The tabs at the top: クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
 
 | View | What it lists |
 | --- | --- |
-| Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replayweb-server (the whole crawl as one archive) |
-| New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare, and a script of your own in a box as tall as the window; a registered script can be read in a tab of the right column |
+| Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replayweb-player (the whole crawl as one archive) |
+| New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare. |
 | Schedules | schedules and their runs; pause, resume, run now, repin and delete a schedule. A run that did not capture shows on a band on every view |
-| Changes | how a scheduled run differs from the previous one — one line per run; an opened run lists every page on the left and shows one page on the right: the diff, Claude's line (not evidence) and ReplayWeb.page ↗ / Web Capture ↗ for before and after |
-| Archives | the WACZ files you can see, with a picture of each as captured; from a row, validate, open it in the WACZ view, or open in [replayweb-server](https://github.com/uraitakahito/replayweb-server) (which plays a WACZ back in the browser) |
-| Search | the ledger's full-text search: type words, and the matching stages of archives (the document or a snapshot) are listed; from a row, open the WACZ view or replayweb-server |
-| Script collection | the scripts that run inside the captured page and the types they are written against, to read line by line, older versions too; says so in red when the ledger has none |
+| Changes | how a scheduled run differs from the previous one. |
+| Archives | the WACZ files you can see, with a picture of each as captured; from a row, validate, open it in the WACZ view, or open in [replayweb-player](https://github.com/uraitakahito/replayweb-player) (which plays a WACZ back in the browser) |
+| Search | the full-text search. |
+| Script collection | the scripts that run inside the captured page and the types they are written against. |
 | WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
-
-The top of the screen says who you are signed in as (`Signed in as <user> (<groups>)`), with a
-**Sign out** (サインアウト) link and the language switch next to it. The footer shows how many rows are listed and how often the lists are fetched again.
-
-## Language
-
-The workbench is in Japanese and English. The words on the screen come from one dictionary per
-language ([Development](/development/#the-text-on-the-screen)).
-
-- **The switch is at the top right, next to Sign out:** 日本語 / English. The language in use
-  cannot be pressed. Pressing the other one remembers the choice in the browser (`localStorage`,
-  under `workbench.lang`), takes `?lang=` off the URL and reloads the page. If the new crawl view
-  holds something you have written (seed URLs, your script or its name, the User-Agent, a
-  variable's value, a schedule's name), it asks first, because reloading loses it.
-- **The language is decided when the page loads,** in this order: `?lang=ja` or `?lang=en` in the
-  URL (for that load only; the remembered choice stays as it was), the choice the switch
-  remembered, the first of the browser's languages that is Japanese or English, and English when
-  none of them says. A browser that will not store the choice gets it carried in `?lang=`
-  instead.
-- **Some text is not translated.** What was stored, or written by capture-ledger, BrowserHive,
-  Windmill or the daemon as data, is shown as it arrived (states such as `captured`, step names,
-  log lines, the failure reason kept with a crawl or with a schedule's run), and so are proper
-  names. What capture-ledger says when it refuses a request is different: its phrase and its
-  reasons are shown in the screen's language when the workbench's dictionary has them, and as
-  they arrived when it does not (an answer from a ledger newer than the workbench, the text of a
-  schema check, a command to run). Claude's summaries in the changes view are in Japanese, because
-  capture-ledger had them written in Japanese; on the English screen the view adds
-  `The summary is written in Japanese.`
-- **The validation report follows the screen.** The workbench hands the screen's language to the
-  daemon, so validating an archive on the English screen returns an English report
-  ([Inspecting a WACZ](/wacz/#the-validation-report)).
 
 ## The lists are one page of the ledger
 
@@ -121,16 +76,16 @@ the crawl's bundle.
   `attempts` and `lastError`); the resends are the sends minus one.
 - **ReplayWeb.page ↗ / Web Capture ↗ open the crawl as one archive.** After each level, the ledger writes the crawl's
   bundle (合本) to the store: a `replay.json` that lists every WACZ file of the crawl, and the
-  index of its pages (`pages.json`) that replayweb-server answers from when ReplayWeb.page looks a page
+  index of its pages (`pages.json`) that replayweb-player answers from when ReplayWeb.page looks a page
   up. ReplayWeb.page opens them as one archive, so a link on a captured page leads to a page captured into
   another WACZ file.
   The link opens the list of pages (`#view=pages`) of the version the ledger points at
-  (`replayBundle.key`), at the replayweb-server origin the server hands out through `/healthz`. A crawl with
+  (`replayBundle.key`), at the replayweb-player origin the server hands out through `/healthz`. A crawl with
   no bundle (nothing captured yet, or a ledger that writes none) gets no link. The ledger never
   stops a crawl over a bundle it could not write: an opened row says why first, in the ledger's
   words (`replayBundle.error`), and ReplayWeb.page ↗ / Web Capture ↗ keep opening the version written before, if there is
-  one. The rules for these links are `replayBundleHref` in `public/replayweb.js`, pinned by
-  `test/replayweb.test.mjs`.
+  one. The rules for these links are `replayBundleHref` in `public/players.js`, pinned by
+  `test/players.test.mjs`.
 - **A version written mid-crawl says so.** While a crawl runs, ReplayWeb.page ↗ / Web Capture ↗ open the version the
   ledger has written so far. Pages captured in later levels are not in it, so a link to one ends
   in Not Found in replay. The links therefore read `ReplayWeb.page r1 (mid-crawl) ↗` and `Web Capture r1 (mid-crawl) ↗` (`r1（途中）↗` in the picture above), in the warning
@@ -139,8 +94,8 @@ the crawl's bundle.
   crawl ends here) before `replay_bundle` (the last version is written here), so the last version
   arrives slightly later. A row whose next version could not be written keeps opening the earlier
   one the same way. The pages table of an opened row keeps the texts "ReplayWeb.page ↗" and "Web Capture ↗" and only takes the
-  color and the explanation. The rule is `isPartialBundle` in `public/replayweb.js`, pinned by
-  `test/replayweb.test.mjs`.
+  color and the explanation. The rule is `isPartialBundle` in `public/players.js`, pinned by
+  `test/players.test.mjs`.
 
 ![An opened row of the crawls view: what ran (欄に戻す next to the script written on the spot), the values passed and the secrets used (one hidden in the WARC, one kept), the count per rule, what was dropped, and the link to inspect in Windmill](../../assets/screens/crawl-detail.webp)
 

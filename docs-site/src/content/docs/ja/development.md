@@ -298,9 +298,9 @@ npm run docs:shots -- start crawls   # 名指した絵だけ
 ## リリースと公開
 
 1. 変更は枝で作り、main へ PR を出して squash でマージする。
-2. マージした main の commit に、手で注釈タグを打つ（`vX.Y.Z — 要約`）。
-   版はタグだけです。
-   `package.json` の `version` は版ではありません。
+2. リリースするときは、題が `release: vX.Y.Z — 要約` の PR で `package.json` の `version` を `X.Y.Z` に上げ
+   （2 つが食い違うと `.github/workflows/release-version.yml` が赤にする）、squash でマージした commit に、
+   手で注釈タグを打つ（`vX.Y.Z — 要約`）。
 3. タグの push で、`docs.yml` が docs を GitHub Pages に公開する。
 
 main にマージしただけでは、Pages は変わりません。

@@ -5,47 +5,19 @@ description: 画面ごとに何が並ぶか —— クロール・新しいク�
 
 capture-workbench は、上のタブで切り替える画面からなります。
 URL の `#` が画面を決めます（`#crawls`・`#start`・`#schedules`・`#changes`・`#archives`・`#search`・`#scripts`。検索の画面では探した語も、変化の画面では開いた回とページも、スクリプト集の画面では読んでいる物も URL が名指します）。
-WACZ の画面のタブは、アーカイブの行の「開く」で入るまで出ません。
-
-このページの絵は、代役（[サンドボックス](/development/#サンドボックスで開く)）を相手に撮っています。
-代役のスクリプトは capture-scripts の写しで、本物の capture-ledger と同じ物が並びます（autoscroll v2 だけは、版のリンクを見せるための代役の版です）。
 
 ![上のタブ。クロール・新しいクロール・定期実行・変化・アーカイブ・検索・スクリプト集が並び、新しいクロールが選ばれている](../../../assets/screens/tabs.webp)
 
 | 画面 | 何が並ぶか |
 | --- | --- |
-| クロール | 1 行 = 1 本。状態・撮れた数・リンクの数・WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の数・かかった時間・run と replayweb-server（クロールを 1 つのアーカイブとして）への行き先 |
-| 新しいクロール | 起点の URL・スクリプト・深さを選び、スクリプトが宣言した変数の値を書き、その場の TS を書いて始める。TS の箱は窓の高さいっぱい。スクリプトは右の列のタブで読める |
-| 定期実行 | 予定と回。予定を止める・再開する・いま撮る・固定し直す・消す。撮れなかった回は全部の画面の帯に出る |
-| 変化 | 予定の回を前の回と比べた結果。回ごとのまとめと、開くと左に回の全ページの目次、右に選んだ 1 ページの差分・Claude の 1 行（証拠ではない）・前と今の再生の link（ReplayWeb.page ↗・Web Capture ↗） |
-| アーカイブ | 見えている WACZ（一覧）と、撮った時の絵。行から検証・WACZ の画面・[replayweb-server](https://github.com/uraitakahito/replayweb-server)（WACZ をブラウザで再生する画面）へ |
-| 検索 | capture-ledger の全文検索。語を打って探し、当たったアーカイブの時点（文書か写し）を並べる。行から WACZ の画面と replayweb-server へ |
-| スクリプト集 | ページの中で走らせるスクリプトと、書くための型。行番号つきで読め、古い版も読める。空なら赤で言う |
-| WACZ | WACZ 1 本の中。[WACZ を見る](/wacz/)に書いた |
-
-画面の上には、誰としてサインインしているかと、「サインアウト」のリンクと、その隣に言語の切り替えが出ます（「… (…) としてサインインしています」）。
-足元には、いま並んでいる行の数と、次に引くまでの間隔が出ます。
-
-## 言語
-
-画面の字は、日本語と英語の 2 つです。
-字は、言語ごとの辞書から来ます（[開発](/development/#画面の文言)）。
-このページは日本語の画面の字で書いてあり、絵も日本語の画面で撮っています。
-
-- **切り替えは、画面の右上、「サインアウト」の隣の「日本語 / English」。**
-  いまの言語の側は押せません。
-  もう一方を押すと、選びをブラウザに覚え（`localStorage` の `workbench.lang`）、URL の `?lang=` を外して、ページを読み直します。
-  新しいクロールの画面に書きかけ（起点の URL・その場の TS とその名前・User-Agent・変数の値・予定の名前）が在れば、読み直すと消えるので、先に確かめます。
-- **言語は、ページを読み込んだときに決まる。**
-  順は、URL の `?lang=ja`・`?lang=en`（その回だけ。覚えた選びは変えません）、切り替えで覚えた選び、ブラウザの言語の並びで最初に当たる日本語か英語、どれも無ければ英語です。
-  選びを覚えられないブラウザでは、切り替えが選びを `?lang=` に書いて運びます。
-- **訳さない字が在る。**
-  保存された字と、capture-ledger・BrowserHive・Windmill・daemon がデータとして返す字（`captured` のような状態・段の名前・ログの行・クロールや定期実行の回に残った失敗の理由）と固有の名前は、届いたまま出します。
-  capture-ledger が頼みを断るときの文は別です。句と理由の文が workbench の辞書に在れば画面の言語で出し、無ければ届いたまま出します（workbench より新しい capture-ledger の答え・schema の検査の文・打つ命令の例）。
-  変化の画面の Claude の要約は、capture-ledger が日本語で書かせた物なので、英語の画面でも日本語のままです。
-  英語の画面では、変化の画面が `The summary is written in Japanese.` と添えます。
-- **検証の報告は、画面の言語で返る。**
-  workbench が画面の言語を daemon に渡すので、英語の画面でアーカイブを検証すると、報告は英語で返ります（[WACZ を見る](/wacz/#検証の報告)）。
+| クロール | 1 行 = 1 クロール。状態・撮れた数・リンクの数・WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の数・かかった時間・run と replayweb-player（クロールを 1 つのアーカイブとして）への行き先 |
+| 新しいクロール | 起点の URL・スクリプト・深さを選び、スクリプトが宣言した変数の値を書き、その場の TS を書いて始める。スクリプトは右の列のタブで読める |
+| 定期実行 | 予定と回。予定を止める・再開する・いま撮る・固定し直す・消す。 |
+| 変化 | 予定の回を前の回と比べた結果。 |
+| アーカイブ | 見えている WACZ（一覧）と、撮った時の絵。行から検証・WACZ の画面・[replayweb-player](https://github.com/uraitakahito/replayweb-player)（WACZ をブラウザで再生する画面）へ |
+| 検索 | 全文検索。 |
+| スクリプト集 | ページの中で走らせるスクリプトと、書くための型。 |
+| WACZ | WACZ 1 本の中。参照: [WACZ を見る](/wacz/) |
 
 ## 並ぶのは capture-ledger の 1 ページ
 
@@ -93,12 +65,12 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   1 回で渡せた段には何も出ません。数は capture-ledger の `dispatch`（一番新しい段の `attempts`・`lastError`）で、送った回数から 1 を引いた物が送り直しです。
 - **ReplayWeb.page ↗・Web Capture ↗ は、クロールを 1 つのアーカイブとして開く。**
   capture-ledger は段ごとに、クロールの合本を保管庫へ書きます。
-  合本は、クロールの WACZ を全部並べた `replay.json` と、ページの一覧（`pages.json`）の組です。ReplayWeb.page がページを引くと、replayweb-server がこの一覧から答えます。
+  合本は、クロールの WACZ を全部並べた `replay.json` と、ページの一覧（`pages.json`）の組です。ReplayWeb.page がページを引くと、replayweb-player がこの一覧から答えます。
   replay は合本を 1 つのアーカイブとして開くので、撮ったページのリンクから、別の WACZ に撮ったページへ行けます。
-  行き先は、サーバが `/healthz` で配る replayweb-server の origin と、capture-ledger が指す版の鍵（`replayBundle.key`）から組み、ページ一覧（`#view=pages`）を開きます。
+  行き先は、サーバが `/healthz` で配る replayweb-player の origin と、capture-ledger が指す版の鍵（`replayBundle.key`）から組み、ページ一覧（`#view=pages`）を開きます。
   合本の無いクロール（まだ何も撮っていない・合本を書かない capture-ledger）の行には出ません。
   capture-ledger は、合本を書けなくてもクロールを止めません。開いた行の先頭に書けなかった理由を capture-ledger の文のまま（`replayBundle.error`）出し、ReplayWeb.page ↗・Web Capture ↗ は前に書けた版があればそれを開きます。
-  決まりは `public/replayweb.js` の `replayBundleHref` で、`test/replayweb.test.mjs` が固定しています。
+  決まりは `public/players.js` の `replayBundleHref` で、`test/players.test.mjs` が固定しています。
 - **途中の版は、字で言う。**
   走行中の行の ReplayWeb.page ↗・Web Capture ↗ は、その時点で capture-ledger が書けた途中の版を開きます。
   後の段で撮るページはまだ入っていないので、そのページへのリンクは replay で Not Found になります。
@@ -107,7 +79,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   flow は `report`（ここでクロールが終わる）の後に `replay_bundle`（ここで最後の版を書く）を走らせるので、最後の版は少し遅れて届きます。
   次の版を書けなかった行は、前の版を途中の版として開きます。
   開いた行のページの表は、字を増やさず、色と説明だけを付けます。
-  決まりは `public/replayweb.js` の `isPartialBundle` で、`test/replayweb.test.mjs` が固定しています。
+  決まりは `public/players.js` の `isPartialBundle` で、`test/players.test.mjs` が固定しています。
 
 ![クロールの画面の開いた行。走らせたもの（その場の TS に「欄に戻す」）・渡した値と使ったシークレット（WARC で隠す物と残す物）・規則ごとの数・落とした物・Windmill で調べるリンク](../../../assets/screens/crawl-detail.webp)
 
@@ -579,7 +551,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   報告に何が出るかは [WACZ を見る](/wacz/)に書きました。
 - **「開く」で WACZ の画面に入る**（`#wacz/<archiveId>`）。
 - **「ReplayWeb.page ↗」と「Web Capture ↗」は、取り込んだ URL を replay で直に開く。**
-  行き先は、サーバが `/healthz` で配る replayweb-server の origin、capture-ledger が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
+  行き先は、サーバが `/healthz` で配る replayweb-player の origin、capture-ledger が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
   頁の script が動くので、JS で出す絵も出ます。BrowserHive が撮った DOM の写し（スクリプトの前と後）は、replay の Pages タブにあります。
   replay は自分では最初の頁を選びません。ページ一覧を日付の新しい順に並べ、WACZ の `mainPageURL` は読みません。
   開くのはその WACZ 1 本です。クロールのほかのページへリンクで行くなら、[クロール](#クロール)の画面の行の ReplayWeb.page ↗・Web Capture ↗ から開きます。

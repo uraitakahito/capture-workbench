@@ -8,7 +8,7 @@
  * 返るのは見せてよいアーカイブの物だけ（capture-ledger が OpenFGA の can_view で絞る）。
  */
 import { errorText, t } from "./i18n.js";
-import { replaywebHref, replaywebSourceHref, replaywebTs } from "./replayweb.js";
+import { replaywebHref, replaywebSourceHref, replaywebTs } from "./players.js";
 
 /** 検索のエンドポイント。語はそのまま `q` に（capture-ledger は空を 400 で断る）。 */
 export const searchPath = (words) => `/api/search?${new URLSearchParams({ q: words })}`;

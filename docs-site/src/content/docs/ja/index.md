@@ -4,14 +4,11 @@ description: Web Capture を開発するときに手元で開く Web アプリ�
 ---
 
 capture-workbench は、[Web Capture](https://uraitakahito.github.io/capture-ledger/ja/#web-capture)（Web ページを撮ってアーカイブに残し、後から確かめられるようにする repo の一式）を開発するときに手元で開く Web アプリです。
-**1 本のクロールを 1 行で見ます。**
-新しいクロールを始めることも、撮れた WACZ の中身を読むこともできます。
-画面の字は、日本語か英語です（[画面](/screens/#言語)）。
 
 クロールを始めるのは [capture-ledger](https://github.com/uraitakahito/capture-ledger)（どの URL を撮るかを決め、撮れたものを記録するシステム）、
 走らせるのは [capture-scheduler](https://github.com/uraitakahito/capture-scheduler)（クロールを Windmill の flow で回す）、
 撮れたものを置くのは [seaweedfs](https://github.com/uraitakahito/seaweedfs)（Web Capture が共有する S3 互換の store）、
-開いて読むのは 2 つの再生です。[replayweb-server](https://github.com/uraitakahito/replayweb-server)（改変していない ReplayWeb.page で WACZ をブラウザで再生する画面）と、
+開いて読むのは 2 つの再生です。[replayweb-player](https://github.com/uraitakahito/replayweb-player)（改変していない ReplayWeb.page で WACZ をブラウザで再生する画面）と、
 [capture-player](https://github.com/uraitakahito/capture-player)（ReplayWeb.page を改変し、[BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/) が足した物も見せる画面）です。
 WACZ（Web Archive Collection Zipped）は、撮ったページを 1 つの ZIP にまとめたアーカイブの形式です。
 
@@ -25,7 +22,7 @@ flowchart LR
   D -->|"/api/* を素通し"| L["capture-ledger の API"]
   D -->|"署名付き URL を<br/>1 本だけ渡す"| V["wacz-validator の daemon"]
   V -->|"Range で読む"| S[("seaweedfs の store")]
-  B -.->|"ReplayWeb.page ↗"| R["replayweb-server"]
+  B -.->|"ReplayWeb.page ↗"| R["replayweb-player"]
   B -.->|"Web Capture ↗"| P["capture-player"]
   B -.->|"run のリンク"| W["Windmill"]
 ```
@@ -36,7 +33,7 @@ flowchart LR
 workbench はサインインから戻ってきた code をアクセストークンに替え（authorization code と PKCE。PKCE は Proof Key for Code Exchange）、それを付けて `/api/*` をそのまま capture-ledger へ通します。
 書くエンドポイント（HTTP の method と path の組。新しいクロールの画面から始めるときの `POST /api/crawls` など。全部は[エンドポイントの一覧](/routes/)の表に在ります）も、同じ道で capture-ledger へ通します。
 WACZ の検証と中身は、capture-ledger に署名してもらった URL を [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon に渡して読ませます。
-replayweb-server・capture-player と Windmill へは、画面の行からリンクで飛ぶだけです。
+replayweb-player・capture-player と Windmill へは、画面の行からリンクで飛ぶだけです。
 
 ## 約束
 
@@ -47,15 +44,6 @@ replayweb-server・capture-player と Windmill へは、画面の行からリン
 - **手元のサインインは、境界ではない。**
   Floci の管理の API は既定の鍵を通すので、Floci に届くものは利用者を作り、その利用者としてサインインできます。
   ここのサインインは便利さであって守りではなく、workbench は loopback の外に出しません（[設定](/configuration/#サインイン)）。
-- **npm の依存を持たない。**
-  workbench は node の標準ライブラリと、ブラウザで素のまま走る JS、それに commit 済みの束 2 つ（`public/vendor/`。スクリプトに色を付ける `shiki.js` と、画面の文言の辞書を文にする `intl-messageformat.js`）で建っています。
-  依存が在るのは、このサイトの原稿（`docs-site/`）と、その束を作る元（`highlighter/`）です（[開発](/development/)）。
-- **中継するだけ。**
-  workbench のロジックはサーバに置きません。
-  置いた瞬間に「capture-ledger が知っていることの写し」が生まれるからです。
-- **検証の文を持たない。**
-  検証の message も、画面が頼んだ言語の文も、仕様の節も、daemon が解決して返したものをそのまま出します。
-  workbench が言い換えると、検証器が言い始めたことと静かにずれていきます。
 
 ## 公開しない
 
