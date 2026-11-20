@@ -10,7 +10,25 @@
  * `outerHTML` のようなほかの API は見ない。
  */
 import { applyI18n, dateTime, errorText, key, langOf, phraseText, refusalTexts, switchLang, t, timeOfDay, tNodes } from "/i18n.js";
-import { checkVerdict, count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, urlLinesOf, verdict } from "/format.js";
+import { count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, urlLinesOf } from "/format.js";
+import {
+  DEFAULT_PROFILE,
+  PROFILES,
+  checkBandOf,
+  checkHash,
+  checkVerdict,
+  countsText,
+  flaggedEntries,
+  hasRules,
+  issuePlaceOf,
+  notRunText,
+  opensFirst,
+  outcomeMark,
+  parseCheckHash,
+  ruleGroupsOf,
+  ruleIssuesOf,
+  verdict,
+} from "/check.js";
 import {
   ACTIONS,
   actionText,
@@ -1933,141 +1951,247 @@ $("start-inline-file").addEventListener("change", () => void readFileIntoForm())
 
 // ── 検証 ───────────────────────────────────────────────────────────
 /**
- * 1 本の報告を描く。**文は 1 つも持たない** —— message も日本語も spec の節も、
- * daemon が解決して返したものをそのまま出す (`renderJson(report, locale)`)。
- * ここで言い換えると、検証器が言い始めたことと workbench がずれていく。
+ * 検証の画面（`#check/<archiveId>[/<profile>]`・CAPTURE-457）。wacz-validator の報告の `rules` を、範囲ごとに束ねた
+ * チェックリストに描く。**文は 1 つも持たない** —— rule の説明・指摘の文・出典は、daemon が解決して返したものを
+ * そのまま出す（`renderJson(report, locale)`）。ここで言い換えると、検証器が言い始めたことと workbench がずれていく。
+ * 並べ方と印は `public/check.js`。
+ *
+ * **押すまで走らせない** —— 一覧を開くだけでは検証しない。画面に入ったときに 1 度検証し、同じアーカイブと profile の
+ * 答えは覚えておく（「検証し直す」で取り直す）。
  */
-const drawReport = (td, report) => {
-  td.replaceChildren();
-  const s = report.summary;
-  const bar = document.createElement("div");
-  bar.className = "bar";
-  const v = verdict(s);
-  bar.append(
-    tag("span", t("archives.report.passed", { n: s.passed }), "big"),
-    tag("span", v.text, `big state ${v.kind}`),
-    tag(
-      "span",
-      [...judgedUnder(report), `${String(s.durationMs)} ms`, ...statsOf(report)].join(t("common.sep.slash")),
-      "mono muted",
-    ),
-  );
-  td.append(bar);
-
-  for (const issue of report.issues) {
-    const line = document.createElement("div");
-    line.className = "line";
-    line.append(
-      tag("span", issue.severity, `state ${severityKind(issue.severity)}`),
-      tag("span", issue.rule, "mono"),
-      tag("span", issue.message),
-    );
-    // **spec へのリンクも daemon が持っている。** workbench が URL を組み立てない。
-    if (issue.specUrl) {
-      const a = document.createElement("a");
-      a.href = issue.specUrl;
-      a.target = "_blank";
-      a.rel = "noopener";
-      a.textContent = t("archives.report.spec");
-      a.className = "mono";
-      line.append(a);
-    }
-    td.append(line);
-  }
-
-  for (const entry of report.entries) {
-    const line = document.createElement("div");
-    line.className = "line";
-    line.append(
-      tag("span", entry.present ? "entry" : t("archives.report.missing"), entry.present ? "muted" : "state warn"),
-      tag("span", entry.path, "mono"),
-      tag(
-        "span",
-        entry.present ? `${String(entry.uncompressedSize ?? 0)} B` : t("archives.report.missingNote"),
-        "mono muted",
-      ),
-    );
-    td.append(line);
-  }
-};
 
 /**
- * 検証の答え（アーカイブの id → `{ answer, open }`）。**id で覚え、描き直しのたびに付け直す** —— 表は引くたびに
- * 作り直す（走行中のクロールが在れば 2 秒ごと）ので、DOM に置いただけの答えは次の引きで消える。
+ * 検証の答え（アーカイブの id → `{ answer, profile }`）。一覧の「仕様どおりか」の欄は、画面で最後に得た答えを出す。
+ * **id で覚え、描き直しのたびに付け直す** —— 表は引くたびに作り直す（走行中のクロールが在れば 2 秒ごと）。
  *
- *   answer  報告のデータ。まだ検証していなければ undefined、検証できなければ Error
- *   asking  検証している間 true（押し直す間も、前の結論は欄に残す）
- *   open    報告の行を開いているか。もう 1 度押すと閉じるが、answer（結論）は残る
+ *   answer   報告のデータ。検証できなければ Error
+ *   profile  その答えの profile
  *
  * 忘れるのは、アーカイブが一覧から消えた時とページを読み直した時（クロールの `opened` と同じ型）。
  */
 const checks = new Map();
 
-/** 「仕様どおりか」の欄。結論はここに残る（報告を閉じても、引き直しをまたいでも）。 */
+/** 画面の状態。`answers` は `<id>\t<profile>` → 答え（報告か Error）。待っている間は `asking` にその鍵。 */
+const checkView = { archiveId: undefined, profile: DEFAULT_PROFILE, hash: undefined, asking: undefined, answers: new Map() };
+const answerKey = (archiveId, profile) => `${archiveId}\t${profile}`;
+
+/** 「仕様どおりか」の欄。結論はここに残る（引き直しをまたいでも）。spec でない答えは、profile の名前を添える。 */
 const verdictCellOf = (id) => {
   const td = document.createElement("td");
   td.className = "verdict";
-  const v = checkVerdict(checks.get(id)?.answer);
-  if (v !== undefined) td.append(tag("span", v.text, `state ${v.kind}`));
+  const seen = checks.get(id);
+  const v = checkVerdict(seen?.answer);
+  if (v === undefined) return td;
+  const a = tag("a", v.text, `state ${v.kind}`);
+  a.href = checkHash(id, seen.profile);
+  td.append(a);
+  if (seen.profile !== DEFAULT_PROFILE) td.append(tag("span", ` ${seen.profile}`, "muted mono"));
   return td;
 };
 
-/** 開いた報告の行。最後の答えで描く。 */
-const checkRow = (id) => {
-  const row = document.createElement("tr");
-  row.className = "detail";
-  row.dataset.archive = id;
-  const td = document.createElement("td");
-  td.colSpan = 9;
-  const { answer, asking } = checks.get(id) ?? {};
-  if (asking || answer === undefined) td.textContent = t("archives.check.asking");
-  else if (answer instanceof Error) td.textContent = failedText(answer);
-  else drawReport(td, answer);
-  row.append(td);
-  return row;
-};
-
-/** 1 本の行（結論の欄と報告の行）だけを、覚えた答えで描き直す。 */
-const redrawCheck = (id) => {
-  const body = $("archives");
-  const row = [...body.querySelectorAll("tr[data-archive]:not(.detail)")].find(
-    (tr) => tr.dataset.archive === id,
-  );
-  if (row === undefined) return;
-  row.querySelector("td.verdict")?.replaceWith(verdictCellOf(id));
-  const next = row.nextElementSibling;
-  if (next?.classList.contains("detail")) next.remove();
-  if (checks.get(id)?.open) row.after(checkRow(id));
-};
-
-/**
- * 押されたら 1 本検証する。**押すまで走らせない** —— 一覧を開くだけで走らせない。
- * 開いている報告をもう 1 度押すと閉じる（結論は残る）。
- *
- * 結果は行にも残す。閉じたあとに「この 1 本はどうだったか」が消えると、
- * 何本か見たときに**もう一度押さないと思い出せない**。
- */
-const toggleCheck = async (id) => {
-  const entry = checks.get(id);
-  if (entry?.open) {
-    entry.open = false;
-    redrawCheck(id);
-    return;
-  }
-  // 結論は押し直す間も残す（新しい答えが来るまで古い答えを出す）
-  checks.set(id, { answer: entry?.answer, asking: true, open: true });
-  redrawCheck(id);
+/** 1 本検証する。答えは画面と一覧の欄の両方に残す。待っている間に別の所へ移っていたら、描き直すのは一覧だけ。 */
+const validateArchive = async (archiveId, profile) => {
+  const key = answerKey(archiveId, profile);
+  checkView.asking = key;
+  drawCheck();
   let answer;
   try {
-    answer = await post(`/wacz/${enc(id)}/validate?locale=${langOf()}`);
+    answer = await post(`/wacz/${enc(archiveId)}/validate?locale=${langOf()}&profile=${enc(profile)}`);
   } catch (err) {
     answer = asError(err);
   }
-  const now = checks.get(id);
-  if (now === undefined) return; // 待っている間に一覧から消えた
-  now.answer = answer;
-  now.asking = false;
-  redrawCheck(id);
+  checkView.answers.set(key, answer);
+  if (checkView.asking === key) checkView.asking = undefined;
+  if (archives.some((a) => a.id === archiveId)) checks.set(archiveId, { answer, profile });
+  drawArchives();
+  if (checkView.archiveId === archiveId && checkView.profile === profile) drawCheck();
+};
+
+/** 画面に入る。同じアーカイブと profile の答えを覚えていれば、検証し直さない。 */
+const openCheck = ({ archiveId, profile }) => {
+  const archive = archives.find((a) => a.id === archiveId);
+  if (archive === undefined) {
+    trouble(t("wacz.archiveNotVisible", { id: archiveId }));
+    location.hash = "archives";
+    return;
+  }
+  show("check");
+  $("tab-check").hidden = false;
+  checkView.archiveId = archiveId;
+  checkView.profile = profile;
+  checkView.hash = location.hash;
+  if (checkView.answers.has(answerKey(archiveId, profile))) drawCheck();
+  else void validateArchive(archiveId, profile);
+};
+
+/** 出典のリンク（新しいタブ）。 */
+const docLinks = (docs) => docs.map((d) => link(d.url, `${d.label} ↗`));
+
+/** 開いた rule の中身: 指摘ごとに、severity・文・場所（WACZ の画面へ）・仕様の節・詳しい物（JSON）。 */
+const ruleBody = (report, rule) => {
+  const body = tag("div", "", "check-body");
+  for (const issue of ruleIssuesOf(report, rule.rule)) {
+    const line = tag("div", "", "check-issue");
+    line.append(tag("span", issue.severity, `state ${severityKind(issue.severity)}`), tag("span", issue.message));
+    const place = issuePlaceOf(checkView.archiveId, issue);
+    if (place !== undefined) {
+      const a = tag("a", place.text, "mono");
+      a.href = place.href;
+      line.append(a);
+    }
+    if (issue.specUrl) line.append(link(issue.specUrl, t("check.issue.spec")));
+    body.append(line);
+    if (issue.details !== undefined) {
+      const more = document.createElement("details");
+      more.className = "check-details";
+      more.append(tag("summary", t("check.issue.details")), tag("pre", JSON.stringify(issue.details, null, 2), "mono"));
+      body.append(more);
+    }
+  }
+  const docs = tag("div", "", "check-docs");
+  docs.append(tag("span", t("check.rule.docs"), "muted"), ...docLinks(rule.docs));
+  body.append(docs);
+  return body;
+};
+
+/** rule 1 本の行。開くと指摘が見える（落ちた・警告の rule は最初から開く）。 */
+const ruleRow = (report, rule) => {
+  const row = document.createElement("details");
+  row.className = "check-rule";
+  row.open = opensFirst(rule);
+  const head = document.createElement("summary");
+  const mark = outcomeMark(rule.outcome);
+  head.append(
+    tag("span", mark.glyph, `check-mark state ${mark.kind}`),
+    tag("span", rule.rule, "mono check-name"),
+    tag("span", rule.conformance, "check-conf"),
+    tag("span", rule.description, "check-desc"),
+    tag("span", countsText(rule.counts), "mono muted check-counts"),
+  );
+  row.append(head, ruleBody(report, rule));
+  return row;
+};
+
+/** 走らせなかった rule の 1 行（理由と説明）。 */
+const notRunRow = (rule) => {
+  const row = tag("div", "", "check-notrun");
+  row.append(
+    tag("span", rule.rule, "mono check-name"),
+    tag("span", notRunText(rule, checkView.profile), "muted"),
+    tag("span", rule.description, "check-desc"),
+  );
+  return row;
+};
+
+/** 範囲ごとの束。 */
+const areaGroup = (group, draw) => {
+  const box = tag("section", "", "check-area");
+  box.append(tag("h3", `${group.area}/`, "mono"));
+  for (const rule of group.rules) box.append(draw(rule));
+  return box;
+};
+
+/** 中のファイル（畳む）。欠けた entry と指摘のある entry に印。木で見るのは WACZ の画面。 */
+const entriesBox = (report) => {
+  const box = document.createElement("details");
+  box.className = "check-entries";
+  box.append(
+    tag("summary", t("check.entries.title", { n: report.entries.length, flagged: flaggedEntries(report.entries) })),
+  );
+  for (const entry of report.entries) {
+    const mark = entryMarker(entry);
+    const line = tag("div", "", "check-entry");
+    line.append(
+      tag("span", mark.glyph, `mark ${mark.tone}`),
+      tag("span", entry.path, "mono"),
+      tag(
+        "span",
+        entry.present ? formatBytes(entry.uncompressedSize ?? 0) : t("check.entries.missing"),
+        entry.present ? "mono muted" : "state warn",
+      ),
+    );
+    box.append(line);
+  }
+  return box;
+};
+
+const drawCheck = () => {
+  const face = $("check-body");
+  face.replaceChildren();
+  const archive = archives.find((a) => a.id === checkView.archiveId);
+  if (archive === undefined) return;
+  const { archiveId, profile } = checkView;
+  const key = answerKey(archiveId, profile);
+
+  // 頭: 撮った URL と時・profile の切り替え・検証し直す・WACZ の画面へ
+  const head = tag("div", "", "vbar check-head");
+  head.append(tag("span", archive.sourceUrl, "mono"), tag("span", dateTime(new Date(archive.capturedAt)), "mono muted"));
+  const switcher = tag("span", "", "check-profiles");
+  switcher.setAttribute("role", "group");
+  switcher.setAttribute("aria-label", t("check.profile.label"));
+  for (const p of PROFILES) {
+    const b = button(p, () => {
+      location.hash = checkHash(archiveId, p);
+    });
+    b.disabled = p === profile;
+    if (p === profile) b.setAttribute("aria-current", "true");
+    switcher.append(b);
+  }
+  const again = button(t("check.again"), () => void validateArchive(archiveId, profile));
+  again.disabled = checkView.asking === key;
+  const toWacz = tag("a", t("check.openWacz"));
+  toWacz.href = waczHash(archiveId);
+  head.append(switcher, again, toWacz);
+  face.append(head);
+
+  if (checkView.asking === key) {
+    face.append(tag("p", t("check.asking"), "muted"));
+    return;
+  }
+  const answer = checkView.answers.get(key);
+  if (answer === undefined) return;
+  if (answer instanceof Error) {
+    face.append(tag("p", failedText(answer), "state bad"));
+    return;
+  }
+  const report = answer;
+  if (!hasRules(report)) {
+    // wacz-validator v0.52.0 より前の daemon。描き方を 2 つ持たず、建て直しを頼む
+    const stale = tag("div", "", "check-stale");
+    stale.append(
+      tag("p", t("check.stale.text", { version: report.validatorVersion }), "state bad"),
+      tag("p", t("check.stale.how")),
+      tag("pre", "pnpm run dev:up --from validator", "mono"),
+    );
+    face.append(stale);
+    return;
+  }
+
+  const v = verdict(report);
+  const band = tag("div", "", "check-band");
+  band.append(tag("span", v.text, `big state ${v.kind}`));
+  for (const part of checkBandOf(report.rules)) band.append(tag("span", part.text, `state ${part.kind}`));
+  face.append(band);
+  face.append(
+    tag(
+      "p",
+      [...judgedUnder(report), `${String(report.summary.durationMs)} ms`, ...statsOf(report)].join(t("common.sep.slash")),
+      "mono muted check-under",
+    ),
+  );
+
+  const groups = ruleGroupsOf(report.rules);
+  for (const group of groups.ran) face.append(areaGroup(group, (rule) => ruleRow(report, rule)));
+
+  const notRun = groups.notRun.reduce((n, g) => n + g.rules.length, 0);
+  if (notRun > 0) {
+    const box = document.createElement("details");
+    box.className = "check-notrun-box";
+    box.append(tag("summary", t("check.notRun.title", { n: notRun, profile })));
+    for (const group of groups.notRun) box.append(areaGroup(group, notRunRow));
+    face.append(box);
+  }
+  face.append(entriesBox(report));
 };
 
 // ── アーカイブ ─────────────────────────────────────────────────────
@@ -2108,10 +2232,9 @@ const drawArchives = () => {
             : t("archives.row.incomplete"),
       ),
     );
-    const check = document.createElement("td");
-    check.append(button(t("archives.row.validate"), () => void toggleCheck(archive.id)));
     row.append(verdictCellOf(archive.id));
-    row.append(check);
+    // 検証は画面で（CAPTURE-457）。押すと検証の画面へ移り、そこで 1 度検証する
+    row.append(hashCell(checkHash(archive.id), t("archives.row.validate")));
     row.append(hashCell(waczHash(archive.id), t("archives.row.open")));
     const replays = document.createElement("td");
     replays.className = "replays";
@@ -2120,7 +2243,6 @@ const drawArchives = () => {
     }
     row.append(replays);
     body.append(row);
-    if (checks.get(archive.id)?.open) body.append(checkRow(archive.id));
   }
 };
 
@@ -2870,14 +2992,16 @@ const drawWaczBar = (status) => {
     bar.append(tag("span", status, "muted"));
     return;
   }
-  const s = wacz.report.summary;
-  const v = verdict(s);
+  // 結論は検証の画面と同じ言い方（rule で数える）。中身はリンクの先の検証の画面で読む（CAPTURE-457）
+  const v = verdict(wacz.report);
+  const toCheck = tag("a", t("wacz.bar.openCheck"));
+  toCheck.href = checkHash(archive.id);
   bar.append(
-    tag("span", t("archives.report.passed", { n: s.passed }), "mono state ok"),
     tag("span", v.text, `mono state ${v.kind}`),
+    toCheck,
     tag(
       "span",
-      `${judgedUnder(wacz.report).join(" · ")} · ${String(s.durationMs)} ms`,
+      `${judgedUnder(wacz.report).join(" · ")} · ${String(wacz.report.summary.durationMs)} ms`,
       "mono muted",
     ),
   );
@@ -5055,7 +5179,7 @@ const openTrace = (crawlId, pageId) => {
 };
 
 // ── 画面の切り替え ───────────────────────────────────────────────────
-const FACES = ["crawls", "start", "schedules", "changes", "archives", "search", "scripts", "wacz"];
+const FACES = ["crawls", "start", "schedules", "changes", "archives", "search", "scripts", "check", "wacz"];
 
 const show = (face) => {
   for (const b of document.querySelectorAll("#tabs button")) {
@@ -5066,7 +5190,7 @@ const show = (face) => {
 };
 
 /**
- * URL が画面を決める。`#wacz/…` は WACZ の画面、`#scripts` と `#scripts/…` はスクリプト集の画面（読む所）、
+ * URL が画面を決める。`#check/…` は検証の画面、`#wacz/…` は WACZ の画面、`#scripts` と `#scripts/…` はスクリプト集の画面（読む所）、
  * `#search` と `#search/<語>` は検索の画面、`#links/…` と `#trace/…` はクロールの画面の中（リンクの構成・経緯）、
  * `#changes/…` は変化の画面、それ以外はほかの画面のどれか。
  */
@@ -5075,6 +5199,11 @@ const route = () => {
   // もう片方へ移ったときに、閉じる側が一覧を出し直さないように（開く側は下の枝で、閉じた後に一覧を隠す）
   if (parseLinksHash(location.hash) === undefined) closeLinks();
   if (parseTraceHash(location.hash) === undefined) closeTrace();
+  const checking = parseCheckHash(location.hash);
+  if (checking !== undefined) {
+    openCheck(checking);
+    return;
+  }
   const target = parseWaczHash(location.hash);
   if (target !== undefined) {
     void openWacz(target);
@@ -5112,15 +5241,17 @@ const route = () => {
     return;
   }
   const face = location.hash.slice(1);
-  show(FACES.includes(face) && face !== "wacz" && face !== "scripts" && face !== "search" ? face : "crawls");
+  show(FACES.includes(face) && !["check", "wacz", "scripts", "search"].includes(face) ? face : "crawls");
 };
 
-// WACZ の画面・スクリプト集の画面・検索の画面は、最後に読んだ所へ戻る
+// 検証の画面・WACZ の画面・スクリプト集の画面・検索の画面は、最後に読んだ所へ戻る
 for (const b of document.querySelectorAll("#tabs button")) {
   b.onclick = () => {
     const face = b.dataset.face;
     location.hash =
-      face === "wacz"
+      face === "check"
+        ? (checkView.hash ?? "archives")
+        : face === "wacz"
         ? (wacz.hash ?? "archives")
         : face === "scripts"
           ? (reading.hash ?? "scripts")

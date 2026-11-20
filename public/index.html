@@ -17,6 +17,7 @@
         <button type="button" id="tab-archives" data-face="archives" data-i18n="common.tab.archives"></button>
         <button type="button" id="tab-search" data-face="search" data-i18n="common.tab.search"></button>
         <button type="button" id="tab-scripts" data-face="scripts" data-i18n="common.tab.scripts"></button>
+        <button type="button" id="tab-check" data-face="check" hidden data-i18n="common.tab.check"></button>
         <button type="button" id="tab-wacz" data-face="wacz" hidden>WACZ</button>
       </nav>
       <p class="who"><span id="who" data-i18n="common.who.checking"></span> <a href="/logout" data-i18n="common.who.signOut"></a>
@@ -396,6 +397,14 @@
             <ol id="reading-lines" class="vlines rlines"></ol>
           </div>
         </div>
+      </section>
+
+      <!--
+        検証の画面（#check/<archiveId>[/<profile>]・CAPTURE-457）。wacz-validator の報告の rules（rule 1 本の結果）を、範囲ごとに
+        束ねたチェックリストに描く（app.js の drawCheck・public/check.js）。文は daemon が解いて返した物をそのまま —— textContent で。
+      -->
+      <section id="face-check" hidden>
+        <div id="check-body"></div>
       </section>
 
       <!--

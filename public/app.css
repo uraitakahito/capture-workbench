@@ -1399,29 +1399,185 @@ footer {
   font-size: 12px;
 }
 
-/* 検証の報告。行を開いたときだけ出る。 */
-tr.detail .bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: baseline;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 8px;
+/* ── 検証の画面（CAPTURE-457）────────────────────────────────────── */
+#check-body .muted {
+  color: var(--muted);
 }
 
-tr.detail .big {
+#check-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 24px;
+}
+
+.check-head .check-profiles {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.check-head .check-profiles button[aria-current] {
+  border-color: var(--accent);
+  color: var(--accent);
+  cursor: default;
+}
+
+.check-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: baseline;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.check-band .big {
   font-size: 15px;
   font-weight: 600;
 }
 
-tr.detail .line {
+.check-under {
+  margin: 0;
+  font-size: 12px;
+}
+
+.check-area h3 {
+  margin: 14px 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/*
+ * rule 1 本。印・名前・MUST か・説明・数。列の幅は決め打ち（行ごとに summary が別の grid なので、max-content だと列が揃わない）。
+ * 狭い窓では説明を次の行へ。`>` で子の summary だけに当てる（開いた中の「詳しい物」の summary は普通の行）
+ */
+.check-rule > summary,
+.check-notrun {
   display: grid;
-  grid-template-columns: 74px 190px 1fr 64px;
-  gap: 12px;
-  padding: 3px 0;
+  grid-template-columns: 18px 20em 6.5em minmax(0, 1fr) max-content;
+  gap: 4px 12px;
   align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.check-rule > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.check-rule > summary::-webkit-details-marker {
+  display: none;
+}
+
+.check-rule > summary:hover .check-name {
+  color: var(--accent);
+}
+
+.check-notrun {
+  grid-template-columns: 20em 16em minmax(0, 1fr);
+}
+
+.check-name {
+  overflow-wrap: anywhere;
+}
+
+.check-details > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.check-mark {
+  font-weight: 700;
+  text-align: center;
+}
+
+.check-conf {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.check-desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.check-body {
+  padding: 6px 0 10px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.check-issue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.check-issue > span:nth-child(2) {
+  flex: 1 1 24em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.check-details pre {
+  margin: 4px 0;
+  max-height: 20em;
+  overflow: auto;
+  font-size: 12px;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+}
+
+.check-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+
+.check-notrun-box > summary,
+.check-entries > summary {
+  cursor: pointer;
+  padding: 8px 0;
+  color: var(--muted);
+}
+
+.check-entry {
+  display: grid;
+  grid-template-columns: 18px minmax(0, max-content) max-content;
+  gap: 4px 12px;
+  padding: 2px 0;
+}
+
+.check-entry .mark.error {
+  color: var(--bad);
+}
+
+.check-entry .mark.warning {
+  color: var(--run);
+}
+
+.check-stale pre {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .check-rule > summary {
+    grid-template-columns: 18px minmax(0, 1fr) max-content;
+  }
+  .check-rule > summary .check-desc {
+    grid-column: 2 / -1;
+  }
+  .check-rule > summary .check-counts {
+    grid-column: 2 / -1;
+  }
+  .check-notrun {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 tr.detail .muted {

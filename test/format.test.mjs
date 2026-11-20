@@ -8,7 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  resendOf, checkVerdict, forgetMissing, linksNoteOf, linksOf, secretArchiveOf, stateOf, took } from "../public/format.js";
+  resendOf, forgetMissing, linksNoteOf, linksOf, secretArchiveOf, stateOf, took } from "../public/format.js";
 
 const crawl = (state, stopReason, pagesFailed = 0) => ({ state, stopReason, pagesFailed });
 
@@ -93,19 +93,6 @@ test("90 秒を超えたら分で言う", () => {
   );
 });
 
-/**
- * 検証の結果の描き方。
- *
- * **失敗 0 を「問題なし」と言い切らない。** 実機の WACZ は 21 passed / 1 warning で、
- * 失敗は 0 —— そこを緑 1 色にすると、警告が画面から消える。
- */
-test("失敗が無くても、警告があれば緑にしない", async () => {
-  const { verdict } = await import("../public/format.js");
-  assert.deepEqual(verdict({ failed: 0, warnings: 1 }), { text: "警告 1", kind: "warn" });
-  assert.deepEqual(verdict({ failed: 0, warnings: 0 }), { text: "問題なし", kind: "ok" });
-  assert.equal(verdict({ failed: 2, warnings: 9 }).kind, "bad");
-});
-
 test("知らない severity を「問題なし」に倒さない", async () => {
   const { severityKind } = await import("../public/format.js");
   assert.equal(severityKind("error"), "bad");
@@ -141,13 +128,6 @@ test("stats の無い報告でも、行を落とさない", async () => {
     ["WARC 3 レコード", "a.test, b.test"],
   );
   assert.deepEqual(statsOf({ stats: { warcRecordCount: 0 } }), ["WARC 0 レコード"]);
-});
-
-test("検証の結論は、未検証は空・失敗は「検証できず」・報告は合格と区別して言う", () => {
-  assert.equal(checkVerdict(undefined), undefined);
-  assert.deepEqual(checkVerdict(new Error("x")), { text: "検証できず", kind: "bad" });
-  assert.deepEqual(checkVerdict({ summary: { failed: 1, warnings: 0 } }), { text: "失敗 1", kind: "bad" });
-  assert.deepEqual(checkVerdict({ summary: { failed: 0, warnings: 0 } }), { text: "問題なし", kind: "ok" });
 });
 
 test("一覧から消えた id だけを、覚えた答えから忘れる", () => {

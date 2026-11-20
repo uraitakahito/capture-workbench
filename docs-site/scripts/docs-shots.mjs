@@ -91,14 +91,23 @@ const press = (page, scope, text) =>
     text,
   );
 
-/** アーカイブの 1 行（「撮れたもの」の欄の title ＝ sourceUrl の終わりで選ぶ）の「検証」を押す。 */
-const pressValidate = (page, file) =>
-  page.evaluate((f) => {
+/**
+ * アーカイブの 1 行（「撮れたもの」の欄の title ＝ sourceUrl の終わりで選ぶ）の「検証」を押して検証の画面に入り（CAPTURE-457）、
+ * 結論が出たら一覧へ戻る。結論は行の「仕様どおりか」に残る。
+ */
+const validateVia = async (page, file) => {
+  await page.evaluate((f) => {
     const row = [...document.querySelectorAll("#archives tr")].find((tr) =>
       tr.querySelector("td.url")?.title.endsWith(`/${f}`),
     );
-    [...row.querySelectorAll("button")].find((b) => b.textContent === "検証").click();
+    [...row.querySelectorAll("a")].find((a) => a.textContent === "検証").click();
   }, file);
+  await page.waitForFunction(() => document.querySelector("#check-body .check-band") !== null);
+  await page.evaluate(() => {
+    location.hash = "archives";
+  });
+  await page.waitForFunction(() => !document.getElementById("face-archives").hidden);
+};
 
 /**
  * 撮った時の絵（「見た目」。CAPTURE-432）を、窓の中へ送ってから描き終えるまで待つ。絵は `loading=lazy` なので、窓の外に
@@ -407,19 +416,14 @@ const SHOTS = [
     snap: "#archives > tr",
     maxHeight: 390,
     wide: true,
-    // 検証の答えは行に残る。報告の行（かかった ms が出る）は、もう 1 度押して閉じる。検証するのは、写る 5 行の中の 2 本
-    // （with-screenshots は問題なし、cdxj-length-mismatch は失敗 1）。
+    // 検証の答えは行に残る（検証は画面で。CAPTURE-457）。検証するのは、写る 5 行の中の 2 本
+    // （with-screenshots は問題なし、cdxj-length-mismatch は落ちた rule 1）。
     // 行き先の欄に再生の link が 2 つ並ぶと（CAPTURE-102）、表が main の中で横に流れて右端が切れる。crawls と同じく止めて撮る
     prepare: async (page) => {
       await page.evaluate(() => {
         document.querySelector("main").style.overflowX = "visible";
       });
-      const files = ["with-screenshots.wacz", "cdxj-length-mismatch.wacz"];
-      for (const file of files) await pressValidate(page, file);
-      await page.waitForFunction(
-        () => [...document.querySelectorAll("#archives td.verdict span.state")].filter((s) => !/中|…/.test(s.textContent)).length >= 2,
-      );
-      for (const file of files) await pressValidate(page, file);
+      for (const file of ["with-screenshots.wacz", "cdxj-length-mismatch.wacz"]) await validateVia(page, file);
       await decodeLooks(page, "#archives");
       // 絵の所まで送った窓を頭へ戻す（切り口は、ページの座標で組む）
       await page.evaluate(() => window.scrollTo(0, 0));
@@ -428,10 +432,9 @@ const SHOTS = [
       const head = [...document.querySelectorAll("#archives > tr")].slice(0, 5);
       const verdicts = head.map((tr) => tr.querySelector("td.verdict")?.textContent ?? "");
       return (
-        document.querySelectorAll("#archives tr.detail").length === 0 &&
-        // 結論は「仕様どおりか」の欄に在る
+        // 結論は「仕様どおりか」の欄に在る（rule で数える）
         verdicts.includes("問題なし") &&
-        verdicts.includes("失敗 1") &&
+        verdicts.includes("落ちた rule 1") &&
         // 撮った時の絵が読めている（撮った viewport は 1280×800）。ほかの 4 行は点線の箱
         head.filter((tr) => {
           const img = tr.querySelector(".look img");

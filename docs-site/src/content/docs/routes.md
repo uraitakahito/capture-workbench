@@ -212,7 +212,7 @@ and its indexes are read one window at a time.
 
 | The workbench calls | Sent to the daemon | Returns |
 | --- | --- | --- |
-| `POST /wacz/:id/validate?locale=` | `POST /validate` | the validation report, in the page's language |
+| `POST /wacz/:id/validate?locale=&profile=` | `POST /validate` | the validation report, in the page's language, under the profile (`spec` or `browserhive`; the daemon's default `spec` when not sent) |
 | `GET /wacz/:id/lines?path=&from=&count=` | `POST /lines` | a window of lines |
 | `GET /wacz/:id/line?path=&n=` | `POST /line` | one whole line, and its fields |
 | `GET /wacz/:id/records?path=&from=&count=` | `POST /records` | the records, walking the WARC from the start |
@@ -260,7 +260,7 @@ written in English and Japanese side by side, separated by ` / ` or on two lines
 
 | Status | When | Body |
 | --- | --- | --- |
-| 400 | an argument of a `/wacz/` route is missing or not a number, or the `locale` of a validation is not one the page has; the ledger is not asked | `{"error":"parameter required","params":{"name":"from"}}`, `{"error":"unknown locale","params":{"locale":"fr"}}` |
+| 400 | an argument of a `/wacz/` route is missing or not a number, or the `locale` or `profile` of a validation is not one the page has; the ledger is not asked | `{"error":"parameter required","params":{"name":"from"}}`, `{"error":"unknown locale","params":{"locale":"fr"}}`, `{"error":"unknown profile","params":{"profile":"lenient"}}` |
 | 400 | `/callback` with an unknown or used `state`, or a code the IdP would not turn into tokens | `Could not sign in / サインインできませんでした: …` (text) |
 | 401 | `/api/*` or a `/wacz/` route without a session, or the ledger refused the token and the refresh token got nothing | `{"error":"not signed in","params":{},"login":"/login"}` or `sign-in expired`; the page goes to `/login` |
 | 403 | the `Host` is not the workbench's (any route); on the route that writes, also when the `Origin` is not the workbench | `{"error":"not the workbench host"}`, `{"error":"not from a workbench page"}` |

@@ -6,7 +6,7 @@
  * POST に組み替える。`/api/` は capture-ledger の素通しだけに戻した（server.mjs 自身が
  * 「こちらの答えを混ぜない」と書いているので、daemon 行きのエンドポイントはここに集める）。
  *
- *   POST /wacz/<id>/validate                              → POST /validate
+ *   POST /wacz/<id>/validate?locale=&profile=             → POST /validate
  *   GET  /wacz/<id>/lines?path=&from=&count=              → POST /lines
  *   GET  /wacz/<id>/line?path=&n=                         → POST /line
  *   GET  /wacz/<id>/records?path=&from=&count=            → POST /records
@@ -29,6 +29,12 @@ export class BadRequest extends Told {
 export const LOCALES = Object.freeze(["ja", "en"]);
 
 /**
+ * 検証の profile。daemon（wacz-validator）の profile のうち、検証の画面が選ばせる物（CAPTURE-457）。`spec` は仕様が求める
+ * こと、`browserhive` はその上に BrowserHive の WACZ Profile が求めること。送らなければ daemon の既定（`spec`）。
+ */
+export const PROFILES = Object.freeze(["spec", "browserhive"]);
+
+/**
  * daemon へ行くエンドポイントの名前。**docs の「エンドポイント」の表は、これと突き合わされる**
  * (scripts/check-doc-refs.mjs)。エンドポイントを足すときは、ここと paramsFor と docs の表の 3 か所。
  */
@@ -39,7 +45,7 @@ const ROUTE = new RegExp(`^/wacz/([^/?]+)/(${OPS.join("|")})(?:\\?(.*))?$`);
 /**
  * `/wacz/<archiveId>/<op>?…` を読む。合わなければ undefined。
  * 数は数に（無ければ undefined、数でなければ NaN —— paramsFor が断る）、path は decode して返す。
- * `locale` は検証（validate）だけが使う、報告の言語。
+ * `locale` と `profile` は検証（validate）だけが使う、報告の言語と profile。
  */
 export const parseWaczRoute = (url) => {
   const m = ROUTE.exec(url);
@@ -54,6 +60,7 @@ export const parseWaczRoute = (url) => {
   const num = (name) => (q.has(name) ? Number(q.get(name)) : undefined);
   const path = q.get("path");
   const locale = q.get("locale");
+  const profile = q.get("profile");
   return {
     archiveId,
     op: m[2],
@@ -65,6 +72,7 @@ export const parseWaczRoute = (url) => {
       offset: num("offset"),
       length: num("length"),
       locale: locale === null || locale === "" ? undefined : locale,
+      profile: profile === null || profile === "" ? undefined : profile,
     },
   };
 };
@@ -85,7 +93,11 @@ export const paramsFor = (op, params) => {
       // 知らない言語は、黙って別の言語に倒さずに断る
       const locale = params.locale ?? "ja";
       if (!LOCALES.includes(locale)) throw new BadRequest("unknown locale", { locale });
-      return { locale };
+      // profile は送られたときだけ渡す（送らなければ daemon の既定）。知らない profile は、daemon まで行かずに断る
+      const profile = params.profile;
+      if (profile === undefined) return { locale };
+      if (!PROFILES.includes(profile)) throw new BadRequest("unknown profile", { profile });
+      return { locale, profile };
     }
     case "lines":
     case "records":

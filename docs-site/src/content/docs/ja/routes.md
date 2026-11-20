@@ -184,7 +184,7 @@ WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）を�
 
 | workbench が呼ぶ | daemon へ | 返すもの |
 | --- | --- | --- |
-| `POST /wacz/:id/validate?locale=` | `POST /validate` | 検証の報告（画面の言語で） |
+| `POST /wacz/:id/validate?locale=&profile=` | `POST /validate` | 検証の報告（画面の言語で。profile は `spec` か `browserhive`。送らなければ daemon の既定の `spec`） |
 | `GET /wacz/:id/lines?path=&from=&count=` | `POST /lines` | 行の窓 |
 | `GET /wacz/:id/line?path=&n=` | `POST /line` | 1 行を丸ごとと、割った fields |
 | `GET /wacz/:id/records?path=&from=&count=` | `POST /records` | WARC を頭から歩いたレコードの一覧 |
@@ -224,7 +224,7 @@ capture-ledger が自分で書いた断りは、capture-ledger の本文のま�
 
 | 状態 | いつ | 本文 |
 | --- | --- | --- |
-| 400 | `/wacz/` のエンドポイントの引数が足りない、または数でない。検証の `locale` が、画面の持たない言語。capture-ledger へは行かない | `{"error":"parameter required","params":{"name":"from"}}`・`{"error":"unknown locale","params":{"locale":"fr"}}` |
+| 400 | `/wacz/` のエンドポイントの引数が足りない、または数でない。検証の `locale` か `profile` が、画面の持たない物。capture-ledger へは行かない | `{"error":"parameter required","params":{"name":"from"}}`・`{"error":"unknown locale","params":{"locale":"fr"}}`・`{"error":"unknown profile","params":{"profile":"lenient"}}` |
 | 400 | `/callback` の `state` を知らない・もう使った、または IdP が code をトークンに替えない | `Could not sign in / サインインできませんでした: …`（text） |
 | 401 | セッションの無い `/api/*` と `/wacz/` のエンドポイント、または capture-ledger がトークンを断り、refresh token でも取れなかった | `{"error":"not signed in","params":{},"login":"/login"}` か `sign-in expired`。ページは `/login` へ移る |
 | 403 | `Host` が workbench の host:port でない（どのエンドポイントも）。書き込みのエンドポイントでは、`Origin` が workbench でないときも | `{"error":"not the workbench host"}`・`{"error":"not from a workbench page"}` |
