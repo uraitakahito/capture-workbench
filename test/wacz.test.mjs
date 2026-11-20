@@ -32,6 +32,7 @@ test("path は decode し、数は数に、無いものは undefined", () => {
     offset: undefined,
     length: undefined,
     locale: undefined,
+    profile: undefined,
   });
   // 検証の報告の言語。空は無いのと同じ
   assert.equal(parseWaczRoute("/wacz/x/validate?locale=en")?.params.locale, "en");
@@ -67,6 +68,24 @@ test("paramsFor: 検証の報告の言語は画面が送った物。送らなけ
     assert.deepEqual(err.params, { locale: "fr" });
     return true;
   });
+});
+
+test("paramsFor: 検証の profile は送られたときだけ渡し、知らない profile は断る", () => {
+  assert.equal(parseWaczRoute("/wacz/x/validate?locale=en&profile=browserhive")?.params.profile, "browserhive");
+  assert.equal(parseWaczRoute("/wacz/x/validate?profile=")?.params.profile, undefined);
+  // 送らなければ key ごと渡さない（daemon の既定 spec）
+  assert.deepEqual(paramsFor("validate", { locale: "en" }), { locale: "en" });
+  assert.deepEqual(paramsFor("validate", { locale: "en", profile: "spec" }), { locale: "en", profile: "spec" });
+  assert.deepEqual(paramsFor("validate", { locale: "ja", profile: "browserhive" }), { locale: "ja", profile: "browserhive" });
+  // lenient と版つき（browserhive@1.0.0）は、画面が選ばせないので断る
+  for (const profile of ["lenient", "browserhive@1.0.0", "nope"]) {
+    assert.throws(() => paramsFor("validate", { locale: "ja", profile }), (err) => {
+      assert.ok(err instanceof BadRequest);
+      assert.equal(err.message, "unknown profile");
+      assert.deepEqual(err.params, { profile });
+      return true;
+    }, profile);
+  }
 });
 
 test("paramsFor: 断りは句と値で言う（文は画面の辞書が持つ）", () => {

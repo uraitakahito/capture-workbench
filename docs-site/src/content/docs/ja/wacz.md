@@ -4,7 +4,7 @@ description: アーカイブの行から、撮れたものが WACZ 1.1.1 どお�
 ---
 
 アーカイブの行からは、2 つのことができます。
-「検証」で撮れたものが WACZ（Web Archive Collection Zipped）1.1.1 どおりかを確かめ、「開く」で WACZ の中身に入ります。
+「検証」で撮れたものが WACZ（Web Archive Collection Zipped）1.1.1 どおりかを rule ごとに確かめる画面に入り、「開く」で WACZ の中身に入ります。
 どちらも [wacz-validator](https://github.com/uraitakahito/wacz-validator)（WACZ を規則ごとに検証する検証器）の daemon が答えます。
 capture-workbench は、capture-ledger に署名してもらった URL を daemon に渡すだけです。
 
@@ -45,32 +45,49 @@ capture-ledger に署名をもらい、その URL を daemon に渡します（�
 - **署名は、エンドポイントを呼ぶたびに取り直す。**
   取っておくと、workbench が有効な鍵を持ち続けることになります。
 
-## 検証の報告
+## 検証の画面
 
-アーカイブの行の「検証」を押すと、その 1 本の報告が行の下に開きます。
+アーカイブの行の「検証」を押すと、その 1 本の検証の画面に入ります。
+URL は `#check/<archiveId>`（もう 1 つの profile では `#check/<archiveId>/browserhive`）なので、結果をリンクで人に渡せます。
+画面に入ると 1 度検証します。同じアーカイブと profile に戻ったときは、取った答えをそのまま出し、「検証し直す」で取り直します。
 
-- 合格の数と、結論（失敗 N ／ 警告 N ／ 問題なし）。
-  合格だけを見せないのは、警告 0 と警告 3 は別の状態で、どちらも「失敗 0」だからです。
+- **結論は rule で数えます。**
+  落ちた rule N ／ 警告の rule N ／ 問題なし。
+  info だけを出した rule と、走らせなかった rule は、結論を赤や黄にしません。
+  隣の帯は、全部の rule を結果ごとに数えます（落ちた・警告・info だけ・通った・見なかった・本数）。
+  報告の `summary` は読みません。`passed` は rule の数、`failed` は指摘の数で、足しても合わないからです。
 - どの build の検証器が、どの profile で見たか（`wacz-validator <版>` ／ `profile <名前>`）と、かかった時間。
   WARC（撮った要求と応答を順に記録するファイル）のレコード数と host は、報告に統計が在るときだけ出ます（統計は best-effort で、壊れた WACZ では無いことがあります）。
-- rule ごとの指摘。
-  severity・rule の名前・message と、仕様へのリンク（「仕様 ↗」）。
-- ZIP の entry の一覧。
-  在るべきなのに無い entry は「無い」と出ます。
+- **rule ごとに 1 行で、範囲ごとに束ねます**（`wacz/`・`datapackage/`・`cdxj/`・`pages/`・`warc/`・`browserhive/`。検証器が登録した順）。
+  束の中は、落ちた・警告・info だけ・通ったの順です。
+  1 行には、印（✕ ! i ✓）・rule の名前・仕様が MUST か SHOULD か・rule が何を見るか・指摘の数が並びます。
+  落ちた rule と警告の rule は最初から開いています。どの行も押すと開きます。
+- **開いた行には指摘が出ます。**
+  severity・message・場所・仕様の節へのリンク（「仕様 ↗」）・rule が付けた詳しい物（JSON）と、rule の出典です。
+  entry と行の分かる場所は、[WACZ の画面](#wacz-の画面)のその行へのリンクです。WARC の中の byte の位置は、字で書くだけです（WACZ の画面に、位置で開く URL が無いため）。
+- **走らせなかった rule は、下に畳んであります**（見なかった rule）。profile が外す rule と、producer の版の条件で見なかった rule です。
+- **中のファイルは、その下に畳んであります。**
+  欠けたファイルと指摘のあるファイルに印が付きます。木で見るなら「WACZ の画面で開く」。
 
-結果は、行の「仕様どおりか」にも残ります（ページを読み直すと消えます）。
+結論は、アーカイブの行の「仕様どおりか」にも、画面へ戻るリンクとして残ります（ページを読み直すと消えます）。`browserhive` の結論には profile の名前が付きます。
 
 **報告の文は 1 つも持たない。**
-message も、仕様へのリンクも、daemon が解決して返したものをそのまま出します。
+rule が何を見るかも、message も、仕様へのリンクも、daemon が解決して返したもの（報告の `rules` と `issues`）をそのまま出します。
 workbench が rule を言い換えると、検証器が言い始めたことと静かにずれていくからです。
-workbench が渡すのは `locale`（画面の言語。`ja` か `en`）だけで、daemon はその言語の文で答えます（英語の画面では、報告は英語です）。
+workbench が渡すのは `locale`（画面の言語。`ja` か `en`）と `profile` だけで、daemon はその言語の文で答えます。
 
-### spec profile で見ている
+### profile を選ぶ
 
-workbench は profile を渡さないので、daemon は既定の `spec` で検証します。
-撮影のサーバ（BrowserHive）に限った rule は、workbench には出ません。
-報告の行に `profile spec` と出るので、どの profile で見たかは画面で分かります。
-[BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/) で見たいなら（daemon の `browserhive` profile）、workbench から profile を渡す手段が要ります（いまは無い）。
+画面には `spec` と `browserhive` の 2 つの button があります。
+`spec`（既定。daemon の既定と同じ）は、仕様が求めることを見ます。
+`browserhive` は、その上に [BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/) が求めることを見ます。
+`spec` では、BrowserHive の rule は「見なかった rule」に並びます。
+workbench は WACZ を作った BrowserHive の版を渡さないので、`browserhive` では、古い BrowserHive が作った WACZ が、後から足した rule で落ちることがあります。
+
+### rule ごとの結果の無い報告
+
+rule ごとの結果（`rules`）は、wacz-validator v0.52.0 からの報告に載ります。
+それより古い daemon は載せずに答えるので、画面は報告を別の形で描かずに「daemon が古い」と言い、建て直しの命令（下）を出します。
 
 ### daemon は自分では建て直らない
 
@@ -84,7 +101,8 @@ wacz-validator を出しても、動いている daemon は起こしたときの
 アーカイブの行の「開く」で、その 1 本の画面に入ります。
 URL は `#wacz/<archiveId>` で、選んだ entry と行まで載ります（`#wacz/<archiveId>/indexes%2Findex.cdxj:66` のように指せます）。
 
-開くと検証が走り、左の木は報告の entry の一覧から組みます。
+開くと検証（`spec` の profile）が走り、左の木は報告の entry の一覧から組みます。
+上の帯には、検証の画面と同じく rule で数えた結論と、検証の画面へのリンク（「検証の画面で見る」）が出ます。
 wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力・同じ罫線です。
 右には、選んだ entry の詳細（大きさ・STORE か DEFLATE か・仕様のどこが求めるか・その entry への指摘）と中身が出ます。
 

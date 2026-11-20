@@ -102,7 +102,7 @@ test("辞書の文は、2 つの言語とも全部 compile できる", () => {
 
 test("t: 鍵をいまの言語の文にし、値を埋める。辞書に無い鍵は鍵のまま返す", () => {
   assert.equal(t("crawls.state.running"), "走行中");
-  assert.equal(t("archives.check.failed", { n: 3 }), "失敗 3");
+  assert.equal(t("check.verdict.failed", { n: 3 }), "落ちた rule 3");
   assert.equal(inEnglish(() => t("crawls.state.running")), "Running");
   assert.equal(t("no.such.key"), "no.such.key");
   assert.equal(has("crawls.state.running"), true);
@@ -111,14 +111,14 @@ test("t: 鍵をいまの言語の文にし、値を埋める。辞書に無い�
 });
 
 test("t: 値を渡し忘れると投げる（黙って空の字にしない）", () => {
-  assert.throws(() => t("archives.check.failed"), /n/);
+  assert.throws(() => t("check.verdict.failed"), /n/);
   assert.throws(() => inEnglish(() => t("crawls.state.withFailed", { state: "Completed" })), /n/);
 });
 
 test("数は桁を区切らずに埋める（区切るのは count() だけ）", () => {
-  assert.equal(t("archives.check.warnings", { n: 12345 }), "警告 12345");
-  assert.equal(inEnglish(() => t("archives.check.warnings", { n: 12345 })), "12345 warnings");
-  assert.equal(inEnglish(() => t("archives.check.failed", { n: 1 })), "1 failure");
+  assert.equal(t("check.verdict.warned", { n: 12345 }), "警告の rule 12345");
+  assert.equal(inEnglish(() => t("check.verdict.warned", { n: 12345 })), "12345 rules warned");
+  assert.equal(inEnglish(() => t("check.verdict.failed", { n: 1 })), "1 rule failed");
   assert.equal(inEnglish(() => t("archives.stats.records", { n: 12345 })), "WARC 12345 records");
 });
 

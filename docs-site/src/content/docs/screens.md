@@ -1,6 +1,6 @@
 ---
 title: Screens
-description: What each view shows — crawls, start, schedules, changes, archives, search, script collection and WACZ — how a crawl's state is worded, and how often capture-workbench polls
+description: What each view shows — crawls, start, schedules, changes, archives, search, script collection, validation and WACZ — how a crawl's state is worded, and how often capture-workbench polls
 ---
 
 capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
@@ -17,6 +17,7 @@ which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`,
 | Archives | the WACZ files you can see, with a picture of each as captured; from a row, validate, open it in the WACZ view, or open in [replayweb-player](https://github.com/uraitakahito/replayweb-player) (which plays a WACZ back in the browser) |
 | Search | the full-text search. |
 | Script collection | the scripts that run inside the captured page and the types they are written against. |
+| Validation | one archive's validation, rule by rule; see [Inspecting a WACZ](/wacz/#the-validation-view) |
 | WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
 
 ## The lists are one page of the ledger
@@ -738,7 +739,7 @@ opens the run; **← Change list** (← 変化の一覧) goes back.
 
 The WACZ files you can see, newest capture first.
 
-![The archives view: WACZ files, with the picture as captured or a "no picture" box (伏せた応答, シークレット, 記録なし) in the first column, Look (見た目), and two of them validated (問題なし and 失敗 1)](../../assets/screens/archives.webp)
+![The archives view: WACZ files, with the picture as captured or a "no picture" box (伏せた応答, シークレット, 記録なし) in the first column, Look (見た目), and two of them validated (問題なし and 落ちた rule 1)](../../assets/screens/archives.webp)
 
 - **Look (見た目) is the picture as captured.** It is the stage screenshot after load inside the
   BrowserHive WACZ (from BrowserHive v30.2.0), shrunk to 96×60. It comes from the ledger: from where
@@ -766,11 +767,12 @@ The WACZ files you can see, newest capture first.
   the path and query, the bottom line the origin. Hover over the cell to read the whole URL.
 - **A `—` under Complete? (完全か) means "unknown".** The ledger's `waczComplete` is null for
   that row, which is not the same as **Incomplete** (欠けあり).
-- **Validate (検証) only runs when you press it.** Opening the list does not run it. The result
-  also stays in the row's **Conforms?** (仕様どおりか) cell, so after looking at several archives you
-  can tell how each one did without pressing again. Reloading the page clears them. The report comes
-  back in the language of the screen. What it shows is in
-  [Inspecting a WACZ](/wacz/).
+- **Validate (検証) enters the validation view** (`#check/<archiveId>`), which validates once.
+  Opening the list does not run it. The verdict, counted in rules, also stays in the row's
+  **Conforms?** (仕様どおりか) cell as a link back to the view, so after looking at several archives
+  you can tell how each one did without validating again. Reloading the page clears them. The
+  report comes back in the language of the screen. What the view shows is in
+  [Inspecting a WACZ](/wacz/#the-validation-view).
 - **Open (開く) enters the WACZ view** (`#wacz/<archiveId>`).
 - **"ReplayWeb.page ↗" and "Web Capture ↗" open the captured URL in a viewer.** The link is built from the replay origin the
   server hands out through `/healthz`, the `objectKey` the ledger returns, and the row's URL and

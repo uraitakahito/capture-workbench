@@ -3,8 +3,8 @@ title: Inspecting a WACZ
 description: From an archive row, check whether the capture conforms to WACZ 1.1.1 and open its contents — without adding a key anywhere
 ---
 
-An archive row offers two things. **Validate** (検証) checks whether the capture conforms to WACZ
-(Web Archive Collection Zipped) 1.1.1, and **Open** (開く) takes
+An archive row offers two things. **Validate** (検証) opens a view that checks, rule by rule,
+whether the capture conforms to WACZ (Web Archive Collection Zipped) 1.1.1, and **Open** (開く) takes
 you inside the WACZ. Both are answered by the daemon of
 [wacz-validator](https://github.com/uraitakahito/wacz-validator) (the validator that checks a
 WACZ rule by rule). capture-workbench only hands the daemon a URL that the ledger has signed.
@@ -46,35 +46,59 @@ the daemon (the routes are listed in [Routes](/routes/)).
 - **The signature is fetched again for every call.** Keeping it would mean the workbench holds a
   valid key for as long as it lives.
 
-## The validation report
+## The validation view
 
-Pressing **Validate** on an archive row opens that archive's report under the row.
+**Validate** (検証) on an archive row enters the validation view for that archive. The URL is
+`#check/<archiveId>`, or `#check/<archiveId>/browserhive` for the other profile, so a result can be
+handed to someone as a link. Entering the view validates once; going back to the same archive and
+profile shows the answer already fetched, and **Validate again** (検証し直す) fetches it again.
 
-- The number of passed rules, and the verdict (failures, warnings, or no problems). The workbench
-  never shows only the passes, because 0 warnings and 3 warnings are different states, and both
-  have 0 failures.
+- **The verdict counts rules.** Rules failed (落ちた rule N), rules that only warned (警告の rule N),
+  or no problems (問題なし). A rule that raised only `info`, and a rule that did not run, do not
+  turn it red or yellow. The band next to it counts every rule by its outcome: failed, warned,
+  info only, passed, not run, and the total. The report's own `summary` is not read: its `passed`
+  counts rules and its `failed` counts findings, so the two do not add up.
 - Which build of the validator looked at it and with which profile (`wacz-validator <version>` /
   `profile <name>`), and how long it took. The count of WARC records (WARC is the file that records the captured
   requests and responses in order) and the hosts appear only when the
   report has statistics (they are best-effort and can be missing for a broken WACZ).
-- One finding per rule: severity, rule name, message, and a link to the spec (**spec ↗**; 仕様 ↗).
-- The entries of the ZIP. An entry that should be there but is not is marked **missing** (無い).
+- **One row per rule, grouped by area** (`wacz/`, `datapackage/`, `cdxj/`, `pages/`, `warc/`,
+  `browserhive/`, in the order the validator registers them). Inside an area, failed rules come
+  first, then warned, info only and passed. A row shows the mark (✕ ! i ✓), the rule name,
+  whether the spec says MUST or SHOULD, what the rule checks, and how many findings it raised.
+  Failed and warned rules are open from the start; click any row to open it.
+- **An open row shows the findings.** Severity, message, where it is, a link to the spec
+  section (**spec ↗**; 仕様 ↗), the details as JSON when the rule gives any, and the rule's sources.
+  A place with an entry and a line links to that line in the [WACZ view](#the-wacz-view); a
+  byte position in a WARC is only written, because the WACZ view has no URL for it.
+- **Rules that did not run are folded at the bottom** (見なかった rule): the ones the profile
+  leaves out, and the ones skipped for the producer's version.
+- **The files inside are folded below that**, with the missing ones and the ones with findings
+  marked. **Open in the WACZ view** (WACZ の画面で開く) shows them as a tree.
 
-The verdict also stays in the row's **Conforms?** (仕様どおりか) cell, until you reload the page.
+The verdict also stays in the archive row's **Conforms?** (仕様どおりか) cell, as a link back to the
+view, until you reload the page. A verdict for `browserhive` carries the profile's name.
 
-**The workbench owns no wording of the report.** Messages and the spec links all come back
-from the daemon already resolved, and are shown as they are. If the workbench rephrased a rule, it
-would quietly drift from what the validator has started to say. All the workbench sends is
-`locale`, the language of the page (`ja` or `en`), and the daemon answers in that language: the
-report is in English on the English screen and in Japanese on the Japanese one.
+**The workbench owns no wording of the report.** What a rule checks, the messages and the spec
+links all come back from the daemon already resolved (the report's `rules` and `issues`), and are
+shown as they are. If the workbench rephrased a rule, it would quietly drift from what the
+validator has started to say. All the workbench sends is `locale`, the language of the page (`ja`
+or `en`), and `profile`; the daemon answers in that language.
 
-### It validates with the spec profile
+### Choosing a profile
 
-The workbench does not send a profile, so the daemon validates with its default, `spec`. Rules
-that only apply to the capture server (BrowserHive) do not show up here. The report line says
-`profile spec`, so you can see which profile was used. Validating against the
+The view has two buttons, `spec` and `browserhive`. `spec` (the default, and the daemon's
+default) checks what the specifications ask for. `browserhive` adds what the
 [BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/)
-(the daemon's `browserhive` profile) would need a way for the workbench to send a profile, which does not exist yet.
+asks for. Under `spec`, the BrowserHive rules are listed as not run. The workbench does not
+send the version of BrowserHive that made the WACZ, so under `browserhive` an archive from an
+older BrowserHive can fail a rule added after it.
+
+### A report without per-rule results
+
+The per-rule results (`rules`) are in reports from wacz-validator v0.52.0. A daemon older than
+that answers without them, and the view says so (daemon が古い) instead of drawing the report
+another way, with the command to rebuild it (below).
 
 ### The daemon does not rebuild itself
 
@@ -90,7 +114,9 @@ checkout. To restart it, run `pnpm run dev:up --from validator` in capture-ledge
 the selected entry and line are part of it too, so you can point at
 `#wacz/<archiveId>/indexes%2Findex.cdxj:66`.
 
-Opening it runs a validation, and the tree on the left is built from the report's entries. It
+Opening it runs a validation (with the `spec` profile), and the tree on the left is built from the
+report's entries. The bar at the top gives the verdict, counted in rules as in the validation view,
+and a link to that view (検証の画面で見る). It
 uses the same input and the same box-drawing lines as wacz-validator's terminal UI (`@wacz-validator/tui`). On
 the right are the details of the selected entry (size, STORE or DEFLATE, which part of the spec
 asks for it, the findings on that entry) and its contents.

@@ -88,16 +88,6 @@ export const severityKind = (severity) => {
 };
 
 /**
- * 検証の結果を 1 行で。**合格だけを見せない** —— 警告 0 と警告 3 は別の状態で、
- * どちらも「失敗 0」だから。
- */
-export const verdict = (summary) => {
-  if (summary.failed > 0) return { text: t("archives.check.failed", { n: summary.failed }), kind: "bad" };
-  if (summary.warnings > 0) return { text: t("archives.check.warnings", { n: summary.warnings }), kind: "warn" };
-  return { text: t("archives.check.ok"), kind: "ok" };
-};
-
-/**
  * シークレットの値を WARC に残すか（宣言の `archive`）を、言葉にする。capture-ledger はクロールの行の答えに、宣言の写しを
  * `"keep"`（残す）か `null`（隠す）で返す（capture-ledger v0.90.0）。新しいクロールの画面の宣言も、`start.js` の
  * `declaredOf` が同じ形に揃える（宣言は省けば隠す）。どちらでも、値は capture-ledger・写し・ページの文字・ログには無い。
@@ -125,16 +115,6 @@ export const secretArchiveOf = (archive) => {
     };
   }
   return { text: `WARC: ${String(archive)}`, kind: "warn" };
-};
-
-/**
- * 覚えた検証の答えから、「仕様どおりか」の欄の結論を作る。まだ検証していなければ undefined（欄は空）。
- * 検証できなかった（Error）は「問題なし」と区別して言う。
- */
-export const checkVerdict = (answer) => {
-  if (answer === undefined) return undefined;
-  if (answer instanceof Error) return { text: t("archives.check.unavailable"), kind: "bad" };
-  return verdict(answer.summary);
 };
 
 /** 一覧に無い id を `map` から忘れる（引き直しで消えたアーカイブの答えを持ち続けない）。 */

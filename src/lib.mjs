@@ -30,6 +30,7 @@ export const ERROR_PHRASES = Object.freeze([
   "parameter required", // name
   "unknown op", // op
   "unknown locale", // locale
+  "unknown profile", // profile
   "body too large", // limit
 ]);
 
