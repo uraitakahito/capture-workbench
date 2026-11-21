@@ -5,6 +5,8 @@ description: What each view shows — crawls, start, schedules, changes, the his
 
 capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
 which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`).
+The URL also names the words searched for in the search view, the run and the page opened in the changes view,
+and what is being read in the script collection view.
 The history of a URL, inside the changes view, is `#history/<URL>`.
 
 ![The tabs at the top: クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)

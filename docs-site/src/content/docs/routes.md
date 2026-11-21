@@ -1,6 +1,6 @@
 ---
 title: Routes
-description: What capture-workbench's server answers — /healthz, signing in, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
+description: What capture-workbench's server answers — /healthz, signing in, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script, creating and operating a schedule, closing a crawl left running, asking Claude to summarize a diff), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
 ---
 
 capture-workbench's server only relays. The workbench's logic lives in the browser (`public/`); all the

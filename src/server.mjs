@@ -21,7 +21,8 @@
  * ## 書き込みのエンドポイント
  *
  * capture-ledger へ渡す POST は、`lib.mjs` の `WRITE_ROUTES` の形だけ（クロールを始める・その場の TS の直し方を訊く・
- * 宣言を訊く・定期実行の予定を作る／操作する・走ったままのクロールを締める）で、中身は検査せずに capture-ledger へ渡す。
+ * 宣言を訊く・定期実行の予定を作る／操作する・走ったままのクロールを締める・差分を Claude に要約させる）で、中身は検査せずに
+ * capture-ledger へ渡す。
  * 起点の URL も方針も、直しが検査に通るかも、決めるのは capture-ledger。代わりに門を通す —— 全部のエンドポイントで Host を見て（DNS rebinding）、書き込みのエンドポイントでは workbench の
  * ページからの JSON だけを受ける（CSRF）。書き込みのエンドポイントの形と門の判定は `lib.mjs` に在り、試験から直接呼べる。
  *
@@ -296,8 +297,9 @@ const server = createServer((request, reply) => {
   }
 
   /**
-   * 書き込みのエンドポイント（`lib.mjs` の `isWriteRoute`）。**中身は検査しない** —— クロールを始める頼みも、直し方を訊く頼みも、宣言を訊く頼みも
-   * capture-ledger が検査して決め、答えをそのまま返す。門だけはここで見る。
+   * 書き込みのエンドポイント（`lib.mjs` の `isWriteRoute`）。**中身は検査しない** —— クロールを始める頼みも、直し方を訊く頼みも、宣言を訊く頼みも、
+   * 予定を作る・操作する頼みも、走ったままのクロールを締める頼みも、差分の要約を頼む頼みも、capture-ledger が検査して決め、
+   * 答えをそのまま返す。門だけはここで見る。
    */
   if (isWriteRoute(url) && request.method === "POST") {
     const refusal = writeRefusal(request.headers, PORT);
