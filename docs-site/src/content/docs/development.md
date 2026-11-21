@@ -78,7 +78,8 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
   text is quoted with `'` (`'{'chrome'}'`). What turns a message into text is the bundled
   `public/vendor/intl-messageformat.js` ([The bundles](#the-bundles)).
 - **A key is `<view>.<group>.<meaning>`.** The view is its name in the code (`crawls`, `start`,
-  `schedules`, `changes`, `archives`, `search`, `scripts`, `wacz`, `links`, `trace`), `common` is
+  `schedules`, `changes`, `archives`, `search`, `scripts`, `wacz`, `links`, `trace`, `check`),
+  `looks` is for the picture that the lists of several views show, `common` is
   for what every view shows, `workbench.error.<phrase>` is for the errors of the workbench's
   own server ([What failures look like](/routes/#what-failures-look-like)), and
   `ledger.error.<phrase>`, `ledger.hint.<key>` and `ledger.list.*` are for the ledger's refusals
