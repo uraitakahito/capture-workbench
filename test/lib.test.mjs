@@ -156,6 +156,30 @@ test("書き込みのエンドポイントは、クロールを始める・そ�
   assert.equal(isWriteRoute("/xapi/scripts/check"), false);
 });
 
+test("書き込みのエンドポイントは、2 本の取り込みの差分の要約を頼む POST を通し、UUID でない id・末尾の足し・query・ほかの段を断る", () => {
+  const id = "5c0d0c06-6a1e-4000-8000-000000000c06";
+  assert.equal(isWriteRoute(`/api/archives/${id}/changes/summary`), true);
+  // id は UUID の形だけ（字の集まりが合っていても、区切りと長さが違えば通さない）
+  assert.equal(isWriteRoute("/api/archives/abc/changes/summary"), false);
+  assert.equal(isWriteRoute(`/api/archives/${id.replaceAll("-", "")}/changes/summary`), false);
+  assert.equal(isWriteRoute(`/api/archives/${id}0/changes/summary`), false);
+  assert.equal(isWriteRoute(`/api/archives/${id.toUpperCase()}/changes/summary`), false);
+  assert.equal(isWriteRoute(`/api/archives/${"-".repeat(36)}/changes/summary`), false);
+  assert.equal(isWriteRoute("/api/archives//changes/summary"), false);
+  // 末尾の足し・query・ほかの段。差分を読む GET の path と、署名の URL のエンドポイントは書き込みの形ではない
+  assert.equal(isWriteRoute(`/api/archives/${id}/changes/summary/`), false);
+  assert.equal(isWriteRoute(`/api/archives/${id}/changes/summary?since=${id}`), false);
+  assert.equal(isWriteRoute(`/api/archives/${id}/changes`), false);
+  assert.equal(isWriteRoute(`/api/archives/${id}/summary`), false);
+  assert.equal(isWriteRoute(`/api/archives/${id}/url`), false);
+  assert.equal(isWriteRoute(`/api/crawls/${id}/changes/summary`), false);
+  assert.equal(isWriteRoute("/api/history"), false);
+  // fetch が .. を畳むので、capture-ledger のほかのエンドポイントへ回り込む形を断る
+  assert.equal(isWriteRoute(`/api/archives/${id}/changes/../summary`), false);
+  assert.equal(isWriteRoute(`/api/archives/${id}%2Fx/changes/summary`), false);
+  assert.equal(isWriteRoute("/api/archives/../changes/summary"), false);
+});
+
 test("書き込みのエンドポイントは、% と . で capture-ledger のほかのエンドポイントへ回り込む形を断る", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   // fetch は URL の .. を畳む（%2e%2e も）。/api/crawls/../… は capture-ledger の別のエンドポイントに届いてしまう

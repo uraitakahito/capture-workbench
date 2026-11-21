@@ -201,7 +201,12 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // 上げていない）。
 // 2026-11-14 に全部の枠を 361 → 366 KB（CAPTURE-378 でクロールを始める画面に「乱数を控える」の欄を足し、start が
 // 31.1 → 35.9 KB、全部で 365.6 KB。利用者が「増えた分を KB に切り上げて上げる」と決めた。1 枚の枠は上げていない）。
-const BUDGET = { one: 39 * 1024, all: 366 * 1024 };
+// 2026-11-22 に全部の枠を 366 → 403 KB（CAPTURE-462 で URL の履歴の画面の絵 history 36.5 KB を 1 枚足し、「履歴」の link が
+// 入った archives が +0.2 KB・crawl-pages が +0.7 KB・search が +0.4 KB で、全部で 402.3 KB。Product Manager が
+// 「増えた分だけ上げる・1 枚の枠は上げない」と決めた。history は差分の行まで入れると 50.0 KB なので、Claude の要約の
+// 下で切って 1 枚の枠に収めた。changes は、再生の link の行に「履歴」を足すと 39.3 KB で 1 枚の枠を超えたので、
+// 字を足さず見出しの URL を link にして 38.6 KB のまま）。
+const BUDGET = { one: 39 * 1024, all: 403 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);

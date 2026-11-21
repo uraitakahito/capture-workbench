@@ -65,7 +65,7 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
   字として書く波括弧は `'` で囲みます（`'{'chrome'}'`）。
   文にするのは、同梱した `public/vendor/intl-messageformat.js` です（[同梱した束](#同梱した束)）。
 - **鍵は `<画面>.<まとまり>.<意味>`。**
-  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`archives`・`search`・`scripts`・`wacz`・`links`・`trace`・`check`）、いくつかの画面の一覧に出る「見た目」の絵は `looks`、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。capture-ledger の断りの文は `ledger.error.<句>`・`ledger.hint.<鍵>`・`ledger.list.*` です（下に書きます）。
+  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`history`・`archives`・`search`・`scripts`・`wacz`・`links`・`trace`・`check`）、いくつかの画面の一覧に出る「見た目」の絵は `looks`、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。capture-ledger の断りの文は `ledger.error.<句>`・`ledger.hint.<鍵>`・`ledger.list.*` です（下に書きます）。
   **鍵は文字列をそのまま書き、組み立てません。**
   検査は、コードが名指す鍵と辞書を照らします。走らせたときに組み立てる鍵は、検査から見えません。
   値から字への対応は、鍵の表ではなく、字を返す関数で書きます（`public/start.js` の `actionText`）。
@@ -202,6 +202,7 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | 直し方を訊く | クロール `5b0c0008`（型の検査で落ちた行）を開く。代役は `/api/crawls/:id/diagnostics` に台本の行の `diagnosed`（capture-ledger の答えそのまま。無い行は型を通る答え）で、`POST /api/crawls/:id/inline/:name/fix` に `fixes`（その場の TS の名前ごとの `{ status, body }`）で答える。**代役は Claude を呼ばない** —— `fixes` に無い名前は 404。`5b0c0008` は TS7006 の 1 件と、検査に通った直し（2〜3 行目。直した版は TypeScript 6.0.3 の strict で通る）を持つ。ほかの答えを見るなら、`fixes` に 429 や 422 の `status` と capture-ledger の本文を書く |
 | 定期実行 | タブ「定期実行」。回が失敗した予定（全部の画面に帯が出る）・順番待ちの予定・止めた予定が並ぶ。操作の結果は代役が起きている間だけ覚える。周回は無いので、「いま撮る」は頼みが立つだけ |
 | 前回からの変化 | タブ「変化」。台本の `changes`（`runs` が一覧、`details` がクロールの id ごとの 1 本）を、capture-ledger と同じ形のまま返す。予定「毎時の確認」の直近の回の `change` から、その回を開ける。**代役は比べも要約もしない** |
+| URL の履歴 | タブ「変化」の一覧の上の欄に `https://sandbox.test/pricing` を貼る。`sandbox/scenario.json` の `history` から、capture-ledger の `GET /api/history`・`GET /api/archives/:id/changes`・`POST /api/archives/:id/changes/summary` と同じ形で答える。見本の取り込みは、予定の回・手で始めたクロール・撮り方が替わる行・比べられない行を持つ。開いた時に選ばれる 2 本は要約つきの差分で、手で始めたクロールの行を「今」に選ぶと、要約なしの差分に「Claude に要約させる」が出る（押すと、`history` の `summaries` に書いた要約が返る）。**代役は比べも要約もしない** —— 差分を書いていない 2 本は、文字の digest が同じなら「同じ」、違えば「WACZ が保管庫に無い」と答える。置き場の WACZ の URL は、まだ検めていない 1 本だけの履歴を返す |
 
 代役にできないこともあります。
 

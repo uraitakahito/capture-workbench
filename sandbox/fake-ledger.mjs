@@ -46,6 +46,11 @@
  * 並べて、文ごとの鍵と値の組 (`{ key?, params?, text }`)。workbench は鍵で自分の辞書 (`ledger.hint.<鍵>`) を引いて訳す。
  * 鍵の一覧は下の `HINT_KEYS` (capture-ledger の表の写し)。
  *
+ * URL の履歴 (CAPTURE-462) の 3 つのエンドポイントにも、scenario.json の `history` から答える —— 同じ URL の取り込みの一覧
+ * (`GET /api/history`)・2 本の差分 (`GET /api/archives/:id/changes`)・その差分の要約 (`POST …/changes/summary`)。
+ * **代役は比べも要約もしない** —— 差分と要約は scenario.json に書いた物で、書いていない 2 本は、文字の digest が同じなら「同じ」、
+ * 違えば「WACZ が保管庫に無い」と答える。
+ *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -1654,6 +1659,161 @@ export const changeRuns = (s) => s.changes?.runs ?? [];
 /** /api/crawls/:id/changes (CAPTURE-167)。台本の `changes.details` のその id。無ければ undefined (404)。 */
 export const changeDetail = (s, crawlId) => s.changes?.details?.[crawlId];
 
+// ── URL の履歴 (CAPTURE-462) ─────────────────────────────────────────────
+/** 一覧の 1 回分の行数 (capture-ledger と同じ)。 */
+const HISTORY_PAGE = 50;
+/** `before` の形 (schema の `format: date-time`)。 */
+const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * 代役が知っている取り込み (`{ url, row }`)。行の欄は capture-ledger の `GET /api/history` の 1 行と同じ:
+ * `id`・`capturedAt`・`objectKey`・`crawlId`・`origin` (`kind`・`scheduleId`・`scheduleName`)・`recipeSha256`・
+ * `browserhiveVersion`・`text` (`stage`・`sha256`・`chars`。比べられない行は null)・`notComparable`。
+ * scenario.json の `history.urls` の行と、置き場の WACZ の行 (見えない行は出さない —— capture-ledger は can_view で落とす)。
+ * 置き場の行は、クロールに繋がらない、まだ検めていない取り込みとして出す (アーカイブの行の「履歴」から、その 1 本が出る)。
+ */
+export const historyArchives = (names, s) => {
+  const hidden = new Set((s.hidden ?? []).map(idOf));
+  const stored = archiveRows(names, s)
+    .filter((archive) => !hidden.has(archive.id))
+    .map((archive) => ({
+      url: archive.sourceUrl,
+      row: {
+        id: archive.id,
+        capturedAt: archive.capturedAt,
+        objectKey: archive.objectKey,
+        crawlId: null,
+        origin: { kind: "unknown", scheduleId: null, scheduleName: null },
+        recipeSha256: null,
+        browserhiveVersion: null,
+        text: null,
+        notComparable: "not_inspected",
+      },
+    }));
+  const written = Object.entries(s.history?.urls ?? {}).flatMap(([url, rows]) => rows.map((row) => ({ url, row })));
+  return [...written, ...stored];
+};
+
+/**
+ * `GET /api/history?url=&before=`。同じ URL の取り込みを、撮った時刻の新しい順に `pageSize` 行ずつ。URL は capture-ledger と
+ * 同じく正規化してから引き (`parseUrl`。ホスト名を小文字に・空の path を `/` に・`#` より後ろを落とす)、正規化した URL を
+ * 答えに載せる。続きが在れば `next` は返した最後の行の `capturedAt` (次に `before` に渡す値)、無ければ null。
+ * `url` の無い・空の・ほかの欄のある問いと、形の違う `before` は schema の 400、http(s) の URL として読めなければ
+ * 400 `invalid url`。**代役は認可を真似ない** —— capture-ledger は、クロールを頼めない人に空の一覧を返す。
+ */
+export const historyOf = (names, s, params, pageSize = HISTORY_PAGE) => {
+  const raw = params.get("url");
+  if (raw === null) return schemaError("querystring must have required property 'url'");
+  if ([...params.keys()].some((k) => k !== "url" && k !== "before")) return schemaError("querystring must NOT have additional properties");
+  if (raw === "") return schemaError("querystring/url must NOT have fewer than 1 characters");
+  const before = params.get("before");
+  if (before !== null && !DATE_TIME.test(before)) return schemaError('querystring/before must match format "date-time"');
+  const url = parseUrl(raw)?.normalized;
+  if (url === undefined) return { status: 400, body: { error: "invalid url" } };
+  const rows = historyArchives(names, s)
+    .filter((archive) => archive.url === url)
+    .map((archive) => archive.row)
+    .filter((row) => before === null || Date.parse(row.capturedAt) < Date.parse(before))
+    .sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt));
+  const archives = rows.slice(0, pageSize);
+  return { status: 200, body: { url, archives, next: rows.length > pageSize ? archives.at(-1).capturedAt : null } };
+};
+
+/** 差分の答えの `before`・`after` (capture-ledger と同じ欄)。`stage` は比べた行の時点で、比べる行が無ければ null。 */
+const changeRef = ({ url, row }) => ({
+  archiveId: row.id,
+  objectKey: row.objectKey,
+  sourceUrl: url,
+  capturedAt: row.capturedAt,
+  browserhiveVersion: row.browserhiveVersion,
+  stage: row.text?.stage ?? null,
+});
+
+const samePair = (beforeId, afterId) => (one) => one.before === beforeId && one.after === afterId;
+
+/**
+ * 2 本の差分 (`beforeId` が前、`afterId` が今)。答えの形は capture-ledger の `GET /api/archives/:id/changes` と同じ。
+ * どちらかが無ければ 404、URL が違えば 422 `different url`。比べられない行が在れば、今を先に見て、その訳で
+ * `not_comparable`。文字の digest が同じなら `same` (`sameBy: "digest"`)。違えば scenario.json の `history.changes` の差分
+ * (`made` に在る要約か、書いてある要約つきで)。**書いていない 2 本は比べない** —— `not_comparable` の `wacz_missing`。
+ */
+const changeBetween = (names, s, beforeId, afterId, made) => {
+  const known = historyArchives(names, s);
+  const before = known.find((archive) => archive.row.id === beforeId);
+  const after = known.find((archive) => archive.row.id === afterId);
+  if (before === undefined || after === undefined) return { status: 404, body: { error: "not found" } };
+  if (before.url !== after.url) return { status: 422, body: { error: "different url" } };
+  const recipes = [before.row.recipeSha256, after.row.recipeSha256];
+  const answer = (over) => ({
+    status: 200,
+    body: {
+      url: after.url,
+      state: "not_comparable",
+      reason: null,
+      sameBy: null,
+      added: 0,
+      removed: 0,
+      hunks: [],
+      recipeDiffers: recipes.includes(null) ? null : recipes[0] !== recipes[1],
+      stageDiffers: before.row.text !== null && after.row.text !== null && before.row.text.stage !== after.row.text.stage,
+      before: changeRef(before),
+      after: changeRef(after),
+      summary: null,
+      significance: null,
+      headline: null,
+      quotes: [],
+      ...over,
+    },
+  });
+  const reason = after.row.notComparable ?? before.row.notComparable;
+  if (reason !== null) return answer({ reason });
+  if (before.row.text.sha256 === after.row.text.sha256) return answer({ state: "same", sameBy: "digest" });
+  const written = (s.history?.changes ?? []).find(samePair(beforeId, afterId));
+  if (written === undefined) return answer({ reason: "wacz_missing" });
+  const { before: _before, after: _after, ...diff } = written;
+  const { before: _b, after: _a, ...summary } = made.find(samePair(beforeId, afterId)) ?? {};
+  return answer({ state: "diffed", ...diff, ...summary });
+};
+
+/**
+ * `GET /api/archives/:id/changes?since=<前の取り込みの id>`。`:id` が今、`since` が前。id が UUID でない・`since` の無い・
+ * ほかの欄のある問いは schema の 400。`made` は、代役が動いている間に要約を頼まれた組 (`summarizeChange` が足す)。
+ */
+export const archiveChangeOf = (names, s, id, params, made = []) => {
+  if (!UUID.test(id)) return schemaError('params/id must match format "uuid"');
+  const since = params.get("since");
+  if (since === null) return schemaError("querystring must have required property 'since'");
+  if ([...params.keys()].some((k) => k !== "since")) return schemaError("querystring must NOT have additional properties");
+  if (!UUID.test(since)) return schemaError('querystring/since must match format "uuid"');
+  return changeBetween(names, s, since, id, made);
+};
+
+/**
+ * `POST /api/archives/:id/changes/summary` (本文 `{ since }`)。答えは差分の答えに `reused` を足した物。断り方は
+ * capture-ledger と同じ順: 差分と同じ 404・422 → 差分が無ければ 422 `nothing to summarize` → 今の取り込みがクロールに
+ * 繋がらなければ 422 `no organization` → 要約が既に在れば、それを返す (`reused: true`)。**代役は Claude を呼ばない** ——
+ * 返すのは scenario.json の `history.summaries` に書いた要約で、書いていない組は 502 `claude failed`。返した要約は `made` に
+ * 足し、その後は差分の答えにも載る。月の上限 (429) は真似ない。
+ */
+export const summarizeChange = (names, s, id, body, made = []) => {
+  if (!UUID.test(id)) return schemaError('params/id must match format "uuid"');
+  if (body === null || typeof body !== "object" || Array.isArray(body)) return schemaError("body must be object");
+  if (!("since" in body)) return schemaError("body must have required property 'since'");
+  if (Object.keys(body).some((k) => k !== "since")) return schemaError("body must NOT have additional properties");
+  if (typeof body.since !== "string" || !UUID.test(body.since)) return schemaError('body/since must match format "uuid"');
+  const change = changeBetween(names, s, body.since, id, made);
+  if (change.status !== 200) return change;
+  if (change.body.state !== "diffed") return { status: 422, body: { error: "nothing to summarize" } };
+  const now = historyArchives(names, s).find((archive) => archive.row.id === id);
+  if (now.row.crawlId === null) return { status: 422, body: { error: "no organization" } };
+  if (change.body.summary !== null) return { status: 200, body: { ...change.body, reused: true } };
+  const written = (s.history?.summaries ?? []).find(samePair(body.since, id));
+  if (written === undefined) return { status: 502, body: { error: "claude failed" } };
+  made.push(written);
+  const { before: _before, after: _after, ...summary } = written;
+  return { status: 200, body: { ...change.body, ...summary, reused: false } };
+};
+
 /**
  * /api/schedules の 1 行。欄は capture-ledger の src/api/schedules.ts と同じ。状態の語 (`health`) の判定は capture-ledger の物なので、
  * 台本に語を書く。時刻は絶対の時刻のまま (画面の絵が撮るたびに変わらないように)。
@@ -1733,6 +1893,9 @@ const scenario = readingLastGood(() => JSON.parse(readFileSync(SCENARIO, "utf8")
 
 /** workbench の欄から受けた行。代役が起きている間だけ在る (台本には書かない)。 */
 const submitted = [];
+
+/** 要約を頼まれた 2 本の組 (CAPTURE-462)。代役が動いている間だけ在り、その間は差分の答えにも要約が載る。 */
+const summarized = [];
 
 /** 台本のスクリプトの版の並び。`emptyCatalog` なら空 (スクリプトが無い capture-ledger。読む所には受け皿の型だけが残る)。 */
 const versionsIn = (s) => (s.emptyCatalog === true ? [] : catalogOf(s));
@@ -1886,6 +2049,31 @@ const handle = (req, res, raw) => {
     const detail = changeDetail(s, changed[1]);
     if (detail === undefined) send(res, 404, { error: "not found" });
     else send(res, 200, detail);
+    return;
+  }
+  // URL の履歴 (CAPTURE-462)。同じ URL の取り込みの一覧・2 本の差分・その差分の要約
+  if (req.method === "GET" && pathname === "/api/history") {
+    const answer = historyOf(samples(), s, new URL(req.url ?? "/", "http://sandbox").searchParams);
+    send(res, answer.status, answer.body);
+    return;
+  }
+  const compared = /^\/api\/archives\/([^/]+)\/changes$/.exec(pathname);
+  if (req.method === "GET" && compared !== null) {
+    const answer = archiveChangeOf(samples(), s, compared[1], new URL(req.url ?? "/", "http://sandbox").searchParams, summarized);
+    send(res, answer.status, answer.body);
+    return;
+  }
+  const summary = /^\/api\/archives\/([^/]+)\/changes\/summary$/.exec(pathname);
+  if (req.method === "POST" && summary !== null) {
+    let body;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      send(res, 400, { error: "body is not valid JSON" });
+      return;
+    }
+    const answer = summarizeChange(samples(), s, summary[1], body, summarized);
+    send(res, answer.status, answer.body);
     return;
   }
   // 型の誤りの取り直しと直し方 (CAPTURE-49)。受けた行は型で落ちていないので、取り直しは型を通る答え、直し方は 404

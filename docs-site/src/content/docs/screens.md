@@ -1,10 +1,11 @@
 ---
 title: Screens
-description: What each view shows — crawls, start, schedules, changes, archives, search, script collection, validation and WACZ — how a crawl's state is worded, and how often capture-workbench polls
+description: What each view shows — crawls, start, schedules, changes, the history of a URL, archives, search, script collection, validation and WACZ — how a crawl's state is worded, and how often capture-workbench polls
 ---
 
 capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
 which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`).
+The history of a URL, inside the changes view, is `#history/<URL>`.
 
 ![The tabs at the top: クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
 
@@ -13,7 +14,7 @@ which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`,
 | Crawls | one row per crawl: state, pages captured, links, number of WACZ files (the archive format that packs captured pages into one ZIP), time taken, links to the run and to replayweb-player (the whole crawl as one archive) |
 | New crawl | the form that starts a crawl: seed URLs, registered scripts, depth, the values of the variables the ticked scripts declare. |
 | Schedules | schedules and their runs; pause, resume, run now, repin and delete a schedule. A run that did not capture shows on a band on every view |
-| Changes | how a scheduled run differs from the previous one. |
+| Changes | how a scheduled run differs from the previous one. The [history](#history) of a URL, which lists its captures and compares any two, is inside this view |
 | Archives | the WACZ files you can see, with a picture of each as captured; from a row, validate, open it in the WACZ view, or open in [replayweb-player](https://github.com/uraitakahito/replayweb-player) (which plays a WACZ back in the browser) |
 | Search | the full-text search. |
 | Script collection | the scripts that run inside the captured page and the types they are written against. |
@@ -173,7 +174,8 @@ the crawl's bundle.
   ended such a page reads `pending (no report: the crawl ended first)`
   (`pending（報告なし —— クロールが先に終わった）`) — a crawl that failed the type check captured nothing, and its seed would otherwise
   look like it is still waiting. A page that has a capture's answer (captured or failed) has **Trace**
-  (経緯) after its outcome, which opens [that one capture's trace](#one-captures-trace). A page whose WACZ is in the bundle the ledger points at has
+  (経緯) after its outcome, which opens [that one capture's trace](#one-captures-trace). Every page has **History** (履歴) after its
+  outcome, which opens the [history](#history) of its URL (with that capture picked as After when the page has a WACZ). A page whose WACZ is in the bundle the ledger points at has
   ReplayWeb.page ↗ / Web Capture ↗ after its outcome: it opens that page inside the crawl's bundle, at the time it was
   captured (`#view=replay&url=…&ts=…`). What decides it is the ledger's `bundledRev`, the first
   version of the bundle that the page's WACZ went into: the link appears when it is no later than
@@ -704,6 +706,7 @@ How a scheduled run differs from the previous run of the same schedule with the 
 (`#changes`, `#changes/<crawl id>`, `#changes/<crawl id>/<WACZ id of this run>`). Comparing and summarizing happen in
 [capture-ledger](https://github.com/uraitakahito/capture-ledger); this view only reads.
 
+**Open the history of a URL** (URL の履歴を開く) above the list opens the [history](#history) of the URL you paste.
 The list's **Started** (始まった) column is when the run started. The list is in that order, and only a run that started a
 minute or more late adds its due time and the delay, as in `(due 11-08 04:00 · 2 days late)` (（本来 11-08 04:00・2 日遅れ）). Clicking a row hides the list and
 opens the run; **← Change list** (← 変化の一覧) goes back.
@@ -720,7 +723,8 @@ opens the run; **← Change list** (← 変化の一覧) goes back.
   builds the diff from the two WACZ files without Claude. The run's summary carries
   `Claude's summary (not evidence)` (Claude の要約（証拠ではない）) with the model, the prompt version and
   the cost, and each page's line from Claude carries `(not evidence)`. To check, open both with the two viewer links
-  after **Before:** and **After:** (前: and 今:).
+  after **Before:** and **After:** (前: and 今:). The URL in the page's heading opens the [history](#history) of
+  that URL with this run's capture picked as After.
 - **Claude's summary and lines are in Japanese on either screen.** capture-ledger has them written in
   Japanese, and the workbench does not translate them. On the English screen, a page's line from
   Claude is followed by `The summary is written in Japanese.`
@@ -734,6 +738,60 @@ opens the run; **← Change list** (← 変化の一覧) goes back.
   failed three times. A change of content itself never raises the band.
 - **Pages with a WACZ you may not view are left out.**
 - **It is fetched when opened**, not polled: runs change a few times a day.
+
+## History
+
+Every capture of one URL, newest first, with the text diff of any two you pick
+(`#history/<URL>`, `#history/<URL>/<id of the After capture>`,
+`#history/<URL>/<id of the Before capture>/<id of the After capture>`; the URL is percent-encoded).
+The tab stays **Changes** (変化): the history takes the place of the change list, and **← Change list** (← 変化の一覧) goes back.
+Listing and comparing happen in [capture-ledger](https://github.com/uraitakahito/capture-ledger); this view only reads.
+It is not limited to scheduled runs: captures from a crawl started by hand are listed too when the URL is the same.
+
+![The history of a URL. A table of the captures of one URL, newest first (the Before and After radio buttons, when it was captured, where it was captured, since the one before, the recipe), with a row where the recipe changed and a row that cannot be compared (not inspected yet). Under the table, the head of the diff of the two picked captures: the numbers of added and removed lines, the viewer links for Before and After, and Claude's summary (not evidence) with its one line](../../assets/screens/history.webp)
+
+- **Paste a URL, or come in from a row.** Paste a URL into **Open the history of a URL** (URL の履歴を開く) above the change list and
+  press **Open** (開く), or press **History** (履歴) on a row that shows a URL: a row of the [archives view](#archives), a row
+  of a crawl's Pages table in the [crawls view](#crawls), or a hit in the [search view](#search). On one page in the
+  [changes view](#changes), press the URL in its heading. From a row, the history opens with that row's capture picked as After and the first older
+  capture that can be compared as Before. The ledger normalizes the pasted URL before looking it up (the host name in
+  lower case, an empty path as `/`, everything after `#` dropped), and the URL of the view is rewritten to the
+  normalized one. A trailing `/` in the path and the order of the query are left as they are.
+- **The table is newest first.** Its columns are the **Before** (前) and **After** (今) radio buttons, **Captured at**
+  (撮った時刻), **Captured by** (どこで撮ったか: the schedule's name, or a crawl started by hand), **Since the one before**
+  (1 つ前から), **Recipe** (撮り方) and the BrowserHive version. The table holds one batch from the ledger, with
+  **Read on** (続きを読む) below when there is more. When the capture named in the URL is not among the rows read, the
+  view reads on until it finds it, and says so when it has read to the end without finding it.
+- **Since the one before speaks only of the rows you can see.** The workbench compares a row's text digest with that of the
+  first older row that can be compared, and shows **Changed** (変わった) or **The same** (同じ); rows that cannot be
+  compared are skipped. The workbench does this, not the ledger: if the ledger counted, it would leak whether a capture
+  you may not view has the same text. The oldest row reads **First** (最初), or **Read on to find out**
+  (続きを読むと分かる) while there are more rows to read.
+- **A row that cannot be compared shows the reason instead of radio buttons:** not inspected yet, no text was recorded,
+  or the text was withheld by policy.
+- **Changed here (ここで替わった) under Recipe marks a row whose recipe digest changed.** It is put only on a row that
+  differs from the first older row whose recipe is known.
+- **Before can only be a row older than After.** Each pick rewrites the URL of the view, so the browser's back button
+  returns to the previous comparison and a shared URL opens the same two captures. When first opened, the view picks the
+  newest capture that can be compared and the one before it.
+- **The diff is below the table,** in the same frame as one page of the [changes view](#changes): lines added and
+  removed, the viewer links for before and after, and the diff lines. The ledger builds it from the two WACZ files,
+  without Claude, each time you pick; nothing is stored. Two captures taken with different recipes carry
+  **The recipes differ** (撮り方が違います), and two whose compared rows differ (one the snapshot after the scripts, the
+  other the document row) carry **The compared rows differ** (比べた行が違います). Two captures with the same text read
+  as the same, with a note when they differ only in blank lines and indentation. Two captures the table called
+  **Changed** can turn out the same here, because the table speaks from the digest alone. Two captures that cannot be
+  compared show the reason: one of the reasons a row can have, the WACZ is not in the store, or too large.
+- **A summary is made only when you ask.** Two captures with a diff get **Have Claude summarize** (Claude に要約させる).
+  Pressing it calls Claude through the ledger and shows `Claude's summary (not evidence)` (Claude の要約（証拠ではない）)
+  with the model, the prompt version and the cost, Claude's line, and the quotes (clicking a quote moves to its diff
+  line). A summary already made for the same diff is shown without pressing, and is not paid for twice. The cost counts
+  toward the monthly limit of the organization of the crawl that took the After capture. When the monthly limit is
+  reached, when Claude does not answer, or when the ledger has no summary route (a deployment without Claude's key),
+  each is said in its own words.
+- **It fetches only when opened, on Read on, and when you pick two captures again.** It does not poll like the other
+  lists, so the picks are not lost.
+- **A ledger without the history route (an older capture-ledger) gets a one-line note.**
 
 ## Archives
 
@@ -782,6 +840,7 @@ The WACZ files you can see, newest capture first.
   pages newest first, and it does not read the WACZ's `mainPageURL`. It opens that one WACZ: to
   follow links into the crawl's other pages, open the crawl with ReplayWeb.page ↗ / Web Capture ↗ on its row in the
   [crawls view](#crawls).
+- **History (履歴) opens the [history](#history) of the row's URL,** with that row's capture picked as After.
 
 ## Search
 
@@ -800,6 +859,8 @@ The view that searches the titles and text of captured pages with the ledger's f
   The document opens with the page's scripts running; a snapshot is the DOM copy without scripts,
   the page as it was at that stage.
 - **Open enters the WACZ view** (only for archives listed in the archives view).
+- **History (履歴) opens the [history](#history) of the captured URL.** For a snapshot hit too, the lookup uses the
+  captured URL, not the snapshot's URI. The archive of the hit is picked as After.
 - **It fetches only when you press Search (探す) or open a search URL.** It does not poll like the
   other views.
 - **It needs the ledger's full-text search (OpenSearch).** When that does not answer, the reason is
@@ -881,7 +942,7 @@ ledger that starts crawls and records what came back).
 While at least one crawl is running, the lists are fetched every 2 seconds; otherwise every 30
 seconds. A crawl that has just finished keeps the 2-second pace until its last bundle version shows
 up, for at most a minute. Without keeping a copy, the workbench still looks live while something runs, and stays
-quiet when nothing does. The search and changes views do not poll; they fetch only when you search or open them. Schedules
+quiet when nothing does. The search and changes views do not poll; they fetch only when you search or open them. The history inside the changes view is the same: it fetches when opened, on **Read on**, and when you pick two captures again. Schedules
 are fetched on a separate loop, every 30 seconds, and every 5 seconds while one is queued or running.
 It is separate so that being unable to read schedules does not stop the crawl table too.
 

@@ -78,7 +78,7 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
   text is quoted with `'` (`'{'chrome'}'`). What turns a message into text is the bundled
   `public/vendor/intl-messageformat.js` ([The bundles](#the-bundles)).
 - **A key is `<view>.<group>.<meaning>`.** The view is its name in the code (`crawls`, `start`,
-  `schedules`, `changes`, `archives`, `search`, `scripts`, `wacz`, `links`, `trace`, `check`),
+  `schedules`, `changes`, `history`, `archives`, `search`, `scripts`, `wacz`, `links`, `trace`, `check`),
   `looks` is for the picture that the lists of several views show, `common` is
   for what every view shows, `workbench.error.<phrase>` is for the errors of the workbench's
   own server ([What failures look like](/routes/#what-failures-look-like)), and
@@ -253,6 +253,7 @@ in `sandbox/samples/SOURCE.md`.
 | ask for a fix | Open crawl `5b0c0008` (failed the type check). The stand-in answers `/api/crawls/:id/diagnostics` from the crawl's `diagnosed` in the scenario (the ledger's answer as it is; a crawl without it type-checks), and `POST /api/crawls/:id/inline/:name/fix` from its `fixes` (`{ status, body }` per inline script's name). **The stand-in never calls Claude**: a name not in `fixes` is a 404. `5b0c0008` carries one TS7006 and a fix that passed the check (lines 2–3; the fixed source type-checks under TypeScript 6.0.3 strict). To see another answer, give `fixes` a `status` such as 429 or 422 with the ledger's body |
 | schedules | The 定期実行 tab: a schedule whose runs failed (with the band on every view), one queued, one paused. Actions are remembered while the stand-in runs; there is no tick, so run now only sets the request. |
 | changes | The 変化 tab: the script's `changes` (`runs` for the list, `details` per crawl id) answered in capture-ledger's shape. The latest run of 毎時の確認 links to it through its `change`. **The stand-in neither compares nor summarizes.** |
+| the history of a URL | Paste `https://sandbox.test/pricing` into the field above the list on the 変化 tab. The stand-in answers from `history` in `sandbox/scenario.json`, in the shape of the ledger's `GET /api/history`, `GET /api/archives/:id/changes` and `POST /api/archives/:id/changes/summary`. The sample captures include scheduled runs, a crawl started by hand, rows where the recipe changes and a row that cannot be compared. The two captures picked when the view opens have a diff with a summary; pick the row of the crawl started by hand as After to get a diff without one and the Claude に要約させる button (pressing it returns the summary written under `summaries` in `history`). **The stand-in neither compares nor summarizes**: for two captures without a written diff it answers "the same" when their text digests match and "the WACZ is not in the store" otherwise. The URL of a WACZ in the samples folder returns a history of that one capture, not inspected yet |
 
 There are things the stand-in does not do:
 

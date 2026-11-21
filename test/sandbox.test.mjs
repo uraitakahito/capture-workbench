@@ -12,6 +12,8 @@
  * 型の誤りの取り直し（`GET /api/crawls/:id/diagnostics`）は v0.69.0、直し方（`POST …/inline/:name/fix`）は v0.71.0 から（CAPTURE-49）。
  * 合本の欄（行と詳しい所の `replayBundle`・ページの行の `capturedAt` と `bundledRev`）は v0.73.0 から、署名の 3 欄は v0.74.0 から
  * （CAPTURE-56）。一覧の行の `screenshot` と絵のエンドポイントは v0.107.0 から（CAPTURE-432）。
+ * URL の履歴の 3 つのエンドポイント（`GET /api/history`・`GET /api/archives/:id/changes`・`POST …/changes/summary`。CAPTURE-462）の
+ * 欄は、capture-ledger と決めた約束から写した（実物の答えと照らすのは、capture-ledger の側が出た後）。
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -78,7 +80,12 @@ import {
   versionsOf,
   linkGraphOf,
   pageLinksOf,
+  archiveChangeOf,
+  historyArchives,
+  historyOf,
+  summarizeChange,
 } from "../sandbox/fake-ledger.mjs";
+import { marksOf as historyMarksOf, pickPair } from "../public/history.js";
 import { warcRecord, zipEntry } from "./wacz-entry.mjs";
 import { lookOf } from "../public/looks.js";
 
@@ -2035,4 +2042,245 @@ test("リンクの記録の無い行は、ページと親だけ。1 ページの
   assert.equal(graph.recorded, false);
   assert.equal(graph.pages.length, c.pages.length);
   assert.deepEqual(pageLinksOf(c, c.pages[0].id).body, { out: [], in: [] });
+});
+
+// ── URL の履歴（CAPTURE-462）──────────────────────────────────────────
+
+/**
+ * capture-ledger の URL の履歴の 3 つのエンドポイントの欄（CAPTURE-462）。一覧（`GET /api/history`）の答えと 1 行、行の中の
+ * `origin` と `text`、差分（`GET /api/archives/:id/changes`）の答えと、その中の `before`・`after`・`summary`・`quotes` の 1 件。
+ * 要約（`POST …/changes/summary`）の答えは、差分の答えに `reused` を足した物。
+ */
+const LEDGER_HISTORY_KEYS = ["url", "archives", "next"].sort();
+const LEDGER_HISTORY_ROW_KEYS = [
+  "id",
+  "capturedAt",
+  "objectKey",
+  "crawlId",
+  "origin",
+  "recipeSha256",
+  "browserhiveVersion",
+  "text",
+  "notComparable",
+].sort();
+const LEDGER_HISTORY_ORIGIN_KEYS = ["kind", "scheduleId", "scheduleName"].sort();
+const LEDGER_HISTORY_TEXT_KEYS = ["stage", "sha256", "chars"].sort();
+const LEDGER_ARCHIVE_CHANGE_KEYS = [
+  "url",
+  "state",
+  "reason",
+  "sameBy",
+  "added",
+  "removed",
+  "hunks",
+  "recipeDiffers",
+  "stageDiffers",
+  "before",
+  "after",
+  "summary",
+  "significance",
+  "headline",
+  "quotes",
+].sort();
+const LEDGER_ARCHIVE_CHANGE_REF_KEYS = ["archiveId", "objectKey", "sourceUrl", "capturedAt", "browserhiveVersion", "stage"].sort();
+const LEDGER_ARCHIVE_CHANGE_SUMMARY_KEYS = ["evidence", "model", "promptVersion", "usd"].sort();
+const LEDGER_QUOTE_KEYS = ["text", "verified"].sort();
+
+const HISTORY_URL = "https://sandbox.test/pricing";
+const HISTORY_NAMES = ["good.wacz"];
+/** 見本の取り込みの id（`c01` がいちばん新しい）。 */
+const pricing = (n) => `5c0d0c0${String(n)}-6a1e-4000-8000-000000000c0${String(n)}`;
+const past = (params, s = scenario, pageSize = undefined) => historyOf(HISTORY_NAMES, s, new URLSearchParams(params), pageSize);
+const compare = (beforeId, afterId, made = [], s = scenario) =>
+  archiveChangeOf(HISTORY_NAMES, s, afterId, new URLSearchParams({ since: beforeId }), made);
+
+/** 差分の答え 1 つの欄を、入れ子まで照らす。 */
+const assertChangeShaped = (body, keys = LEDGER_ARCHIVE_CHANGE_KEYS) => {
+  assert.deepEqual(Object.keys(body).sort(), keys, body.state);
+  for (const ref of [body.before, body.after]) assert.deepEqual(Object.keys(ref).sort(), LEDGER_ARCHIVE_CHANGE_REF_KEYS, body.state);
+  if (body.summary !== null) assert.deepEqual(Object.keys(body.summary).sort(), LEDGER_ARCHIVE_CHANGE_SUMMARY_KEYS, body.state);
+  for (const quote of body.quotes) assert.deepEqual(Object.keys(quote).sort(), LEDGER_QUOTE_KEYS, body.state);
+};
+
+test("URL の履歴の一覧は、capture-ledger の /api/history と同じ欄を持つ（入れ子の origin と text も。text が null の行も在る）", () => {
+  const { status, body } = past({ url: HISTORY_URL });
+  assert.equal(status, 200);
+  assert.deepEqual(Object.keys(body).sort(), LEDGER_HISTORY_KEYS);
+  assert.equal(body.url, HISTORY_URL);
+  assert.equal(body.next, null);
+  assert.equal(body.archives.length, 6);
+  for (const row of body.archives) {
+    assert.deepEqual(Object.keys(row).sort(), LEDGER_HISTORY_ROW_KEYS, row.id);
+    assert.deepEqual(Object.keys(row.origin).sort(), LEDGER_HISTORY_ORIGIN_KEYS, row.id);
+    if (row.text !== null) assert.deepEqual(Object.keys(row.text).sort(), LEDGER_HISTORY_TEXT_KEYS, row.id);
+    // 比べられない行は text が null、比べられる行は訳が null（capture-ledger の決まり）
+    assert.equal(row.text === null, row.notComparable !== null, row.id);
+    // 予定の名前と id は、予定の回の行にだけ在る
+    if (row.origin.kind !== "schedule") assert.deepEqual([row.origin.scheduleId, row.origin.scheduleName], [null, null], row.id);
+  }
+  assert.equal(body.archives.filter((row) => row.text === null).length, 1);
+  // 置き場の WACZ の行（アーカイブの行の「履歴」の行き先）も、同じ欄
+  const stored = past({ url: "https://sandbox.test/good.wacz" }).body.archives;
+  assert.equal(stored.length, 1);
+  assert.deepEqual(Object.keys(stored[0]).sort(), LEDGER_HISTORY_ROW_KEYS);
+  assert.deepEqual(Object.keys(stored[0].origin).sort(), LEDGER_HISTORY_ORIGIN_KEYS);
+  assert.equal(stored[0].id, idOf("good.wacz"));
+});
+
+test("同梱の見本の履歴は、予定の回・手で始めたクロール・撮り方が替わる行・比べられない行を持ち、画面の印を全部出す", () => {
+  const rows = past({ url: HISTORY_URL }).body.archives;
+  for (let i = 1; i < rows.length; i += 1) assert.ok(Date.parse(rows[i - 1].capturedAt) > Date.parse(rows[i].capturedAt), rows[i].id);
+  assert.deepEqual(rows.map((row) => row.id), [1, 2, 3, 4, 5, 6].map(pricing));
+  assert.deepEqual(rows.map((row) => row.origin.kind), ["schedule", "schedule", "manual", "unknown", "schedule", "schedule"]);
+  assert.equal(new Set(rows.filter((row) => row.origin.kind === "schedule").map((row) => row.origin.scheduleName)).size, 2);
+  // 予定の名前は、定期実行の画面の見本の予定と同じ
+  const schedules = new Map(scenario.schedules.map((schedule) => [schedule.id, schedule.name]));
+  for (const row of rows.filter((one) => one.origin.kind === "schedule")) assert.equal(schedules.get(row.origin.scheduleId), row.origin.scheduleName, row.id);
+  const marks = historyMarksOf(rows, false);
+  assert.deepEqual(marks.map((mark) => mark.change), ["changed", "same", "changed", "not_comparable", "same", "first"]);
+  assert.deepEqual(marks.map((mark) => mark.recipeChanged), [false, true, true, false, false, false]);
+  // 開いた時に選ばれる 2 本は、要約つきの差分の組
+  const picked = pickPair(rows);
+  assert.deepEqual([picked.beforeId, picked.afterId], [pricing(2), pricing(1)]);
+  assert.equal(compare(picked.beforeId, picked.afterId).body.summary.evidence, false);
+});
+
+test("履歴の見本を足しても、アーカイブの一覧に行は増えない（見本の取り込みは履歴のエンドポイントだけが返す）", () => {
+  const rows = archiveRows(SAMPLE_NAMES, scenario);
+  assert.equal(rows.length, SAMPLE_NAMES.length + scenario.hidden.length);
+  assert.equal(rows.some((row) => row.sourceUrl === HISTORY_URL), false);
+  // 見えない行は、履歴にも出ない
+  assert.equal(historyArchives(SAMPLE_NAMES, scenario).some((archive) => archive.row.id === idOf("ghost.wacz")), false);
+  assert.deepEqual(past({ url: "https://sandbox.test/ghost.wacz" }, scenario).body.archives, []);
+});
+
+test("履歴の一覧は URL を正規化して引き、新しい順に 1 回分ずつ。続きが在れば next は返した最後の行の時刻", () => {
+  // ホスト名の大文字・# より後ろは落ちる。正規化した URL を答えに載せる
+  const loose = past({ url: "https://SANDBOX.test/pricing#plans" });
+  assert.equal(loose.body.url, HISTORY_URL);
+  assert.equal(loose.body.archives.length, 6);
+  // 空の path は / に
+  assert.equal(past({ url: "https://nothing.test" }).body.url, "https://nothing.test/");
+  assert.deepEqual(past({ url: "https://nothing.test" }).body, { url: "https://nothing.test/", archives: [], next: null });
+  // 末尾の / の有無は揃えない（別の URL）
+  assert.deepEqual(past({ url: `${HISTORY_URL}/` }).body.archives, []);
+  // 2 行ずつ読む。next を before に渡すと続きが返り、最後の回は next が null
+  const seen = [];
+  let before;
+  for (let turn = 0; turn < 3; turn += 1) {
+    const { body } = past(before === undefined ? { url: HISTORY_URL } : { url: HISTORY_URL, before }, scenario, 2);
+    assert.equal(body.archives.length, 2);
+    seen.push(...body.archives.map((row) => row.id));
+    assert.equal(body.next, turn < 2 ? body.archives[1].capturedAt : null);
+    before = body.next;
+  }
+  assert.deepEqual(seen, [1, 2, 3, 4, 5, 6].map(pricing));
+});
+
+test("履歴の一覧は、url の無い・空の・ほかの欄のある問いと形の違う before を schema の 400、読めない URL を 400 invalid url で断る", () => {
+  assert.equal(past({}).body.message, "querystring must have required property 'url'");
+  assert.equal(past({ url: HISTORY_URL, limit: "5" }).body.message, "querystring must NOT have additional properties");
+  assert.equal(past({ url: "" }).body.message, "querystring/url must NOT have fewer than 1 characters");
+  assert.equal(past({ url: HISTORY_URL, before: "yesterday" }).body.message, 'querystring/before must match format "date-time"');
+  for (const answer of [past({}), past({ url: "" }), past({ url: HISTORY_URL, before: "yesterday" })]) assert.equal(answer.status, 400);
+  for (const url of ["not a url", "ftp://sandbox.test/pricing", "sandbox.test/pricing"]) {
+    assert.deepEqual(past({ url }), { status: 400, body: { error: "invalid url" } }, url);
+  }
+});
+
+test("2 本の差分は、capture-ledger の /api/archives/:id/changes と同じ欄を持つ（before・after・summary・quotes の中も）", () => {
+  const states = [
+    // 要約つきの差分・要約なしの差分（撮り方と比べた行が違う）・同じ・比べられない 2 つ
+    [compare(pricing(2), pricing(1)), "diffed"],
+    [compare(pricing(5), pricing(3)), "diffed"],
+    [compare(pricing(3), pricing(2)), "same"],
+    [compare(pricing(4), pricing(1)), "not_comparable"],
+    [compare(pricing(6), pricing(1)), "not_comparable"],
+  ];
+  for (const [answer, state] of states) {
+    assert.equal(answer.status, 200);
+    assert.equal(answer.body.state, state);
+    assert.equal(answer.body.url, HISTORY_URL);
+    assertChangeShaped(answer.body);
+    // 訳は比べられない答えにだけ、同じ訳は同じ答えにだけ。差分の行は差分の在る答えにだけ
+    assert.equal(answer.body.reason !== null, state === "not_comparable");
+    assert.equal(answer.body.sameBy !== null, state === "same");
+    assert.equal(answer.body.hunks.length > 0, state === "diffed");
+  }
+  const [summarized, plain, same, uninspected, unwritten] = states.map(([answer]) => answer.body);
+  assert.deepEqual([summarized.added, summarized.removed, summarized.recipeDiffers, summarized.stageDiffers], [2, 1, false, false]);
+  assert.equal(summarized.summary.evidence, false);
+  assert.equal(summarized.quotes.length, 2);
+  assert.deepEqual([summarized.before.archiveId, summarized.after.archiveId], [pricing(2), pricing(1)]);
+  // 引用は、差分の足した行に在る字（画面が、引用から差分の行へ動ける）
+  for (const quote of summarized.quotes) assert.ok(summarized.hunks.flat().some((line) => line.startsWith("+") && line.includes(quote.text)), quote.text);
+  assert.deepEqual([plain.summary, plain.significance, plain.headline, plain.quotes], [null, null, null, []]);
+  assert.deepEqual([plain.recipeDiffers, plain.stageDiffers], [true, true]);
+  assert.deepEqual([plain.before.stage, plain.after.stage], ["after-behaviors", null]);
+  assert.deepEqual([plain.before.browserhiveVersion, plain.after.browserhiveVersion], ["29.0.1", "29.0.2"]);
+  assert.equal(same.sameBy, "digest");
+  // 比べられない訳は、今を先に見る。どちらかの撮り方が分からなければ recipeDiffers は null
+  assert.deepEqual([uninspected.reason, uninspected.recipeDiffers], ["not_inspected", null]);
+  assert.equal(compare(pricing(1), pricing(4)).body.reason, "not_inspected");
+  // 代役は比べない: 差分を書いていない 2 本は「WACZ が保管庫に無い」
+  assert.equal(unwritten.reason, "wacz_missing");
+});
+
+test("2 本の差分は、無い取り込みを 404、URL の違う 2 本を 422、形の違う問いを schema の 400 で断る", () => {
+  const unknown = "5c0d0c99-6a1e-4000-8000-000000000c99";
+  assert.deepEqual(compare(unknown, pricing(1)), { status: 404, body: { error: "not found" } });
+  assert.deepEqual(compare(pricing(2), unknown), { status: 404, body: { error: "not found" } });
+  assert.deepEqual(compare(idOf("good.wacz"), pricing(1)), { status: 422, body: { error: "different url" } });
+  const ask = (id, params) => archiveChangeOf(HISTORY_NAMES, scenario, id, new URLSearchParams(params));
+  assert.equal(ask("nope", { since: pricing(2) }).body.message, 'params/id must match format "uuid"');
+  assert.equal(ask(pricing(1), {}).body.message, "querystring must have required property 'since'");
+  assert.equal(ask(pricing(1), { since: pricing(2), x: "1" }).body.message, "querystring must NOT have additional properties");
+  assert.equal(ask(pricing(1), { since: "nope" }).body.message, 'querystring/since must match format "uuid"');
+});
+
+test("要約を頼むと、差分の答えに reused を足した物が返る。2 度目は reused: true で、その後は差分の答えにも要約が載る", () => {
+  const made = [];
+  assert.equal(compare(pricing(5), pricing(3), made).body.summary, null);
+  const first = summarizeChange(HISTORY_NAMES, scenario, pricing(3), { since: pricing(5) }, made);
+  assert.equal(first.status, 200);
+  assertChangeShaped(first.body, [...LEDGER_ARCHIVE_CHANGE_KEYS, "reused"].sort());
+  assert.equal(first.body.reused, false);
+  assert.equal(first.body.summary.evidence, false);
+  assert.equal(first.body.state, "diffed");
+  assert.equal(typeof first.body.headline, "string");
+  assert.deepEqual(first.body.hunks, compare(pricing(5), pricing(3)).body.hunks);
+  // 画面は答えをそのまま描く: 引用は差分の足した行に在る
+  for (const quote of first.body.quotes) assert.ok(first.body.hunks.flat().some((line) => line.startsWith("+") && line.includes(quote.text)), quote.text);
+  const again = summarizeChange(HISTORY_NAMES, scenario, pricing(3), { since: pricing(5) }, made);
+  assert.equal(again.body.reused, true);
+  assert.deepEqual(again.body.summary, first.body.summary);
+  const reopened = compare(pricing(5), pricing(3), made).body;
+  assertChangeShaped(reopened);
+  assert.deepEqual([reopened.summary, reopened.headline, reopened.quotes], [first.body.summary, first.body.headline, first.body.quotes]);
+  // 頼んでいない間（別の覚え）は、差分の答えに要約は無い
+  assert.equal(compare(pricing(5), pricing(3), []).body.summary, null);
+  // 前に作った要約が在る組は、頼んでも Claude を呼ばずに返す
+  assert.equal(summarizeChange(HISTORY_NAMES, scenario, pricing(1), { since: pricing(2) }, []).body.reused, true);
+});
+
+test("要約の断りは capture-ledger と同じ句: 差分と同じ 404・422、差分が無ければ nothing to summarize、クロールに繋がらなければ no organization", () => {
+  const summarize = (id, body, s = scenario) => summarizeChange(HISTORY_NAMES, s, id, body, []);
+  assert.deepEqual(summarize("5c0d0c99-6a1e-4000-8000-000000000c99", { since: pricing(2) }), { status: 404, body: { error: "not found" } });
+  assert.deepEqual(summarize(pricing(1), { since: idOf("good.wacz") }), { status: 422, body: { error: "different url" } });
+  // 同じ・比べられない 2 本
+  assert.deepEqual(summarize(pricing(2), { since: pricing(3) }), { status: 422, body: { error: "nothing to summarize" } });
+  assert.deepEqual(summarize(pricing(1), { since: pricing(4) }), { status: 422, body: { error: "nothing to summarize" } });
+  // 今の取り込みがクロールに繋がらない（費用を数える組織が無い）
+  const orphan = structuredClone(scenario);
+  orphan.history.urls[HISTORY_URL].find((row) => row.id === pricing(3)).crawlId = null;
+  assert.deepEqual(summarize(pricing(3), { since: pricing(5) }, orphan), { status: 422, body: { error: "no organization" } });
+  // 代役は Claude を呼ばない: 要約を書いていない差分は、Claude が答えないときと同じ 502
+  const silent = structuredClone(scenario);
+  silent.history.summaries = [];
+  assert.deepEqual(summarize(pricing(3), { since: pricing(5) }, silent), { status: 502, body: { error: "claude failed" } });
+  // 本文の形
+  assert.equal(summarize(pricing(1), {}).body.message, "body must have required property 'since'");
+  assert.equal(summarize(pricing(1), { since: pricing(2), force: true }).body.message, "body must NOT have additional properties");
+  assert.equal(summarize(pricing(1), { since: "nope" }).body.message, 'body/since must match format "uuid"');
+  assert.equal(summarize("nope", { since: pricing(2) }).body.message, 'params/id must match format "uuid"');
 });

@@ -24,7 +24,7 @@ const saidOf = (body) => errorText(body) ?? t("common.noText");
  * こちらは capture-ledger がそのエンドポイントを出していない —— どちらのエンドポイントも、capture-ledger の設定が無ければエンドポイントごと出さない。
  * 見るのは Fastify の `message` で、capture-ledger の句（`error`）ではない —— 句の文は `errorText` の 1 通りだけ。
  */
-const routeMissing = (status, body) =>
+export const routeMissing = (status, body) =>
   status === 404 && typeof body?.message === "string" && body.message.startsWith("Route ");
 
 /** 誤り 1 件の「どこ」（`2:18`）。行か列が無ければ、在る物だけ。 */

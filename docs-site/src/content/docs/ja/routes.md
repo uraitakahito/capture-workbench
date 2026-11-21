@@ -17,6 +17,7 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 | `POST /api/schedules` | capture-ledger へ（書き込み。定期実行の予定を作る） |
 | `POST /api/schedules/:id/<操作>` | capture-ledger へ（書き込み。`pause`・`resume`・`run`・`repin`・`delete`） |
 | `POST /api/crawls/:id/failed` | capture-ledger へ（書き込み。走ったままのクロールを締める） |
+| `POST /api/archives/:id/changes/summary` | capture-ledger へ（書き込み。選んだ 2 本の取り込みの差分を、Claude に要約させる） |
 | `GET /api/archives/:id/screenshots/:stage` | capture-ledger へ素通し（節目のスクリーンショット。字でなく WebP のバイト列のまま通す） |
 | `/api/*`（ほか） | capture-ledger へ素通し（GET だけ） |
 | `/wacz/:id/…` | capture-ledger に署名をもらい、daemon へ |
@@ -93,7 +94,7 @@ capture-ledger は CORS（Cross-Origin Resource Sharing。別のオリジンの�
 
 どのエンドポイントを読むかは workbench（`public/app.js`）が決め、サーバは選びません。
 エンドポイントの一覧（allowlist）は持っていません。
-だから capture-ledger の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）と `GET /api/crawls/:id/pages/:page/trace`（1 ページの取り込みの経緯）と `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`（その取り込みの失敗の時点の絵）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）、`GET /api/search`（検索の画面が引く全文検索）、`GET /api/archives/:id/screenshots/:stage`（撮った時の絵。返し方だけが上の例外）も、ここでは何も要りません。どれも読み取りのエンドポイントで、一覧と同じく素通しです。
+だから capture-ledger の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）と `GET /api/crawls/:id/pages/:page/trace`（1 ページの取り込みの経緯）と `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`（その取り込みの失敗の時点の絵）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）、`GET /api/search`（検索の画面が引く全文検索）、`GET /api/history`（履歴が引く、同じ URL の取り込みの一覧）と `GET /api/archives/:id/changes`（履歴で選んだ 2 本の差分）、`GET /api/archives/:id/screenshots/:stage`（撮った時の絵。返し方だけが上の例外）も、ここでは何も要りません。どれも読み取りのエンドポイントで、一覧と同じく素通しです。
 ページの表の続きは、capture-ledger が本文の `next` で言います（中継が返すのは状態と `content-type` と本文だけで、ほかのヘッダは落ちるため）。
 
 ## POST /api/crawls —— クロールを始める
@@ -176,6 +177,30 @@ workbench は答えを描くだけです。
 | 429 `claude budget exhausted` | 組織がこの月の上限に届いた（`spentUsd` と `budgetUsd` つき）。Claude は呼ばない |
 | 502・503 | Claude か ts-compile-service が答えなかった |
 | 404 | 名乗りにクロールを始める許可が無い、クロールかその場の TS が無い、capture-ledger に API の鍵が無くエンドポイントごと無い |
+
+## POST /api/archives/:id/changes/summary —— 2 本の差分を要約させる
+
+これも書き込みのエンドポイントです。
+[履歴](/screens/#履歴)で 2 本を選び、差分の下の「Claude に要約させる」を押すと使います。
+`:id` が「今」の取り込みで、本文は `{ "since": "<前の取り込みの id>" }` です。
+capture-ledger が、差分を読む `GET /api/archives/:id/changes` と同じ 2 本の差分を Claude に要約させ、差分の答えに要約（`summary` に model・決まりの文の版・費用。ほかに重さ・1 行・引用）を入れ、`reused` を足して返します。
+workbench は答えを描くだけです。
+
+- 門とアクセストークンは `POST /api/crawls` と同じです（`Origin`・JSON・1 MiB）。
+- **中継するのは、この形ちょうどだけ。**
+  id は UUID の形で、`/summary` の後ろには何も付きません（query も）。
+  形は `src/lib.mjs` の `isWriteRoute` に在ります。
+- **同じ差分には 2 度払いません。**
+  同じ差分の要約が在れば、capture-ledger は Claude を呼ばずにそれを返します（`reused: true`）。
+  差分を読む GET も、要約が在れば一緒に返すので、画面を開き直しても押し直さずに出ます。
+
+| capture-ledger の答え | いつ |
+| --- | --- |
+| 200 | 要約できた、または前に作った要約が在った（差分の答えと同じ形に `reused`） |
+| 404 | 名乗りにクロールを始める許可が無い、2 本のどちらかが無い・見てよくない（`{"error":"not found"}`）、capture-ledger に API の鍵が無くエンドポイントごと無い |
+| 422 | 2 本の URL が違う（`different url`）、差分が無い（`nothing to summarize`）、「今」の取り込みがクロールに繋がらず、費用を数える組織が無い（`no organization`）、Claude が断った（`claude refused`） |
+| 429 `claude budget exhausted` | 組織がこの月の上限に届いた（`spentUsd` と `budgetUsd` つき）。Claude は呼ばない |
+| 502 | Claude が答えなかった（`claude failed`）、保管庫が答えなかった（`storage unreachable`） |
 
 ## /wacz/:id/… —— WACZ の中身を読む
 
