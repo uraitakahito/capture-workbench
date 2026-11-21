@@ -65,7 +65,7 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
   字として書く波括弧は `'` で囲みます（`'{'chrome'}'`）。
   文にするのは、同梱した `public/vendor/intl-messageformat.js` です（[同梱した束](#同梱した束)）。
 - **鍵は `<画面>.<まとまり>.<意味>`。**
-  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`archives`・`search`・`scripts`・`wacz`・`links`・`trace`）、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。capture-ledger の断りの文は `ledger.error.<句>`・`ledger.hint.<鍵>`・`ledger.list.*` です（下に書きます）。
+  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`archives`・`search`・`scripts`・`wacz`・`links`・`trace`・`check`）、いくつかの画面の一覧に出る「見た目」の絵は `looks`、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。capture-ledger の断りの文は `ledger.error.<句>`・`ledger.hint.<鍵>`・`ledger.list.*` です（下に書きます）。
   **鍵は文字列をそのまま書き、組み立てません。**
   検査は、コードが名指す鍵と辞書を照らします。走らせたときに組み立てる鍵は、検査から見えません。
   値から字への対応は、鍵の表ではなく、字を返す関数で書きます（`public/start.js` の `actionText`）。
