@@ -1,6 +1,6 @@
 ---
 title: エンドポイント
-description: capture-workbench のサーバが答えるエンドポイント —— /healthz、サインイン、capture-ledger への素通し、書き込みのエンドポイント（クロールを始める・その場の TS の直し方を訊く）、その場の TS の宣言を訊くエンドポイント、WACZ の中身を読む /wacz/ のエンドポイント。Host の門、通すヘッダと、失敗の形
+description: capture-workbench のサーバが答えるエンドポイント —— /healthz、サインイン、capture-ledger への素通し、書き込みのエンドポイント（クロールを始める・その場の TS の直し方を訊く・定期実行の予定を作る／操作する・走ったままのクロールを締める・差分を Claude に要約させる）、その場の TS の宣言を訊くエンドポイント、WACZ の中身を読む /wacz/ のエンドポイント。Host の門、通すヘッダと、失敗の形
 ---
 
 capture-workbench のサーバは中継しかしません。
