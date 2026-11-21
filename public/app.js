@@ -168,6 +168,27 @@ import {
   tracePath,
   traceReasonText,
 } from "/timeline.js";
+import {
+  archiveChangesPath,
+  changeMarkOf,
+  comparable,
+  differsNotes,
+  historyError,
+  historyHash,
+  historyPath,
+  marksOf as historyMarksOf,
+  mayBeBefore,
+  originText,
+  parseHistoryHash,
+  pickPair,
+  reasonText as historyReasonText,
+  summaryBody,
+  summaryLinesOf,
+  summaryPath,
+  summaryRefusal,
+  withAfter,
+  withBefore,
+} from "/history.js";
 import { diagnosisOf, diffOf, failedOnTypes, fixAnswer, hasErrorsIn, lacksValues, noteText } from "/fix.js";
 import {
   awaitsFinalBundle,
@@ -403,6 +424,18 @@ const hashCell = (href, text) => {
   a.textContent = text;
   td.append(a);
   return td;
+};
+
+/**
+ * URL の履歴（`#history/…`・CAPTURE-462）への link。workbench の中の行き先なので、新しいタブで開かない。取り込みの id が
+ * 在れば、その取り込みを「今」に選んだ形で開く（無ければ URL だけ）。
+ */
+const historyLink = (url, archiveId) => {
+  const a = document.createElement("a");
+  a.href = historyHash(url, { afterId: archiveId });
+  a.textContent = t("history.link");
+  a.className = "history-link";
+  return a;
 };
 
 const button = (text, onclick) => {
@@ -938,6 +971,8 @@ const pagesOf = (one) => {
       trace.className = "trace-link";
       said.append(" ", trace);
     }
+    // 同じ URL の取り込みの履歴（#history/…）への link。WACZ の在るページは、その取り込みを「今」に選んだ形で開く。列は足さない
+    said.append(" ", historyLink(String(page.url), page.archiveId));
     outcome.append(said);
     const toggle = document.createElement("td");
     toggle.append(
@@ -2241,6 +2276,8 @@ const drawArchives = () => {
     for (const viewer of VIEWERS) {
       replays.append(link(replaywebHref(settings[viewer.setting], archive), viewerText(viewer)));
     }
+    // 同じ URL の取り込みの履歴へ（この行の取り込みを「今」に選んだ形で）。列は足さない
+    replays.append(historyLink(archive.sourceUrl, archive.id));
     row.append(replays);
     body.append(row);
   }
@@ -2300,6 +2337,8 @@ const drawHits = (hits) => {
     for (const viewer of VIEWERS) {
       go.append(link(hitReplaywebHref(settings[viewer.setting], hit), viewerText(viewer)));
     }
+    // 履歴は取り込んだ URL で引く（`hit.url` は、写しの行では urn で始まる写しの URI）
+    go.append(historyLink(hit.sourceUrl, hit.archiveId));
     row.append(go);
     body.append(row);
   }
@@ -3602,7 +3641,13 @@ const drawChangePane = (detail, toc, picked) => {
     return;
   }
   const title = document.createElement("h3");
-  title.append(tag("span", row.text, `state ${row.kind}`), tag("span", row.url, "mono"));
+  // 見出しの URL は、その URL の履歴（#history/…。CAPTURE-462）への link。今回の取り込みを「今」に選んだ形で開く。
+  // 字を足さない（再生の link の行に 1 語足すと、docs の絵が 1 枚の枠を超えた）
+  const toHistory = historyLink(row.url, row.page.after?.archiveId ?? row.page.before?.archiveId);
+  toHistory.textContent = row.url;
+  toHistory.className = "mono history-link";
+  toHistory.title = t("history.link.title");
+  title.append(tag("span", row.text, `state ${row.kind}`), toHistory);
   pane.append(title);
   pane.append(changeStepsOf(detail.crawlId, toc, row));
   const page = row.page;
@@ -3611,13 +3656,28 @@ const drawChangePane = (detail, toc, picked) => {
     pane.append(replayLinksOf(page));
     return;
   }
+  drawChangePage(pane, page);
+};
+
+/**
+ * 差分の在る 1 ページの枠を、`pane` の後ろに足す: 足した行と消した行の数（前と今で BrowserHive の版が違えば添える）・
+ * 前と今の再生の link・Claude の 1 行・引用（押すと差分の行へ）・差分の行。**変化の画面の右のページと、履歴の画面の
+ * 2 本の差分（CAPTURE-462）が、同じこの部品を使う** —— `page` は、どちらの答えも同じ欄（`added`・`removed`・`hunks`・
+ * `headline`・`quotes`・`before`・`after`）を持つ。
+ *
+ *   claude     Claude の 1 行の代わりに置く要素（履歴の画面の、要約の添え書きと「Claude に要約させる」）。無ければ、
+ *              `headline` の在るページに Claude の 1 行を出す
+ */
+const drawChangePage = (pane, page, { claude } = {}) => {
   const meta = document.createElement("p");
   meta.className = "muted";
   const lines = { added: page.added, removed: page.removed };
   const note = versionNote(page);
   meta.append(note === "" ? t("changes.pane.lines", lines) : t("changes.pane.linesNoted", { ...lines, note }));
   pane.append(meta, replayLinksOf(page));
-  if (page.headline !== null) {
+  if (claude !== undefined) {
+    pane.append(claude);
+  } else if (page.headline !== null) {
     pane.append(tag("p", pageClaudeLine(page.headline)));
     // Claude の 1 行は日本語のまま届く。日本語でない画面にだけ、そう断る
     const japanese = japaneseNote();
@@ -3786,6 +3846,391 @@ const openChanges = async (crawlId, pageId) => {
   } catch (err) {
     if (changesView.crawlId === crawlId) changesAnswer(failedText(err));
   }
+};
+
+// ── URL の履歴（#history/<URL>[/<前の id>]/<今の id>・CAPTURE-462） ─────────────────────
+/**
+ * いま開いている履歴。同じ URL の取り込みを新しい順に並べ、「前」と「今」の 2 本を選ぶと、下に 2 本の差分を出す。タブ「変化」の
+ * 画面の中で、一覧（`#changes-list`）と入れ替える（リンクの構成がクロールの一覧と入れ替えるのと同じ作り）。
+ * **引くのは、開いた時・「続きを読む」・2 本を選び直した時だけ** —— 一覧の引き直しの輪（`refresh`）には入れない（丸の選びを
+ * 消さないため）。字・行の印・どの 2 本を選ぶかは `public/history.js`。
+ *
+ *   asked    hash が言った URL（capture-ledger が正規化する前の字）
+ *   url      capture-ledger が返した正規化した URL（最初の答えまでは asked と同じ）
+ *   rows     読んだ行（新しい順）。最初の答えまでは undefined
+ *   next     続きを引くときに渡す時刻。無ければ null
+ *   named    hash が名指した 2 本（`{ beforeId, afterId }`）。丸を選び直すと hash が替わり、ここが替わる
+ *   pick     選んだ 2 本と、名指しのうち読んだ行に無かった物・比べられない物（`pickPair` の答え）
+ *   pending  一覧を引いている途中の Promise（同じ続きを 2 度引かない）
+ *   seq      選び直しの番号（遅れて終わった前の読み足しで、後の選びを上書きしない）
+ *   error    一覧を引けなかった文
+ *   change   選んだ 2 本の差分（`{ key, beforeId, afterId, answer, error, asking, said }`）。2 本そろうまでは undefined
+ *
+ * **`history` と名付けない** —— ブラウザの `history`（`history.replaceState`）を隠す。
+ */
+let historyView = { url: undefined };
+
+/** 丸を選び直す。hash を書き換えるだけで、描き直しは route が呼ぶ `openHistory` に任せる（戻るで前の比較へ戻れる）。 */
+const pickHistory = (pair) => {
+  location.hash = historyHash(historyView.url, pair);
+};
+
+const drawHistoryHead = () => {
+  const view = historyView;
+  const head = $("history-head");
+  head.replaceChildren();
+  const back = document.createElement("p");
+  back.className = "change-back";
+  const toList = document.createElement("a");
+  toList.href = "#changes";
+  toList.textContent = t("changes.head.back");
+  back.append(toList);
+  const h2 = document.createElement("h2");
+  h2.append(tag("span", t("history.head.title")), tag("span", view.url, "mono history-url"));
+  head.append(back, h2);
+  if (view.rows !== undefined) {
+    const n = view.rows.length;
+    head.append(tag("p", view.next === null ? t("history.head.loaded", { n }) : t("history.head.loadedMore", { n }), "muted"));
+  }
+};
+
+/** 丸の欄。比べられない行には丸を出さない（空の欄）。 */
+const historyRadio = (row, name, { checked, enabled, label, onpick }) => {
+  const td = tag("td", "", "pick");
+  if (!comparable(row)) return td;
+  const input = document.createElement("input");
+  input.type = "radio";
+  input.name = name;
+  input.checked = checked;
+  input.disabled = !enabled;
+  input.setAttribute("aria-label", label);
+  input.onchange = onpick;
+  td.append(input);
+  return td;
+};
+
+/** 取り込みの表（新しい順）と、名指しの断りと、「続きを読む」。 */
+const drawHistoryList = () => {
+  const view = historyView;
+  const box = $("history-list");
+  box.replaceChildren();
+  if (view.rows === undefined) {
+    if (view.error === undefined) box.append(tag("p", t("common.loading"), "muted"));
+    return;
+  }
+  const { pick } = view;
+  // 選ぶ 2 本（名指しの行か、比べられる 2 本）を探して読み足している間は、「無い」とまだ言わない（終わりまで読んでから断る）
+  if (view.pending !== undefined && pick.wanting) box.append(tag("p", t("history.seeking"), "muted"));
+  else if (pick.missing.length > 0 && view.next === null) box.append(tag("p", t("history.missing"), "state bad"));
+  if (pick.unusable.length > 0) box.append(tag("p", t("history.unusable"), "state bad"));
+  if (view.rows.length === 0 && view.next === null) {
+    box.append(tag("p", t("history.empty"), "empty"));
+    return;
+  }
+  if (view.rows.length > 0) {
+    const table = document.createElement("table");
+    table.className = "history-table";
+    const titles = document.createElement("tr");
+    const columns = [
+      t("history.col.before"),
+      t("history.col.after"),
+      t("history.col.capturedAt"),
+      t("history.col.origin"),
+      t("history.col.change"),
+      t("history.col.recipe"),
+      "BrowserHive",
+    ];
+    for (const title of columns) titles.append(tag("th", title));
+    const thead = document.createElement("thead");
+    thead.append(titles);
+    const tbody = document.createElement("tbody");
+    const marks = historyMarksOf(view.rows, view.next !== null);
+    const pair = { beforeId: pick.beforeId, afterId: pick.afterId };
+    for (const [i, row] of view.rows.entries()) {
+      const tr = document.createElement("tr");
+      tr.dataset.archive = row.id;
+      if (row.id === pair.beforeId || row.id === pair.afterId) tr.className = "picked";
+      const at = dateTime(new Date(row.capturedAt));
+      tr.append(
+        historyRadio(row, "history-before", {
+          checked: row.id === pair.beforeId,
+          // 「前」は「今」より古い行だけ
+          enabled: mayBeBefore(view.rows, pair, row.id),
+          label: t("history.pick.before", { at }),
+          onpick: () => pickHistory(withBefore(view.rows, pair, row.id)),
+        }),
+        historyRadio(row, "history-after", {
+          checked: row.id === pair.afterId,
+          enabled: true,
+          label: t("history.pick.after", { at }),
+          onpick: () => pickHistory(withAfter(view.rows, pair, row.id)),
+        }),
+        cell(at, "mono"),
+        cell(originText(row.origin)),
+      );
+      const said = changeMarkOf(marks[i]);
+      tr.append(
+        cell(said.text, said.kind === "" ? "change muted" : `change state ${said.kind}`),
+        cell(marks[i].recipeChanged ? t("history.recipe.changed") : "", "state warn"),
+        cell(row.browserhiveVersion ?? "—", "mono"),
+      );
+      tbody.append(tr);
+    }
+    table.append(thead, tbody);
+    // 表は自分の箱の中で横に流す（狭い窓で、画面ごと横に流さない）
+    const scroll = tag("div", "", "history-scroll");
+    scroll.append(table);
+    box.append(scroll);
+  }
+  if (view.next !== null) {
+    const more = button(view.pending === undefined ? t("history.more") : t("common.loading"), () => void moreHistory());
+    more.disabled = view.pending !== undefined;
+    box.append(more);
+  }
+};
+
+const drawHistory = () => {
+  const line = $("history-answer");
+  line.hidden = historyView.error === undefined;
+  line.textContent = historyView.error ?? "";
+  drawHistoryHead();
+  drawHistoryList();
+};
+
+/**
+ * 要約の所。要約が在れば添え書き（「Claude の要約（証拠ではない）」・model・版・費用と、Claude の 1 行）、無ければ
+ * 「Claude に要約させる」。**押した時だけ Claude を呼ぶ**（capture-ledger を通して。費用が掛かる）。断りは枠の中に出す。
+ */
+const historySummaryOf = (change) => {
+  const box = tag("div", "", "history-summary");
+  const lines = summaryLinesOf(change.answer);
+  for (const line of lines) box.append(tag("p", line.text, line.muted ? "muted" : undefined));
+  if (lines.length === 0) {
+    const ask = button(change.asking ? t("history.summary.asking") : t("history.summary.ask"), () => void askHistorySummary());
+    ask.disabled = change.asking;
+    box.append(ask);
+    if (change.said !== undefined) box.append(tag("p", change.said, "state bad"));
+  }
+  return box;
+};
+
+/** 表の下の、選んだ 2 本の差分。差分の在る 2 本は、変化の画面の 1 ページと同じ部品（`drawChangePage`）で描く。 */
+const drawHistoryChange = () => {
+  const view = historyView;
+  const pane = $("history-change");
+  pane.replaceChildren();
+  if (view.rows === undefined || view.rows.length === 0) return;
+  const change = view.change;
+  if (change === undefined) {
+    // 2 本そろっていない。選ぶ行を探して読み足している間は、まだ何も言わない
+    if (view.pick.wanting && view.next !== null) return;
+    const hint =
+      view.rows.filter(comparable).length < 2
+        ? t("history.pick.none")
+        : view.pick.afterId === undefined
+          ? t("history.pick.needBoth")
+          : t("history.pick.needBefore");
+    pane.append(tag("p", hint, "empty"));
+    return;
+  }
+  const when = (id) => {
+    const row = view.rows.find((one) => one.id === id);
+    return row === undefined ? id.slice(0, 8) : dateTime(new Date(row.capturedAt));
+  };
+  const answer = change.answer;
+  const title = document.createElement("h3");
+  if (answer?.state === "same" || answer?.state === "diffed") {
+    const said = changeMarkOf({ change: answer.state === "same" ? "same" : "changed" });
+    title.append(tag("span", said.text, `state ${said.kind}`));
+  }
+  title.append(tag("span", t("history.diff.title", { before: when(change.beforeId), after: when(change.afterId) }), "mono"));
+  pane.append(title);
+  if (change.error !== undefined) {
+    pane.append(tag("p", change.error, "state bad"));
+    return;
+  }
+  if (answer === undefined) {
+    pane.append(tag("p", t("history.diff.loading"), "muted"));
+    return;
+  }
+  // 撮り方か、比べた行（写し・文書の行）が違う 2 本。比べはするが、そう断る
+  const notes = differsNotes(answer);
+  if (notes.length > 0) {
+    const differs = tag("p", "", "history-differs");
+    for (const note of notes) differs.append(tag("span", note, "state warn"));
+    pane.append(differs);
+  }
+  if (answer.state === "same") {
+    pane.append(tag("p", answer.sameBy === "lines" ? t("history.diff.sameLines") : t("history.diff.same")));
+    pane.append(replayLinksOf(answer));
+    return;
+  }
+  if (answer.state !== "diffed") {
+    pane.append(tag("p", t("history.diff.notComparable", { reason: historyReasonText(answer.reason ?? answer.state) }), "state bad"));
+    pane.append(replayLinksOf(answer));
+    return;
+  }
+  drawChangePage(pane, answer, { claude: historySummaryOf(change) });
+};
+
+/**
+ * 一覧を 1 回分引く（最初は頭から、後は `next` の続き）。引けたら true。**描かない**（呼び手が描く）。同じ続きを 2 度
+ * 引かないように、引いている間は同じ Promise を返す。最初の答えで、hash の URL を capture-ledger が正規化した URL に直す
+ * （`https://a.test` を貼っても `https://a.test/` の履歴が開き、渡せる URL が 1 つに決まる。戻るの行き先は増やさない）。
+ */
+const loadHistory = (view) => {
+  view.pending ??= (async () => {
+    let status = 0;
+    let body = {};
+    try {
+      const res = await fetch(historyPath(view.url, view.rows === undefined ? undefined : view.next));
+      status = res.status;
+      body = await res.json().catch(() => ({}));
+      signInAgain(res, body);
+    } catch (err) {
+      body = { message: failedText(err) };
+    }
+    view.pending = undefined;
+    if (status !== 200) {
+      view.error = historyError(status, body);
+      return false;
+    }
+    view.error = undefined;
+    if (view.rows === undefined && typeof body.url === "string" && body.url !== view.url) {
+      view.url = body.url;
+      if (historyView === view) history.replaceState(null, "", historyHash(view.url, view.named));
+    }
+    view.rows = [...(view.rows ?? []), ...(Array.isArray(body.archives) ? body.archives : [])];
+    view.next = typeof body.next === "string" ? body.next : null;
+    return true;
+  })();
+  return view.pending;
+};
+
+/** 選んだ 2 本の差分を引く。同じ 2 本なら引き直さない（引けなかった 2 本は、選び直せば引き直す）。 */
+const loadHistoryChange = async () => {
+  const view = historyView;
+  const { beforeId, afterId } = view.pick;
+  if (beforeId === undefined || afterId === undefined) {
+    view.change = undefined;
+    drawHistoryChange();
+    return;
+  }
+  const key = `${beforeId} ${afterId}`;
+  if (view.change?.key === key && view.change.error === undefined) return;
+  const change = { key, beforeId, afterId, answer: undefined, error: undefined, asking: false, said: undefined };
+  view.change = change;
+  drawHistoryChange();
+  let status = 0;
+  let body = {};
+  try {
+    const res = await fetch(archiveChangesPath(afterId, beforeId));
+    status = res.status;
+    body = await res.json().catch(() => ({}));
+    signInAgain(res, body);
+  } catch (err) {
+    body = { message: failedText(err) };
+  }
+  if (historyView !== view || view.change !== change) return; // 別の 2 本を選んだ・履歴を閉じた
+  if (status === 200) change.answer = body;
+  else change.error = historyError(status, body);
+  drawHistoryChange();
+};
+
+/**
+ * 名指し（hash）から 2 本を選び、表を描き、差分を引く。名指しの行が読んだ中に無ければ、**見つかるまで続きを読む**
+ * （終わりまで読んで無ければ、表の上で断る）。名指しが無く、比べられる行が 2 本そろわないときも同じ。引けなかったら、
+ * 読めた所までで止まる。
+ */
+const settleHistory = async () => {
+  const view = historyView;
+  const seq = (view.seq += 1);
+  for (;;) {
+    view.pick = pickPair(view.rows, view.named);
+    const reads = view.pick.wanting && view.next !== null ? loadHistory(view) : undefined;
+    drawHistory();
+    if (reads === undefined) break;
+    const read = await reads;
+    if (historyView !== view || view.seq !== seq) return; // 履歴を閉じた・後から選び直した
+    if (!read) {
+      drawHistory();
+      break;
+    }
+  }
+  void loadHistoryChange();
+};
+
+/** 「続きを読む」。読み足してから選び直す（名指しが無ければ、選びは変わらない）。 */
+const moreHistory = async () => {
+  const view = historyView;
+  const reads = loadHistory(view);
+  drawHistory();
+  await reads;
+  if (historyView === view) await settleHistory();
+};
+
+/** 「Claude に要約させる」。答えは差分と同じ形（`summary` が入る）なので、差分の答えと入れ替えて枠を描き直す。 */
+const askHistorySummary = async () => {
+  const view = historyView;
+  const change = view.change;
+  if (change === undefined || change.asking) return;
+  change.asking = true;
+  change.said = undefined;
+  drawHistoryChange();
+  const { status, answer } = await postJson(summaryPath(change.afterId), summaryBody(change.beforeId));
+  change.asking = false;
+  if (status === 200) change.answer = answer;
+  else change.said = summaryRefusal(status, answer);
+  if (historyView === view && view.change === change) drawHistoryChange();
+};
+
+const closeHistory = () => {
+  if (historyView.url === undefined) return;
+  historyView = { url: undefined };
+  $("history-detail").hidden = true;
+};
+
+const openHistory = (asked) => {
+  $("changes-list").hidden = true;
+  $("change-detail").hidden = true;
+  $("history-detail").hidden = false;
+  changesAnswer(undefined);
+  // 回を開いたままここへ来たら、回の画面は隠した。戻ってきた時に読み直して出すように、覚えた回を忘れる
+  changesView = { crawlId: undefined, detail: undefined, toc: [] };
+  const named = { beforeId: asked.beforeId, afterId: asked.afterId };
+  if (historyView.url !== undefined && (asked.url === historyView.url || asked.url === historyView.asked)) {
+    // 同じ URL の履歴で、選ぶ 2 本だけが替わった（丸を押した・戻る）。一覧は引き直さない
+    historyView.named = named;
+    if (historyView.rows !== undefined) void settleHistory();
+    return;
+  }
+  const view = {
+    asked: asked.url,
+    url: asked.url,
+    rows: undefined,
+    next: null,
+    named,
+    pick: pickPair([], {}),
+    pending: undefined,
+    seq: 0,
+    error: undefined,
+    change: undefined,
+  };
+  historyView = view;
+  const reads = loadHistory(view);
+  drawHistory();
+  drawHistoryChange();
+  void reads.then((read) => {
+    if (historyView !== view) return; // 別の URL を開いた・一覧へ戻った
+    if (read) void settleHistory();
+    else drawHistory();
+  });
+};
+
+$("history-open").onsubmit = (event) => {
+  event.preventDefault();
+  const url = $("history-url").value.trim();
+  if (url !== "") location.hash = historyHash(url);
 };
 
 // ── リンクの構成（#links/<クロールの id>[/<ページの id>]・CAPTURE-246） ─────────────
@@ -5192,13 +5637,16 @@ const show = (face) => {
 /**
  * URL が画面を決める。`#check/…` は検証の画面、`#wacz/…` は WACZ の画面、`#scripts` と `#scripts/…` はスクリプト集の画面（読む所）、
  * `#search` と `#search/<語>` は検索の画面、`#links/…` と `#trace/…` はクロールの画面の中（リンクの構成・経緯）、
- * `#changes/…` は変化の画面、それ以外はほかの画面のどれか。
+ * `#changes/…` は変化の画面、`#history/…` は変化の画面の中（URL の履歴）、それ以外はほかの画面のどれか。
  */
 const route = () => {
   // リンクの構成（#links/…）と経緯（#trace/…）は、同じ一覧を隠す。**先に両方を閉じ、後から開く** —— 片方から
   // もう片方へ移ったときに、閉じる側が一覧を出し直さないように（開く側は下の枝で、閉じた後に一覧を隠す）
   if (parseLinksHash(location.hash) === undefined) closeLinks();
   if (parseTraceHash(location.hash) === undefined) closeTrace();
+  // URL の履歴（#history/…）は、変化の画面の一覧を隠す。ほかへ移ったら閉じる（一覧を出し直すのは openChanges）
+  const past = parseHistoryHash(location.hash);
+  if (past === undefined) closeHistory();
   const checking = parseCheckHash(location.hash);
   if (checking !== undefined) {
     openCheck(checking);
@@ -5226,6 +5674,11 @@ const route = () => {
   if (trace !== undefined) {
     show("crawls");
     openTrace(trace.crawlId, trace.pageId);
+    return;
+  }
+  if (past !== undefined) {
+    show("changes");
+    openHistory(past);
     return;
   }
   const changes = parseChangesHash(location.hash);

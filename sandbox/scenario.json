@@ -3741,6 +3741,209 @@
       }
     }
   },
+  "history": {
+    "//": [
+      "URL の履歴（CAPTURE-462）。urls は GET /api/history の行（URL → その URL の取り込み。欄は capture-ledger の答えの 1 行と同じ）。",
+      "changes は GET /api/archives/:id/changes が返す差分（before が前、after が今の取り込みの id）。url・state・recipeDiffers・stageDiffers・",
+      "before・after の欄は、代役が行から組む。summary の在る組は要約つきで返る。summaries は POST …/changes/summary を押したときに返す要約で、",
+      "押した後は、代役が動いている間だけ差分の答えにも載る（Claude は呼ばない）。changes に無い組は、文字の digest が同じなら same、",
+      "違えば not_comparable の wacz_missing（代役は比べない。この行の WACZ は置き場に無い）。",
+      "見本の https://sandbox.test/pricing は 6 本: c01 と c02 は予定の回（開いた時に選ばれる 2 本。要約つきの差分）、c03 は手で始めたクロール（撮り方が替わり、",
+      "比べた行が文書の行）、c04 はまだ検めていない行（text が null。丸が出ない）、c05 と c06 は同じ文字。c05 → c03 は要約なしの差分で、押すと要約が返る。",
+      "置き場の WACZ の URL（https://sandbox.test/<名前>）は、アーカイブの行から 1 本だけの履歴を返す（まだ検めていない行として）。"
+    ],
+    "urls": {
+      "https://sandbox.test/pricing": [
+        {
+          "id": "5c0d0c01-6a1e-4000-8000-000000000c01",
+          "capturedAt": "2026-11-10T04:00:21.000Z",
+          "objectKey": "sandbox/pricing-1110-0400.wacz",
+          "crawlId": "5c0d0d01-6a1e-4000-8000-000000000d01",
+          "origin": {
+            "kind": "schedule",
+            "scheduleId": "5c0d0a02-6a1e-4000-8000-000000000a02",
+            "scheduleName": "毎時の確認"
+          },
+          "recipeSha256": "359c07d0816312e3d95164371b67399aa3ebd7dd4038b4440bddf748db191ca1",
+          "browserhiveVersion": "29.0.2",
+          "text": {
+            "stage": "after-behaviors",
+            "sha256": "12d4588963d765fb7a67602274898628343f7721765fcd52c550a6118e74b2c8",
+            "chars": 1284
+          },
+          "notComparable": null
+        },
+        {
+          "id": "5c0d0c02-6a1e-4000-8000-000000000c02",
+          "capturedAt": "2026-11-10T03:00:13.000Z",
+          "objectKey": "sandbox/pricing-1110-0300.wacz",
+          "crawlId": "5c0d0d02-6a1e-4000-8000-000000000d02",
+          "origin": {
+            "kind": "schedule",
+            "scheduleId": "5c0d0a02-6a1e-4000-8000-000000000a02",
+            "scheduleName": "毎時の確認"
+          },
+          "recipeSha256": "359c07d0816312e3d95164371b67399aa3ebd7dd4038b4440bddf748db191ca1",
+          "browserhiveVersion": "29.0.2",
+          "text": {
+            "stage": "after-behaviors",
+            "sha256": "5726a6edcec4045def3018444124025eddf9001f5eae734803f380caf2ed6c9c",
+            "chars": 1251
+          },
+          "notComparable": null
+        },
+        {
+          "id": "5c0d0c03-6a1e-4000-8000-000000000c03",
+          "capturedAt": "2026-11-10T02:41:30.000Z",
+          "objectKey": "sandbox/pricing-1110-0241.wacz",
+          "crawlId": "5c0d0d03-6a1e-4000-8000-000000000d03",
+          "origin": {
+            "kind": "manual",
+            "scheduleId": null,
+            "scheduleName": null
+          },
+          "recipeSha256": "db904a702462d257859bdd66c037706deed92aef8f729ec61d7fb9ca286b0f07",
+          "browserhiveVersion": "29.0.2",
+          "text": {
+            "stage": null,
+            "sha256": "5726a6edcec4045def3018444124025eddf9001f5eae734803f380caf2ed6c9c",
+            "chars": 1251
+          },
+          "notComparable": null
+        },
+        {
+          "id": "5c0d0c04-6a1e-4000-8000-000000000c04",
+          "capturedAt": "2026-11-10T01:47:52.000Z",
+          "objectKey": "sandbox/pricing-1110-0147.wacz",
+          "crawlId": null,
+          "origin": {
+            "kind": "unknown",
+            "scheduleId": null,
+            "scheduleName": null
+          },
+          "recipeSha256": null,
+          "browserhiveVersion": null,
+          "text": null,
+          "notComparable": "not_inspected"
+        },
+        {
+          "id": "5c0d0c05-6a1e-4000-8000-000000000c05",
+          "capturedAt": "2026-11-10T01:00:09.000Z",
+          "objectKey": "sandbox/pricing-1110-0100.wacz",
+          "crawlId": "5c0d0d05-6a1e-4000-8000-000000000d05",
+          "origin": {
+            "kind": "schedule",
+            "scheduleId": "5c0d0a02-6a1e-4000-8000-000000000a02",
+            "scheduleName": "毎時の確認"
+          },
+          "recipeSha256": "359c07d0816312e3d95164371b67399aa3ebd7dd4038b4440bddf748db191ca1",
+          "browserhiveVersion": "29.0.1",
+          "text": {
+            "stage": "after-behaviors",
+            "sha256": "9ad33ca473f554781d01f84d8703f5b0be198cc0a318d52895634ed1188076d3",
+            "chars": 1251
+          },
+          "notComparable": null
+        },
+        {
+          "id": "5c0d0c06-6a1e-4000-8000-000000000c06",
+          "capturedAt": "2026-11-09T19:00:31.000Z",
+          "objectKey": "sandbox/pricing-1109-1900.wacz",
+          "crawlId": "5c0d0d06-6a1e-4000-8000-000000000d06",
+          "origin": {
+            "kind": "schedule",
+            "scheduleId": "5c0d0a01-6a1e-4000-8000-000000000a01",
+            "scheduleName": "毎朝の 5 サイト"
+          },
+          "recipeSha256": "359c07d0816312e3d95164371b67399aa3ebd7dd4038b4440bddf748db191ca1",
+          "browserhiveVersion": "29.0.1",
+          "text": {
+            "stage": "after-behaviors",
+            "sha256": "9ad33ca473f554781d01f84d8703f5b0be198cc0a318d52895634ed1188076d3",
+            "chars": 1251
+          },
+          "notComparable": null
+        }
+      ]
+    },
+    "changes": [
+      {
+        "before": "5c0d0c02-6a1e-4000-8000-000000000c02",
+        "after": "5c0d0c01-6a1e-4000-8000-000000000c01",
+        "added": 2,
+        "removed": 1,
+        "hunks": [
+          [
+            " 料金",
+            "-スタンダード 月額 1,200 円",
+            "+スタンダード 月額 1,400 円",
+            " チーム 月額 4,800 円"
+          ],
+          [
+            " お知らせ",
+            "+2026-11-10 スタンダードの料金を改定しました",
+            " よくある質問"
+          ]
+        ],
+        "summary": {
+          "evidence": false,
+          "model": "claude-opus-5-5",
+          "promptVersion": "change-v1",
+          "usd": 0.0118
+        },
+        "significance": "content",
+        "headline": "スタンダードの月額が 1,200 円から 1,400 円に上がり、改定のお知らせが加わった",
+        "quotes": [
+          {
+            "text": "スタンダード 月額 1,400 円",
+            "verified": true
+          },
+          {
+            "text": "2026-11-10 スタンダードの料金を改定しました",
+            "verified": true
+          }
+        ]
+      },
+      {
+        "before": "5c0d0c05-6a1e-4000-8000-000000000c05",
+        "after": "5c0d0c03-6a1e-4000-8000-000000000c03",
+        "added": 1,
+        "removed": 1,
+        "hunks": [
+          [
+            " 料金",
+            "-無料 0 円（3 件まで）",
+            "+無料 0 円（5 件まで）",
+            " スタンダード 月額 1,200 円"
+          ]
+        ],
+        "summary": null,
+        "significance": null,
+        "headline": null,
+        "quotes": []
+      }
+    ],
+    "summaries": [
+      {
+        "before": "5c0d0c05-6a1e-4000-8000-000000000c05",
+        "after": "5c0d0c03-6a1e-4000-8000-000000000c03",
+        "summary": {
+          "evidence": false,
+          "model": "claude-opus-5-5",
+          "promptVersion": "change-v1",
+          "usd": 0.0102
+        },
+        "significance": "minor",
+        "headline": "無料の枠が 3 件から 5 件に増えた",
+        "quotes": [
+          {
+            "text": "無料 0 円（5 件まで）",
+            "verified": true
+          }
+        ]
+      }
+    ]
+  },
   "archives": {
     "datapackage-bad-hash.wacz": {
       "waczComplete": false

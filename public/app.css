@@ -2334,6 +2334,123 @@ body[data-face="scripts"] main {
 }
 
 /*
+ * URL の履歴（#history/<URL>・CAPTURE-462）。変化の画面の中で、一覧と入れ替えて出す。上から、戻るリンクと題・取り込みの表
+ * （新しい順。「前」「今」の丸で 2 本を選ぶ）・選んだ 2 本の差分（上の回の 1 ページと同じ枠。.change-pane と .change-diff）。
+ */
+/* 一覧の上の「URL の履歴を開く」欄。形は検索の欄（.search）と同じで、上の余白だけ詰める */
+.history-open {
+  padding-top: 8px;
+}
+
+#history-detail {
+  margin: 4px 0 24px;
+}
+
+#history-detail .muted {
+  color: var(--muted);
+}
+
+#history-head h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+/* 長い URL は折り返す（狭い窓で、画面ごと横に流さない） */
+#history-head h2 .history-url {
+  min-width: 0;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+#history-head p,
+#history-list > p {
+  margin: 2px 0;
+}
+
+/*
+ * 表は自分の箱の中で横に流す。全体の表の min-width（720px）と幅 100% は外す —— 継ぐと、幅 400 の窓で main ごと横に流れ、
+ * 下の差分まで動く。欄は中身の幅
+ */
+.history-scroll {
+  max-width: 100%;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.history-table {
+  width: auto;
+  min-width: 0;
+}
+
+.history-table th,
+.history-table td {
+  padding: 6px 10px;
+}
+
+/* 丸の欄。字の基線ではなく、行の真ん中に置く */
+.history-table td.pick {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.history-table td.pick input {
+  margin: 0;
+  vertical-align: middle;
+}
+
+/* 比べられない訳は長いので、この欄だけ折り返す */
+.history-table td.change {
+  min-width: 8em;
+  max-width: 22em;
+  white-space: normal;
+}
+
+.history-table td.change.muted {
+  font-weight: 400;
+}
+
+/* 選んだ 2 本の行 */
+.history-table tr.picked td {
+  background: var(--surface);
+}
+
+.history-change {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+/* 「撮り方が違います」「比べた行が違います」の断り */
+.history-differs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+}
+
+.history-summary {
+  margin: 6px 0;
+}
+
+/* ページの表の結末の欄の「履歴」（「経緯」と同じく、字の途中で折り返さない） */
+tr.detail .pagelist .outcome a.history-link {
+  white-space: nowrap;
+}
+
+/* 変化の 1 ページの見出しの URL は、履歴への link。見出しの見た目のまま（指を乗せた時だけ下線） */
+.change-pane h3 a.history-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.change-pane h3 a.history-link:hover {
+  text-decoration: underline;
+}
+
+/*
  * リンクの構成（#links/<クロールの id>・CAPTURE-246）。上から、題・数の内訳の帯・道具・図・選んだページ。
  * 図は SVG で、色は全部 token から（明暗のどちらでも読める）。図は自分の枠の中で横に流し、画面は流さない。
  */

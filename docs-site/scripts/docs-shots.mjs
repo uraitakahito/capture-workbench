@@ -207,6 +207,23 @@ const SHOTS = [
       document.getElementById("changes-list")?.hidden === true,
   },
   {
+    // URL の履歴（CAPTURE-462）。同じ URL の取り込みの表（前と今の丸・1 つ前から・撮り方）と、選んだ 2 本の差分と
+    // Claude の要約。開いた直後は、いちばん新しい比べられる行と、その 1 つ前が選ばれている
+    name: "history",
+    hash: "#history/https%3A%2F%2Fsandbox.test%2Fpricing",
+    box: "#history-detail",
+    // 7 欄の表は COLUMN より広い。本文に縮めて載せる（変化の絵と同じ）
+    wide: true,
+    maxWidth: 840,
+    // 引用と差分の行は入れず、Claude の要約の下で切る（その下は変化の絵と同じ部品。差分まで入れると 50.0 KB、
+    // 引用まででも 41.2 KB で、1 枚の枠 `scripts/check-doc-refs.mjs` の `BUDGET.one` を超えた）
+    until: "#history-change .history-summary",
+    ready: () =>
+      document.querySelectorAll("#history-list tr[data-archive]").length === 6 &&
+      document.querySelector("#history-change .change-diff") !== null &&
+      document.getElementById("changes-list")?.hidden === true,
+  },
+  {
     name: "crawl-detail",
     hash: "#crawls",
     box: "#crawls tr.detail td",
@@ -280,7 +297,7 @@ const SHOTS = [
       document.querySelector("#crawls tr.detail .logbox .chip.on")?.textContent === "すべて 4" &&
       document.querySelectorAll("#crawls tr.detail .logbox .loglines tr").length === 4 &&
       // 合本に入った 2 ページ × 2 つの再生（ReplayWeb.page ↗・Web Capture ↗）と、取り込みの答えが在る 3 ページの「経緯」
-      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a:not(.trace-link)").length === 4 &&
+      document.querySelectorAll("#crawls tr.detail .pagelist .outcome a:not(.trace-link):not(.history-link)").length === 4 &&
       document.querySelectorAll("#crawls tr.detail .pagelist .outcome a.trace-link").length === 3 &&
       // 撮った時の絵: 読めた絵が 1 枚（1201。撮った viewport は 1280×800）と、伏せた応答の点線の箱が 1 つ（1203）
       [...document.querySelectorAll("#crawls tr.detail .pagelist .look img")].filter((i) => i.complete && i.naturalWidth === 1280).length === 1 &&

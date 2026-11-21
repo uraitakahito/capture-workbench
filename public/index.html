@@ -327,11 +327,21 @@
       <!--
         前回からの変化（CAPTURE-167）。予定の回を前の回と比べた結果。一覧は回のまとめ、開くとページごとの差分と要約。
         **要約は証拠ではない** —— 差分は capture-ledger が 2 本の WACZ から Claude なしで作った物で、要約はそれを読みやすくしただけ。
+        URL の履歴（#history/<URL>・CAPTURE-462）も、この画面の中に出す（タブは「変化」のまま。一覧と入れ替える）。
       -->
       <section id="face-changes" hidden>
         <p id="changes-answer" class="start-answer" hidden></p>
-        <!-- 一覧（#changes）。回を開くと隠す -->
+        <!-- 一覧（#changes）。回か履歴を開くと隠す -->
         <div id="changes-list">
+          <!--
+            URL の履歴を開く欄（CAPTURE-462）。押すと #history/<貼った字> へ移る。字は検査しない —— capture-ledger が
+            URL を正規化して引き、http(s) の URL として読めなければ 400 で言う。
+          -->
+          <form id="history-open" class="search history-open" autocomplete="off">
+            <label for="history-url" data-i18n="history.form.label"></label>
+            <input type="text" id="history-url" inputmode="url" spellcheck="false" placeholder="https://example.com/" />
+            <button type="submit" id="history-go" data-i18n="history.form.go"></button>
+          </form>
           <p id="changes-empty" class="empty" hidden data-i18n="changes.empty"></p>
           <table id="changes-table" hidden>
             <thead>
@@ -352,6 +362,18 @@
             <nav id="change-toc" class="change-toc" data-i18n-aria-label="changes.toc.label"></nav>
             <section id="change-pane" class="change-pane"></section>
           </div>
+        </div>
+        <!--
+          URL の履歴（#history/<URL>・#history/<URL>/<今の id>・#history/<URL>/<前の id>/<今の id>。CAPTURE-462）。同じ URL の
+          取り込みを新しい順に並べ、「前」と「今」の 2 本を選ぶと、下に 2 本の差分が出る（保存しない。選ぶたびに
+          capture-ledger が 2 本の WACZ から作る）。上の欄か、URL の出ている行の「履歴」から開く。中身は全部 app.js が組む
+          （表もここには書かない）。差分の枠は、上の回の 1 ページと同じ部品。
+        -->
+        <div id="history-detail" hidden>
+          <p id="history-answer" class="start-answer state bad" hidden></p>
+          <div id="history-head"></div>
+          <div id="history-list"></div>
+          <section id="history-change" class="change-pane history-change"></section>
         </div>
       </section>
 

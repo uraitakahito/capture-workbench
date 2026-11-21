@@ -17,6 +17,7 @@ not.
 | `POST /api/schedules` | the ledger (writes: makes a schedule) |
 | `POST /api/schedules/:id/<action>` | the ledger (writes: `pause`, `resume`, `run`, `repin`, `delete`) |
 | `POST /api/crawls/:id/failed` | the ledger (writes: closes a crawl left running) |
+| `POST /api/archives/:id/changes/summary` | the ledger (writes: has Claude summarize the diff of the two captures picked) |
 | `POST /api/scripts/check` | the ledger (asks what an inline script declares; writes nothing, and goes through the same checks because the source travels in the body) |
 | `GET /api/archives/:id/screenshots/:stage` | passed through to the ledger (a stage screenshot; passes as WebP bytes, not as text) |
 | `/api/*` (the rest) | passed through to the ledger (GET only) |
@@ -109,7 +110,8 @@ opened crawl's rules decided), `GET /api/crawls/:id/pages` (an opened crawl's pa
 (the trace of one page's capture) and `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`
 (the screenshot at that capture's failure), `GET /api/crawls/:id/diagnostics` (the type
 errors of a crawl that failed the type check), `GET /api/search` (the search view's full-text
-search) and `GET /api/archives/:id/screenshots/:stage` (the picture as captured; only how it is
+search), `GET /api/history` (the captures of one URL, which the history lists),
+`GET /api/archives/:id/changes` (the diff of the two captures picked there) and `GET /api/archives/:id/screenshots/:stage` (the picture as captured; only how it is
 returned is the exception above) need nothing here: they are reads, and pass through like the lists. The ledger says where the pages table continues in the body (`next`),
 since the relay returns only the status, `content-type` and body, and drops the other headers.
 
@@ -203,6 +205,30 @@ the replaced lines, the rounds and the cost; the workbench only draws the answer
 | 429 `claude budget exhausted` | the organization reached this month's limit (with `spentUsd` and `budgetUsd`); Claude is not called |
 | 502 / 503 | Claude or ts-compile-service did not answer |
 | 404 | the identity may not start crawls, the crawl or the inline script does not exist, or the ledger has no API key and does not serve the route |
+
+## POST /api/archives/:id/changes/summary — the route that asks for a summary of a diff
+
+This is also a route that writes. **Have Claude summarize** (Claude に要約させる), under the diff of the two captures
+picked in the [history](/screens/#history), uses it. `:id` is the After capture, and the body is
+`{ "since": "<id of the Before capture>" }`. The ledger has Claude summarize the same diff that
+`GET /api/archives/:id/changes` reads, and returns that diff's answer with the summary filled in (`summary`: the
+model, the prompt version and the cost; and the weight, Claude's line and the quotes) and `reused` added. The
+workbench only draws the answer.
+
+- The same checks as `POST /api/crawls` (`Origin`, JSON, 1 MiB), and the same token.
+- **Only this exact shape is relayed:** the id has the shape of a UUID, and nothing follows `/summary`, not even a
+  query. The shapes are `isWriteRoute` in `src/lib.mjs`.
+- **The same diff is not paid for twice.** When a summary of the same diff exists, the ledger returns it without
+  calling Claude (`reused: true`). The GET that reads the diff returns the summary too when there is one, so opening
+  the view again shows it without pressing.
+
+| The ledger's answer | When |
+| --- | --- |
+| 200 | summarized, or a summary made earlier was found (the diff's answer, plus `reused`) |
+| 404 | the identity may not start crawls, one of the two captures does not exist or may not be viewed (`{"error":"not found"}`), or the ledger has no API key and does not serve the route |
+| 422 | the two captures are of different URLs (`different url`), there is no diff (`nothing to summarize`), the After capture is not tied to a crawl so there is no organization to charge (`no organization`), or Claude declined (`claude refused`) |
+| 429 `claude budget exhausted` | the organization reached this month's limit (with `spentUsd` and `budgetUsd`); Claude is not called |
+| 502 | Claude did not answer (`claude failed`), or the store did not answer (`storage unreachable`) |
 
 ## /wacz/:id/… — routes into a WACZ
 
