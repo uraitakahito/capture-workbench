@@ -647,6 +647,7 @@
   "history.head.loaded": "取り込み {n} 本",
   "history.head.loadedMore": "取り込み {n} 本を読みました（続きがあります）",
   "history.empty": "この URL の取り込みは、見える所にありません。",
+  "history.empty.hint": "末尾の / の有無が違う URL は、別の URL として扱います。こちらではありませんか:",
   "history.col.before": "前",
   "history.col.after": "今",
   "history.col.capturedAt": "撮った時刻",

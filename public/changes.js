@@ -48,6 +48,15 @@ export const significanceText = (significance) =>
 const SIGNIFICANCE_KIND = { none: "ok", minor: "warn", content: "content" };
 
 /**
+ * 重さの字と色（`{ kind, text }`）。変化の画面の目次と、履歴の画面の 2 本の差分の見出し（CAPTURE-462）が使う。重さが無ければ
+ * undefined（要約がまだ無い）。
+ */
+export const significanceMarkOf = (significance) =>
+  significance === null || significance === undefined
+    ? undefined
+    : { kind: SIGNIFICANCE_KIND[significance] ?? "", text: significanceText(significance) };
+
+/**
  * 回の変化の字と色（予定の回の欄と、一覧の 1 行）。`change` は capture-ledger の `recentRuns[].change` か一覧の 1 行。
  * 無ければ「—」（まだ比べていない・古い capture-ledger）。
  */

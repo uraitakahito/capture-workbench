@@ -758,7 +758,9 @@ It is not limited to scheduled runs: captures from a crawl started by hand are l
   [changes view](#changes), press the URL in its heading. From a row, the history opens with that row's capture picked as After and the first older
   capture that can be compared as Before. The ledger normalizes the pasted URL before looking it up (the host name in
   lower case, an empty path as `/`, everything after `#` dropped), and the URL of the view is rewritten to the
-  normalized one. A trailing `/` in the path and the order of the query are left as they are.
+  normalized one. A trailing `/` in the path and the order of the query are left as they are. For a URL with no capture
+  at all, the view says so and, under it, links to the history of the URL that differs only by the trailing `/`
+  (`…/group` and `…/group/` are different URLs, and easy to mix up).
 - **The table is newest first.** Its columns are the **Before** (前) and **After** (今) radio buttons, **Captured at**
   (撮った時刻), **Captured by** (どこで撮ったか: the schedule's name, or a crawl started by hand), **Since the one before**
   (1 つ前から), **Recipe** (撮り方) and the BrowserHive version. The table holds one batch from the ledger, with
@@ -787,7 +789,9 @@ It is not limited to scheduled runs: captures from a crawl started by hand are l
 - **A summary is made only when you ask.** Two captures with a diff get **Have Claude summarize** (Claude に要約させる).
   Pressing it calls Claude through the ledger and shows `Claude's summary (not evidence)` (Claude の要約（証拠ではない）)
   with the model, the prompt version and the cost, Claude's line, and the quotes (clicking a quote moves to its diff
-  line). A summary already made for the same diff is shown without pressing, and is not paid for twice. The cost counts
+  line). With a summary, the mark in the diff's heading changes from **Changed** (変わった) to the weight Claude gave
+  (change of content, small change, nothing that matters: the same words and colours as one page in the
+  [changes view](#changes)). A summary already made for the same two captures is shown without pressing, and is not paid for twice. The cost counts
   toward the monthly limit of the organization of the crawl that took the After capture. When the monthly limit is
   reached, when Claude does not answer, or when the ledger has no summary route (a deployment without Claude's key),
   each is said in its own words.
