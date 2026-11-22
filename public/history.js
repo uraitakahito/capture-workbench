@@ -14,7 +14,7 @@
  * 「証拠ではない」と model・決まりの文の版・費用を言う。字は辞書（`i18n/*.json` の `history.*`）に在る。
  */
 import { errorText, t } from "./i18n.js";
-import { japaneseNote, pageClaudeLine, summaryLine } from "./changes.js";
+import { japaneseNote, pageClaudeLine, significanceMarkOf, summaryLine } from "./changes.js";
 import { routeMissing } from "./fix.js";
 
 /** 同じ URL の取り込みの一覧。`before` は続きを引くときに、前の答えの `next` を渡す。 */
@@ -119,6 +119,34 @@ export const changeMarkOf = (mark) => {
     default:
       return { kind: "bad", text: t("history.change.notComparable", { reason: reasonText(mark.reason) }) };
   }
+};
+
+/**
+ * 2 本の差分の見出しの字と色。要約が在れば Claude の付けた重さ（中身の変化・小さい変化・意味のある変化なし。変化の画面の
+ * 1 ページの見出しと同じ字と色）、無ければ「変わった」。同じ 2 本は「同じ」。差分の無い答え（比べられない）は undefined。
+ */
+export const diffMarkOf = (answer) => {
+  if (answer?.state === "same") return changeMarkOf({ change: "same" });
+  if (answer?.state !== "diffed") return undefined;
+  return significanceMarkOf(answer.significance) ?? changeMarkOf({ change: "changed" });
+};
+
+/**
+ * 末尾の `/` の有無だけを替えた URL。取り込みが 1 本も無い URL の画面が、「こちらではないか」と出す（capture-ledger は
+ * path の末尾の `/` の有無を別の URL として扱う。`https://a.test/group` と `https://a.test/group/` は別）。path が `/` だけの
+ * URL（替えようが無い）と、http(s) の URL として読めない字は undefined。query と `#` より後ろはそのまま残す。
+ */
+export const slashVariantOf = (url) => {
+  let parsed;
+  try {
+    parsed = new URL(String(url));
+  } catch {
+    return undefined;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+  if (parsed.pathname === "/") return undefined;
+  parsed.pathname = parsed.pathname.endsWith("/") ? parsed.pathname.slice(0, -1) : `${parsed.pathname}/`;
+  return parsed.toString();
 };
 
 /**

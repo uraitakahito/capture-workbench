@@ -11,6 +11,7 @@ import {
   changeMarkOf,
   comparable,
   differsNotes,
+  diffMarkOf,
   historyError,
   historyHash,
   historyPath,
@@ -20,6 +21,7 @@ import {
   parseHistoryHash,
   pickPair,
   reasonText,
+  slashVariantOf,
   summaryBody,
   summaryLinesOf,
   summaryPath,
@@ -292,15 +294,15 @@ describe("URL の履歴（CAPTURE-462）", () => {
     assert.doesNotMatch(inEnglish(() => historyError(404, { message: "Route GET:/api/history not found" })), JA);
   });
 
-  const SUMMARY = { evidence: false, model: "claude-opus-5-5", promptVersion: "change-v1", usd: 0.0123 };
+  const SUMMARY = { evidence: false, model: "claude-opus-5-5", promptVersion: "change-pair-v1", usd: 0.0123 };
 
   it("要約の字: 「証拠ではない」と model・版・費用が必ず付く。Claude の 1 行にも「証拠ではない」。要約が無ければ何も出さない", () => {
     const lines = summaryLinesOf({ summary: SUMMARY, headline: "料金が上がった" });
     assert.deepEqual(lines, [
-      { text: "Claude の要約（証拠ではない）・claude-opus-5-5・change-v1・$0.0123", muted: true },
+      { text: "Claude の要約（証拠ではない）・claude-opus-5-5・change-pair-v1・$0.0123", muted: true },
       { text: "Claude の 1 行（証拠ではない）: 料金が上がった", muted: false },
     ]);
-    for (const word of ["証拠ではない", "claude-opus-5-5", "change-v1", "$0.0123"]) assert.ok(lines[0].text.includes(word), word);
+    for (const word of ["証拠ではない", "claude-opus-5-5", "change-pair-v1", "$0.0123"]) assert.ok(lines[0].text.includes(word), word);
     assert.ok(lines[1].text.includes("証拠ではない"));
     // 1 行の無い要約でも、添え書きは付く
     assert.deepEqual(summaryLinesOf({ summary: SUMMARY, headline: null }).map((line) => line.text), [lines[0].text]);
@@ -309,7 +311,7 @@ describe("URL の履歴（CAPTURE-462）", () => {
     // 日本語でない画面には、要約が日本語のままだという断りを足す
     const english = inEnglish(() => summaryLinesOf({ summary: SUMMARY, headline: "料金が上がった" }));
     assert.deepEqual(english.map((line) => line.text), [
-      "Claude's summary (not evidence) · claude-opus-5-5 · change-v1 · $0.0123",
+      "Claude's summary (not evidence) · claude-opus-5-5 · change-pair-v1 · $0.0123",
       "Claude's line (not evidence): 料金が上がった",
       "The summary is written in Japanese.",
     ]);
@@ -362,5 +364,29 @@ describe("URL の履歴（CAPTURE-462）", () => {
     assert.deepEqual(differsNotes({ recipeDiffers: null, stageDiffers: false }), []);
     assert.deepEqual(differsNotes({ recipeDiffers: false, stageDiffers: false }), []);
     assert.deepEqual(differsNotes(undefined), []);
+  });
+
+  it("差分の見出し: 要約が在れば Claude の付けた重さ（変化の画面と同じ字と色）、無ければ「変わった」。同じ 2 本は「同じ」。比べられない 2 本には出さない", () => {
+    assert.deepEqual(diffMarkOf({ state: "diffed", significance: null }), { kind: "content", text: "変わった" });
+    assert.deepEqual(diffMarkOf({ state: "diffed", significance: "content" }), { kind: "content", text: "中身の変化" });
+    assert.deepEqual(diffMarkOf({ state: "diffed", significance: "minor" }), { kind: "warn", text: "小さい変化" });
+    assert.deepEqual(diffMarkOf({ state: "diffed", significance: "none" }), { kind: "ok", text: "意味のある変化なし" });
+    // 同じ 2 本は、要約の欄に何が在っても「同じ」
+    assert.deepEqual(diffMarkOf({ state: "same", significance: "content" }), { kind: "ok", text: "同じ" });
+    assert.equal(diffMarkOf({ state: "not_comparable", significance: null }), undefined);
+    assert.equal(diffMarkOf(undefined), undefined);
+    assert.equal(inEnglish(() => diffMarkOf({ state: "diffed", significance: "minor" }).text), "Small change");
+  });
+
+  it("末尾の / を替えた URL: 無ければ足し、在れば外す。query はそのまま。path が / だけの URL と、URL でない字には出さない", () => {
+    assert.equal(slashVariantOf("https://www.ana.test/group"), "https://www.ana.test/group/");
+    assert.equal(slashVariantOf("https://www.ana.test/group/"), "https://www.ana.test/group");
+    assert.equal(slashVariantOf("https://a.test/x?y=1&z=2"), "https://a.test/x/?y=1&z=2");
+    assert.equal(slashVariantOf("http://a.test:8080/changing/news/?key=c462"), "http://a.test:8080/changing/news?key=c462");
+    // 替えようが無い（capture-ledger が、空の path を / に揃える）
+    assert.equal(slashVariantOf("https://a.test/"), undefined);
+    assert.equal(slashVariantOf("https://a.test"), undefined);
+    assert.equal(slashVariantOf("ftp://a.test/x"), undefined);
+    assert.equal(slashVariantOf("読めない字"), undefined);
   });
 });

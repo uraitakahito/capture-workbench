@@ -173,6 +173,7 @@ import {
   changeMarkOf,
   comparable,
   differsNotes,
+  diffMarkOf,
   historyError,
   historyHash,
   historyPath,
@@ -182,6 +183,7 @@ import {
   parseHistoryHash,
   pickPair,
   reasonText as historyReasonText,
+  slashVariantOf,
   summaryBody,
   summaryLinesOf,
   summaryPath,
@@ -3925,6 +3927,17 @@ const drawHistoryList = () => {
   if (pick.unusable.length > 0) box.append(tag("p", t("history.unusable"), "state bad"));
   if (view.rows.length === 0 && view.next === null) {
     box.append(tag("p", t("history.empty"), "empty"));
+    // capture-ledger は、末尾の / の有無が違う URL を別の物として扱う。取り違えやすいので、替えた URL の履歴へ行けるようにする
+    const variant = slashVariantOf(view.url);
+    if (variant !== undefined) {
+      const hint = tag("p", t("history.empty.hint"), "muted");
+      const other = document.createElement("a");
+      other.href = historyHash(variant);
+      other.textContent = variant;
+      other.className = "mono";
+      hint.append(" ", other);
+      box.append(hint);
+    }
     return;
   }
   if (view.rows.length > 0) {
@@ -4039,10 +4052,9 @@ const drawHistoryChange = () => {
   };
   const answer = change.answer;
   const title = document.createElement("h3");
-  if (answer?.state === "same" || answer?.state === "diffed") {
-    const said = changeMarkOf({ change: answer.state === "same" ? "same" : "changed" });
-    title.append(tag("span", said.text, `state ${said.kind}`));
-  }
+  // 要約が在れば Claude の付けた重さ（変化の画面の 1 ページの見出しと同じ字と色）、無ければ「変わった」か「同じ」
+  const said = diffMarkOf(answer);
+  if (said !== undefined) title.append(tag("span", said.text, `state ${said.kind}`));
   title.append(tag("span", t("history.diff.title", { before: when(change.beforeId), after: when(change.afterId) }), "mono"));
   pane.append(title);
   if (change.error !== undefined) {

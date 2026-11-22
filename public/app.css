@@ -2350,6 +2350,16 @@ body[data-face="scripts"] main {
   color: var(--muted);
 }
 
+/*
+ * 2 本の差分の枠（#history-change）の中は、薄くしない。この枠は変化の画面の右のページ（#change-pane）と同じ部品
+ * （drawChangePage）で描く。変化の画面には muted を薄くする規則が無く、足した行と消した行の数・前と今の再生の link の
+ * 行は濃いまま出てきた。同じ部品の行が 2 つの画面で違う濃さにならないように、いままでの変化の画面に揃える
+ * （CAPTURE-462。薄い向きに揃えると、docs の変化の絵が 1 枚の枠を超える）。
+ */
+#history-change .muted {
+  color: inherit;
+}
+
 #history-head h2 {
   display: flex;
   flex-wrap: wrap;

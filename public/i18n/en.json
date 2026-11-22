@@ -647,6 +647,7 @@
   "history.head.loaded": "{n, plural, one {{n} capture} other {{n} captures}}",
   "history.head.loadedMore": "{n, plural, one {{n} capture} other {{n} captures}} read (there are more)",
   "history.empty": "No capture of this URL is visible to you.",
+  "history.empty.hint": "A URL that differs only by a trailing / is a different URL. Did you mean:",
   "history.col.before": "Before",
   "history.col.after": "After",
   "history.col.capturedAt": "Captured at",
