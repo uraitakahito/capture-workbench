@@ -124,9 +124,27 @@ export const scenarioAt = (c, now) => ({
 });
 
 /**
+ * 始めた時の名前・app client・申告の名前 (capture-ledger v0.112.0。CAPTURE-450)。台本に無い行は null ——
+ * 本物でも、それより前の行・定期の回・名前を書いていない app client は null。一覧と 1 本が同じ形で返す。
+ */
+const requesterNamesOf = (c) => ({
+  requestedByName: c.requestedByName ?? null,
+  requestedClient: c.requestedClient ?? null,
+  requestedActor: c.requestedActor ?? null,
+});
+
+/** 定期の回の「いま撮る」を押した主体と名前 (capture-ledger v0.113.0)。期限の回と手で始めた行は null。 */
+const runRequesterOf = (c) => ({
+  runRequestedBy: c.runRequestedBy ?? null,
+  runRequestedByName: c.runRequestedByName ?? null,
+});
+
+/**
  * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.107.0) と同じ。v0.57.4 の欄に、合本の欄
  * (`replayBundle`) が v0.73.0 から、`pagesFailed` が v0.77.0 から (capture-ledger と同じく、ページの行の failed を数える)、
- * 定期の回の欄が v0.87.0 から、`dispatch` が v0.98.0 から、`linksRecorded` が v0.99.0 から足された。
+ * 定期の回の欄が v0.87.0 から、`dispatch` が v0.98.0 から、`linksRecorded` が v0.99.0 から、始めた者の名前と出どころ
+ * (`requestedByName`・`requestedClient`・`requestedActor`) が v0.112.0 から、「いま撮る」を押した者
+ * (`runRequestedBy`・`runRequestedByName`) が v0.113.0 から足された (CAPTURE-450)。
  * 時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
  */
 export const crawlRow = (c, now) => ({
@@ -135,6 +153,7 @@ export const crawlRow = (c, now) => ({
   stopReason: c.stopReason ?? null,
   seeds: c.seeds,
   requestedBy: c.requestedBy ?? "sandbox",
+  ...requesterNamesOf(c),
   orgId: c.orgId ?? "acme",
   startedAt: new Date(now - c.startedSecondsAgo * 1000).toISOString(),
   finishedAt: scenarioAt(c, now).finishedAt,
@@ -154,6 +173,7 @@ export const crawlRow = (c, now) => ({
   schedule: c.schedule ?? null,
   scheduledFor: c.scheduledSecondsAgo === undefined ? null : new Date(now - c.scheduledSecondsAgo * 1000).toISOString(),
   scheduleMissed: c.scheduleMissed ?? 0,
+  ...runRequesterOf(c),
 });
 
 /**
@@ -222,7 +242,8 @@ const valuesIn = (c) => ({
 
 /**
  * /api/crawls/:id。capture-ledger の答え (v0.107.0) のうち、workbench が読まない `perHostDelayMs`・`hostParallelism`・
- * `startedAt`・`lastJob`・`schedule`・`scheduledFor`・`scheduleMissed` は返さない (ほかの欄は capture-ledger と同じ名前)。受けた行は走らせたものと値を行に
+ * `startedAt`・`lastJob`・`schedule`・`scheduledFor`・`scheduleMissed` は返さない (ほかの欄は capture-ledger と同じ名前)。
+ * 始めた主体と組織・名前と出どころ・「いま撮る」を押した者は、v0.112.0・v0.113.0 から 1 本の答えにも在る (CAPTURE-450)。受けた行は走らせたものと値を行に
  * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ capture-ledger の既定。
  * `replayBundle` は一覧の行と同じ形 (capture-ledger も同じ関数で組む)。
  * `secrets` は capture-ledger v0.90.0 と同じく `{ name, path, editedAt, rotated, archive }` の列で、値は無い (`archive` は宣言の
@@ -235,6 +256,11 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   rules,
   state: c.state,
   stopReason: c.stopReason ?? null,
+  // 誰が・どこから始めたか (開いた行の 1 行が読む。CAPTURE-450)。一覧と同じ欄
+  requestedBy: c.requestedBy ?? "sandbox",
+  ...requesterNamesOf(c),
+  orgId: c.orgId ?? "acme",
+  ...runRequesterOf(c),
   // 上限と数 (リンクの構成の画面の頭が読む。CAPTURE-246)。capture-ledger の 1 本の答えと同じ欄
   maxDepth: c.maxDepth ?? 2,
   maxPages: c.maxPages ?? 30,
@@ -1580,6 +1606,10 @@ export const submittedRow = (row, now) => {
     stopReason: done ? "completed" : null,
     seeds: row.seeds,
     requestedBy: "sandbox",
+    // 画面の「始める」で受けた行。本物では、サインインした人の名前と、画面の app client の名前が残る
+    requestedByName: "sandbox",
+    requestedClient: "workbench",
+    requestedActor: null,
     orgId: "acme",
     startedAt: new Date(row.startedAt).toISOString(),
     finishedAt: done ? new Date(end).toISOString() : null,
@@ -1598,6 +1628,8 @@ export const submittedRow = (row, now) => {
     schedule: null,
     scheduledFor: null,
     scheduleMissed: 0,
+    runRequestedBy: null,
+    runRequestedByName: null,
   };
 };
 

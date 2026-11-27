@@ -209,7 +209,10 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // 2026-11-22（同じ日・CAPTURE-462 の続き）: 枠はどちらも上げていない。差分の見出しに要約の重さを出し、2 本の差分の枠の
 // 薄い字を変化の画面に揃えて濃くしたので、history が 36.5 → 34.3 KB、全部で 400.1 KB。変化の画面の側を薄くする向きに
 // 揃えると、changes が 40.0〜40.8 KB で 1 枚の枠を超えた（その向きにするなら、1 枚の枠を上げる判断が要る）。
-const BUDGET = { one: 39 * 1024, all: 403 * 1024 };
+// 2026-11-28 に全部の枠を 403 → 406 KB（CAPTURE-450 でクロールの一覧の「始めた人」に名前・app client・申告の席の印を足し、
+// 開いた行に「始めた人:」の 1 行を足したので、crawls が 23.0 → 26.2 KB・crawl-detail が 34.5 → 36.8 KB、全部で 405.7 KB。
+// 前の 2 回と同じ「増えた分を KB に切り上げて上げる・1 枚の枠は上げない」に従った。2 枚とも 1 枚の枠の中）。
+const BUDGET = { one: 39 * 1024, all: 406 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
 const isShot = (name) => Object.hasOwn(manifest.shots, name);

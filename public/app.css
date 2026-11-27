@@ -2109,6 +2109,25 @@ body[data-face="scripts"] main {
   white-space: nowrap;
 }
 
+/* 始めた人の後ろの印（CAPTURE-450）。app client は枠だけ、申告の名前は点線（確かめていない物）、押した人は定期の印と同じ色 */
+.who-mark {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.who-mark.actor {
+  border-style: dashed;
+}
+
+.who-mark.pressed {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* 段を Windmill に送り直した印（CAPTURE-180）。状態の隣に小さく */
 .resend-mark {
   padding: 0 5px;
