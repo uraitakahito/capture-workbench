@@ -64,6 +64,7 @@ import {
   withNocheck,
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
+import { ORIGIN_ALL, originChips, startedByLine, whoMarks, whoOf, withOrigin } from "/requester.js";
 import {
   actionAnswer,
   bandOf,
@@ -1066,6 +1067,7 @@ const diagnosedOf = async (crawlId, detail) => {
  */
 const detailOf = (one) => {
   const bundleFailure = replayBundleFailure(one.replayBundle);
+  const startedBy = startedByLine(one);
   // 段を Windmill に送り直した様子（CAPTURE-180）。諦めて締めた段なら、失敗の文の前に出す（失敗の理由の元がこれ）
   const resend = resendOf(one.dispatch);
   return [
@@ -1083,6 +1085,8 @@ const detailOf = (one) => {
       : [tag("p", t("crawls.detail.error", { error: phraseText("crawls.reason", one.error) }), "state bad pre")]),
     ...(bundleFailure === undefined ? [] : [tag("p", bundleFailure, "state warn pre")]),
     ...typeErrorsOf(one),
+    // 誰が・どこから始めたか（CAPTURE-450）。1 本の答えが持たなければ（古い capture-ledger）出さない
+    ...(startedBy === undefined ? [] : [tag("p", startedBy, "muted")]),
     ranOf(one),
     valuesOf(one),
     decisionsOf(one),
@@ -1165,11 +1169,35 @@ const refreshOpened = () => {
   }
 };
 
+/** 一覧を絞る出どころ（`requester.js` の鍵）。引き直しても選んだまま。 */
+let crawlOrigin = ORIGIN_ALL;
+
+/** 出どころで絞る chip（CAPTURE-450）。引いた一覧に出どころが 2 種類以上在るときだけ出す。 */
+const drawOriginChips = () => {
+  const bar = $("crawls-filter");
+  const chips = originChips(crawls);
+  // 選んでいた出どころが一覧から消えたら、「すべて」に戻す（chip が無いのに絞られたままにしない）
+  if (!chips.some((chip) => chip.id === crawlOrigin)) crawlOrigin = ORIGIN_ALL;
+  bar.hidden = chips.length === 0;
+  bar.replaceChildren(
+    ...(chips.length === 0 ? [] : [tag("span", t("crawls.filter.label"), "muted")]),
+    ...chips.map((chip) => {
+      const one = button(chip.text, () => {
+        crawlOrigin = chip.id;
+        drawCrawls();
+      });
+      one.className = chip.id === crawlOrigin ? "chip on" : "chip";
+      return one;
+    }),
+  );
+};
+
 const drawCrawls = () => {
   const body = $("crawls");
   body.replaceChildren();
   $("crawls-empty").hidden = crawls.length > 0;
-  for (const crawl of crawls) {
+  drawOriginChips();
+  for (const crawl of withOrigin(crawls, crawlOrigin)) {
     const state = stateOf(crawl);
     const row = document.createElement("tr");
     row.className = crawl.crawlId === spotlight ? "head spot" : "head";
@@ -1183,11 +1211,20 @@ const drawCrawls = () => {
     }
     row.append(stateCell);
     row.append(cell(crawl.crawlId.slice(0, 8), "mono"));
-    const who = cell(`${crawl.requestedBy} / ${crawl.orgId}`);
+    // 始めた人（CAPTURE-450）。名前が在れば名前（title に主体の ID）、無ければ今までどおり主体の ID
+    const by = whoOf(crawl);
+    const who = cell(by.text);
+    if (by.title !== undefined) who.title = by.title;
     const mark = markOf(crawl);
     if (mark !== undefined) {
       const badge = tag("span", mark.text, "schedule-mark");
       badge.title = mark.title;
+      who.append(" ", badge);
+    }
+    // app client・申告の席の名前・「いま撮る」を押した人。定期の印の後ろに並べる
+    for (const extra of whoMarks(crawl)) {
+      const badge = tag("span", extra.text, `who-mark ${extra.kind}`);
+      badge.title = extra.title;
       who.append(" ", badge);
     }
     row.append(who);

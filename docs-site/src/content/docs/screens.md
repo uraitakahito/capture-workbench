@@ -48,6 +48,21 @@ the crawl's bundle.
 ① state\
 ② the link to the run
 
+- **Who started it is shown by name and origin.** The name is the one capture-ledger (from v0.112.0)
+  keeps on the crawl row: the signed-in user's name for a person, and the app client's name for a
+  machine (Windmill, an AI agent). The small box after the name is the app client whose token
+  started it (`workbench` is this screen, `cli` is the local `idp:token`, `windmill` is the flow and
+  `smoke`). A dashed box, "席 … (申告)" ("seat … (declared)"), is a name the caller wrote itself, such
+  as an AI agent's seat; capture-ledger does not verify it. On a scheduled run, "押した人 …"
+  ("pressed by …") names whoever pressed run-now (the run's subject stays the schedule's creator).
+  A row without a name (rows from before capture-ledger kept names, or an app client with no name)
+  shows the subject ID as before. Hovering over the name shows the subject ID, and an opened row
+  says the same in one "始めた人:" ("Started by:") line.
+- **You can narrow the list by origin.** The "出どころ:" ("From:") chips above the table keep only
+  the rows of one app client, the scheduled runs, or the unknown ones. They appear only when the
+  rows on screen come from two or more origins, and they narrow only the one page on screen. `cli`
+  holds both the rows a person started with the local `idp:token` and the rows an AI agent started as
+  the dedicated user `ai-cli`; tell them apart by name.
 - **The seed URL takes two lines.** The top line is the path and query, and the bottom line, in
   smaller type, is the origin (scheme, host and port); the two together are the URL. A seed whose
   path is only `/` (such as `https://laws.e-gov.go.jp/`) is told apart by its host, so it shows the

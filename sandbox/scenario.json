@@ -2,6 +2,8 @@
   "//": [
     "サンドボックスの台本。capture-ledger の代役 (fake-ledger.mjs) が、要求のたびにこれを読んで答える。",
     "書き換えると、代役を起こし直さずに画面に出る (workbench は、走行中の行があれば 2 秒、無ければ 30 秒ごとに引く)。",
+    "crawls: requestedByName・requestedClient・requestedActor は、始めた時の名前・app client・申告の席の名前 (capture-ledger v0.112.0。CAPTURE-450)。",
+    "        書かない行は null (それより前の行の形) で、一覧は主体の ID (requestedBy。省けば sandbox) を出す。",
     "crawls: 時刻は startedSecondsAgo (代役が起きた時より何秒前に始まったか) と tookSeconds (かかった秒) で書く。",
     "        running の行は終わりが無く、かかった時間が引くたびに伸びる。",
     "        crawlId は頭の 8 字で違える (画面の id の欄は、頭の 8 字しか出さない)。",
@@ -83,6 +85,7 @@
   "crawls": [
     {
       "crawlId": "5b0c0001-6a1e-4000-8000-000000000001",
+      "requestedBy": "3f1c9a52-0000-4000-8000-00000000a11c", "requestedByName": "alice", "requestedClient": "workbench",
       "state": "running",
       "seeds": [
         "https://sandbox.test/"
@@ -107,6 +110,7 @@
     },
     {
       "crawlId": "5b0c0002-6a1e-4000-8000-000000000002",
+      "requestedBy": "5q8k2m7c1v9x4b6n0p3r", "requestedByName": "ai", "requestedClient": "ai", "requestedActor": "swe-seat-1",
       "state": "succeeded",
       "stopReason": "max_depth",
       "seeds": [
@@ -138,6 +142,7 @@
     },
     {
       "crawlId": "5b0c0003-6a1e-4000-8000-000000000003",
+      "requestedBy": "3f1c9a52-0000-4000-8000-00000000a11c", "requestedByName": "alice", "requestedClient": "cli",
       "state": "succeeded",
       "stopReason": "max_depth",
       "maxDepth": 1,
@@ -403,6 +408,7 @@
     },
     {
       "crawlId": "5b0c0004-6a1e-4000-8000-000000000004",
+      "requestedBy": "7d2w5h8j1l4z6y9t0u3s", "requestedByName": "windmill", "requestedClient": "windmill",
       "state": "succeeded",
       "stopReason": "max_pages",
       "seeds": [
@@ -490,6 +496,7 @@
     },
     {
       "crawlId": "5b0c0007-6a1e-4000-8000-000000000007",
+      "requestedBy": "3f1c9a52-0000-4000-8000-00000000a11c", "requestedByName": "alice",
       "schedule": {
         "id": "5c0d0a01-6a1e-4000-8000-000000000a01",
         "name": "毎朝の 5 サイト"
@@ -877,6 +884,7 @@
     },
     {
       "crawlId": "5b0c0009-6a1e-4000-8000-000000000009",
+      "requestedBy": "5q8k2m7c1v9x4b6n0p3r", "requestedByName": "ai", "requestedClient": "ai", "requestedActor": "devops-seat-2",
       "state": "succeeded",
       "stopReason": "completed",
       "seeds": [

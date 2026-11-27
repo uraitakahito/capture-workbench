@@ -98,7 +98,8 @@ const NOW = Date.parse("2026-10-12T12:00:00.000Z");
 
 /**
  * capture-ledger の src/api/crawls.ts が /api/crawls の 1 行に返す欄 (v0.57.4 の欄に、`replayBundle` が v0.73.0、`pagesFailed` が v0.77.0、
- * 定期の回の欄が v0.87.0、`dispatch` が v0.98.0、`linksRecorded` が v0.99.0 から。v0.107.0 と同じ)。
+ * 定期の回の欄が v0.87.0、`dispatch` が v0.98.0、`linksRecorded` が v0.99.0、始めた者の名前と出どころが v0.112.0、
+ * 「いま撮る」を押した者が v0.113.0 から。v0.113.0 と同じ)。
  */
 const LEDGER_CRAWL_KEYS = [
   "crawlId",
@@ -106,6 +107,10 @@ const LEDGER_CRAWL_KEYS = [
   "stopReason",
   "seeds",
   "requestedBy",
+  // 始めた時の名前・app client・申告の名前 (capture-ledger CAPTURE-450)
+  "requestedByName",
+  "requestedClient",
+  "requestedActor",
   "orgId",
   "startedAt",
   "finishedAt",
@@ -124,6 +129,9 @@ const LEDGER_CRAWL_KEYS = [
   "schedule",
   "scheduledFor",
   "scheduleMissed",
+  // 定期の回の「いま撮る」を押した者 (capture-ledger CAPTURE-450)
+  "runRequestedBy",
+  "runRequestedByName",
 ].sort();
 /**
  * 行と詳しい所の `replayBundle` の欄（null でなければ。capture-ledger の src/api/crawls.ts の replayBundleOf。v0.73.0 から、
