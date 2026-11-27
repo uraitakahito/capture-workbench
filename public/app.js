@@ -1067,6 +1067,7 @@ const diagnosedOf = async (crawlId, detail) => {
  */
 const detailOf = (one) => {
   const bundleFailure = replayBundleFailure(one.replayBundle);
+  const startedBy = startedByLine(one);
   // 段を Windmill に送り直した様子（CAPTURE-180）。諦めて締めた段なら、失敗の文の前に出す（失敗の理由の元がこれ）
   const resend = resendOf(one.dispatch);
   return [
@@ -1085,7 +1086,7 @@ const detailOf = (one) => {
     ...(bundleFailure === undefined ? [] : [tag("p", bundleFailure, "state warn pre")]),
     ...typeErrorsOf(one),
     // 誰が・どこから始めたか（CAPTURE-450）。1 本の答えが持たなければ（古い capture-ledger）出さない
-    ...(startedByLine(one) === undefined ? [] : [tag("p", startedByLine(one), "muted")]),
+    ...(startedBy === undefined ? [] : [tag("p", startedBy, "muted")]),
     ranOf(one),
     valuesOf(one),
     decisionsOf(one),

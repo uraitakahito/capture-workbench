@@ -60,7 +60,9 @@ the crawl's bundle.
   says the same in one "始めた人:" ("Started by:") line.
 - **You can narrow the list by origin.** The "出どころ:" ("From:") chips above the table keep only
   the rows of one app client, the scheduled runs, or the unknown ones. They appear only when the
-  rows on screen come from two or more origins, and they narrow only the one page on screen.
+  rows on screen come from two or more origins, and they narrow only the one page on screen. `cli`
+  holds both the rows a person started with the local `idp:token` and the rows an AI agent started as
+  the dedicated user `ai-cli`; tell them apart by name.
 - **The seed URL takes two lines.** The top line is the path and query, and the bottom line, in
   smaller type, is the origin (scheme, host and port); the two together are the URL. A seed whose
   path is only `/` (such as `https://laws.e-gov.go.jp/`) is told apart by its host, so it shows the
