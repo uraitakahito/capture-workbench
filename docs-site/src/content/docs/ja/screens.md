@@ -111,7 +111,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   その次が渡した値です。
   始めるときに渡した変数（capture-ledger の `variables`）の名前と値と、使ったシークレット（`secrets`）の名前・Windmill の変数の path・capture-ledger が在るかを確かめたときの `edited_at`・WARC に値を残すか（`archive`）が並びます。
   シークレットの値は出ません。値は Windmill にだけ在って capture-ledger には無く、写し・ページの文字と題・ログからも消えます。
-  WARC での扱いは宣言が決めます。「WARC で隠す」のシークレットは、スクリプトが通信に載せた値もサイトが返した値も、[BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/#archive-files) の中で `***` に置き換わっています。
+  WARC での扱いは宣言が決めます。「WARC で隠す」のシークレットは、スクリプトが通信に載せた値もサイトが返した値も、[BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/ja/#archive-files) の中で `***` に置き換わっています。
   「WARC に残す（keep）」は宣言に `archive: "keep"` と書いたシークレットで、値は通信の記録（WARC の request・response・metadata と、その URL）に値のまま残ります。
   上の絵では `api_token` が隠す物、`login` が残す物です（代役のクロール `5b0c0007`）。
   隠すのは BrowserHive v29.0.0 からです。それより前の取り込みでは、通信に載せた値が WARC に残っています。capture-ledger はそのころの行にも `archive: null` を返すので、印は「WARC で隠す」と出ます（印にポインタを重ねると、そのことも出ます）。
@@ -171,7 +171,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   絞り込みは「すべて」が既定で、「warn 以上」「error だけ」も選べます。数は、その絞り込みで並ぶ行の数です。
   BrowserHive が 1 行の上限で切った行には「途中で切った」が付き、残さなかった行があれば「N 行は残していない（上限か方針で）」が出ます（取り込みの上限を超えて捨てた行と、方針で伏せた文書が console に書いた行。どちらの理由かは、ログの中の browserhive の行が言います）。
   ログを読めないページは、capture-ledger が言う理由を短い文と理由の字で出します（まだ撮っていない・撮らなかった、`.result.json` の場所が無い・保管庫に無い・契約に合わない、ログを残す前の BrowserHive で撮った）。
-  ページに WACZ が在れば、箱の上の「WACZ の画面で開く」から、[BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/) に封じた同じ行（`logs/capture.jsonl`）を WACZ の画面で開けます。WACZ の行は答えの行に `profile` を足しただけで、署名が覆います。BrowserHive WACZ Profile 1.19.0 より前の BrowserHive WACZ には、この entry はありません。
+  ページに WACZ が在れば、箱の上の「WACZ の画面で開く」から、[BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/ja/) に封じた同じ行（`logs/capture.jsonl`）を WACZ の画面で開けます。WACZ の行は答えの行に `profile` を足しただけで、署名が覆います。BrowserHive WACZ Profile 1.19.0 より前の BrowserHive WACZ には、この entry はありません。
 - **開いた行は、引き直しても閉じない。**
   表は引くたびに作り直すので、開いている行を id で覚えておき、最後の答えで開き直します。
   引き直すのは、走行中か、状態が変わった行だけです。

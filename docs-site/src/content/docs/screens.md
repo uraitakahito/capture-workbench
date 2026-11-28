@@ -139,7 +139,7 @@ the crawl's bundle.
   the WARC, `archive`). A secret's value never appears: only Windmill holds it, the ledger does not,
   and it is gone from the snapshots, the page text and title, and the logs. What the WARC keeps is
   up to the declaration. A secret marked **Hidden in the WARC** (WARC で隠す) had its value replaced by
-  `***` in the [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/#archive-files), whether the script put it on the wire or the site sent it back. **Kept in the WARC (keep)**
+  `***` in the [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/#archive-files), whether the script put it on the wire or the site sent it back. **Kept in the WARC (keep)**
   (WARC に残す（keep）) is a secret declared with `archive: "keep"`: its value stays as it is in the
   record of the traffic (the WARC's request, response and metadata records, and their URLs). In the
   picture above `api_token` is hidden and `login` is kept (crawl `5b0c0007` of the stand-in's
@@ -226,7 +226,7 @@ the crawl's bundle.
   captured yet or not captured, no `.result.json` recorded, missing from the store or not matching
   the contract, or captured by a BrowserHive from before logs were kept).
   When the page has a WACZ, **Open in the WACZ view** (WACZ の画面で開く) above the box opens the same
-  lines sealed in the [BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/) (`logs/capture.jsonl`) in the WACZ view. A WACZ line is the answer's line
+  lines sealed in the [BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/) (`logs/capture.jsonl`) in the WACZ view. A WACZ line is the answer's line
   with `profile` added, and the signature covers it. A BrowserHive WACZ from before BrowserHive WACZ
   Profile 1.19.0 has no such entry.
 - **An opened row stays open.** The table is rebuilt on every fetch, so the workbench remembers the
