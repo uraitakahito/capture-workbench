@@ -361,7 +361,8 @@ npm run docs:shots -- start crawls   # only the named ones
 1. Make changes on a branch, open a PR against main and squash-merge it.
 2. To release, open a PR titled `release: vX.Y.Z — summary` that also sets `version` in
    `package.json` to `X.Y.Z` (`.github/workflows/release-version.yml` fails it when the two differ),
-   squash-merge it, and put an annotated tag `vX.Y.Z — summary` on the merge commit by hand.
+   squash-merge it, and put an annotated tag on the merge commit by hand: the tag name is `vX.Y.Z`
+   and its message is `vX.Y.Z — summary` (`git tag -a vX.Y.Z -m "vX.Y.Z — summary" <merge commit>`).
 3. Pushing the tag makes `docs.yml` publish the docs to GitHub Pages.
 
 Merging into main does not change Pages. The docs that are published are the docs of a released
