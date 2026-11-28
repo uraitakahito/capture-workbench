@@ -194,7 +194,7 @@ test("リンクの数の但し書き: 記録の無いクロールの数は延べ
 });
 
 // ── URL の欄の 2 行（CAPTURE-404・試作）──
-import { urlLinesOf } from "../public/format.js";
+import { siteLinesOf, urlLinesOf } from "../public/format.js";
 
 test("URL は、上の行が path と query、下の行が origin", () => {
   assert.deepEqual(urlLinesOf("http://capture-fixtures.capture-ledger:8080/links/fan-out?n=30"), {
@@ -228,4 +228,33 @@ test("URL の形でない字は、そのまま上の行", () => {
     bottom: undefined,
   });
   assert.deepEqual(urlLinesOf(""), { top: "", bottom: undefined });
+});
+
+test("一覧の URL は、上の行がホスト（scheme 無し）、下の行が path と query", () => {
+  assert.deepEqual(siteLinesOf("https://www.apple.com/jp/"), { top: "www.apple.com", bottom: "/jp/" });
+  // CAPTURE-404: 同じ長い origin の起点でも、path は下の行に 1 行を持つ（0 字にならない）。port は残す
+  assert.deepEqual(siteLinesOf("http://capture-fixtures.capture-ledger:8080/links/fan-out?n=30"), {
+    top: "capture-fixtures.capture-ledger:8080",
+    bottom: "/links/fan-out?n=30",
+  });
+  assert.deepEqual(siteLinesOf("http://h.test?x=1"), { top: "h.test", bottom: "?x=1" });
+});
+
+test("一覧の URL は、path が無いか / だけならホストだけの 1 行", () => {
+  assert.deepEqual(siteLinesOf("https://laws.e-gov.go.jp/"), { top: "laws.e-gov.go.jp", bottom: undefined });
+  assert.deepEqual(siteLinesOf("https://laws.e-gov.go.jp"), { top: "laws.e-gov.go.jp", bottom: undefined });
+});
+
+test("一覧の URL は、ホストの字を直さない（大文字・IDN・userinfo もそのまま）", () => {
+  assert.deepEqual(siteLinesOf("https://WWW.Site.TEST/A"), { top: "WWW.Site.TEST", bottom: "/A" });
+  assert.deepEqual(siteLinesOf("https://日本語.jp/ページ"), { top: "日本語.jp", bottom: "/ページ" });
+  assert.deepEqual(siteLinesOf("https://xn--wgv71a119e.jp/"), { top: "xn--wgv71a119e.jp", bottom: undefined });
+  // userinfo も外さない（字を直さない決まり。起点に書く使い方は稀で、全文は title にも在る）
+  assert.deepEqual(siteLinesOf("https://u:p@site.test/a"), { top: "u:p@site.test", bottom: "/a" });
+});
+
+test("一覧の URL は、URL の形でない字とホストの無い URL を、そのまま上の行", () => {
+  for (const text of ["urn:browserhive:snapshot:after-load:http://h.test/a", "", "file:///tmp/a.html"]) {
+    assert.deepEqual(siteLinesOf(text), { top: text, bottom: undefined });
+  }
 });
