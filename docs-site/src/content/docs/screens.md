@@ -63,11 +63,11 @@ the crawl's bundle.
   rows on screen come from two or more origins, and they narrow only the one page on screen. `cli`
   holds both the rows a person started with the local `idp:token` and the rows an AI agent started as
   the dedicated user `ai-cli`; tell them apart by name.
-- **The seed URL takes two lines.** The top line is the path and query, and the bottom line, in
-  smaller type, is the origin (scheme, host and port); the two together are the URL. A seed whose
-  path is only `/` (such as `https://laws.e-gov.go.jp/`) is told apart by its host, so it shows the
-  whole URL on one line. A line that does not fit ends in "…"; hover over the cell to read the whole
-  URL. A crawl with more than one seed shows the first one followed by how many more there are
+- **The seed URL takes two lines, the site first.** The top line is the host (with the port, if
+  any), so you can tell at a glance which site a crawl is for; the bottom line, in smaller type, is
+  the path and query. The scheme (`https://`) is not shown. A seed whose path is only `/` (such as
+  `https://laws.e-gov.go.jp/`) shows just the host on one line. A line that does not fit ends in
+  "…"; hover over the cell to read the whole URL. A crawl with more than one seed shows the first one followed by how many more there are
   (such as `+5`), and hovering lists every seed, one per line.
 - **Pages captured and links are separate columns.** The links column (`pagesDiscovered`) is the
   number of distinct URLs the rules let through among the links on the captured pages (seeds are
@@ -204,8 +204,9 @@ the crawl's bundle.
   **Read on** when there is more. A ledger without the pages route gets a one-line note.
 - **The URL cell starts with the picture as captured.** It is the same picture or dashed box as
   **Look** (見た目) in the [archives view](#archives), from the `screenshot` of the ledger's page row.
-  The URL follows on the right in the same two lines as a crawl's seed (the path and query on top,
-  the origin below), and the top line wraps instead of being cut. Hover over the cell to read the
+  The URL follows on the right in two lines, but the other way round from a crawl's seed: the path
+  and query on top, the origin below, since a crawl's pages are mostly on the seed's site. The top
+  line wraps instead of being cut. Hover over the cell to read the
   whole URL. A page without a WACZ (not captured yet, failed, or skipped) gets no box, only the
   space for one. When the ledger does not return the field (before v0.107.0), there is no space
   for the picture at all. The picture sits inside the URL cell rather than in a column of its own:
@@ -843,7 +844,7 @@ The WACZ files you can see, newest capture first.
   When the ledger does not return the field (before v0.107.0), the column is empty.
 
 - **The URL under Captured (撮れたもの) takes the same two lines as a crawl's seed.** The top line is
-  the path and query, the bottom line the origin. Hover over the cell to read the whole URL.
+  the host, the bottom line the path and query. Hover over the cell to read the whole URL.
 - **A `—` under Complete? (完全か) means "unknown".** The ledger's `waczComplete` is null for
   that row, which is not the same as **Incomplete** (欠けあり).
 - **Validate (検証) enters the validation view** (`#check/<archiveId>`), which validates once.

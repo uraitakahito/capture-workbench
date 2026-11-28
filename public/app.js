@@ -10,7 +10,7 @@
  * `outerHTML` のようなほかの API は見ない。
  */
 import { applyI18n, dateTime, errorText, key, langOf, phraseText, refusalTexts, switchLang, t, timeOfDay, tNodes } from "/i18n.js";
-import { count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, stateOf, statsOf, took, urlLinesOf } from "/format.js";
+import { count, forgetMissing, judgedUnder, linksNoteOf, linksOf, resendOf, secretArchiveOf, severityKind, siteLinesOf, stateOf, statsOf, took, urlLinesOf } from "/format.js";
 import {
   DEFAULT_PROFILE,
   PROFILES,
@@ -338,11 +338,12 @@ const tag = (name, text, className) => {
 const cell = (text, className) => tag("td", text, className);
 
 /**
- * URL の 2 行の箱（CAPTURE-404）。上の行に path と query、下の行に origin を小さく（`urlLinesOf`）。2 本目からは出さず、
- * 上の行の後ろに数だけを出す。一覧の URL の欄（`urlCell`）と、開いた行のページの表の URL の欄が使う。
+ * URL の 2 行の箱（CAPTURE-404）。上の行を普通の字、下の行を小さく。分け方は `linesOf` で、既定は上に path と query・
+ * 下に origin（`urlLinesOf`。開いた行のページの表 —— ページはたいてい起点と同じサイト）。一覧の URL の欄（`urlCell`）は、
+ * 上にホスト・下に path（`siteLinesOf`。t-ub5w）。2 本目からは出さず、上の行の後ろに数だけを出す。
  */
-const urlBox = (urls) => {
-  const lines = urlLinesOf(urls[0] ?? "");
+const urlBox = (urls, linesOf = urlLinesOf) => {
+  const lines = linesOf(urls[0] ?? "");
   const box = tag("span", "", "url-box");
   const first = tag("span", "", "url-line");
   first.append(tag("span", lines.top, "url-top"));
@@ -352,10 +353,10 @@ const urlBox = (urls) => {
   return box;
 };
 
-/** URL の欄（一覧の 2 行）。全文は title に（`urls` が 2 本以上なら全部を行で）。 */
+/** URL の欄（一覧の 2 行。上がホスト、下が path）。全文は title に（`urls` が 2 本以上なら全部を行で）。 */
 const urlCell = (urls, className) => {
   const td = tag("td", "", className === undefined ? "url" : `url ${className}`);
-  td.append(urlBox(urls));
+  td.append(urlBox(urls, siteLinesOf));
   td.title = urls.join("\n");
   return td;
 };

@@ -188,3 +188,19 @@ export const urlLinesOf = (text) => {
   if (shape === null || shape[2] === "" || shape[2] === "/") return { top: text, bottom: undefined };
   return { top: shape[2], bottom: shape[1] };
 };
+
+/**
+ * URL を、一覧（クロールの起点・アーカイブの撮れたもの）の欄の 2 行に分ける（t-ub5w）。上の行（`top`）はどのサイトかを
+ * 言うホスト（port が在れば port も）、下の行（`bottom`）は path と query。`urlLinesOf` の上下を入れ替え、**scheme を
+ * 出さない** —— 毎行同じ `https://` が、目立たせたいホストを後ろへ押すため（全文は欄の title）。ホストの字は直さない。
+ *
+ * CAPTURE-404 で path を上にしたのは、同じ長い origin の起点で path が 0 字になったから。ここでも path は下の行に
+ * 1 行を持つので、0 字には戻らない。path が無いか `/` だけの URL は、ホストだけの 1 行。URL の形でない字と、
+ * ホストの無い URL（`file:///…`）は、そのまま上の行。
+ */
+export const siteLinesOf = (text) => {
+  const shape = URL_SHAPE.exec(text);
+  const host = shape === null ? "" : shape[1].slice(shape[1].indexOf("://") + 3);
+  if (host === "") return { top: text, bottom: undefined };
+  return { top: host, bottom: shape[2] === "" || shape[2] === "/" ? undefined : shape[2] };
+};
