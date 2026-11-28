@@ -695,12 +695,12 @@ export const screenshotSkipLines = (shots) => {
 
 /**
  * 答えの `capture.random`（BrowserHive の要約を capture-ledger v0.105.0 が通した物。BrowserHive WACZ Profile 1.26.0 の
- * `browserhive:capture.random`）。ページの JS が `Math.random`・`crypto` から受け取った値を `random/values.jsonl` に控えたか。
+ * `browserhive:capture.random`）。ページの JS が `Math.random`・`crypto` から受け取った値を `random/values.jsonl` に記録したか。
  *
  * **欄の無い答え（それより前の取り込み）と、読めない形は undefined** —— 画面は何も足さない。
  *
- * - 控えた: `{ recorded: true, draws, truncated }`。`draws` は値の行の数、`truncated` は行が欠けているかもしれないか
- * - 控えなかった: `{ recorded: false, skipped }`。`skipped` は理由（`not-requested`・`withheld`・`failed`。無ければ空の字）
+ * - 記録した: `{ recorded: true, draws, truncated }`。`draws` は値の行の数、`truncated` は行が欠けているかもしれないか
+ * - 記録しなかった: `{ recorded: false, skipped }`。`skipped` は理由（`not-requested`・`withheld`・`failed`。無ければ空の字）
  */
 export const randomOf = (capture) => {
   const random = capture?.random;
@@ -718,8 +718,8 @@ const RANDOM_SKIP_TEXT = {
 };
 
 /**
- * 経緯の画面の頭の 1 項目（`randomOf` の物から）。控えた取り込みは値の行の数と、欠けているかもしれないときの印。
- * 控えなかった取り込みは、文書を伏せたか、控えられなかったかを言う。**頼まなかった取り込み（`not-requested`）と、欄の無い
+ * 経緯の画面の頭の 1 項目（`randomOf` の物から）。記録した取り込みは値の行の数と、欠けているかもしれないときの印。
+ * 記録しなかった取り込みは、文書を伏せたか、記録できなかったかを言う。**頼まなかった取り込み（`not-requested`）と、欄の無い
  * 取り込みは undefined**（何も足さない）。知らない理由は届いた字のまま。
  */
 export const randomText = (random) => {

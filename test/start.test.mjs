@@ -818,15 +818,15 @@ test("User-Agent の箱が空なら鍵ごと送らず、今までと同じ本文
   assert.equal(startBody("https://site.test/", null, undefined, {}, "{chrome} BrowserHive").userAgent, "{chrome} BrowserHive");
 });
 
-// ── 乱数を控える（CAPTURE-378）──────────────────────────────
+// ── 乱数を記録する（CAPTURE-378）──────────────────────────────
 
-test("「乱数を控える」を入れると recordRandom: true を送る（辿るときも）", () => {
+test("「乱数を記録する」を入れると recordRandom: true を送る（辿るときも）", () => {
   assert.equal(startBody("https://site.test/", null, undefined, {}, "", true).recordRandom, true);
   const follow = { maxDepth: "", maxPages: "", rows: [] };
   assert.equal(startBody("https://site.test/", follow, undefined, {}, "", true).recordRandom, true);
 });
 
-test("「乱数を控える」を外したら鍵ごと送らず、今までと同じ本文", () => {
+test("「乱数を記録する」を外したら鍵ごと送らず、今までと同じ本文", () => {
   const before = startBody("https://site.test/", null);
   assert.equal("recordRandom" in before, false);
   const unchecked = startBody("https://site.test/", null, undefined, {}, "", false);
