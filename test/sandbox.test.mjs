@@ -50,7 +50,6 @@ import {
   crawlDetail,
   crawlRow,
   crawlRulesCheck,
-  CRAWLS_PAGE,
   crawlsPage,
   createSchedule,
   decisionsOf,
@@ -2297,12 +2296,15 @@ test("要約の断りは capture-ledger と同じ句: 差分と同じ 404・422�
   assert.equal(summarize("nope", { since: pricing(2) }).body.message, 'params/id must match format "uuid"');
 });
 
-test("/api/crawls は capture-ledger と同じく 50 本まで（上限の外は /api/crawls/:id で引く）", () => {
-  assert.equal(CRAWLS_PAGE, 50);
-  const rows = Array.from({ length: 51 }, (_, i) => ({ crawlId: String(i) }));
-  assert.equal(crawlsPage(rows).length, 50);
-  assert.equal(crawlsPage(rows, 5).length, 5);
-  assert.equal(crawlsPage(rows.slice(0, 11)).length, 11);
+test("/api/crawls は capture-ledger と同じく、始めた時刻の新しい順で 50 本まで。並びは台本のまま", () => {
+  const rows = Array.from({ length: 51 }, (_, i) => ({ crawlId: String(i), startedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString() }));
+  const kept = crawlsPage(rows, 50);
+  assert.equal(kept.length, 50);
+  assert.equal(kept.some((row) => row.crawlId === "0"), false); // いちばん古い行が外れる
+  assert.deepEqual(kept.map((row) => row.crawlId), rows.slice(1).map((row) => row.crawlId)); // 並びは元のまま
+  const few = crawlsPage(scenario.crawls.map((c) => crawlRow(c, NOW)), 5).map((row) => row.crawlId.slice(0, 8));
+  assert.deepEqual(few, ["5b0c0001", "5b0c0002", "5b0c0007", "5b0c0008", "5b0c0009"]);
+  assert.equal(crawlsPage(rows.slice(0, 11), 50).length, 11);
 });
 
 test("1 本の答えは、一覧の行と同じ走った回の欄（startedAt・lastJob・schedule…）を持つ（capture-ledger と同じ）", () => {

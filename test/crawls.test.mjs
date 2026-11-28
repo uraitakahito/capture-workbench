@@ -35,5 +35,6 @@ test("クロールの id の形でない行は known: false（capture-ledger に
   assert.deepEqual(parseCrawlsHref("/crawls/ece2e937", ""), { crawlId: "ece2e937", known: false, from: ORIGIN_ALL });
   assert.deepEqual(parseCrawlsHref("/crawls/%E6%97%A5", ""), { crawlId: "日", known: false, from: ORIGIN_ALL });
   assert.deepEqual(parseCrawlsHref("/crawls/%E6%97%", ""), { crawlId: "%E6%97%", known: false, from: ORIGIN_ALL });
-  assert.equal(parseCrawlsHref(`/crawls/${CRAWL.toUpperCase()}`, "").known, false);
+  // 大文字の id も同じクロール（小文字にそろえて引く）
+  assert.deepEqual(parseCrawlsHref(`/crawls/${CRAWL.toUpperCase()}`, ""), { crawlId: CRAWL, known: true, from: ORIGIN_ALL });
 });

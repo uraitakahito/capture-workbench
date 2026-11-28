@@ -66,7 +66,7 @@ import {
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
 import { keepLang, loginHref, pathFromHash, screenTarget } from "/paths.js";
 import { crawlsHref, parseCrawlsHref } from "/crawls.js";
-import { ORIGIN_ALL, originChips, startedByLine, whoMarks, whoOf, withOrigin } from "/requester.js";
+import { ORIGIN_ALL, originChips, originOf as requesterOf, startedByLine, whoMarks, whoOf, withOrigin } from "/requester.js";
 import {
   actionAnswer,
   bandOf,
@@ -1208,6 +1208,8 @@ const refreshOpened = () => {
       one === undefined ||
       one instanceof Error ||
       (crawl ?? one).state === "running" ||
+      // 一覧の外の行は一覧の引き直しで新しくならないので、合本の最後の版を待つ間も引く（一覧の行と同じく）
+      (crawl === undefined && awaitsFinalBundle(one)) ||
       (crawl !== undefined && one.state !== crawl.state);
     if (stale) void loadDetail(crawlId);
   }
@@ -1222,14 +1224,34 @@ let crawlMissing;
 /** 開いている行（URL が名指した 1 本）。無ければ undefined。 */
 const openedId = () => opened.keys().next().value;
 
+/**
+ * URL の from が、開いた行に譲るか。送られた URL の行と from がぶつかる時（行がその出どころでない）は、行を取って
+ * from を外す。決めるのは行の出どころが分かった時（一覧の行か、一覧の外の行の答えが届いた時）で、1 度だけ。
+ * 人が chip を押した時は、この決めを通らない（chip の手が行を閉じる）。
+ */
+let crawlYield = false;
+
+/** 一覧の画面の最後の URL。タブ「クロール」はここへ戻る（WACZ の画面の wacz.href と同じ）。 */
+let crawlsLast;
+
+/** 開いている行（一覧の行か、一覧の外の行の答え）。出どころを見るのに使う。無ければ undefined。 */
+const openedRow = () => {
+  const open = openedId();
+  if (open === undefined) return undefined;
+  const one = opened.get(open);
+  return crawls.find((c) => c.crawlId === open) ?? (one === undefined || one instanceof Error ? undefined : one);
+};
+
 /** 一覧の画面にいる時だけ、開いた行と出どころを URL に書く（route は呼ばない）。 */
 const rememberCrawls = () => {
-  if (parseCrawlsHref(location.pathname) !== undefined) remember(crawlsHref(openedId(), crawlOrigin));
+  if (parseCrawlsHref(location.pathname) !== undefined) crawlsLast = remember(crawlsHref(openedId(), crawlOrigin));
 };
 
 /** URL の行と出どころで、一覧の画面を開く（`route` から）。行は 1 本だけ —— ほかに開いていた行は閉じる。 */
 const openCrawls = ({ crawlId, known, from }) => {
+  crawlsLast = here();
   crawlOrigin = from;
+  crawlYield = known && crawlId !== undefined && from !== ORIGIN_ALL;
   crawlMissing = known ? undefined : crawlId;
   const id = known ? crawlId : undefined;
   for (const other of [...opened.keys()]) {
@@ -1257,8 +1279,14 @@ const drawOriginChips = () => {
   bar.replaceChildren(
     ...(chips.length === 0 ? [] : [tag("span", t("crawls.filter.label"), "muted")]),
     ...chips.map((chip) => {
-      // 押すと URL の from を置き換える（chip を押すたびに戻るが要らないように、履歴には積まない）
+      // 押すと URL の from を置き換える（chip を押すたびに戻るが要らないように、履歴には積まない）。開いた行が
+      // その出どころで隠れるなら、行を閉じる（押した選びを取る。URL が状態の元）
       const one = button(chip.text, () => {
+        const row = openedRow();
+        if (row !== undefined && chip.id !== ORIGIN_ALL && requesterOf(row) !== chip.id) {
+          navigate(crawlsHref(undefined, chip.id), { replace: true });
+          return;
+        }
         crawlOrigin = chip.id;
         rememberCrawls();
         drawCrawls();
@@ -1276,10 +1304,14 @@ const drawCrawls = () => {
   const open = openedId();
   const answer = open === undefined ? undefined : opened.get(open);
   const listed = open === undefined || crawls.some((c) => c.crawlId === open);
-  // 開いた行が出どころで隠れるなら、行を取る（絞り込みを「すべて」に戻し、URL の from も外す）
-  if (listed && open !== undefined && !withOrigin(crawls, crawlOrigin).some((c) => c.crawlId === open)) {
-    crawlOrigin = ORIGIN_ALL;
-    rememberCrawls();
+  // URL から開いた行が from の出どころでないなら、行を取る（絞り込みを「すべて」に戻し、URL の from も外す）
+  const row = openedRow();
+  if (crawlYield && row !== undefined) {
+    crawlYield = false;
+    if (requesterOf(row) !== crawlOrigin) {
+      crawlOrigin = ORIGIN_ALL;
+      rememberCrawls();
+    }
   }
   drawOriginChips();
   // 一覧の上の 1 行: URL の行が見つからない・一覧の外の行が引けなかった
@@ -4412,7 +4444,8 @@ const drawLinksHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = screenHref(crawlsHref(crawlId)); // 一覧へ戻ると、この行が開いている（ここへはその行から来る）
+  // 一覧へ戻ると、この行が開いている（絞り込みはそのまま）。閉じた行のリンクの数から来た時も、その行を開いて戻る
+  toList.href = screenHref(crawlsHref(crawlId, crawlOrigin));
   toList.textContent = t("links.back");
   back.append(toList);
   head.append(back);
@@ -4899,7 +4932,8 @@ const drawTraceHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = screenHref(crawlsHref(crawlId)); // 一覧へ戻ると、この行が開いている（ここへはその行から来る）
+  // 一覧へ戻ると、この行が開いている（絞り込みはそのまま）。閉じた行のリンクの数から来た時も、その行を開いて戻る
+  toList.href = screenHref(crawlsHref(crawlId, crawlOrigin));
   toList.textContent = t("trace.back");
   back.append(toList);
   head.append(back);
@@ -5872,7 +5906,9 @@ for (const b of document.querySelectorAll("#tabs button")) {
             ? (reading.href ?? "/scripts")
             : face === "search"
               ? (searching.href ?? "/search")
-              : `/${face}`,
+              : face === "crawls"
+                ? (crawlsLast ?? "/crawls")
+                : `/${face}`,
     );
   };
 }
@@ -5917,7 +5953,12 @@ document.addEventListener("click", (event) => {
  * 見える。走っていなければ 30 秒 —— 動いていないときは黙る。
  */
 // 終わった行が最後の合本の版を待つ間も速く引く。30 秒に落とすと、その間ずっと古い版を開く link が残る
-const pace = () => (crawls.some((c) => c.state === "running" || awaitsFinalBundle(c)) ? 2_000 : 30_000);
+const pace = () =>
+  [...crawls, ...[...opened.values()].filter((one) => one !== undefined && !(one instanceof Error))].some(
+    (c) => c.state === "running" || awaitsFinalBundle(c),
+  )
+    ? 2_000
+    : 30_000;
 
 /** 次の引きの予約。**1 つだけ** —— 始めた直後に引き直しても、引く輪が 2 本にならない。 */
 let timer;
