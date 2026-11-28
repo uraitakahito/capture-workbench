@@ -8,21 +8,24 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 
-import { claimsOf, cookieValue, createAuth, pkcePair, sessionCookie, whoOf } from "../src/auth.mjs";
+import { claimsOf, cookieValue, createAuth, logoutEndpoint, pkcePair, sessionCookie, whoOf } from "../src/auth.mjs";
 
 const ISSUER = "http://idp.test:4566/us-east-1_example";
 const jwt = (claims) =>
   `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`;
 
 /** 偽の IdP。discovery と token endpoint に答え、token endpoint への頼みを記録する。 */
-const fakeIdp = ({ token = () => ({ status: 200, body: { access_token: "access-1", refresh_token: "refresh-1" } }) } = {}) => {
+const fakeIdp = ({
+  token = () => ({ status: 200, body: { access_token: "access-1", refresh_token: "refresh-1" } }),
+  authorize = "http://idp.test:4566/cognito-idp/oauth2/authorize",
+} = {}) => {
   const seen = [];
   const send = async (url, init = {}) => {
     if (url === `${ISSUER}/.well-known/openid-configuration`) {
       return new Response(
         JSON.stringify({
           issuer: ISSUER,
-          authorization_endpoint: "http://idp.test:4566/cognito-idp/oauth2/authorize",
+          authorization_endpoint: authorize,
           token_endpoint: "http://idp.test:4566/cognito-idp/oauth2/token",
         }),
       );
@@ -136,6 +139,68 @@ test("サインアウトでセッションが消える", async () => {
   const { session } = await auth.finishLogin("c", state);
   auth.logout(session);
   assert.equal(auth.tokenOf(session), undefined);
+});
+
+test("IdP の logout のエンドポイントは、authorize のエンドポイントから作る（discovery には載っていない）", () => {
+  // 手元の Floci と、本物の Cognito（ドメインの直下）
+  assert.equal(logoutEndpoint("http://idp.test:4566/cognito-idp/oauth2/authorize"), "http://idp.test:4566/cognito-idp/logout");
+  assert.equal(
+    logoutEndpoint("https://example.auth.us-east-1.amazoncognito.com/oauth2/authorize"),
+    "https://example.auth.us-east-1.amazoncognito.com/logout",
+  );
+  // その形でなければ作らない（よその IdP のエンドポイントを当て推量で叩かない）
+  for (const other of ["http://idp.test/authorize", "http://idp.test/oauth2/authorize/", "http://idp.test/oauth2/authorize?x=1", "nope", ""]) {
+    assert.equal(logoutEndpoint(other), undefined, other);
+  }
+});
+
+test("IdP からも出る URL は、client と、登録した戻り先（/login）だけを載せる —— 1 字でも違えば IdP が断る", async () => {
+  const { auth } = setup();
+  const url = new URL(await auth.logoutUrl());
+  assert.equal(url.origin + url.pathname, "http://idp.test:4566/cognito-idp/logout");
+  // 並びも数も決める: 足した query は、Cognito では無視され、戻り先に付ければ 400
+  assert.deepEqual([...url.searchParams], [
+    ["client_id", "web-client"],
+    ["logout_uri", "http://127.0.0.1:7080/login"],
+  ]);
+});
+
+test("IdP からも出る URL は、discovery をまだ読んでいなくても作る（起こし直した直後のサインアウト）", async () => {
+  let reads = 0;
+  const idp = fakeIdp();
+  const auth = createAuth({
+    issuer: ISSUER,
+    clientId: "web-client",
+    redirectUri: "http://127.0.0.1:7080/callback",
+    fetch: (url, init) => {
+      if (String(url).endsWith("/.well-known/openid-configuration")) reads += 1;
+      return idp.send(url, init);
+    },
+  });
+  assert.match(await auth.logoutUrl(), /\/cognito-idp\/logout\?/);
+  assert.equal(reads, 1, "サインインを 1 度もしていない auth が、discovery を読みに行った");
+});
+
+test("IdP からも出る URL は、戻り先の port を workbench の戻り先（/callback）に合わせる", async () => {
+  const idp = fakeIdp();
+  const auth = createAuth({ issuer: ISSUER, clientId: "web-client", redirectUri: "http://127.0.0.1:7999/callback", fetch: idp.send });
+  assert.equal(new URL(await auth.logoutUrl()).searchParams.get("logout_uri"), "http://127.0.0.1:7999/login");
+});
+
+test("IdP の logout のエンドポイントを作れなければ undefined、discovery に届かなければ投げる（どちらも server が / へ回す）", async () => {
+  const { auth: odd } = setup(fakeIdp({ authorize: "http://idp.test/authorize" }));
+  assert.equal(await odd.logoutUrl(), undefined);
+  const down = createAuth({
+    issuer: ISSUER,
+    clientId: "web-client",
+    redirectUri: "http://127.0.0.1:7080/callback",
+    fetch: async () => {
+      throw new Error("ECONNREFUSED");
+    },
+  });
+  await assert.rejects(down.logoutUrl(), /ECONNREFUSED/);
+  // IdP の設定が無ければ、discovery も読まない
+  assert.equal(await createAuth({ issuer: "", clientId: "", redirectUri: "http://127.0.0.1:7080/callback" }).logoutUrl(), undefined);
 });
 
 test("設定が無ければ configured は false", () => {

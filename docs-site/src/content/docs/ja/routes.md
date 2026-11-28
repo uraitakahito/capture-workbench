@@ -67,13 +67,22 @@ workbench は開いたときにこれを読み、誰としてサインインし�
   **`state` を照らし、1 つの `state` は 1 度だけ通す。**
   よそのページが作った戻り・時間が掛かりすぎた戻り・2 度目は 400 です。
   code を IdP の token endpoint でトークンに替え、メモリのセッションに持ち、cookie `workbench_session`（HttpOnly・SameSite=Lax）を付けて、覚えた画面（無ければ `/`）へ回します。
-- `GET /logout` は、セッションと cookie を消して `/` へ回します。
+- `GET /logout` は、セッションと cookie を消して、**IdP の logout のエンドポイント**（`…/logout?client_id=…&logout_uri=http://127.0.0.1:<WORKBENCH_PORT>/login`）へ回します。
+  IdP は自分のサインイン（ブラウザの cookie）を消して `/login` へ戻すので、サインインのフォームに着きます —— 別の利用者でサインインし直せます。
+  workbench のセッションだけを消すと、IdP のサインインが残り、フォームを出さずに同じ利用者で戻ってきます。
+  IdP の logout のエンドポイントは discovery に載っていないので、authorize のエンドポイント（`…/oauth2/authorize`）から作ります（Cognito の形）。
+  サインインの設定が無い・discovery に届かない・その形でないときは、前のとおり `/` へ回し、訳を標準エラーに書きます。
+  IdP から出ても、出ているトークンは取り消されません（期限まで有効。workbench はメモリから捨て、ブラウザには渡していません）。
 - セッションが無いとき（サインインの設定が在るとき）、画面の path は `/login?back=<その path>` へ回します。
   `/` は、古い `/#…` のアドレスを path に替えて `/login?back=…` へ回す小さなページを返します（server は `#` の後ろを見られない）。
 
-戻り先は `http://127.0.0.1:<WORKBENCH_PORT>/callback` で、IdP に登録した物と一字一句同じでなければなりません。
+戻り先は `http://127.0.0.1:<WORKBENCH_PORT>/callback`、サインアウトの後の戻り先は `http://127.0.0.1:<WORKBENCH_PORT>/login` で、どちらも IdP の app client に登録した物と一字一句同じでなければなりません（query を足しても断られます）。
+手元の Floci には capture-ledger の `pnpm run idp:bootstrap` が登録します（`dev:up` が毎回打つ）。
+**本番の Cognito では、app client の「許可するサインアウト URL」に `http://127.0.0.1:<WORKBENCH_PORT>/login` を登録します。**
+登録が無いと、「サインアウト」が IdP の `logout_uri is not registered for this client`（400）で止まります —— 手元で出たら、capture-ledger で `pnpm run idp:bootstrap` を打ち直します（プールは作り直されず、サインインもそのまま）。
 IdP から戻る道は GET のリダイレクトなので、これらは GET で、書き込みのエンドポイントの門（`Origin`・JSON）は掛けません。
 代わりに `state` と PKCE が、よそのページが作った戻りを断ります。
+**`/logout` は守っていません。** GET のリンクのままなので、よそのページがブラウザを `/logout` へ飛ばすと、サインアウトさせられます（害は、サインインのし直しだけ。読める物・書ける物は増えません）。
 
 ## /api/* —— capture-ledger へ素通し
 
