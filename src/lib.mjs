@@ -142,7 +142,7 @@ export const hostAllowed = (host, port) =>
  * - `/api/crawls` —— クロールを始める
  * - `/api/crawls/<id>/inline/<name>/fix` —— 型で落ちたクロールの、その場の TS の直し方を Claude に訊く
  *   （CAPTURE-49。capture-ledger は型の検査に通った案だけを返し、費用を数える）
- * - `/api/scripts/check` —— 書いている途中のその場の TS が宣言した変数を訊く。**書かない**が、source を本文で送るので
+ * - `/api/capture-scripts/check` —— 書いている途中のその場の TS が宣言した変数を訊く。**書かない**が、source を本文で送るので
  *   POST で、JSON だけを通す門も要る（よそのページから叩かれると、ts-compile-service を働かせられる）
  * - `/api/schedules` —— 定期実行の予定を作る
  * - `/api/schedules/<id>/<操作>` —— 予定を操作する（`pause`・`resume`・`run`・`repin`・`delete`）
@@ -158,7 +158,7 @@ export const hostAllowed = (host, port) =>
 const WRITE_ROUTES = [
   /^\/api\/crawls$/,
   /^\/api\/crawls\/[0-9a-f-]+\/inline\/[a-z0-9-]+\/fix$/,
-  /^\/api\/scripts\/check$/,
+  /^\/api\/capture-scripts\/check$/,
   /^\/api\/schedules$/,
   /^\/api\/schedules\/[0-9a-f-]+\/(?:pause|resume|run|repin|delete)$/,
   /^\/api\/crawls\/[0-9a-f-]+\/failed$/,
@@ -172,12 +172,13 @@ export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url
 /**
  * 節目のスクリーンショットのエンドポイント（capture-ledger の `GET /api/archives/:id/screenshots/:stage`。CAPTURE-432）。
  * **`/api/*` の読み取りの中で、字でなくバイト列を返すのはこの形だけ**（WebP）。中継は、この形だけをバイト列のまま通す
- * （`relayFor`）。id は capture-ledger の UUID の 36 字、時点は BrowserHive WACZ Profile の 2 つ。
+ * （`relayFor`）。id は capture-ledger の UUID の 36 字、時点は capture-ledger が話す 2 つ（古い記録の `after-behaviors`
+ * も、capture-ledger は `after-capture-scripts` で答える。CAPTURE-506）。
  *
  * 端の固め方は `isWriteRoute` と同じ —— 末尾の足し・query・`%`・`.` を通さない。通らない形も素通しには残る（字として
  * 中継する）ので、ここで絞るのは「バイト列として通すか」だけ。判断は capture-ledger がする。
  */
-const SCREENSHOT_ROUTE = /^\/api\/archives\/[0-9a-f-]{36}\/screenshots\/(?:after-load|after-behaviors)$/;
+const SCREENSHOT_ROUTE = /^\/api\/archives\/[0-9a-f-]{36}\/screenshots\/(?:after-load|after-capture-scripts)$/;
 
 export const isScreenshotRoute = (url) => SCREENSHOT_ROUTE.test(url);
 

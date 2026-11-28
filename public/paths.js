@@ -20,7 +20,8 @@ export const SCREENS = Object.freeze([
   "archives",
   "archive",
   "search",
-  "scripts",
+  "capture-scripts",
+  "scripts", // 古い住所（v0.65.0 まで）。画面が `/capture-scripts` へ置き換える（`renamedPath`）。外さない —— 外すと server が index.html を返さない
   "check",
   "links",
   "trace",
@@ -58,7 +59,7 @@ const OLD_HEADS = Object.freeze({
   changes: "changes",
   archives: "archives",
   wacz: "archive",
-  scripts: "scripts",
+  scripts: "capture-scripts",
   check: "check",
   links: "links",
   trace: "trace",
@@ -92,6 +93,16 @@ export const pathFromHash = (hash) => {
     path = encodeOutside(`/${to}${rest}`);
   }
   return isScreenPath(path) ? path : undefined;
+};
+
+/**
+ * 名を替えた画面の古い住所 → 新しい住所（CAPTURE-506。`/scripts…` → `/capture-scripts…`。query は残す）。古い住所で
+ * なければ undefined。画面が開いたときに URL を置き換える（`/` → `/crawls` と同じ）。**外さない** —— 送られた URL と
+ * bookmark が、いつまでも残る。
+ */
+export const renamedPath = (href) => {
+  const m = /^\/scripts(?=$|[/?])(.*)$/s.exec(String(href));
+  return m === null ? undefined : `/capture-scripts${m[1]}`;
 };
 
 /**

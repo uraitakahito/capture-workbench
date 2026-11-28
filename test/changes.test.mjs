@@ -109,7 +109,7 @@ describe("前回からの変化（CAPTURE-167）", () => {
 const ref = (id) => ({ archiveId: id, objectKey: `${id}.wacz`, sourceUrl: "u", capturedAt: "2026-11-10T13:42:00.000Z", browserhiveVersion: "29.0.2" });
 const changed = (url, significance, added, removed, over = {}) => ({
   url,
-  stage: "after-behaviors",
+  stage: "after-capture-scripts",
   state: "diffed",
   added,
   removed,
@@ -121,7 +121,7 @@ const changed = (url, significance, added, removed, over = {}) => ({
   after: ref(`${url}-after`),
   ...over,
 });
-const same = (url) => ({ url, stage: "after-behaviors", before: ref(`${url}-before`), after: ref(`${url}-after`) });
+const same = (url) => ({ url, stage: "after-capture-scripts", before: ref(`${url}-before`), after: ref(`${url}-after`) });
 const DETAIL = {
   pages: [
     changed("https://www.apple.com/", "minor", 17, 20),

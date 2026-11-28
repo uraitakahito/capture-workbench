@@ -57,7 +57,7 @@ const row = (rowId, text, recipe = "r") => ({
   origin: { kind: "manual", scheduleId: null, scheduleName: null },
   recipeSha256: recipe === null ? null : sha(recipe),
   browserhiveVersion: "32.0.0",
-  text: { stage: "after-behaviors", sha256: sha(text), chars: 10 },
+  text: { stage: "after-capture-scripts", sha256: sha(text), chars: 10 },
   notComparable: null,
 });
 /** 比べられない行（`text` が null）。 */
@@ -359,7 +359,7 @@ describe("URL の履歴（CAPTURE-462）", () => {
     assert.deepEqual(differsNotes({ recipeDiffers: true, stageDiffers: false }), ["撮り方が違います"]);
     assert.deepEqual(differsNotes({ recipeDiffers: true, stageDiffers: true }), [
       "撮り方が違います",
-      "比べた行が違います（片方はスクリプトの後の写し、片方は文書の行）",
+      "比べた行が違います（片方は capture scripts の後の写し、片方は文書の行）",
     ]);
     assert.deepEqual(differsNotes({ recipeDiffers: null, stageDiffers: false }), []);
     assert.deepEqual(differsNotes({ recipeDiffers: false, stageDiffers: false }), []);

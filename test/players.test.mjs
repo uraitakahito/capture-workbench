@@ -124,7 +124,7 @@ test("% を含む鍵は、source を 1 度解いて path を区切りごとに 1
   const wacz = "org/acme/2026-11/a_c1_hello%20world%2F%E3%83%A9%E3%83%B3%E3%83%97.wacz";
   const bundle = "org/a%2Fb c/crawls/x%25y/r1/replay.json";
   const hit = {
-    stage: "after-behaviors",
+    stage: "after-capture-scripts",
     url: "urn:browserhive:snapshot:after-behaviors:https://shop.test/result",
     objectKey: wacz,
     sourceUrl: "https://shop.test/search?q=lamp",

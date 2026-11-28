@@ -1,25 +1,25 @@
 ---
 title: 画面
-description: 画面ごとに何が並ぶか —— クロール・新しいクロール・定期実行・変化・URL の履歴・アーカイブ・検索・スクリプト集・robots.txt の例外・検証・WACZ。状態の言い方と、引く間隔
+description: 画面ごとに何が並ぶか —— クロール・新しいクロール・定期実行・変化・URL の履歴・アーカイブ・検索・Capture scripts・robots.txt の例外・検証・WACZ。状態の言い方と、引く間隔
 ---
 
 capture-workbench は、上のタブで切り替える画面からなります。
-URL の path が画面を決めます（`/crawls`・`/start`・`/schedules`・`/changes`・`/archives`・`/search`・`/scripts`・`/exemptions`。クロールの画面では開いた行と絞った出どころも（`/crawls/<クロールの id>?from=<出どころ>`）、検索の画面では探した語も、変化の画面では開いた回とページも、スクリプト集の画面では読んでいる物も URL が名指します。変化の画面の中の URL の履歴は `/history/<URL>` です）。
+URL の path が画面を決めます（`/crawls`・`/start`・`/schedules`・`/changes`・`/archives`・`/search`・`/capture-scripts`・`/exemptions`。クロールの画面では開いた行と絞った出どころも（`/crawls/<クロールの id>?from=<出どころ>`）、検索の画面では探した語も、変化の画面では開いた回とページも、Capture scripts の画面では読んでいる物も URL が名指します。変化の画面の中の URL の履歴は `/history/<URL>` です）。
 **URL を送れば、相手も同じ画面を開けます**: 開くと、同じタブ・同じ行・同じ絞り込みで出ます（サインインが要れば、サインインの後に同じ path へ戻ります。2,000 字まで。[経路](/routes/)）。ブラウザの戻る・進むで、画面と開いた行を行き来できます。
 
 v0.62.0 より前のアドレス（`/#crawls`・`/#trace/…`・`/#wacz/…`）も開けます。workbench が path に置き換えます（`#wacz/…` は `/archive/…`、`#search/<語>` は `/search?q=<語>` に）。
 
-![上のタブ。クロール・新しいクロール・定期実行・変化・アーカイブ・検索・スクリプト集・robots.txt の例外が並び、新しいクロールが選ばれている](../../../assets/screens/tabs.webp)
+![上のタブ。クロール・新しいクロール・定期実行・変化・アーカイブ・検索・Capture scripts・robots.txt の例外が並び、新しいクロールが選ばれている](../../../assets/screens/tabs.webp)
 
 | 画面 | 何が並ぶか |
 | --- | --- |
 | クロール | 1 行 = 1 クロール。状態・撮れた数・リンクの数・WACZ（撮ったページを 1 つの ZIP にまとめたアーカイブ）の数・かかった時間・run と replayweb-player（クロールを 1 つのアーカイブとして）への行き先 |
-| 新しいクロール | 起点の URL・スクリプト・深さを選び、スクリプトが宣言した変数の値を書き、その場の TS を書いて始める。スクリプトは右の列のタブで読める |
+| 新しいクロール | 起点の URL・capture scripts・深さを選び、capture scripts が宣言した変数の値を書き、その場の TS を書いて始める。Capture scripts は右の列のタブで読める |
 | 定期実行 | 予定と回。予定を止める・再開する・いま撮る・固定し直す・消す。 |
 | 変化 | 予定の回を前の回と比べた結果。同じ URL の取り込みを並べて好きな 2 本を比べる[履歴](#履歴)も、この画面の中 |
 | アーカイブ | 見えている WACZ（一覧）と、撮った時の絵。行から検証・WACZ の画面・[replayweb-player](https://github.com/uraitakahito/replayweb-player)（WACZ をブラウザで再生する画面）へ |
 | 検索 | 全文検索。 |
-| スクリプト集 | ページの中で走らせるスクリプトと、書くための型。 |
+| Capture scripts | ページの中で走らせる capture scripts と、書くための型。 |
 | robots.txt の例外 | 「このホストのこの path の型は、robots.txt が断っていても撮る」の行。組織の admin が登録し、取り消す |
 | 検証 | アーカイブ 1 本の検証を rule ごとに。参照: [WACZ を見る](/wacz/#検証の画面) |
 | WACZ | WACZ 1 本の中。参照: [WACZ を見る](/wacz/) |
@@ -113,12 +113,12 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   先頭は capture-ledger の `error` で、届いた字のまま出します（言語を見る版の capture-ledger が自分で書いた文は、画面の言語で届きます。flow が報告した文は、保存された字のままです。段を送り直したなら、その回数と最後の誤りがさらに前に出ます）。
   compile の段で落ちたクロールは 1 枚も撮っていないので、取れなかったページが空になり、それだけでは成功のように読めるためです。
   次が走らせたもので、並びが実行順です。
-  登録済みのスクリプトは版と「読む」（押すと[スクリプト集](#スクリプト集)の画面で、そのクロールが走らせた版が開きます）を、その場で書いた物は「その場」と大きさ（バイト）を出し、その場の物には「欄に戻す」が付きます（押すと[新しいクロール](#新しいクロール)の画面へ移ります）。
-  サイト用のスクリプトには対象サイト（`laws.e-gov.go.jp 用` のような印）が付きます。
+  登録済みの capture scripts は版と「読む」（押すと[Capture scripts](#capture-scripts) の画面で、そのクロールが走らせた版が開きます）を、その場で書いた物は「その場」と大きさ（バイト）を出し、その場の物には「欄に戻す」が付きます（押すと[新しいクロール](#新しいクロール)の画面へ移ります）。
+  サイト用の capture scripts には対象サイト（`laws.e-gov.go.jp 用` のような印）が付きます。
   その次が渡した値です。
   始めるときに渡した変数（capture-ledger の `variables`）の名前と値と、使ったシークレット（`secrets`）の名前・Windmill の変数の path・capture-ledger が在るかを確かめたときの `edited_at`・WARC に値を残すか（`archive`）が並びます。
   シークレットの値は出ません。値は Windmill にだけ在って capture-ledger には無く、写し・ページの文字と題・ログからも消えます。
-  WARC での扱いは宣言が決めます。「WARC で隠す」のシークレットは、スクリプトが通信に載せた値もサイトが返した値も、[BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/ja/#archive-files) の中で `***` に置き換わっています。
+  WARC での扱いは宣言が決めます。「WARC で隠す」のシークレットは、capture scripts が通信に載せた値もサイトが返した値も、[BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/ja/#archive-files) の中で `***` に置き換わっています。
   「WARC に残す（keep）」は宣言に `archive: "keep"` と書いたシークレットで、値は通信の記録（WARC の request・response・metadata と、その URL）に値のまま残ります。
   上の絵では `api_token` が隠す物、`login` が残す物です（代役のクロール `5b0c0007`）。
   隠すのは BrowserHive v29.0.0 からです。それより前の取り込みでは、通信に載せた値が WARC に残っています。capture-ledger はそのころの行にも `archive: null` を返すので、印は「WARC で隠す」と出ます（印にポインタを重ねると、そのことも出ます）。
@@ -129,7 +129,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   1 つも無ければ、そう言って起点の URL を並べます。
 - **型の検査で落ちたクロールは、型の誤りを全部出し、直し方を訊ける。**
   capture-ledger の `error` が compile の段の 422 を言うとき、workbench は `/api/crawls/:id/diagnostics` も引きます。
-  capture-ledger がクロールのスクリプトを ts-compile-service に送り直し、表には誤りが全部、スクリプト・行と列・code・文で並びます（`error` は capture-ledger の上限で切られ、最初の数件しか言いません）。
+  capture-ledger がクロールの capture scripts を ts-compile-service に送り直し、表には誤りが全部、capture scripts・行と列・code・文で並びます（`error` は capture-ledger の上限で切られ、最初の数件しか言いません）。
   表のために Claude は呼びません。
   型の誤りの在るその場の TS には、「欄に戻す」の隣に「直し方を訊く」が出ます。
   押したときだけ capture-ledger を通して Claude を呼び、capture-ledger は同じ検査に通った直しだけを返します。
@@ -146,7 +146,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   リンクを 1 本も見ていないクロールは、全部の規則に 0 を並べず、そう 1 行で言います。
   最後が「Windmill で調べる」のリンクで、Windmill の `f/waggle/inspect_crawl` を、このクロールの id を入れた状態で開きます（Windmill は run の引数を URL の hash に持ちます）。
 
-![クロールの画面の開いた行の「ページ」の表。4 ページの URL（左に撮った時の絵か「絵なし」の箱、右に 2 行の URL）・結末（撮れたページには ReplayWeb.page ↗・Web Capture ↗）・warn と error の数が並び、時間切れのページのログを開いて、スクリプトの行・取り込みのページの例外・BrowserHive の時間切れの行が出ている](../../../assets/screens/crawl-pages.webp)
+![クロールの画面の開いた行の「ページ」の表。4 ページの URL（左に撮った時の絵か「絵なし」の箱、右に 2 行の URL）・結末（撮れたページには ReplayWeb.page ↗・Web Capture ↗）・warn と error の数が並び、時間切れのページのログを開いて、capture scripts の行・取り込みのページの例外・BrowserHive の時間切れの行が出ている](../../../assets/screens/crawl-pages.webp)
 
 ① 結末（capture-ledger の state と理由。合本に入ったページには ReplayWeb.page ↗・Web Capture ↗）\
 ② warn と error の数\
@@ -176,8 +176,8 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   絵は列を足さずに URL の欄に入れてあります。列を足すと、表が docs の絵の幅に収まりません。
 - **「ログ」で、そのページのログの行が出る。**
   押したときに、capture-ledger の `/api/crawls/:id/pages/:page/log` を 1 度だけ引きます（閉じて開き直せば、また引きます）。
-  行は届いた順で、取り込みの始まりからの ms・出どころ（スクリプトの行は `script` とスクリプトの id、取り込みのページの console と例外は `page`、BrowserHive 自身の行は `browserhive`）・level・文・data が並びます。
-  誰の行かは BrowserHive が付けるので、スクリプトの側で id を書く所はありません。
+  行は届いた順で、取り込みの始まりからの ms・出どころ（capture scripts の行は `script` と capture script の id、取り込みのページの console と例外は `page`、BrowserHive 自身の行は `browserhive`）・level・文・data が並びます。
+  誰の行かは BrowserHive が付けるので、capture scripts の側で id を書く所はありません。
   文は言い換えず、data は JSON のまま文の後ろに続けます。
   絞り込みは「すべて」が既定で、「warn 以上」「error だけ」も選べます。数は、その絞り込みで並ぶ行の数です。
   BrowserHive が 1 行の上限で切った行には「途中で切った」が付き、残さなかった行があれば「N 行は残していない（上限か方針で）」が出ます（取り込みの上限を超えて捨てた行と、方針で伏せた文書が console に書いた行。どちらの理由かは、ログの中の browserhive の行が言います）。
@@ -235,7 +235,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   0 は BrowserHive が取り込みを始めた時刻で、ログの最初の行の時刻からその行の `ms` を引いて決めます。ログの無い取り込みでは、終わった時刻（`timestamp`）から処理の時間（`captureProcessingTimeMs`）を引きます。
   題の行には、全体の秒・文書の HTTP の status・「WACZ の画面で開く」が並びます。
 - **帯は、BrowserHive がログに書いた行から組む。**
-  「取り込みの段」は、段に入るたびに書く行（`step load-pages` など）から次の段の行まで。「細部」は、段の中の目印（debug の行）から次の目印まで。「スクリプト」は、始めた行と終えた行の対で、終えた行の無いスクリプトは軸の終わりまで伸ばします。「console」は、取り込みのページとスクリプトが書いた行の印です。
+  「取り込みの段」は、段に入るたびに書く行（`step load-pages` など）から次の段の行まで。「細部」は、段の中の目印（debug の行）から次の目印まで。「Capture scripts」は、始めた行と終えた行の対で、終えた行の無い capture script は軸の終わりまで伸ばします。「console」は、取り込みのページと capture scripts が書いた行の印です。
   ログの無い取り込み（BrowserHive v24.0.0 より前）では、帯は出ません。
 - **「待ち」は、読み込みの後に静まるのを待った間。**
   帯は待ちの始まりから終わりまでで、印は load・通信が静まった時刻・DOM が静まった時刻・CPU が静まった時刻です（取り込みの答えの `settle`）。静まらなかった物には印が無く、押すと「静まらなかった」と出ます。
@@ -262,7 +262,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
   押すと、写しの段の名前と、その写しを replay で開く link が出ます（WACZ を見てよいときだけ）。開く先の文書の URL は、取り込みの答えの `document.url`（リダイレクトの後の URL）です。
   印は時点ごとに 1 つで、取り込みのページの写しだけです。子フレームの文書の写し（WACZ の画面の種別「枠の写し」。BrowserHive v31.2.0 から）は印にしません。
 - **図の下に、節目のスクリーンショットが並ぶ。**
-  BrowserHive v30.2.0 から、絵を撮る設定の BrowserHive は、DOM を写すのと同じ時点（読み込みの後の `after-load`・スクリプトの後の `after-behaviors`）に、取り込みのページの viewport の絵（WebP）を残します。取り込みの答えの `screenshots` が、時点ごとに、残した絵か、残さなかった理由を言います。
+  BrowserHive v30.2.0 から、絵を撮る設定の BrowserHive は、DOM を写すのと同じ時点（読み込みの後の `after-load`・capture scripts の後の `after-capture-scripts`。BrowserHive WACZ Profile 1.30.0 より前の取り込みの中では `after-behaviors` のままで、capture-ledger は新しい名で答えます）に、取り込みのページの viewport の絵（WebP）を残します。取り込みの答えの `screenshots` が、時点ごとに、残した絵か、残さなかった理由を言います。
   絵は小さく並び（時点の順。`after-load` が先）、押すとその場で元の大きさになります（もう 1 度押すと戻ります。窓より広い絵は、箱の中で横に流れます）。絵の下は、時点・撮り始めた時刻（軸の上の秒と、レコードの `WARC-Date`）・大きさ（バイト）と、同じ時点の DOM の写しを replay で開く link です（WACZ を見てよいときだけ。写しの URI は、絵の URI の文書の URL から組みます）。
   図の「節目の絵」の行には、撮り始めた時刻の印が並びます。押すと、その絵に枠が付き、下に欄（時点・時刻・大きさ・文書の URL・レコードの ID）が出ます。
   絵そのものは、BrowserHive WACZ の中の WARC の resource レコードです。位置は、WACZ の索引（CDXJ）を絵の URI と時刻で引いて決め（索引の行の窓を 1 つ。索引が 500 行より長いか、絵の行が長いときだけ、もう少し読みます）、絵は 1 枚ずつ `<img>` が引きます。**絵を 1 枚も残さなかった取り込みでは、絵のために WACZ を読みません。** WACZ を見る許可が無い名乗りには、絵を出さずにそう言います（capture-ledger が WACZ の鍵を返さないので、読みにも行きません）。
@@ -318,99 +318,99 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 ## 新しいクロール
 
 タブ「新しいクロール」の画面から、クロールを始めます。
-左の列に起点の URL・スクリプト・クロールごとの値（チェックしたスクリプトが宣言していれば）・User-Agent の箱・「乱数を記録する」のチェック・深さと「始める」、右の列にその場の TS の箱と辿り方が並びます。
-右の列はタブで、スクリプトを読む窓に切り替わり、「リンクを辿る」を選んでいる間は「辿り方」にも切り替わります。
+左の列に起点の URL・capture scripts・クロールごとの値（チェックした capture scripts が宣言していれば）・User-Agent の箱・「乱数を記録する」のチェック・深さと「始める」、右の列にその場の TS の箱と辿り方が並びます。
+右の列はタブで、capture scripts を読む窓に切り替わり、「リンクを辿る」を選んでいる間は「辿り方」にも切り替わります。
 箱は窓の高さいっぱいまで伸び、左に行番号が付きます。巨大な JS を貼って、読んで、少し直して始めるための形です。
 起点の URL を 1 行に 1 本書き、「このページだけ」か「リンクを辿る」を選んで「始める」を押します。
 
-![新しいクロールの画面の左の列。起点の URL（e-Gov 法令検索）・スクリプトの行（走る順の番号・チェック・↑↓。その場の TS の行、サイト用の egov-law-search、外れた「既定では走らない」autofetch を含む）・egov-law-search が宣言した変数 query の欄・User-Agent の箱とボタン・「乱数を記録する」のチェック・このページだけかリンクを辿るか・始める](../../../assets/screens/start.webp)
+![新しいクロールの画面の左の列。起点の URL（e-Gov 法令検索）・capture scripts の行（走る順の番号・チェック・↑↓。その場の TS の行、サイト用の egov-law-search、外れた「既定では走らない」autofetch を含む）・egov-law-search が宣言した変数 query の欄・User-Agent の箱とボタン・「乱数を記録する」のチェック・このページだけかリンクを辿るか・始める](../../../assets/screens/start.webp)
 
 ① 起点の URL\
-② スクリプト（走る順の番号・チェックと「読む」・↑↓）\
-③ クロールごとの値（チェックしたスクリプトが宣言した変数の欄）\
+② Capture scripts（走る順の番号・チェックと「読む」・↑↓）\
+③ クロールごとの値（チェックした capture scripts が宣言した変数の欄）\
 ④ User-Agent（箱と、Headless を外す型を入れるボタン）\
 ⑤ 乱数（「乱数を記録する」のチェック）\
 ⑥ 始める
 
-![新しいクロールの画面の右の列。タブ「その場の TS」・スクリプトの名前・読み込みの後か遷移の前か・TS の箱](../../../assets/screens/start-js.webp)
+![新しいクロールの画面の右の列。タブ「その場の TS」・capture script の名前・読み込みの後か遷移の前か・TS の箱](../../../assets/screens/start-js.webp)
 
 ① 右の列のタブ\
-② スクリプトの名前\
+② Capture script の名前\
 ③ TS の箱
 
 - **送るのは、起点の URL と、深さ 0 かどうかと、走らせるもの（既定から変えたときだけ）と、クロールごとの変数（値を書いたときだけ）。**
   「このページだけ」は `maxDepth: 0` を送ります。「リンクを辿る」は規則を送り、深さと枚数は書いたときだけ送ります（空なら capture-ledger の既定）。
-  起点で決まる既定の顔ぶれ（既定に入るスクリプトのうち、対象サイトの無い物と、起点に合うサイト用の物）を選んだまま順も動かさず、その場の TS も無ければ、`scripts` は送りません。capture-ledger も起点から同じ物を同じ順で選んで走らせます。
-  登録済みのスクリプトが無ければ今までどおり 400 で、スクリプトは在るのに起点に合う物が 1 つも無ければ、別の文の 400 です。
+  起点で決まる既定の顔ぶれ（既定に入る capture scripts のうち、対象サイトの無い物と、起点に合うサイト用の物）を選んだまま順も動かさず、その場の TS も無ければ、`scripts` は送りません。capture-ledger も起点から同じ物を同じ順で選んで走らせます。
+  登録済みの capture scripts が無ければ今までどおり 400 で、capture scripts は在るのに起点に合う物が 1 つも無ければ、別の文の 400 です。
   そうでなければ `scripts` を番号の順で送ります（「遷移の前」のその場の TS は先頭）。全部外せば `[]` で、何も走らせません。
-  URL もスクリプトの名前も workbench では検査せず、capture-ledger が 400 で言います（断った id を名指します）。
+  URL も capture script の名前も workbench では検査せず、capture-ledger が 400 で言います（断った id を名指します）。
 - **走る順は番号で見え、↑↓ で変えられる。**
   チェックの付いた行に番号が付き、その順に走ります。初めは [capture-scripts](https://github.com/uraitakahito/capture-scripts) の `catalog.json` の順で（capture-ledger v0.75.0 から）、`autofetch` を付けるだけなら `autoscroll` の後に走ります。
   ↑↓ は番号の行どうしを入れ替えます。チェックを外しても行は動かず、番号と矢印が消えるだけです。起点に合わないサイト用の行は下にまとまります。
   「読み込みの後」のその場の TS は、書くと行が出て（初めは先頭）、一緒に動かせます。「遷移の前」の物は行に出ず、いつも最初に走ります。
   動かした順は一覧の引き直しでも、始めた後でも残り、ページを読み直すと元に戻ります。
-- **サイト用のスクリプトは、起点がそのサイトのときだけ選べる。**
-  対象サイトのあるスクリプトは、起点のどれかが対象サイトのホストにあるときだけチェックを押せます。照らすのは起点のホスト名との完全一致で、ポートは見ません（`laws.e-gov.go.jp` と `www.e-gov.go.jp` は別のホスト）。
-  起点を書くと、合うスクリプトには自動でチェックが付き、合わないスクリプトは押せなくなって「起点に laws.e-gov.go.jp がありません」のように理由が出ます。起点が空なら「起点を書くと選べます」です。
+- **サイト用の capture scripts は、起点がそのサイトのときだけ選べる。**
+  対象サイトのある capture scripts は、起点のどれかが対象サイトのホストにあるときだけチェックを押せます。照らすのは起点のホスト名との完全一致で、ポートは見ません（`laws.e-gov.go.jp` と `www.e-gov.go.jp` は別のホスト）。
+  起点を書くと、合う capture scripts には自動でチェックが付き、合わない capture scripts は押せなくなって「起点に laws.e-gov.go.jp がありません」のように理由が出ます。起点が空なら「起点を書くと選べます」です。
   見本は capture-scripts の `egov-law-search`（対象サイト `laws.e-gov.go.jp`）で、[e-Gov 法令検索](https://laws.e-gov.go.jp/)の頁の中で法令名を必須の変数 `query` の語で検索します。起点に `https://laws.e-gov.go.jp/` を書くと選べます（上の絵）。
-  外したチェックは覚えていて、起点を書き換えても付け直しません。決まりは capture-ledger と同じで、合わないスクリプトを名指して送れば、capture-ledger が 400 で断ります。
+  外したチェックは覚えていて、起点を書き換えても付け直しません。決まりは capture-ledger と同じで、合わない capture scripts を名指して送れば、capture-ledger が 400 で断ります。
 - **User-Agent の箱で、クロールの `User-Agent` を決める。**
   空なら何も送らず、ブラウザの字（`HeadlessChrome` を含む）のまま撮ります。
   「Headless を外す型を入れる」を押すと `{chrome} BrowserHive` が入ります。`{chrome}` は BrowserHive がブラウザの字から Headless を外した物に置き換えるので、Headless を断るサイトも撮れ、ブラウザを上げても字が古くなりません。
   たとえば[首相官邸の公式サイト](https://www.kantei.go.jp/)は、`HeadlessChrome` を含む字に HTTP 404 を返します。欄を空のまま「このページだけ」で始めると、ページの結末が `failed: http_error: HTTP 404: Not Found` になり、1 枚も撮れず ReplayWeb.page ↗・Web Capture ↗ も出ません。ボタンで `{chrome} BrowserHive` を入れて始めると撮れて、ReplayWeb.page ↗・Web Capture ↗ で開けます（2026-11-07 に確かめました。相手のサイトの答えは変わることがあります）。
   `BrowserHive` の語を含めるかは打つ人が決めます。含むと、相手のサイトに BrowserHive が撮っていると分かり、robots.txt もその名前の規則で読みます。含まなければ `*` の規則だけを読みます。
   workbench は字を検査しません。形（印字可能な ASCII・512 字以下）に合わない字は capture-ledger が 400 で断り、左の列の下に `400 —— User-Agent は、表示できる ASCII で 512 字までです` と出ます。
-  始めた後も、字は変数やスクリプトと同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は BrowserHive WACZ の `settings.userAgent` で読めます。
+  始めた後も、字は変数や capture scripts と同じく欄に残ります。クロールの画面の開いた行には打った字が出て、実際に送った字は BrowserHive WACZ の `settings.userAgent` で読めます。
 - **「乱数を記録する」で、取り込みのページの JS が受け取った乱数を残す。**
   外したまま（既定）なら何も送らず、capture-ledger の既定（記録しない）です。入れると `recordRandom: true` を送ります（capture-ledger v0.105.0 から）。「始める」でも「定期にする」でも同じです。
   BrowserHive は、ページの JS より先に、乱数を記録するスクリプトをページに入れ、ページの JS が `Math.random`・`crypto.getRandomValues`・`crypto.randomUUID` から受け取った値を、[BrowserHive WACZ](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.26.0/ja/#random-directory) の `random/values.jsonl` に書きます。
   Web Capture ↗（capture-player）の再生は、記録した値を返します。見せる物を乱数で選ぶページも、撮った時に選んだ物を選びます。ReplayWeb.page ↗ は返しません。
   クロールの画面の開いた行には「乱数を記録した」と出て、取り込みごとの経緯の画面が、記録した数を言います。
-- **チェックしたスクリプトやその場の TS が値を宣言していれば、「クロールごとの値」の欄が出る。**
-  スクリプトは読む変数を、ソースの `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))` で宣言します。[capture-scripts](https://github.com/uraitakahito/capture-scripts) のスクリプトは `catalog.json` の `params` にも同じ宣言があり、capture-ledger は版ごとに持ち、`GET /api/scripts` が運びます。
-  その場の TS は、箱が 800 ms 止まると capture-ledger に訊きます（`POST /api/scripts/check`）。ファイルを読んだときも、「欄に戻す」でも、「下敷きにする」でも欄が出ます。
+- **チェックした capture scripts やその場の TS が値を宣言していれば、「クロールごとの値」の欄が出る。**
+  Capture scripts は読む変数を、ソースの `const { query } = defineParams(z.object({ query: z.string().min(1).describe("…") }))` で宣言します。[capture-scripts](https://github.com/uraitakahito/capture-scripts) の capture scripts は `catalog.json` の `params` にも同じ宣言があり、capture-ledger は版ごとに持ち、`GET /api/capture-scripts` が運びます。
+  その場の TS は、箱が 800 ms 止まると capture-ledger に訊きます（`POST /api/capture-scripts/check`）。ファイルを読んだときも、「欄に戻す」でも、「下敷きにする」でも欄が出ます。
   変数（`kind: variable`）の宣言は、名前と説明と値の欄の 1 行になります（`z.enum` の宣言は選択の欄）。上の絵の `query` は `egov-law-search` が法令名の検索語として宣言した物です。必須の宣言（`.optional()` の無い物）には「必須」の印が付きます。
-  値を書いた欄だけを `variables` で送ります。任意の欄が空なら送らず、スクリプトは `undefined` を読みます。
+  値を書いた欄だけを `variables` で送ります。任意の欄が空なら送らず、capture scripts は `undefined` を読みます。
   書いた値は覚えていて、202 の後も、チェックを外して欄が消えても残り、付け直せば欄に戻ります。
-  workbench は値を検査しません。名前の綴り（英小文字で始め、英小文字・数字・`_` で 64 字まで）・1 クロール 32 個・値は 4,096 字まで・スクリプトが宣言した形は capture-ledger の決まりです。必須の欄が空のときと、どのスクリプトも宣言していない名前のときと、形に合わない値のときは、capture-ledger が行を立てる前に 400 で名前を名指します（左の列の下に `400 —— 必須の変数が渡されていません: query` のように出ます）。
-  その場の TS の宣言を読めないときと、capture-ledger に訊けないときは、箱の下に赤で理由が出ます。`BH0002`（走らせずに読める形でない）、`BH0004`（「遷移の前」のスクリプトには変数を読む先が無い）、「宣言を確かめられません」と状態の数と capture-ledger の答え（句は、辞書に在れば訳します）、のどれかです。ふつうの型の誤りはここには出ません。走らせたときに compile の段が言います。
+  workbench は値を検査しません。名前の綴り（英小文字で始め、英小文字・数字・`_` で 64 字まで）・1 クロール 32 個・値は 4,096 字まで・capture scripts が宣言した形は capture-ledger の決まりです。必須の欄が空のときと、どの capture scripts も宣言していない名前のときと、形に合わない値のときは、capture-ledger が行を立てる前に 400 で名前を名指します（左の列の下に `400 —— 必須の変数が渡されていません: query` のように出ます）。
+  その場の TS の宣言を読めないときと、capture-ledger に訊けないときは、箱の下に赤で理由が出ます。`BH0002`（走らせずに読める形でない）、`BH0004`（「遷移の前」の capture scripts には変数を読む先が無い）、「宣言を確かめられません」と状態の数と capture-ledger の答え（句は、辞書に在れば訳します）、のどれかです。ふつうの型の誤りはここには出ません。走らせたときに compile の段が言います。
   シークレット（`kind: secret`）の宣言は「使うシークレット」として名前だけが並び、値の欄はありません。名前の横に、WARC で隠すか残すか（宣言の `archive`。省けば隠す）が出ます。
-  値は Windmill の変数 `f/waggle_secrets/<名前>` に人が置きます。capture-ledger が在るかを確かめ（無ければ 400 で名前と path を名指します）、クロールのたびに Windmill の中で解いてスクリプトに渡します。値は workbench にも capture-ledger にも残りません。
+  値は Windmill の変数 `f/waggle_secrets/<名前>` に人が置きます。capture-ledger が在るかを確かめ（無ければ 400 で名前と path を名指します）、クロールのたびに Windmill の中で解いて capture scripts に渡します。値は workbench にも capture-ledger にも残りません。
   BrowserHive WACZ では、隠すシークレットの値は WARC の中で `***` に置き換わり、`archive: "keep"` と宣言した物は値のまま残ります。どちらも写し・ページの文字と題・ログからは消えます。隠す値は 8 字以上が要り、短い値を渡した取り込みは BrowserHive が断ります（capture-scripts の README の「WARC に残すか」）。
   隠すシークレットを使うのに、配備の形式（capture-ledger の `CAPTURE_LEDGER_CAPTURE_FORMATS`）に PNG・WebP・HTML・MHTML のどれかがあると、値を置き換えられないので capture-ledger が行を立てる前に 400 で断ります。左の列の下に `400 —— いまの形式では隠せないシークレットがあります: api_token（CAPTURE_LEDGER_CAPTURE_FORMATS の png は値を置き換えられない …）` のように、名前と直し方が出ます。括弧の中は capture-ledger の理由の文で、英語の画面では英語になります（v0.102.0 より前の capture-ledger は日本語の文しか返さないので、英語の画面でも日本語のまま出ます）。
   同じ名前を、残す宣言と隠す宣言の両方ですると `400 —— 同じ名前の宣言が食い違っています: api_token` です。
-  同梱のスクリプトにシークレットを宣言する物は無く、この画面から渡せるのは変数だけです。その場の TS がシークレットを宣言する（`inline.params`）のは、capture-ledger の API に直に送るときだけです。
-- **既定では走らないスクリプトは、外れた状態で並ぶ。**
-  名前の横に「既定では走らない」と出ます（上の絵では autofetch）。[capture-scripts](https://github.com/uraitakahito/capture-scripts) の `catalog.json` に `"default": false` と書いたスクリプトで、capture-ledger はその全部の版を無効にして持ちます。何も名指さないクロールでは走りません。
+  同梱の capture scripts にシークレットを宣言する物は無く、この画面から渡せるのは変数だけです。その場の TS がシークレットを宣言する（`inline.params`）のは、capture-ledger の API に直に送るときだけです。
+- **既定では走らない capture scripts は、外れた状態で並ぶ。**
+  名前の横に「既定では走らない」と出ます（上の絵では autofetch）。[capture-scripts](https://github.com/uraitakahito/capture-scripts) の `catalog.json` に `"default": false` と書いた capture scripts で、capture-ledger はその全部の版を無効にして持ちます。何も名指さないクロールでは走りません。
   付ければ名指して送り、capture-ledger はその最新版を走らせます。付けたチェックも外したチェックと同じく覚えていて、引き直しても戻しません。
 - **送る前に、本文の大きさを見せる。**
   箱の下に、行数・送る本文の大きさ（UTF-8 のバイト）・上限に対する割合が出ます。
   上限は書き込みのエンドポイントと同じで、サーバが `/healthz` の `writeLimit` で配ります。超えると赤で言い、「始める」を押せなくなります。
-- **スクリプトの名前が、そのスクリプトの id になる。**
-  右の列の「スクリプトの名前」の欄に、その場の TS の名前を書きます。前の `inline-` は付いたままで、たとえば `close-banner` なら id は `inline-close-banner` です。
+- **Capture script の名前が、その capture script の id になる。**
+  右の列の「Capture script の名前」の欄に、その場の TS の名前を書きます。前の `inline-` は付いたままで、たとえば `close-banner` なら id は `inline-close-banner` です。
   綴りは英小文字で始め、英小文字・数字・`-` だけで、57 字までです（capture-ledger の決まり）。workbench は検査しません。違えば、名前が空でも、capture-ledger が 400 で断り、左の列の下に `body/scripts/0/inline/name must match pattern "^[a-z][a-z0-9-]*$"` のような文が出ます。
   名前を送るのは、箱に何か書いてあるときだけです。箱が空なら、名前は使いません。
-  id は、クロールの行の「走らせたもの」と、ページのログの行の出どころと、アーカイブの `behaviors/custom.jsonl` に出ます。ログ（`__bh.log.info(…)` など）と報告（`__bh.report(…)`）の行には BrowserHive がこの id を付けるので、スクリプトの中に id を書く所はありません。「欄に戻す」も、この名前で TS を取り戻します。
+  id は、クロールの行の「走らせたもの」と、ページのログの行の出どころと、アーカイブの `behaviors/custom.jsonl` に出ます。ログ（`__bh.log.info(…)` など）と報告（`__bh.report(…)`）の行には BrowserHive がこの id を付けるので、capture scripts の中に id を書く所はありません。「欄に戻す」も、この名前で TS を取り戻します。
 - **その場の TS は、strict で型を検査されます。**
   最初の段の compile で検査され、1 つでも誤りがあればクロールごと落ちます。診断は件数と最初の 5 件が、行を開くと読めます。
   IIFE で包み、取り出す要素には型を付けて `?.` で扱ってください。`export` は書けません。compile が `BH0006` で止めます（ページでは構文エラーになり、何も走らないため）。
 - **Zod を使えます。**
   先頭の文に `import { z } from "zod"` か `import * as z from "zod/mini"` を書きます。ほかの形は compile が `BH0003` で止め、「遷移の前」では `BH0004` で止めます。
-  ts-compile-service が使う名前だけを JS に束ねるので、スクリプトは 85 KB ほど大きくなります（`zod/mini` は 15 KB）。形が合わなくてもクロールは成功のままなので、`parse` より `safeParse` と `__bh.log.error` を使ってください。
+  ts-compile-service が使う名前だけを JS に束ねるので、capture script は 85 KB ほど大きくなります（`zod/mini` は 15 KB）。形が合わなくてもクロールは成功のままなので、`parse` より `safeParse` と `__bh.log.error` を使ってください。
 - **束ねた JS は「型を検査しない」で。**
   チェックを入れると箱の 1 行目に `// @ts-nocheck` が入り、外すと消えます。見えている物が送る物で、capture-ledger が打つ sha256 にも入ります。
   貼った JS が 1 行目に印を持っていれば、チェックは付いた状態になります。
 - **箱は折り返さない。**
   行番号とずれないように、長い行は横に流します。
   「読み込みの後」は主フレームで 1 回、「遷移の前」は全部のフレームで遷移のたびに走り、受け皿（`__bh`）がありません。
-  「ファイルを読む」は、別の所で書いたファイルを箱に読み込みます（ブラウザの中だけで読みます）。スクリプトの名前の欄が空なら、拡張子を除いたファイル名が入ります。綴りが決まりに合わなければ（大文字や `_`）、直してから始めてください。
-- **スクリプトは、右の列で読める。**
+  「ファイルを読む」は、別の所で書いたファイルを箱に読み込みます（ブラウザの中だけで読みます）。Capture script の名前の欄が空なら、拡張子を除いたファイル名が入ります。綴りが決まりに合わなければ（大文字や `_`）、直してから始めてください。
+- **Capture scripts は、右の列で読める。**
   チェックの横の「読む」を押すと、右の列に 2 つ目のタブ（`autoscroll v2` のような名前）が開き、そのチェックの版の source が色つきで出ます。画面は移りません。
-  TS の箱は隠れるだけで、書きかけも流した位置も残り、タブ「その場の TS」で戻ります。読みながらチェックを付け外しできます。押せないサイト用のスクリプトの横の「読む」も押せます。
-  開いておけるのは 1 つで、別の「読む」で入れ替わり、× で閉じます。窓には「写す」「下敷きにする」と、スクリプト集の画面で開くリンクがあります（版のリンクと行の URL は[スクリプト集](#スクリプト集)の画面にだけ在ります）。
-  ⌘ や Ctrl を押しながら押すと、ブラウザがスクリプト集の画面を別のタブで開きます。
+  TS の箱は隠れるだけで、書きかけも流した位置も残り、タブ「その場の TS」で戻ります。読みながらチェックを付け外しできます。押せないサイト用の capture scripts の横の「読む」も押せます。
+  開いておけるのは 1 つで、別の「読む」で入れ替わり、× で閉じます。窓には「写す」「下敷きにする」と、Capture scripts の画面で開くリンクがあります（版のリンクと行の URL は[Capture scripts](#capture-scripts) の画面にだけ在ります）。
+  ⌘ や Ctrl を押しながら押すと、ブラウザが Capture scripts の画面を別のタブで開きます。
 
-![新しいクロールの右の列で、スクリプト autoscroll v2 を色つきで読んでいるところ](../../../assets/screens/start-read.webp)
+![新しいクロールの右の列で、capture script autoscroll v2 を色つきで読んでいるところ](../../../assets/screens/start-read.webp)
 
 - **202 と 409 は、クロールの画面へ移る。**
   受理されたら始めた行に、走行中のクロールがあれば塞いでいる行に印が付きます（capture-ledger は全体で 1 本しか走らせません）。
@@ -420,15 +420,15 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   直して撮り直すことが多いからです。
 - **「欄に戻す」で、この画面に戻る。**
   クロールの画面で行を開き、その場の TS の「欄に戻す」を押すと、この画面へ移り、名前・phase・TS が戻ります。
-  TS は capture-ledger の `/api/crawls/:id/inline/:name` から取ります（行の詳しい所には大きさしか載りません）。起点とスクリプトの選びは触りません。
+  TS は capture-ledger の `/api/crawls/:id/inline/:name` から取ります（行の詳しい所には大きさしか載りません）。起点と capture scripts の選びは触りません。
   右の列で読んでいても、タブ「その場の TS」に替わります。
-- **[スクリプト集](#スクリプト集)の画面の「下敷きにする」で、スクリプトがこの画面に来る。**
-  名前の欄が空なら `my-<id>` が入ります。替えるのは、そのスクリプト自身の id を名指す形 `__bh.opts["<id>"]`（設定を読む所）だけで、`inline-<名前>` にします。報告とログの行は id を取らないので、替えません。替えた行は左の列の下に出ます。
-  元のスクリプトのチェックは外します（両方走ると 2 回走ります）。箱に書きかけがあれば、スクリプト集の画面で置き換えるかを訊きます。
+- **[Capture scripts](#capture-scripts) の画面の「下敷きにする」で、capture script がこの画面に来る。**
+  名前の欄が空なら `my-<id>` が入ります。替えるのは、その capture script 自身の id を名指す形 `__bh.opts["<id>"]`（設定を読む所）だけで、`inline-<名前>` にします。報告とログの行は id を取らないので、替えません。替えた行は左の列の下に出ます。
+  元の capture script のチェックは外します（両方走ると 2 回走ります）。箱に書きかけがあれば、Capture scripts の画面で置き換えるかを訊きます。
   右の列の読む窓の「下敷きにする」も同じです（確認は読む窓の中で訊きます）。写した後はタブ「その場の TS」に替わり、読む窓は開いたままなので、元と見比べられます。
-  サイト用のスクリプトを下敷きにしても、対象サイトは写しに付きません。その場の TS はどの起点でも走るので、スクリプトの冒頭の見分け（`location.hostname` を比べる行）が、ほかのサイトでは何もさせません。
+  サイト用の capture scripts を下敷きにしても、対象サイトは写しに付きません。その場の TS はどの起点でも走るので、capture script の冒頭の見分け（`location.hostname` を比べる行）が、ほかのサイトでは何もさせません。
 - **受け皿（`__bh`）の型は、注意書きのリンクから読める。**
-  左の列の下の注意書きに、型へのリンク（`/scripts/types/host.d.ts`）があります。ふつうに押すと、右の列の読む窓に開きます。
+  左の列の下の注意書きに、型へのリンク（`/capture-scripts/types/host.d.ts`）があります。ふつうに押すと、右の列の読む窓に開きます。
 - **「リンクを辿る」を選ぶと、「辿り方」のタブが開く。**
   深さと枚数・型・規則の表が並びます。規則は「動き」と「当てる物」の組です。
   動きは「撮って辿る」「撮るだけ」「落とす」、当てる物は `same-origin`・`same-host`・`same-site`・`any`（起点と比べる）、小文字のホスト名（そのホストとその下のサブドメイン）、`http(s)` の URL（前方一致）のどれかです。
@@ -481,7 +481,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
   走行中なら順番待ちになります。
   止めた予定でも撮れます。
 - **撮り方は作ったときに固定する。**
-  スクリプトの新しい版が出ても、回の中身は変わりません（`autoscroll@1（新しい版 2）` と出ます）。
+  Capture script の新しい版が出ても、回の中身は変わりません（`autoscroll@1（新しい版 2）` と出ます）。
   上げるのは「固定し直す」です。
 - **走ったままの行は、勝手に閉じない。**
   本当に走っている回を閉じないためです。
@@ -572,7 +572,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 - **差分は表の下。**
   枠は[変化](#変化)の 1 ページと同じです（足した行と消した行の数・前と今の再生の link・差分の行）。
   差分は、選ぶたびに capture-ledger が 2 本の WACZ から Claude なしで作ります。保存はしません。
-  撮り方が違う 2 本には「撮り方が違います」、比べた行が違う 2 本（片方がスクリプトの後の写し、片方が文書の行）には「比べた行が違います」と断ります。
+  撮り方が違う 2 本には「撮り方が違います」、比べた行が違う 2 本（片方が capture scripts の後の写し、片方が文書の行）には「比べた行が違います」と断ります。
   同じ文字の 2 本は「同じ」と出ます（空行と字下げだけの違いなら、そう添えます）。表が「変わった」と出した 2 本が、ここで「同じ」になることがあります（表は digest だけで言うためです）。
   比べられない 2 本には訳が出ます。行と同じ訳のほかに、WACZ が保管庫に無い・大きすぎる、があります。
 - **要約は、押した時だけ。**
@@ -623,7 +623,7 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 - **「開く」で WACZ の画面に入る**（`/archive/<archiveId>`）。
 - **「ReplayWeb.page ↗」と「Web Capture ↗」は、取り込んだ URL を replay で直に開く。**
   行き先は、サーバが `/healthz` で配る replayweb-player の origin、capture-ledger が返す `objectKey`、行の URL と撮った時刻から組みます（`#view=replay&url=…&ts=…`）。
-  頁の script が動くので、JS で出す絵も出ます。BrowserHive が撮った DOM の写し（スクリプトの前と後）は、replay の Pages タブにあります。
+  頁の script が動くので、JS で出す絵も出ます。BrowserHive が撮った DOM の写し（capture scripts の前と後）は、replay の Pages タブにあります。
   replay は自分では最初の頁を選びません。ページ一覧を日付の新しい順に並べ、WACZ の `mainPageURL` は読みません。
   開くのはその WACZ 1 本です。クロールのほかのページへリンクで行くなら、[クロール](#クロール)の画面の行の ReplayWeb.page ↗・Web Capture ↗ から開きます。
 - **「履歴」は、同じ URL の取り込みの[履歴](#履歴)を開く。**
@@ -633,12 +633,12 @@ workbench は `stopReason` と合わせて「完走」「打ち切り (深さ)�
 
 capture-ledger の全文検索で、撮ったページの題と文字を探す画面です（`/search?q=<語>`）。
 
-![検索の画面。「ランプ」で探し、2 件が並んでいる。1 件目は文書の行、2 件目は after-behaviors の写しの行で、当たった所に印が付いている](../../../assets/screens/search.webp)
+![検索の画面。「ランプ」で探し、2 件が並んでいる。1 件目は文書の行、2 件目は after-capture-scripts の写しの行で、当たった所に印が付いている](../../../assets/screens/search.webp)
 
 - **1 件はアーカイブの 1 時点。**
   capture-ledger は、WACZ のページ一覧の 1 行を索引の 1 件にします。
-  写しの行がある BrowserHive WACZ では写しの行（`after-load`・`after-behaviors`）だけを、写しの無い取り込み（方針で伏せた文書など）は文書の行を入れます。
-  同じアーカイブの読み込みの後とスクリプトの後が両方当たれば、2 件並びます。
+  写しの行がある BrowserHive WACZ では写しの行（`after-load`・`after-capture-scripts`）だけを、写しの無い取り込み（方針で伏せた文書など）は文書の行を入れます。
+  同じアーカイブの読み込みの後と capture scripts の後が両方当たれば、2 件並びます。
 - **見せてよいアーカイブの物だけが並ぶ。**
   capture-ledger が、アーカイブの一覧と同じ認可で絞ります。
   件数は並んだ行の数で、capture-ledger が 1 回に返すのは 50 件までです。
@@ -652,35 +652,36 @@ capture-ledger の全文検索で、撮ったページの題と文字を探す�
 - **capture-ledger の全文検索（OpenSearch）が要る。**
   答えないときは、理由を赤い 1 行で出します（capture-ledger の `CAPTURE_LEDGER_OPENSEARCH_URL` の先）。
 
-## スクリプト集
+## Capture scripts
 
-撮るページの中で走らせるスクリプトを、JS にする前の TypeScript のまま読む画面です。自分のスクリプトを書く前の手本に、あるいはクロールが何を走らせたかを確かめるために。
-左に一覧が 4 つの組で並びます。既定で走るもの（対象サイトの無いスクリプトの、有効な各 id の最新版。何も名指さないクロールが走らせる物）、サイト用のスクリプト（対象サイトのある物。起点がそのサイトのときだけ走る）、既定では走らないもの（有効な版の無いスクリプト。名指せば最新版が走る）、「書くための型」の `host.d.ts` —— 撮影のサーバがページに置く受け皿 `__bh` の型です。
-型のほかは、[新しいクロール](#新しいクロール)の画面の「スクリプト」にもチェックとして並びます（既定では走らないものは外れた状態で）。
+撮るページの中で走らせる capture scripts を、JS にする前の TypeScript のまま読む画面です。自分の capture scripts を書く前の手本に、あるいはクロールが何を走らせたかを確かめるために。
+左に一覧が 4 つの組で並びます。既定で走るもの（対象サイトの無い capture scripts の、有効な各 id の最新版。何も名指さないクロールが走らせる物）、サイト用の capture scripts（対象サイトのある物。起点がそのサイトのときだけ走る）、既定では走らないもの（有効な版の無い capture scripts。名指せば最新版が走る）、「書くための型」の `host.d.ts` —— 撮影のサーバがページに置く受け皿 `__bh` の型です。
+型のほかは、[新しいクロール](#新しいクロール)の画面の「Capture scripts」にもチェックとして並びます（既定では走らないものは外れた状態で）。
 チェックの横の「読む」で、その画面の右の列でも読めます。
 
-![スクリプト集の画面の左の一覧。既定で走る autoscroll（開いている）、サイト用の egov-law-search と対象サイト laws.e-gov.go.jp、既定では走らない autofetch、書くための型の host.d.ts](../../../assets/screens/scripts.webp)
+![Capture scripts の画面の左の一覧。既定で走る autoscroll（開いている）、サイト用の egov-law-search と対象サイト laws.e-gov.go.jp、既定では走らない autofetch、書くための型の host.d.ts](../../../assets/screens/scripts.webp)
 
 右には TypeScript が行番号つきで出ます。
 
-![スクリプト集の画面の右。autoscroll v2 の版のリンク・行数や sha256 の行・「写す」と「下敷きにする」、その下に色つきの source](../../../assets/screens/script-read.webp)
+![Capture scripts の画面の右。autoscroll v2 の版のリンク・行数や sha256 の行・「写す」と「下敷きにする」、その下に色つきの source](../../../assets/screens/script-read.webp)
 
 | URL | 開くもの |
 | --- | --- |
-| `/scripts` | 一覧の頭（URL はそれを名指す形に替わる） |
-| `/scripts/autoscroll` | いま既定で走る版（既定では走らないスクリプトは最新版） |
-| `/scripts/autoscroll@1` | 版 1（有効でも無効でも） |
-| `/scripts/autoscroll@1:33` | 版 1 の 33 行に印を付け、窓の真ん中に出す |
-| `/scripts/types/host.d.ts` | 受け皿 `__bh` の型 |
+| `/capture-scripts` | 一覧の頭（URL はそれを名指す形に替わる） |
+| `/capture-scripts/autoscroll` | いま既定で走る版（既定では走らない capture scripts は最新版） |
+| `/capture-scripts/autoscroll@1` | 版 1（有効でも無効でも） |
+| `/capture-scripts/autoscroll@1:33` | 版 1 の 33 行に印を付け、窓の真ん中に出す |
+| `/capture-scripts/types/host.d.ts` | 受け皿 `__bh` の型 |
+| `/scripts…` | v0.65.0 までの住所。同じ物を開き、URL を `/capture-scripts…` に替える |
 
 - **見出しが、読んでいる版を言う。**
   版のリンクにその id の版が全部並び、既定の版には「既定」、無効な版には「無効」が付きます。
   その下に、行数・大きさ・sha256 の先頭・取り込んだ日・渡す設定（`{}` はコードに書いた既定のまま）・既定で走る版かどうかが出ます。
-  サイト用のスクリプトなら名前の横に対象サイトが付き、既定の版は「起点に laws.e-gov.go.jp があれば既定で走る版」と言います。無効な版は「無効（既定では走らない）」です。
-- **対象サイトは、決まったサイトの頁でだけ意味のあるスクリプトの印。**
+  サイト用の capture scripts なら名前の横に対象サイトが付き、既定の版は「起点に laws.e-gov.go.jp があれば既定で走る版」と言います。無効な版は「無効（既定では走らない）」です。
+- **対象サイトは、決まったサイトの頁でだけ意味のある capture scripts の印。**
   対象サイト（`sites`）はホスト名の列で、[capture-scripts](https://github.com/uraitakahito/capture-scripts) の `catalog.json` に書き、capture-ledger が版ごとに持ちます。
-  対象サイトのあるスクリプトは、クロールの起点のどれかがそのホストにあるときだけ既定で走ります。
-  決まりはクロールの単位なので、リンクを辿って別のホストへ出た頁でも走ります。スクリプトは冒頭でホスト名を見て、ほかの頁では何もせずに終わります。
+  対象サイトのある capture scripts は、クロールの起点のどれかがそのホストにあるときだけ既定で走ります。
+  決まりはクロールの単位なので、リンクを辿って別のホストへ出た頁でも走ります。Capture scripts は冒頭でホスト名を見て、ほかの頁では何もせずに終わります。
 - **行を押すと、その行が URL になる。**
   人にそのまま渡せます。ブラウザの履歴は増えず、画面も描き直しません。
 - **「写す」で source をクリップボードへ。**
@@ -695,10 +696,10 @@ capture-ledger の全文検索で、撮ったページの題と文字を探す�
   sha256 の先頭も一緒に運びます。版の番号は使い回されることがある（最新の版を消して足し直すと、同じ番号が別の中身になる）ので、中身が違えば本文の上で言います。
 - **取るのは、開いたものだけ。**
   一覧はいつもの引き直しの答えから作り、変わったときだけ描き直します。版の並びと中身は開いたときに、受け皿の型は画面を最初に開いたとき 1 回だけ取ります。
-  読み取りのエンドポイントは capture-ledger の `GET /api/scripts/:id/versions`・`GET /api/scripts/:id/versions/:version`・`GET /api/host-types`（v0.60.0 から。対象サイトは v0.61.0 から。一覧の `GET /api/scripts` に既定では走らないスクリプトが `enabled: false` で載るのは v0.64.0 から）で、[workbench の素通し](/routes/)を通ります。
+  読み取りのエンドポイントは capture-ledger の `GET /api/capture-scripts/:id/versions`・`GET /api/capture-scripts/:id/versions/:version`・`GET /api/host-types`（v0.60.0 から。対象サイトは v0.61.0 から。一覧の `GET /api/capture-scripts` に既定では走らない capture scripts が `enabled: false` で載るのは v0.64.0 から）で、[workbench の素通し](/routes/)を通ります。
 
-**登録済みのスクリプトが無ければ、赤で言います。**
-撮影のサーバ（BrowserHive）は走らせるものを自分では持たないので、登録済みのスクリプトが無いと、ページの中で何も走りません。
+**登録済みの capture scripts が無ければ、赤で言います。**
+撮影のサーバ（BrowserHive）は走らせるものを自分では持たないので、登録済みの capture scripts が無いと、ページの中で何も走りません。
 スクロールも遅延読み込みも起きないまま、それでも取り込みは成功し、アーカイブも出ます。
 赤い文の中に、[capture-ledger](https://github.com/uraitakahito/capture-ledger)（クロールを始め、撮れたものを記録するシステム）で取り込むコマンドが出ます。
 

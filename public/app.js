@@ -64,7 +64,7 @@ import {
   withNocheck,
 } from "/start.js";
 import { dropsOf, inspectHref, overriddenOf, ruleTallies } from "/decisions.js";
-import { keepLang, loginHref, pathFromHash, screenTarget } from "/paths.js";
+import { keepLang, loginHref, pathFromHash, renamedPath, screenTarget } from "/paths.js";
 import { crawlsHref, parseCrawlsHref } from "/crawls.js";
 import {
   appliesText,
@@ -563,8 +563,8 @@ const failuresText = (one) => {
 };
 
 /**
- * 対象サイトの印（サイト用のスクリプトのホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。
- * 後ろの「用」を付けない呼び手（スクリプト集の一覧）は、`suffix` に空の字を渡す。
+ * 対象サイトの印（サイト用の capture scripts のホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。
+ * 後ろの「用」を付けない呼び手（Capture scripts の画面の一覧）は、`suffix` に空の字を渡す。
  */
 const siteChip = (sites, suffix) => {
   const list = sites.join(t("common.sep.dot"));
@@ -653,8 +653,8 @@ const askFix = async (crawlId, name) => {
 };
 
 /**
- * 走らせたもの。**並びが実行順。** 登録済みのスクリプトは版を、その場で書いた物は「その場」と出す ——
- * その場の物にだけ、capture-ledger は頼まれた要素（`inline`）を返す。サイト用のスクリプトには対象サイトを添える。
+ * 走らせたもの。**並びが実行順。** 登録済みの capture scripts は版を、その場で書いた物は「その場」と出す ——
+ * その場の物にだけ、capture-ledger は頼まれた要素（`inline`）を返す。サイト用の capture scripts には対象サイトを添える。
  */
 const ranOf = (one) => {
   const scripts = one.scripts ?? [];
@@ -670,7 +670,7 @@ const ranOf = (one) => {
     item.append(tag("span", script.id, "mono"));
     if (script.sites.length > 0) item.append(siteChip(script.sites));
     item.append(tag("span", where, "muted"));
-    // その場の TS は、直して撮り直せるように欄へ戻せる（登録済みのスクリプトは capture-ledger に在る）。source は詳しい所に
+    // その場の TS は、直して撮り直せるように欄へ戻せる（登録済みの capture scripts は capture-ledger に在る）。source は詳しい所に
     // 無いので、押したときに名前で引くエンドポイントから取る
     if (script.inline !== undefined) {
       item.append(button(t("crawls.detail.backToForm"), () => void putBack(one.crawlId, script.inline.name)));
@@ -1463,9 +1463,9 @@ const drawCrawls = () => {
 
 // ── 新しいクロール ─────────────────────────────────────────────────
 /**
- * 描いたスクリプトの行（スクリプト集の画面と同じ、capture-ledger の並び。対象サイトの無い物もサイト用の物も）。宣言した値の欄はこの並びで
+ * 描いたスクリプトの行（Capture scripts の画面と同じ、capture-ledger の並び。対象サイトの無い物もサイト用の物も）。宣言した値の欄はこの並びで
  * 出す —— ↑↓ で行を動かしても、打っている変数の欄は動かない。画面の行と送る物の順は `moved` から決まる（`orderOf`）。
- * `why` はサイト用のスクリプトにだけ在る、押せない理由の欄。
+ * `why` はサイト用の capture scripts にだけ在る、押せない理由の欄。
  */
 let picks = [];
 
@@ -1532,7 +1532,7 @@ const values = new Map();
 let catalogKey;
 
 /**
- * スクリプトのチェックを描く。**登録済みのスクリプトが変わったときだけ描き直す** —— 一覧は走行中なら 2 秒ごとに
+ * スクリプトのチェックを描く。**登録済みの capture scripts が変わったときだけ描き直す** —— 一覧は走行中なら 2 秒ごとに
  * 引くので、毎回作り直すと、押そうとしているチェックが手の下で入れ替わる。付け外しは `syncPicks`。
  */
 const drawPicks = (scripts) => {
@@ -1557,7 +1557,7 @@ const drawPicks = (scripts) => {
     const label = document.createElement("label");
     label.className = "pick";
     const name = tag("span", `${script.id} v${String(script.version)}`, "mono");
-    // 中身を読む。ふつうに押せば右の列でこの版を開き、修飾キーならスクリプト集の画面を別のタブで（data-read の
+    // 中身を読む。ふつうに押せば右の列でこの版を開き、修飾キーなら Capture scripts の画面を別のタブで（data-read の
     // click）。label の中の <a> は、押してもチェックを替えない —— 押せないチェックの横でも読める
     const read = tag("a", t("start.scripts.read"), "read");
     read.href = screenHref(readingHref({ id: script.id, version: script.version }));
@@ -1577,13 +1577,13 @@ const drawPicks = (scripts) => {
   }
   if (scripts.length === 0) box.append(tag("span", t("start.scripts.empty"), "muted"));
   syncPicks();
-  syncStart(); // 行を置くのは drawRunOrder。本文の大きさも登録済みのスクリプトで変わる
-  // 読む窓の版が既定から外れたかもしれない。standing（既定で走る版か）を今の登録済みのスクリプトで言い直す
+  syncStart(); // 行を置くのは drawRunOrder。本文の大きさも登録済みの capture scripts で変わる
+  // 読む窓の版が既定から外れたかもしれない。standing（既定で走る版か）を今の登録済みの capture scripts で言い直す
   if (startRead.doc !== undefined && startRead.target.id !== undefined) drawStartReadHead();
 };
 
 /**
- * チェックを起点に合わせる。サイト用のスクリプトは、起点のどれかが対象サイトのホストにあるときだけ押せる
+ * チェックを起点に合わせる。サイト用の capture scripts は、起点のどれかが対象サイトのホストにあるときだけ押せる
  * （capture-ledger の決まりの写し。`start.js` の `onSeed`）。**人が付け外ししたチェックは覚えたまま** —— 起点を
  * 書き換えて合わなくなれば押せなくなり、合うようになれば、人が選んだとおり（選んでいなければ capture-ledger の既定のとおり）に付く。
  */
@@ -2033,7 +2033,7 @@ $("start-page").addEventListener("change", syncFollow);
 $("start-follow").addEventListener("change", syncFollow);
 
 /**
- * 箱の TS が宣言した変数を、箱が止まってから capture-ledger に訊く（`POST /api/scripts/check`。行は立たない）。箱が空なら訊かない。
+ * 箱の TS が宣言した変数を、箱が止まってから capture-ledger に訊く（`POST /api/capture-scripts/check`。行は立たない）。箱が空なら訊かない。
  * 答えが今の箱の物なら、値の欄と「始める」を合わせる（同じ宣言なら `valuesKey` が欄を作り直さない）。
  */
 const declaredChanged = askWhenSettled({
@@ -2046,7 +2046,7 @@ const declaredChanged = askWhenSettled({
     let status = 0;
     let body = {};
     try {
-      const res = await ask("/api/scripts/check", {
+      const res = await ask("/api/capture-scripts/check", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: asked,
@@ -2627,20 +2627,20 @@ $("search").onsubmit = (event) => {
   else navigate(searchHref(words));
 };
 
-// ── スクリプト集（読む所）──────────────────────────────────────────
+// ── Capture scripts（読む所）──────────────────────────────────────────
 /**
  * 読む所の状態。**取るのは開いたときだけ** —— 一覧（有効な各 id の最新版）は引き直しの答えを使い、版のリンクと
  * 1 版の中身は開いた id の分だけ取る。受け皿の型は画面を最初に開いたとき 1 回で、refresh には入れない
  * （入れると、型を取り込んでいない capture-ledger で引き直し全体が落ちる）。
  */
 const reading = {
-  /** 最後に開いた URL。タブ「スクリプト集」はここへ戻る（WACZ の画面の wacz.href と同じ） */
+  /** 最後に開いた URL。タブ「Capture scripts」はここへ戻る（WACZ の画面の wacz.href と同じ） */
   href: undefined,
   /** 開いている物: URL が名指した物（target）と、その中身（doc。版か型） */
   open: undefined,
   /** 1 版の中身。`id@版` で覚え、版の一覧の sha256 と食い違えば取り直す（番号は使い回される） */
   docs: new Map(),
-  /** 有効な各 id の最新版（GET /api/scripts の最後の答え）。サイト用のスクリプトも対象サイトつきで入る */
+  /** 有効な各 id の最新版（GET /api/capture-scripts の最後の答え）。サイト用の capture scripts も対象サイトつきで入る */
   latest: [],
   /** 受け皿の型。undefined はまだ訊いていない、null は capture-ledger に無い（404） */
   types: undefined,
@@ -2654,7 +2654,7 @@ const TYPES_KEY = "types";
 const keyOf = (target) => target.id ?? TYPES_KEY;
 
 /**
- * 本文を出す所の組。スクリプト集の画面（読む所）と、新しいクロールの右の列（読む窓）が同じ部品で描き、
+ * 本文を出す所の組。Capture scripts の画面（読む所）と、新しいクロールの右の列（読む窓）が同じ部品で描き、
  * 違うのは要素の組だけ —— 見出し・本文の上の 1 行・色の 1 行・書きかけの確認・本文。
  */
 const placeOf = (prefix) => ({
@@ -2939,7 +2939,7 @@ const docOf = async (id, version, sha256) => {
   const key = `${id}@${String(version)}`;
   const kept = reading.docs.get(key);
   if (kept !== undefined && kept.sha256 === sha256) return kept;
-  const doc = await api(`/api/scripts/${enc(id)}/versions/${String(version)}`);
+  const doc = await api(`/api/capture-scripts/${enc(id)}/versions/${String(version)}`);
   reading.docs.set(key, doc);
   return doc;
 };
@@ -2968,7 +2968,7 @@ const openTypes = (target, stale) => {
 const openScript = async (target, stale) => {
   reading.open = { target, doc: undefined };
   markListed();
-  const listed = await find(`/api/scripts/${enc(target.id)}/versions`);
+  const listed = await find(`/api/capture-scripts/${enc(target.id)}/versions`);
   if (stale()) return;
   if (listed === undefined) {
     drawReadingHead(IN_CATALOG, { name: target.id, facts: [] });
@@ -3020,7 +3020,7 @@ const hostTypes = async (asked) => {
 };
 
 /**
- * 読む所を開く。何も名指さなければ（`/scripts`）一覧の頭を開き、URL をそれに替える（履歴は
+ * 読む所を開く。何も名指さなければ（`/capture-scripts`）一覧の頭を開き、URL をそれに替える（履歴は
  * 増やさない）。型は最初の 1 回だけ訊く（hostTypes）。
  */
 const openReading = async (asked) => {
@@ -3088,7 +3088,7 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
   box.value = source;
   // 元を外す。両方走ると 2 回走り、coverage は id を見ずに、先に走る方の報告を採る
   chosen.set(doc.id, false);
-  catalogKey = undefined; // drawPicks は登録済みのスクリプトが変わったときだけ描くので、ここで描き直させる
+  catalogKey = undefined; // drawPicks は登録済みの capture scripts が変わったときだけ描くので、ここで描き直させる
   drawPicks(reading.latest);
   const said = $("start-answer");
   said.hidden = false;
@@ -3167,7 +3167,7 @@ const drawStartReadHead = () => {
 };
 
 /**
- * 右の列で読む。**移らない。** 中身と色はスクリプト集の画面と同じ覚え（docOf は id@版、colorsOf は sha256）を
+ * 右の列で読む。**移らない。** 中身と色は Capture scripts の画面と同じ覚え（docOf は id@版、colorsOf は sha256）を
  * 使うので、同じ版を 2 度は取らない。
  */
 const readInStart = async (target) => {
@@ -3210,7 +3210,7 @@ $("start-tab-read").onclick = () => showStartTab("read");
 $("start-tab-close").onclick = () => closeStartRead();
 
 // 「読む」（チェックの横と、注意書きの型）は、ふつうに押せば右の列で開く。修飾キーと中ボタンは
-// ブラウザに任せる（href はスクリプト集の画面なので、別のタブで開ける）
+// ブラウザに任せる（href は Capture scripts の画面なので、別のタブで開ける）
 $("start").addEventListener("click", (event) => {
   const a = event.target.closest("a[data-read]");
   if (a === null || !plainClick(event)) return;
@@ -3218,7 +3218,7 @@ $("start").addEventListener("click", (event) => {
   void readInStart(parseReading(new URL(a.href).pathname)); // href は ?lang= を持ちうる（screenHref）
 });
 
-// 読む窓の行を押すと印を付ける。URL は /start のまま（行を人に渡すのはスクリプト集の画面で）
+// 読む窓の行を押すと印を付ける。URL は /start のまま（行を人に渡すのは Capture scripts の画面で）
 IN_START.lines.addEventListener("click", (event) => {
   const li = event.target.closest("li");
   if (li !== null) markLine(IN_START, Number(li.dataset.n), { scroll: false });
@@ -6064,7 +6064,7 @@ const show = (face) => {
 };
 
 /**
- * URL（path）が画面を決める。`/check/…` は検証の画面、`/archive/…` は WACZ の画面、`/scripts` と `/scripts/…` はスクリプト集の画面
+ * URL（path）が画面を決める。`/check/…` は検証の画面、`/archive/…` は WACZ の画面、`/capture-scripts` と `/capture-scripts/…` は Capture scripts の画面（古い住所 `/scripts…` は置き換える）
  * （読む所）、`/search` と `/search?q=<語>` は検索の画面、`/links/…` と `/trace/…` はクロールの画面の中（リンクの構成・経緯）、
  * `/changes/…` は変化の画面、`/history/…` は変化の画面の中（URL の履歴）、`/exemptions` と `/exemptions/<番号>` は robots.txt の
  * 例外の画面、それ以外はほかの画面のどれか。形は `public/paths.js`。
@@ -6080,6 +6080,12 @@ const route = () => {
   // 末の / は外して置き換える（/crawls/ → /crawls。読む関数は末の / を持たない形だけを読む）
   if (path.length > 1 && path.endsWith("/")) {
     navigate(path.replace(/\/+$/, "") + location.search, { replace: true });
+    return;
+  }
+  // 名を替えた画面の古い住所（/scripts… → /capture-scripts…。CAPTURE-506）も置き換える
+  const renamed = renamedPath(path + location.search);
+  if (renamed !== undefined) {
+    navigate(renamed, { replace: true });
     return;
   }
   // リンクの構成（/links/…）と経緯（/trace/…）は、同じ一覧を隠す。**先に両方を閉じ、後から開く** —— 片方から
@@ -6136,7 +6142,7 @@ const route = () => {
     return;
   }
   const asked = parseReading(path);
-  if (asked !== undefined || path === "/scripts") {
+  if (asked !== undefined || path === "/capture-scripts") {
     show("scripts");
     void openReading(asked);
     return;
@@ -6151,7 +6157,7 @@ const route = () => {
   show(FACES.includes(face) && !["check", "wacz", "scripts", "search"].includes(face) ? face : "crawls");
 };
 
-// 検証の画面・WACZ の画面・スクリプト集の画面・検索の画面は、最後に読んだ所へ戻る
+// 検証の画面・WACZ の画面・Capture scripts の画面・検索の画面は、最後に読んだ所へ戻る
 for (const b of document.querySelectorAll("#tabs button")) {
   b.onclick = () => {
     const face = b.dataset.face;
@@ -6161,7 +6167,7 @@ for (const b of document.querySelectorAll("#tabs button")) {
         : face === "wacz"
           ? (wacz.href ?? "/archives")
           : face === "scripts"
-            ? (reading.href ?? "/scripts")
+            ? (reading.href ?? "/capture-scripts")
             : face === "search"
               ? (searching.href ?? "/search")
               : face === "crawls"
@@ -6226,7 +6232,7 @@ const refresh = async () => {
     const [c, a, s] = await Promise.all([
       api("/api/crawls"),
       api("/api/archives"),
-      api("/api/scripts"),
+      api("/api/capture-scripts"),
     ]);
     crawls = c.crawls;
     archives = a.archives;

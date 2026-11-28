@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { isBackPath, isScreenPath, keepLang, loginHref, MAX_PATH, pathFromHash, SCREENS, screenTarget } from "../public/paths.js";
+import { isBackPath, isScreenPath, keepLang, loginHref, MAX_PATH, pathFromHash, renamedPath, SCREENS, screenTarget } from "../public/paths.js";
 
 const CRAWL = "5b0c0003-6a1e-4000-8000-000000000003";
 
@@ -23,6 +23,11 @@ test("画面の path を受ける（query も）", () => {
     "/exemptions?lang=en",
     "/search?q=%E6%97%A5%E6%9C%AC",
     "/archive/a1/archive%2Fdata.warc.gz:12",
+    "/capture-scripts",
+    "/capture-scripts/types/host.d.ts:3",
+    "/capture-scripts/autoscroll@4~0a1b2c:10",
+    // 古い住所も画面の path のまま（server が index.html を返し、画面が新しい住所に置き換える）
+    "/scripts",
     "/scripts/types/host.d.ts:3",
     "/scripts/autoscroll@4~0a1b2c:10",
   ]) {
@@ -89,13 +94,27 @@ test("古い hash の URL を path に替える（橋）", () => {
     ["#search/..", "/search?q=.."],
     ["#search/a%20b", "/search?q=a%20b"],
     ["#search/%E6%97%A5%", "/search"],
-    ["#scripts", "/scripts"],
-    ["#scripts/types/host.d.ts:3", "/scripts/types/host.d.ts:3"],
-    ["#scripts/autoscroll@4~0a1b2c:10", "/scripts/autoscroll@4~0a1b2c:10"],
+    ["#scripts", "/capture-scripts"],
+    ["#scripts/types/host.d.ts:3", "/capture-scripts/types/host.d.ts:3"],
+    ["#scripts/autoscroll@4~0a1b2c:10", "/capture-scripts/autoscroll@4~0a1b2c:10"],
     // ブラウザが符号にしなかった字も、ASCII の外だけ符号にして渡す
-    ["#scripts/日本", "/scripts/%E6%97%A5%E6%9C%AC"],
+    ["#scripts/日本", "/capture-scripts/%E6%97%A5%E6%9C%AC"],
   ];
   for (const [hash, path] of table) assert.equal(pathFromHash(hash), path, hash);
+});
+
+test("名を替えた画面の古い住所 /scripts… は /capture-scripts… に替える（query も残す。CAPTURE-506）", () => {
+  const table = [
+    ["/scripts", "/capture-scripts"],
+    ["/scripts?lang=en", "/capture-scripts?lang=en"],
+    ["/scripts/autoscroll@4~0a1b2c:10", "/capture-scripts/autoscroll@4~0a1b2c:10"],
+    ["/scripts/types/host.d.ts:3", "/capture-scripts/types/host.d.ts:3"],
+  ];
+  for (const [from, to] of table) assert.equal(renamedPath(from), to, from);
+  // 新しい住所・ほかの画面・頭の語が scripts で始まるだけの path は替えない
+  for (const path of ["/capture-scripts", "/capture-scripts/autoscroll", "/crawls", "/scriptsx", "/start?scripts=1", "/archive/a1/scripts"]) {
+    assert.equal(renamedPath(path), undefined, path);
+  }
 });
 
 test("画面の hash でなければ橋を渡らない", () => {

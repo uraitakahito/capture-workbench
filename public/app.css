@@ -336,6 +336,11 @@ a {
 #search-hits td {
   vertical-align: top;
 }
+/* 時点の欄は「-」の後で折り返してよい。after-capture-scripts（CAPTURE-506）は after-behaviors より 6 字長く、
+   1 行のままだと表が段組の幅をはみ出す。幅が足りれば 1 行のまま */
+#search-hits td:first-child {
+  white-space: normal;
+}
 #search-hits td.hit-go a {
   display: block;
 }
@@ -1180,7 +1185,7 @@ body[data-face="start"] main {
   font-size: 12px;
 }
 
-/* 起点に合わないサイト用のスクリプトは押せない。名前を薄くし、理由を添える */
+/* 起点に合わないサイト用の capture scripts は押せない。名前を薄くし、理由を添える */
 .start-row .pick:has(input:disabled) {
   cursor: not-allowed;
 }
@@ -1195,7 +1200,7 @@ body[data-face="start"] main {
   font-size: 12px;
 }
 
-/* チェックの横の「読む」。押せないチェック（起点に合わないサイト用のスクリプト）の上でも、押せる見た目に */
+/* チェックの横の「読む」。押せないチェック（起点に合わないサイト用の capture scripts）の上でも、押せる見た目に */
 .start-row .pick .read {
   font-size: 12px;
   cursor: pointer;
@@ -1297,7 +1302,7 @@ body[data-face="start"] main {
 }
 
 /*
- * 対象サイト（サイト用のスクリプトのホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。どこでも flex の
+ * 対象サイト（サイト用の capture scripts のホスト名）。一覧・見出し・新しいクロールの画面・クロールの詳しい所で同じ形。どこでも flex の
  * 中に置くので、行に収まらなければ対象サイトごと次の行へ移り、行より長いときだけ対象サイトの中で折り返す
  */
 .site {
@@ -1626,7 +1631,7 @@ button:focus-visible {
 /*
  * WACZ の画面の木の列は、木の一番長い行の幅まで広げる（下限は 300px）。木は pre で折り返さないので、300px に
  * 留めると長い行が右の列に重なる —— BrowserHive WACZ の中の名前（`data-000.browserhive.warc.gz` と大きさ）は
- * 300px を超える（CAPTURE-341）。スクリプト集の画面の一覧は折り返すので、`.vgrid` のままにする
+ * 300px を超える（CAPTURE-341）。Capture scripts の画面の一覧は折り返すので、`.vgrid` のままにする
  */
 .vgrid.vgrid-tree {
   grid-template-columns: minmax(300px, max-content) minmax(0, 1fr);
@@ -1863,7 +1868,7 @@ button:focus-visible {
   color: var(--accent);
 }
 
-/* ── スクリプト集の画面（読む所）───────────────────────────────────────── */
+/* ── Capture scripts の画面（読む所）───────────────────────────────────────── */
 /* 一覧を窓に残すため、この画面だけ main を流す箱にしない（流すのは窓。2 段組は 760 より狭いと横に流れる） */
 body[data-face="scripts"] main {
   overflow: visible;

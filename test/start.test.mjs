@@ -97,12 +97,12 @@ test("202 は始めた 1 本を、409 は塞いでいる 1 本を、決めた文
 test("capture-ledger の句は訳し、hint があれば添える（鍵の無い hint は届いた字のまま）", () => {
   const empty = startAnswer(400, {
     error: "no scripts are registered",
-    hint: "pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])",
+    hint: "pnpm run capture-scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])",
   });
   assert.equal(empty.kind, "bad");
   assert.equal(
     empty.text,
-    "400 —— 登録済みのスクリプトがありません（pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])）",
+    "400 —— 登録済みの capture scripts がありません（pnpm run capture-scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])）",
   );
   assert.equal(startAnswer(404, { error: "not found" }).text, "404 —— 見つかりません");
 });
@@ -121,7 +121,7 @@ test("workbench のサーバに届かなければ、そう言う", () => {
 });
 
 /**
- * 走らせるものの欄。登録済みのスクリプトは対象サイトの無い autoscroll・autofetch の 2 本（capture-ledger の並び）で、
+ * 走らせるものの欄。登録済みの capture scripts は対象サイトの無い autoscroll・autofetch の 2 本（capture-ledger の並び）で、
  * どちらも既定の顔ぶれとする（autofetch を既定から外した capture-ledger は、下の `SCRIPTS`）。
  */
 const CATALOG = ["autoscroll", "autofetch"];
@@ -135,9 +135,9 @@ const run = (picked, inline = NO_INLINE, order = [INLINE_ROW, ...CATALOG]) => ({
 });
 
 test("走らせるものが既定のまま（既定の顔ぶれを全部選び、順も動かさず、その場の TS が空）なら scripts を送らない", () => {
-  // capture-ledger の既定と、登録済みのスクリプトが無いときの 400 を生かす
+  // capture-ledger の既定と、登録済みの capture scripts が無いときの 400 を生かす
   assert.equal("scripts" in startBody("https://site.test/", null, run(CATALOG)), false);
-  // 登録済みのスクリプトが無く、その場の TS も無いときも送らない（capture-ledger が「スクリプトが無い」と言う）
+  // 登録済みの capture scripts が無く、その場の TS も無いときも送らない（capture-ledger が「capture scripts が無い」と言う）
   assert.equal(scriptsOf({ order: [INLINE_ROW], picked: [], defaults: [], inline: NO_INLINE }), undefined);
 });
 
@@ -216,7 +216,7 @@ test("読めない行と空行は、起点のホストに数えない（capture-
 });
 
 /**
- * capture-ledger の `GET /api/scripts` の形（カタログの順）。対象サイトの無い 2 本のうち autofetch は既定に入らない（capture-scripts の
+ * capture-ledger の `GET /api/capture-scripts` の形（カタログの順）。対象サイトの無い 2 本のうち autofetch は既定に入らない（capture-scripts の
  * カタログの `default: false`）。もう 1 本は laws.e-gov.go.jp 用。
  */
 const SITE = { id: "egov-law-search", sites: ["laws.e-gov.go.jp"], enabled: true };
@@ -246,7 +246,7 @@ test("既定に入らないスクリプト（enabled: false）は、どの起点
   assert.deepEqual(defaultIds([SCRIPTS[0], offSite], seedHosts("https://laws.e-gov.go.jp/")), ["autoscroll"]);
 });
 
-test("サイト用のスクリプトは、起点のどれかが対象サイトのホストにあるときだけ既定 —— ポートは見ない", () => {
+test("サイト用の capture scripts は、起点のどれかが対象サイトのホストにあるときだけ既定 —— ポートは見ない", () => {
   assert.deepEqual(defaultIds(SCRIPTS, seedHosts("https://other-site.test/\nhttp://laws.e-gov.go.jp:8080/a")), [
     "autoscroll",
     "egov-law-search",
@@ -255,12 +255,12 @@ test("サイト用のスクリプトは、起点のどれかが対象サイト�
   assert.equal(onSeed(SITE, seedHosts("https://www.e-gov.go.jp/")), false);
 });
 
-test("起点に合わないサイト用のスクリプトは既定に数えない —— 残りを全部選んでいれば scripts を省く", () => {
+test("起点に合わないサイト用の capture scripts は既定に数えない —— 残りを全部選んでいれば scripts を省く", () => {
   const defaults = defaultIds(SCRIPTS, seedHosts("https://other-site.test/"));
   assert.equal(scriptsOf({ order: ORDER, picked: defaults, defaults, inline: NO_INLINE }), undefined);
 });
 
-test("起点に合うサイト用のスクリプトを外したら scripts を送る —— 省くと capture-ledger が既定で入れる", () => {
+test("起点に合うサイト用の capture scripts を外したら scripts を送る —— 省くと capture-ledger が既定で入れる", () => {
   const defaults = defaultIds(SCRIPTS, seedHosts("https://laws.e-gov.go.jp/"));
   assert.deepEqual(scriptsOf({ order: ORDER, picked: ["autoscroll"], defaults, inline: NO_INLINE }), [
     { catalog: "autoscroll" },
@@ -318,17 +318,17 @@ test("名前の綴りは検査しない —— 読めない名前も、そのま
 test("capture-ledger が名指した ids を、文の後に添える", () => {
   assert.equal(
     startAnswer(400, { error: "unknown script ids", ids: ["typo-scroll"] }).text,
-    "400 —— 知らないスクリプトの id です: typo-scroll",
+    "400 —— 知らない capture script の id です: typo-scroll",
   );
   assert.equal(
     startAnswer(400, { error: "duplicate script ids", ids: ["inline-a", "autofetch"] }).text,
-    "400 —— スクリプトの id が重なっています: inline-a, autofetch",
+    "400 —— Capture script の id が重なっています: inline-a, autofetch",
   );
 });
 
 // ── クロールごとの値（変数とシークレット。capture-ledger v0.67.0）────────────
 
-/** capture-ledger の `GET /api/scripts` の 1 行が運ぶ宣言（capture-scripts の catalog.json の `params`）。 */
+/** capture-ledger の `GET /api/capture-scripts` の 1 行が運ぶ宣言（capture-scripts の catalog.json の `params`）。 */
 const QUERY = { name: "query", kind: "variable", required: false, summary: "法令名の検索語。省けばソースの既定" };
 const TOKEN = { name: "api_token", kind: "secret", required: true, summary: "会員 API のトークン" };
 const DECLARING = [
@@ -437,8 +437,8 @@ test("宣言の答えは、欄の宣言と、欄が出ない理由の 1 行に�
   });
   // エンドポイントを出していない capture-ledger（Fastify の文）。本文の形が違う 200 も、読めたことにしない
   assert.equal(
-    inlineDeclared(404, { error: "Not Found", message: "Route POST:/api/scripts/check not found" }).note,
-    "宣言を確かめられません（404 —— Route POST:/api/scripts/check not found）",
+    inlineDeclared(404, { error: "Not Found", message: "Route POST:/api/capture-scripts/check not found" }).note,
+    "宣言を確かめられません（404 —— Route POST:/api/capture-scripts/check not found）",
   );
   assert.deepEqual(inlineDeclared(200, {}), { params: [], note: "宣言を確かめられません（200 —— 答えに文がありません）" });
   assert.deepEqual(inlineDeclared(0, { error: "fetch failed" }), { params: [], note: "workbench 自身に届きません（fetch failed）" });

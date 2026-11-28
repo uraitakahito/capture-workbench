@@ -354,8 +354,8 @@ const server = createServer((request, reply) => {
     if (request.method !== "GET") {
       reply.writeHead(405, { allow: "GET", "content-type": "text/plain; charset=utf-8" });
       reply.end(
-        "GET only (the write endpoints are POST /api/crawls, POST /api/crawls/:id/inline/:name/fix, POST /api/crawls/:id/failed, POST /api/scripts/check, POST /api/schedules, POST /api/schedules/:id/<action>, POST /api/archives/:id/changes/summary, POST /api/robots-exemptions and POST /api/robots-exemptions/:id/revoke)\n" +
-          "GET だけ（書き込みのエンドポイントは POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/crawls/:id/failed・POST /api/scripts/check・POST /api/schedules・POST /api/schedules/:id/<操作>・POST /api/archives/:id/changes/summary・POST /api/robots-exemptions・POST /api/robots-exemptions/:id/revoke）\n",
+        "GET only (the write endpoints are POST /api/crawls, POST /api/crawls/:id/inline/:name/fix, POST /api/crawls/:id/failed, POST /api/capture-scripts/check, POST /api/schedules, POST /api/schedules/:id/<action>, POST /api/archives/:id/changes/summary, POST /api/robots-exemptions and POST /api/robots-exemptions/:id/revoke)\n" +
+          "GET だけ（書き込みのエンドポイントは POST /api/crawls・POST /api/crawls/:id/inline/:name/fix・POST /api/crawls/:id/failed・POST /api/capture-scripts/check・POST /api/schedules・POST /api/schedules/:id/<操作>・POST /api/archives/:id/changes/summary・POST /api/robots-exemptions・POST /api/robots-exemptions/:id/revoke）\n",
       );
       return;
     }

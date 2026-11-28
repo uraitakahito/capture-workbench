@@ -13,7 +13,7 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 | `GET /login`・`GET /callback`・`GET /logout` | サーバ自身（IdP でのサインインと、サインアウト） |
 | `POST /api/crawls` | capture-ledger へ（書き込み。クロールを始める） |
 | `POST /api/crawls/:id/inline/:name/fix` | capture-ledger へ（書き込み。その場の TS の型の誤りの直し方を訊く） |
-| `POST /api/scripts/check` | capture-ledger へ（その場の TS の宣言を訊く。何も書かないが、本文で source を送るので書き込みのエンドポイントと同じ門を通す） |
+| `POST /api/capture-scripts/check` | capture-ledger へ（その場の TS の宣言を訊く。何も書かないが、本文で source を送るので書き込みのエンドポイントと同じ門を通す） |
 | `POST /api/schedules` | capture-ledger へ（書き込み。定期実行の予定を作る） |
 | `POST /api/schedules/:id/<操作>` | capture-ledger へ（書き込み。`pause`・`resume`・`run`・`repin`・`delete`） |
 | `POST /api/crawls/:id/failed` | capture-ledger へ（書き込み。走ったままのクロールを締める） |
@@ -108,7 +108,7 @@ capture-ledger は CORS（Cross-Origin Resource Sharing。別のオリジンの�
 - **例外は、節目のスクリーンショットの `GET /api/archives/:id/screenshots/:stage` だけ。**
   答えは WebP のバイト列なので、字として読まず、状態と見出し（下の[通すヘッダ](#通すヘッダ)の allowlist）と本文のバイト列をそのまま流します。
   字として読むと、UTF-8 として読めないバイトが置き換わり、絵が壊れます。
-  形は `src/lib.mjs` の `isScreenshotRoute` に在ります。id は 36 字の 16 進の数字とハイフン、時点は `after-load` と `after-behaviors` だけで、query も末尾の足しも `%` も通しません（通らない形は、ほかと同じく字として素通しします）。
+  形は `src/lib.mjs` の `isScreenshotRoute` に在ります。id は 36 字の 16 進の数字とハイフン、時点は `after-load` と `after-capture-scripts` だけで、query も末尾の足しも `%` も通しません（通らない形は、ほかと同じく字として素通しします）。
   アーカイブの一覧とページの表の「見た目」（[画面](/screens/)）が `<img>` で引きます。
 
 どのエンドポイントを読むかは workbench（`public/app.js`）が決め、サーバは選びません。
@@ -121,7 +121,7 @@ capture-ledger は CORS（Cross-Origin Resource Sharing。別のオリジンの�
 workbench のサーバが持つ書き込みのエンドポイントの 1 つです。
 新しいクロールの画面の欄（[画面](/screens/)）が使います。
 中身は検査せず、門を通った本文をそのまま capture-ledger の `POST /api/crawls` へ渡し、答えをそのまま返します。
-起点の URL も方針（深さ・枚数・走らせるスクリプト）も、`userAgent` も、クロールごとの変数（`variables`。名前の綴り・数・値の長さと形・走るスクリプトが宣言した名前か）も、検査して決めるのは capture-ledger です。
+起点の URL も方針（深さ・枚数・走らせる capture scripts）も、`userAgent` も、クロールごとの変数（`variables`。名前の綴り・数・値の長さと形・走る capture scripts が宣言した名前か）も、検査して決めるのは capture-ledger です。
 宣言したシークレットが Windmill に在るかも capture-ledger が確かめ、workbench はシークレットの値に触りません（値は Windmill の変数に在り、workbench の欄にも本文にもありません）。
 
 - **workbench のページからの JSON だけを通す。**
@@ -138,14 +138,14 @@ workbench のサーバが持つ書き込みのエンドポイントの 1 つで�
 | capture-ledger の答え | いつ |
 | --- | --- |
 | 202 `{"crawlId": …}` | 受理した（完了は待たない） |
-| 400 `{"error": …}` | 読めない起点の URL や、登録済みのスクリプトが無いとき（`hint` つき）、知らないスクリプトの id や同じ id の重ね（`ids` つき）、必須の変数が無い・宣言に無い変数（`names` つき）、宣言したシークレットが Windmill に無い・secret でない（`secrets` に名前と path）、隠すシークレットを送るのに配備の形式が値を置き換えられない（`names` と `hint` つき）など。capture-ledger v0.102.0 からは、`hint` の在る答えに `hints` も載る（同じ理由を `{ key?, params?, text }` の並びにした物で、ページが画面の言語の文にするために読む） |
+| 400 `{"error": …}` | 読めない起点の URL や、登録済みの capture scripts が無いとき（`hint` つき）、知らない capture script の id や同じ id の重ね（`ids` つき）、必須の変数が無い・宣言に無い変数（`names` つき）、宣言したシークレットが Windmill に無い・secret でない（`secrets` に名前と path）、隠すシークレットを送るのに配備の形式が値を置き換えられない（`names` と `hint` つき）など。capture-ledger v0.102.0 からは、`hint` の在る答えに `hints` も載る（同じ理由を `{ key?, params?, text }` の並びにした物で、ページが画面の言語の文にするために読む） |
 | 404 | 名乗りにクロールを始める許可が無い（`{"error":"not found"}`）か、capture-ledger にクロールの投げ先の設定が無く、エンドポイントごと無い |
 | 409 `{"error": …, "crawlId": …}` | 走行中のクロールがある（全体で 1 本）。`crawlId` が塞いでいる 1 本 |
 | 503 `{"error": "windmill unreachable"}` | 宣言したシークレットが在るかを Windmill に訊けない（flow も動かないので、capture-ledger はクロールを始めない） |
 
 門の判定は `src/lib.mjs` の `writeRefusal` に在り、試験から直接呼べます。
 
-## POST /api/scripts/check —— その場の TS の宣言を訊く
+## POST /api/capture-scripts/check —— その場の TS の宣言を訊く
 
 新しいクロールの画面が、箱が 800 ms 止まると 1 本ずつ呼び、`defineParams` で宣言された変数の欄を描きます（[画面](/screens/)）。
 本文は `{ source, phase }` です。capture-ledger は行を立てず、ts-compile-service に訊いて `{ params, diagnostics }` を返します。workbench のサーバは本文と答えをそのまま渡します。
@@ -192,7 +192,7 @@ workbench は答えを描くだけです。
 | --- | --- |
 | 200 `{ rounds, source, edits, notes, compiled, usage }` | 検査に通った直しがある（`edits` は置き換えた範囲ごとの `before` と `after`、`usage.usd` は費用） |
 | 409 `scripts compile` | いまの組み合わせが型を通る（直す物が無い） |
-| 422 | クロールに必須の変数が足りない（`missing variables`。Claude は呼ばず、画面は値を渡して始め直すよう言う）、誤りがこのスクリプトに無い、2 往復で通らなかった（回数と費用つき）、Claude が断った |
+| 422 | クロールに必須の変数が足りない（`missing variables`。Claude は呼ばず、画面は値を渡して始め直すよう言う）、誤りがこの capture script に無い、2 往復で通らなかった（回数と費用つき）、Claude が断った |
 | 429 `claude budget exhausted` | 組織がこの月の上限に届いた（`spentUsd` と `budgetUsd` つき）。Claude は呼ばない |
 | 502・503 | Claude か ts-compile-service が答えなかった |
 | 404 | 名乗りにクロールを始める許可が無い、クロールかその場の TS が無い、capture-ledger に API の鍵が無くエンドポイントごと無い |

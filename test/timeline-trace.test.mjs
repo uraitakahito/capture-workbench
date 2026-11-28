@@ -90,13 +90,13 @@ test("trace を持つ答えで WACZ へ行くのは、節目のスクリーン�
   assert.equal("screenshots" in fetch.capture, false);
   assert.deepEqual(await waczReadsFor(fetch), []);
   // 欄は在るが、どの時点も残さなかった: 理由を言うのに WACZ は要らない
-  assert.deepEqual(await waczReadsFor(answerWith([{ stage: "after-load", skipped: "disabled" }, { stage: "after-behaviors", skipped: "disabled" }])), []);
+  assert.deepEqual(await waczReadsFor(answerWith([{ stage: "after-load", skipped: "disabled" }, { stage: "after-capture-scripts", skipped: "disabled" }])), []);
   assert.deepEqual(await waczReadsFor(answerWith([])), []);
   // 時間切れ（WACZ が無い）: 絵の項目が在っても行かない
   assert.deepEqual(await waczReadsFor({ ...timeout, capture: { ...timeout.capture, screenshots: [{ stage: "after-load", skipped: "failed" }] } }), []);
   // 絵が 1 枚でも在れば、索引の窓を 1 つ読む（レコードの一覧は読まない）
   const kept = { stage: "after-load", url: `urn:browserhive:screenshot:after-load:${fetch.capture.document.url}`, date: fetch.capture.timestamp, record: "urn:uuid:0", bytes: 9344 };
-  assert.deepEqual(await waczReadsFor(answerWith([kept, { stage: "after-behaviors", skipped: "failed" }])), [indexLinesPath(fetch.archive.id, 0)]);
+  assert.deepEqual(await waczReadsFor(answerWith([kept, { stage: "after-capture-scripts", skipped: "failed" }])), [indexLinesPath(fetch.archive.id, 0)]);
   // 対照: trace の無い答え（v30.0.0 より前）は、レコードの一覧を読む（本が尽きるまで）。絵の欄は無いので、索引は読まない
   const old = await waczReadsFor(v29.charset.answer);
   assert.equal(old.length, 2);

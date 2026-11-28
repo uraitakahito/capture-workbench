@@ -265,8 +265,8 @@ test("refusalHints が在れば組ごとに訳し、無ければ refusals のま
 // ── 句（errorText）───────────────────────────────────────────────────
 
 test("capture-ledger の句は辞書で訳し、知らない句は届いた字のまま", () => {
-  assert.equal(errorText({ error: "unknown script ids", ids: ["gone"] }), "知らないスクリプトの id です");
-  assert.equal(inEnglish(() => errorText({ error: "unknown script ids", ids: ["gone"] })), "Unknown script ids");
+  assert.equal(errorText({ error: "unknown script ids", ids: ["gone"] }), "知らない capture script の id です");
+  assert.equal(inEnglish(() => errorText({ error: "unknown script ids", ids: ["gone"] })), "Unknown capture script ids");
   assert.equal(errorText({ error: "a crawl is already in progress" }), "走行中のクロールがあります");
   assert.equal(inEnglish(() => errorText({ error: "invalid cron" })), "Cannot read the cron expression");
   // 辞書に無い句（新しい capture-ledger・flow だけが叩くエンドポイントの句）
@@ -435,7 +435,7 @@ test("予定の答え: cron の理由（鍵の無い hints）は届いた字の�
 test("宣言を確かめる答えと、型の誤りを取り直す答えも、句を訳す", () => {
   assert.equal(inlineDeclared(503, { error: "ts-compile unreachable" }).note, "宣言を確かめられません（503 —— ts-compile-service に届きません）");
   assert.equal(inEnglish(() => diagnosisOf(404, { error: "not found" }).text), "404 — Not found");
-  assert.equal(inEnglish(() => fixAnswer(409, { error: "scripts compile" }).text), "409 — The scripts compile");
+  assert.equal(inEnglish(() => fixAnswer(409, { error: "scripts compile" }).text), "409 — The capture scripts compile");
 });
 
 // ── robots.txt の例外の断り（capture-ledger v0.116.0 の src/api/robots-exemptions.ts と src/exemptions/validate.ts の句。t-6bc6）──

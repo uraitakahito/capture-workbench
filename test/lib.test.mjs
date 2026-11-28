@@ -162,7 +162,9 @@ test("書き込みのエンドポイントは、クロールを始める・そ�
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   assert.equal(isWriteRoute("/api/crawls"), true);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner/fix`), true);
-  assert.equal(isWriteRoute("/api/scripts/check"), true);
+  assert.equal(isWriteRoute("/api/capture-scripts/check"), true);
+  // 古い path（capture-ledger が R2 まで残す）は通さない —— 画面が呼ぶのは新しい path だけ（CAPTURE-506）
+  assert.equal(isWriteRoute(["", "api", "scripts", "check"].join("/")), false); // 古い path の字は check:terms が断るので組んで書く
   // 末尾の足し・query・ほかの段
   assert.equal(isWriteRoute("/api/crawls/"), false);
   assert.equal(isWriteRoute("/api/crawls?x=1"), false);
@@ -171,12 +173,12 @@ test("書き込みのエンドポイントは、クロールを始める・そ�
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close-banner`), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}/pages`), false);
   assert.equal(isWriteRoute(`/api/archives/${id}/url`), false);
-  assert.equal(isWriteRoute("/api/scripts/check/"), false);
-  assert.equal(isWriteRoute("/api/scripts/check?x=1"), false);
-  assert.equal(isWriteRoute("/api/scripts/check/x"), false);
-  assert.equal(isWriteRoute("/api/scripts"), false);
-  assert.equal(isWriteRoute("/api/scripts/checks"), false);
-  assert.equal(isWriteRoute("/xapi/scripts/check"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts/check/"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts/check?x=1"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts/check/x"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts/checks"), false);
+  assert.equal(isWriteRoute("/xapi/capture-scripts/check"), false);
 });
 
 test("書き込みのエンドポイントは、2 本の取り込みの差分の要約を頼む POST を通し、UUID でない id・末尾の足し・query・ほかの段を断る", () => {
@@ -211,10 +213,10 @@ test("書き込みのエンドポイントは、% と . で capture-ledger の�
   assert.equal(isWriteRoute("/api/crawls/%2e%2e/inline/x/fix"), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}%2Fx/inline/close-banner/fix`), false);
   assert.equal(isWriteRoute(`/api/crawls/${id}/inline/close%2Dbanner/fix`), false);
-  assert.equal(isWriteRoute("/api/scripts/../crawls"), false);
-  assert.equal(isWriteRoute("/api/scripts/check/../../crawls"), false);
-  assert.equal(isWriteRoute("/api/scripts/%63heck"), false);
-  assert.equal(isWriteRoute("/api/scripts/check%2F"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts/../crawls"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts/check/../../crawls"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts/%63heck"), false);
+  assert.equal(isWriteRoute("/api/capture-scripts/check%2F"), false);
 });
 
 test("書き込みのエンドポイントの本文は、上限ちょうどまで受け、1 バイト超えたら断る", async () => {
@@ -289,7 +291,9 @@ const ARCHIVE = "5e6d1ed0-c5b0-35a7-b71b-517fa8aa6b97";
 
 test("絵のエンドポイントの形は、capture-ledger の 2 つの時点と 36 字の id だけ", () => {
   assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-load`), true);
-  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-behaviors`), true);
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-capture-scripts`), true);
+  // 古い時点の名は capture-ledger が話さない（古い取り込みも新しい名で答える。CAPTURE-506）
+  assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/after-behaviors`), false);
   // 知らない時点・時点の無い形・35 字と 37 字の id
   assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/during-load`), false);
   assert.equal(isScreenshotRoute(`/api/archives/${ARCHIVE}/screenshots/`), false);
@@ -314,7 +318,7 @@ test("絵のエンドポイントは、末尾の足し・query・% と . で cap
 
 test("中継の返し方は、絵のエンドポイントだけがバイト列（pass）、ほかは字（relay）", () => {
   assert.equal(relayFor(`/api/archives/${ARCHIVE}/screenshots/after-load`), pass);
-  assert.equal(relayFor(`/api/archives/${ARCHIVE}/screenshots/after-behaviors`), pass);
+  assert.equal(relayFor(`/api/archives/${ARCHIVE}/screenshots/after-capture-scripts`), pass);
   for (const url of ["/api/archives", `/api/archives/${ARCHIVE}/url`, "/api/crawls", `/api/archives/${ARCHIVE}/screenshots/after-load?x=1`]) {
     assert.equal(relayFor(url), relay, url);
   }

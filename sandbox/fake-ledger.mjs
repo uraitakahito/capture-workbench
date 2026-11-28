@@ -11,10 +11,10 @@
  *
  * `POST /api/crawls` (workbench の新しいクロールの画面) にも答える。受けた行は代役が起きている間だけ在り、
  * 台本の `submit.runsSeconds` 秒走ってから完走になる (台本の行とは別に持つ)。走らせるもの
- * (`scripts`。登録済みのスクリプトの名指しとその場の TS) も capture-ledger と同じ形で受け、1 本の詳しい所に返す。
+ * (`scripts`。登録済みの capture scripts の名指しとその場の TS) も capture-ledger と同じ形で受け、1 本の詳しい所に返す。
  *
- * 登録済みのスクリプト (台本の `catalog`) は版の並びで、source は sandbox/catalog の写しから読む。スクリプトを読むエンドポイント
- * (版の一覧・1 版・受け皿の型) にも答える。対象サイト (`sites`) のある版はサイト用のスクリプトで、capture-ledger と同じく
+ * 登録済みの capture scripts (台本の `catalog`) は版の並びで、source は sandbox/catalog の写しから読む。スクリプトを読むエンドポイント
+ * (版の一覧・1 版・受け皿の型) にも答える。対象サイト (`sites`) のある版はサイト用の capture scripts で、capture-ledger と同じく
  * 起点のホストで選び、合わない名指しは 400 で断る。
  *
  * クロールごとの値 (capture-ledger v0.67.0) も受ける。版の `params` (宣言) を一覧と 1 版のエンドポイントに出し、頼みの `variables` を
@@ -240,7 +240,7 @@ export const crawlRow = (c, now) => ({
 
 /**
  * /api/crawls/:id の、走らせたもの 1 本。欄は capture-ledger v0.61.0 の src/api/crawls.ts と同じ ——
- * 登録済みのスクリプトは身元と対象サイトだけ、その場の物にだけ `inline` が付く。**source は載せない**（名前・phase・バイト数）。
+ * 登録済みの capture scripts は身元と対象サイトだけ、その場の物にだけ `inline` が付く。**source は載せない**（名前・phase・バイト数）。
  */
 const detailScript = (s) => ({
   id: s.id,
@@ -262,7 +262,7 @@ const detailScript = (s) => ({
 
 /**
  * /api/crawls/:id/inline/:name。欄は capture-ledger v0.59.0 の src/api/crawls.ts と同じ ——
- * その場の TS 1 本の source を返す（workbench の「欄に戻す」が使う）。登録済みのスクリプトと、知らない名前は 404。
+ * その場の TS 1 本の source を返す（workbench の「欄に戻す」が使う）。登録済みの capture scripts と、知らない名前は 404。
  */
 export const inlineSource = (scripts, name) => {
   const script = (scripts ?? []).find((x) => x.inline?.name === name);
@@ -686,7 +686,7 @@ export const archiveRows = (names, s) =>
     .map(({ row }) => row);
 
 /** 節目のスクリーンショットの時点 (BrowserHive WACZ Profile の `#screenshots`。capture-ledger の schema の enum と同じ)。 */
-const SCREENSHOT_STAGES = ["after-load", "after-behaviors"];
+const SCREENSHOT_STAGES = ["after-load", "after-capture-scripts"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 節目のスクリーンショットの答えの見出し (capture-ledger の `GET /api/archives/:id/screenshots/:stage` と同じ 4 つ)。 */
@@ -1179,7 +1179,7 @@ const DECLARED_CALL = /\.\s*([a-z]+)\(("(?:[^"\\]|\\.)*"|\d*)\)/g;
  * その場の TS の `defineParams(z.object({ … }))` を読む。**代役だけの近道** —— 本物は ts-compile-service が構文木を歩き、
  * 呼べる形を外れれば読めないと言う。ここは見本と docs に出てくる形 (`"` の文字列と数のリテラル) だけを正規表現で読む。
  * 答えの形は本物と同じで、鍵は name・kind・required・summary (`.describe` が無ければ無い)・schema
- * (type・minLength・maxLength・enum)。`/api/scripts/check` と `submitCrawl` の両方がここを読む。
+ * (type・minLength・maxLength・enum)。`/api/capture-scripts/check` と `submitCrawl` の両方がここを読む。
  */
 export const readDeclared = (source) =>
   [...(DEFINE_PARAMS.exec(source)?.[1] ?? "").matchAll(DECLARED_FIELD)].map(([, name, list, chain]) => {
@@ -1197,7 +1197,7 @@ export const readDeclared = (source) =>
   });
 
 /**
- * POST /api/scripts/check。書いている途中のその場の TS が宣言した変数を返す (capture-ledger の `src/api/scripts.ts`)。行は立たない。
+ * POST /api/capture-scripts/check。書いている途中のその場の TS が宣言した変数を返す (capture-ledger の `src/api/scripts.ts`)。行は立たない。
  * 本物は TS の誤りも `diagnostics` に返す (`BH0001` は除く) が、代役は型を検査しないので、欄が出ない理由の 2 つだけを言う。
  */
 export const checkInline = (body) => {
@@ -1254,7 +1254,7 @@ const shapeProblem = (name, value, schema) => {
  * 名前を変数で渡している → 知らない変数 → 値が宣言の形に合わない → シークレットが多すぎる → 宣言したシークレットが
  * Windmill に在るか → 在るが secret でない → 隠すシークレットを送るのに、配備の形式 (`formats`) が値を置き換えられない
  * 物を頼む (capture-ledger v0.90.0 の `formatsRefusal`)。
- * 宣言は走らせるものから集める。登録済みのスクリプトは版の `params`、その場の TS は変数が source の `defineParams`
+ * 宣言は走らせるものから集める。登録済みの capture scripts は版の `params`、その場の TS は変数が source の `defineParams`
  * (`readDeclared`) でシークレットが `inline.params`。同じ名前の宣言は 1 つにまとめる (名前順)。required でないシークレットが
  * Windmill に無ければ、渡さないだけで断らない (スクリプトは undefined を読む)。形式の 400 が見るのも、Windmill に在って
  * 送る物だけ。通れば、行に固定する `variables` と `secrets` (名前・path・確かめたときの edited_at・途中で替わったか・
@@ -1371,7 +1371,7 @@ const resolveValues = (variables = {}, run, windmill, formats = DEFAULT_FORMATS)
 
 /**
  * 走らせるものを、capture-ledger (v0.61.0) と同じ順で解く: 形 (schema) → 重ね → 登録されていない id →
- * 起点に合わないサイト用のスクリプト。省けば既定の顔ぶれ (`defaultSet`) で、それが空なら 400。
+ * 起点に合わないサイト用の capture scripts。省けば既定の顔ぶれ (`defaultSet`) で、それが空なら 400。
  * その場の TS は `inline-<name>`・版 1 で、sha256 は source から打つ (capture-ledger と同じ)。対象サイトは持たない。
  */
 const resolveRun = (scripts, versions, hosts) => {
@@ -1459,7 +1459,7 @@ const emptyDefault = (versions) => {
       },
     };
   }
-  const command = "pnpm run scripts import .upstream/capture-scripts";
+  const command = "pnpm run capture-scripts import .upstream/capture-scripts";
   return {
     status: 400,
     body: {
@@ -1473,7 +1473,7 @@ const emptyDefault = (versions) => {
 /**
  * 台本のスクリプト（版の並び）に source を読み込む。source は sandbox/catalog の写し（capture-scripts のファイル）で、
  * sha256 と bytes は capture-ledger と同じく source から数える（手で書いた sha256 は、本物の
- * 中身と結び付かない）。欄は capture-ledger の 1 版のエンドポイント（`GET /api/scripts/:id/versions/:version`。v0.61.0 から。
+ * 中身と結び付かない）。欄は capture-ledger の 1 版のエンドポイント（`GET /api/capture-scripts/:id/versions/:version`。v0.61.0 から。
  * `params` は v0.67.0 から）と同じ。
  */
 export const catalogOf = (s, read = readBeside) =>
@@ -1505,13 +1505,13 @@ export const latestOf = (versions) =>
   );
 
 /**
- * 有効な各 id の最新版を同じ順で。サイト用のスクリプトも入る（capture-ledger の enabledLatest。既定の顔ぶれの元）。順は
+ * 有効な各 id の最新版を同じ順で。サイト用の capture scripts も入る（capture-ledger の enabledLatest。既定の顔ぶれの元）。順は
  * 無効な版も数えて決める —— capture-ledger の順は id に 1 つなので、一覧のエンドポイントと既定の順はずれない。
  */
 export const latestEnabled = (versions) => pickable(versions).filter((v) => v.enabled);
 
 /**
- * 一覧のエンドポイント（`GET /api/scripts`）の顔ぶれ。各 id に 1 行で、既定で走る版（有効な版の中の最新）があればそれ、
+ * 一覧のエンドポイント（`GET /api/capture-scripts`）の顔ぶれ。各 id に 1 行で、既定で走る版（有効な版の中の最新）があればそれ、
  * 無ければ最新版を `enabled: false` で（capture-ledger v0.64.0 の pickable）。既定に入らないスクリプトも、名指せば
  * 走るので載せる。
  */
@@ -1519,7 +1519,7 @@ export const pickable = (versions) =>
   latestOf(versions).map((latest) => latestOf(versions.filter((v) => v.id === latest.id && v.enabled))[0] ?? latest);
 
 /**
- * `GET /api/scripts` の行。身元と対象サイトと enabled に、宣言 `params` を添える（capture-ledger v0.67.0。新しいクロールの画面が
+ * `GET /api/capture-scripts` の行。身元と対象サイトと enabled に、宣言 `params` を添える（capture-ledger v0.67.0。新しいクロールの画面が
  * 変数の欄をこれから描く）。source・options・bytes は一覧に無い（capture-ledger と同じ）。
  */
 export const scriptRows = (versions) =>
@@ -1533,7 +1533,7 @@ export const scriptRows = (versions) =>
     params,
   }));
 
-/** 対象サイトの無いスクリプトはいつでも、サイト用のスクリプトは対象サイトのどれかが起点のホストにあるとき（capture-ledger の onSeed）。 */
+/** 対象サイトの無いスクリプトはいつでも、サイト用の capture scripts は対象サイトのどれかが起点のホストにあるとき（capture-ledger の onSeed）。 */
 const onSeed = (sites, hosts) => sites.length === 0 || sites.some((site) => hosts.has(site));
 
 /**
@@ -1543,7 +1543,7 @@ const onSeed = (sites, hosts) => sites.length === 0 || sites.some((site) => host
  */
 export const defaultSet = (versions, hosts) => latestEnabled(versions).filter((v) => onSeed(v.sites, hosts));
 
-/** GET /api/scripts/:id/versions。新しい順、**source は返さない**。無い id は 404。 */
+/** GET /api/capture-scripts/:id/versions。新しい順、**source は返さない**。無い id は 404。 */
 export const versionsOf = (versions, id) => {
   const mine = versions.filter((v) => v.id === id).sort((a, b) => b.version - a.version);
   if (mine.length === 0) return { status: 404, body: { error: "not found" } };
@@ -1566,7 +1566,7 @@ export const versionsOf = (versions, id) => {
 };
 
 /**
- * GET /api/scripts/:id/versions/:version。版が 1 以上の整数でなければ 400（文は capture-ledger v0.60.0 の実物から
+ * GET /api/capture-scripts/:id/versions/:version。版が 1 以上の整数でなければ 400（文は capture-ledger v0.60.0 の実物から
  * 写した。ただし負の数は、capture-ledger が `must be >= 1` で言うのを、代役は `must be integer` で言う）、無ければ 404。
  * 有効かどうかは見ない。
  */
@@ -2339,7 +2339,7 @@ const handle = (req, res, raw) => {
     send(res, 200, { closed: true });
     return;
   }
-  if (req.method === "POST" && pathname === "/api/scripts/check") {
+  if (req.method === "POST" && pathname === "/api/capture-scripts/check") {
     let body;
     try {
       body = JSON.parse(raw);
@@ -2519,13 +2519,13 @@ const handle = (req, res, raw) => {
     send(res, answer.status, answer.body);
     return;
   }
-  if (req.method === "GET" && pathname === "/api/scripts") {
+  if (req.method === "GET" && pathname === "/api/capture-scripts") {
     // 各 id に 1 行、対象サイトと enabled と宣言つきで（capture-ledger v0.64.0。既定で走るのは、enabled の物のうち対象サイトの無い物と起点に合う物）
     send(res, 200, { scripts: scriptRows(versionsIn(s)) });
     return;
   }
   // スクリプトを読むエンドポイント（capture-ledger v0.60.0）。id は % を解いてから引く
-  const versions = /^\/api\/scripts\/([^/]+)\/versions(?:\/([^/]+))?$/.exec(pathname);
+  const versions = /^\/api\/capture-scripts\/([^/]+)\/versions(?:\/([^/]+))?$/.exec(pathname);
   if (req.method === "GET" && versions !== null) {
     const id = decodeURIComponent(versions[1]);
     const answer =

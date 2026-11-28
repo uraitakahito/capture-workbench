@@ -1,5 +1,5 @@
 /**
- * スクリプト集の画面（読む所）の部品（`public/reading.js`）。URL の読み書き・行の数え方・見出しの文。
+ * Capture scripts の画面（読む所）の部品（`public/reading.js`）。URL の読み書き・行の数え方・見出しの文。
  *
  * 画面そのもの（一覧・本文・押した行）は `app.js` に在り、試験は import しない。代役で開いて見る。
  */
@@ -42,37 +42,40 @@ test("URL は書いて読むと元に戻る（版を省く・版・版と sha �
       target,
     );
   }
-  assert.equal(readingHref({ line: 12 }), "/scripts/types/host.d.ts:12");
+  assert.equal(readingHref({ line: 12 }), "/capture-scripts/types/host.d.ts:12");
   assert.deepEqual(parseReading(readingHref({})), { line: undefined });
   assert.equal(readingHref({}), TYPES_HREF);
 });
 
 test("/ と空白を含む id は % にして載せ、読むと元の id に戻る", () => {
   const hash = readingHref({ id: "a/b c", version: 3 });
-  assert.equal(hash, "/scripts/a%2Fb%20c@3");
+  assert.equal(hash, "/capture-scripts/a%2Fb%20c@3");
   assert.equal(parseReading(hash).id, "a/b c");
 });
 
 test("受け皿の型と、id が types のスクリプトを取り違えない", () => {
-  assert.deepEqual(parseReading("/scripts/types/host.d.ts:12"), { line: 12 });
-  assert.equal(parseReading("/scripts/types").id, "types");
+  assert.deepEqual(parseReading("/capture-scripts/types/host.d.ts:12"), { line: 12 });
+  assert.equal(parseReading("/capture-scripts/types").id, "types");
   // id の中の / は % になるので、型の URL にはならない
   assert.equal(parseReading(readingHref({ id: "types/host.d.ts" })).id, "types/host.d.ts");
   // 型の URL に似ているが型ではない path は、id としても読まない
-  assert.equal(parseReading("/scripts/types/other.d.ts"), undefined);
+  assert.equal(parseReading("/capture-scripts/types/other.d.ts"), undefined);
 });
 
 test("合わない形は undefined（壊れた %・版の無い sha・ほかの画面の URL）", () => {
-  assert.equal(parseReading("/scripts/%E0"), undefined);
-  assert.equal(parseReading("/scripts/autoscroll~c9956819ffea"), undefined);
-  assert.equal(parseReading("/scripts/autoscroll@1~XYZ"), undefined);
+  assert.equal(parseReading("/capture-scripts/%E0"), undefined);
+  assert.equal(parseReading("/capture-scripts/autoscroll~c9956819ffea"), undefined);
+  assert.equal(parseReading("/capture-scripts/autoscroll@1~XYZ"), undefined);
   assert.equal(parseReading("/archive/1234/behaviors/custom.jsonl:2"), undefined);
-  assert.equal(parseReading("/scripts"), undefined);
-  assert.equal(parseReading("/scripts/"), undefined);
+  assert.equal(parseReading("/capture-scripts"), undefined);
+  assert.equal(parseReading("/capture-scripts/"), undefined);
+  // 古い住所（v0.65.0 まで）は読まない —— 画面が先に renamedPath で /capture-scripts… に置き換える（CAPTURE-506）
+  assert.equal(parseReading("/scripts/autoscroll@2"), undefined);
+  assert.equal(parseReading("/scripts/types/host.d.ts"), undefined);
 });
 
 test("sha の頭は版があるときだけ載せる（版の無い URL は既定の版を指し、確かめる相手が無い）", () => {
-  assert.equal(readingHref({ id: "autofetch", sha: "6aa6f4459d92" }), "/scripts/autofetch");
+  assert.equal(readingHref({ id: "autofetch", sha: "6aa6f4459d92" }), "/capture-scripts/autofetch");
 });
 
 test("行は改行で数え、最後の改行の後ろの空の 1 行は数えない", () => {
@@ -129,7 +132,7 @@ test("既定の顔ぶれとの関係を 3 通りに言う（既定の版・ほ�
   });
 });
 
-test("サイト用のスクリプトの既定の版は、起点が対象サイトのホストにあるときだけ既定で走ると言う", () => {
+test("サイト用の capture scripts の既定の版は、起点が対象サイトのホストにあるときだけ既定で走ると言う", () => {
   assert.deepEqual(standingOf({ version: 1, enabled: true, sites: ["site.test", "www.site.test"] }, 1), {
     text: "起点に site.test・www.site.test があれば既定で走る版",
     kind: "ok",
@@ -137,8 +140,8 @@ test("サイト用のスクリプトの既定の版は、起点が対象サイ�
 });
 
 test("読む窓のタブの名前は id と版（型は host.d.ts）。URL から読んだ物をそのまま渡せる", () => {
-  assert.equal(labelOf(parseReading("/scripts/autoscroll@2")), "autoscroll v2");
-  assert.equal(labelOf(parseReading("/scripts/autofetch")), "autofetch");
+  assert.equal(labelOf(parseReading("/capture-scripts/autoscroll@2")), "autoscroll v2");
+  assert.equal(labelOf(parseReading("/capture-scripts/autofetch")), "autofetch");
   assert.equal(labelOf(parseReading(TYPES_HREF)), "host.d.ts");
 });
 

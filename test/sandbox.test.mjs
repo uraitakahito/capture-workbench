@@ -512,7 +512,7 @@ test("同梱の台本に、その場の TS で完走した行と、compile の�
   assert.equal(withInline.filter((c) => c.state === "failed").length, 1, "compile の段で落ちた行は 1 本");
   const broken = crawlDetail(withInline.find((c) => c.state === "failed"));
   assert.match(broken.error, /compile 422 .*inline-close-banner\.ts/);
-  // capture-ledger と同じく、その場の物にだけ inline が付き、登録済みのスクリプトは身元だけ
+  // capture-ledger と同じく、その場の物にだけ inline が付き、登録済みの capture scripts は身元だけ
   assert.equal(broken.scripts[0].id, "inline-close-banner");
   assert.equal(broken.scripts[0].inline.name, "close-banner");
   assert.equal("inline" in broken.scripts[1], false);
@@ -569,7 +569,7 @@ test("名前で引くエンドポイントは、受けた行と台本の行の�
   assert.match(theirs.body.source, /close/);
 });
 
-test("名前で引くエンドポイントは、登録済みのスクリプト・知らない名前・知らない行には 404（capture-ledger と同じ文）", () => {
+test("名前で引くエンドポイントは、登録済みの capture scripts・知らない名前・知らない行には 404（capture-ledger と同じ文）", () => {
   const rows = [];
   submitCrawl(
     rows,
@@ -606,7 +606,7 @@ test("走行中でも、走らせるものの誤りは 409 より先に 400 —�
   assert.equal(ok.status, 409);
 });
 
-test("scripts を省くと、起点で選んだ既定を走らせたものとして返す —— 合うサイト用のスクリプトは対象サイトごと", () => {
+test("scripts を省くと、起点で選んだ既定を走らせたものとして返す —— 合うサイト用の capture scripts は対象サイトごと", () => {
   const ranFrom = (seed, variables) => {
     const rows = [];
     submitCrawl(rows, { seeds: [seed], ...(variables && { variables }) }, NOW, RUNS, versions);
@@ -697,7 +697,7 @@ test("既定に入らないスクリプトも、名指せば最新版が走る�
   assert.deepEqual(at(crawlDetail(submittedRow(rows[0], NOW), rows[0].scripts).scripts), ["autofetch@1"]);
 });
 
-test("起点に合わないサイト用のスクリプトを名指すと、capture-ledger と同じ文で 400 —— 走行中でも 409 より先", () => {
+test("起点に合わないサイト用の capture scripts を名指すと、capture-ledger と同じ文で 400 —— 走行中でも 409 より先", () => {
   const rows = [];
   const post = (seeds) =>
     submitCrawl(
@@ -721,15 +721,15 @@ test("起点に合わないサイト用のスクリプトを名指すと、captu
   assert.equal(post(["https://other-site.test/"]).status, 400);
 });
 
-test("既定が空なら 400 —— 登録済みのスクリプトが無いのと、全部が別のサイト用とで文を分ける（capture-ledger と同じ文）", () => {
+test("既定が空なら 400 —— 登録済みの capture scripts が無いのと、全部が別のサイト用とで文を分ける（capture-ledger と同じ文）", () => {
   const post = (list, body = {}) => submitCrawl([], { seeds: ["https://other-site.test/"], ...body }, NOW, RUNS, list);
   assert.deepEqual(post([]), {
     status: 400,
     body: {
       error: "no scripts are registered",
-      hint: "pnpm run scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])",
+      hint: "pnpm run capture-scripts import .upstream/capture-scripts (run nothing on purpose: send scripts: [])",
       // 鍵の無い組。終わりの案内も 1 つの組（capture-ledger の crawl/prepare.ts と同じ）
-      hints: [{ text: "pnpm run scripts import .upstream/capture-scripts" }, { text: "(run nothing on purpose: send scripts: [])" }],
+      hints: [{ text: "pnpm run capture-scripts import .upstream/capture-scripts" }, { text: "(run nothing on purpose: send scripts: [])" }],
     },
   });
   const onlySite = versions.filter((v) => v.id === "egov-law-search");
@@ -801,7 +801,7 @@ test("受け皿の型は台本の file の中身。台本に無ければ 404（�
   assert.deepEqual(hostTypesOf(without), { status: 404, body: { error: "not found" } });
 });
 
-test("台本のクロールが走らせた登録済みのスクリプトは、capture-ledger のその版と同じ sha256（5b0c0008 の autoscroll だけはわざと違う）", () => {
+test("台本のクロールが走らせた登録済みの capture scripts は、capture-ledger のその版と同じ sha256（5b0c0008 の autoscroll だけはわざと違う）", () => {
   const MISMATCH = "5b0c0008-6a1e-4000-8000-000000000008 autoscroll@1";
   const seen = [];
   for (const c of scenario.crawls) {
@@ -888,7 +888,7 @@ test("知らない鍵は schema の 400 で、capture-ledger の鍵（maxDepth�
   );
 });
 
-test("必須の変数が無ければ、ほかの値の誤りより先に 400 で名指し、行を立てない —— 登録済みのスクリプトもその場の TS も", () => {
+test("必須の変数が無ければ、ほかの値の誤りより先に 400 で名指し、行を立てない —— 登録済みの capture scripts もその場の TS も", () => {
   const rows = [];
   const post = (body) => submitCrawl(rows, { seeds: ["https://laws.e-gov.go.jp/"], ...body }, NOW, RUNS, versions, WINDMILL);
   assert.deepEqual(post({}), {
@@ -1031,7 +1031,7 @@ test("代役の読み手は、見本の形の defineParams を本物と同じ形
   assert.deepEqual(readDeclared("x;"), []);
 });
 
-test("POST /api/scripts/check は宣言を返し、行を立てない。欄が出ない理由は diagnostics で、形の誤りは schema の 400", () => {
+test("POST /api/capture-scripts/check は宣言を返し、行を立てない。欄が出ない理由は diagnostics で、形の誤りは schema の 400", () => {
   const source = declaring("a", 'word: z.string().describe("語")').inline.source;
   const word = { name: "word", kind: "variable", required: true, summary: "語", schema: { type: "string" } };
   assert.deepEqual(checkInline({ source, phase: "behavior" }), { status: 200, body: { params: [word], diagnostics: [] } });
@@ -1238,7 +1238,7 @@ test("検索のエンドポイントは、写しの行が在るアーカイブ�
     answer.body.hits.map((hit) => [hit.objectKey, hit.stage]),
     [
       ["sandbox/datapackage-bad-hash.wacz", null],
-      ["sandbox/good.wacz", "after-behaviors"],
+      ["sandbox/good.wacz", "after-capture-scripts"],
     ],
   );
   // total は返した当たりの数（capture-ledger も見せてよい物だけを数える）
@@ -1703,8 +1703,10 @@ test("筋書きの 5b0c000b の 1304〜1306 の答えは、置き場の WACZ の
         const { profile: _profile, ...rest } = JSON.parse(line);
         return rest;
       });
-    // BrowserHive は、同じ成り行きを答えと datapackage.json の両方に書く
-    assert.deepEqual(answer.capture.screenshots, inside.screenshots, pageId);
+    // BrowserHive は、同じ成り行きを答えと datapackage.json の両方に書く。標本は古い取り込み（時点の名 after-behaviors）で、
+    // capture-ledger は stage だけを新しい名に寄せて答える（URI は撮った物のまま。CAPTURE-506）
+    const renamed = inside.screenshots.map((shot) => (shot.stage === "after-behaviors" ? { ...shot, stage: "after-capture-scripts" } : shot));
+    assert.deepEqual(answer.capture.screenshots, renamed, pageId);
     for (const key of ["settle", "completeness", "document"]) assert.deepEqual(answer.capture[key], inside[key], `${pageId} ${key}`);
     assert.deepEqual(answer.log.lines, linesOf("logs/capture.jsonl"), pageId);
     assert.deepEqual(answer.trace.lines, linesOf("trace/events.jsonl"), pageId);
@@ -1717,11 +1719,11 @@ test("筋書きの 5b0c000b の 1304〜1306 の答えは、置き場の WACZ の
 test("筋書きの 1304 は絵が 2 枚、1305 と 1306 は理由つきで絵が無く、欄の無い 1301 には何も無い", () => {
   const c = crawlOf("5b0c000b");
   const answerOf = (pageId) => pageTrace(c, pageId, SAMPLE_NAMES).body;
-  assert.deepEqual(screenshotsOf(answerOf("1304")).map((shot) => [shot.stage, shot.kept]), [["after-load", true], ["after-behaviors", true]]);
+  assert.deepEqual(screenshotsOf(answerOf("1304")).map((shot) => [shot.stage, shot.kept]), [["after-load", true], ["after-capture-scripts", true]]);
   assert.equal(readsScreenshots(answerOf("1304")), true);
   // 絵を残さなかった取り込み: 画面は理由を言い、絵のために WACZ を読まない
-  assert.deepEqual(screenshotsOf(answerOf("1305")).map((shot) => [shot.stage, shot.kept, shot.skipped]), [["after-load", false, "withheld"], ["after-behaviors", false, "withheld"]]);
-  assert.deepEqual(screenshotsOf(answerOf("1306")).map((shot) => [shot.stage, shot.kept, shot.skipped]), [["after-load", false, "secret"], ["after-behaviors", false, "secret"]]);
+  assert.deepEqual(screenshotsOf(answerOf("1305")).map((shot) => [shot.stage, shot.kept, shot.skipped]), [["after-load", false, "withheld"], ["after-capture-scripts", false, "withheld"]]);
+  assert.deepEqual(screenshotsOf(answerOf("1306")).map((shot) => [shot.stage, shot.kept, shot.skipped]), [["after-load", false, "secret"], ["after-capture-scripts", false, "secret"]]);
   assert.equal(readsScreenshots(answerOf("1305")), false);
   assert.equal(readsScreenshots(answerOf("1306")), false);
   // 伏せた文書（content-type の方針）と、渡したシークレットが、理由の出どころ
@@ -1813,8 +1815,8 @@ test("代役の絵のエンドポイントは、行の screenshot が絵を言�
   for (const row of rows) {
     const pictured = typeof row.screenshot?.bytes === "number" && row.screenshot.skipped === undefined;
     assert.equal(stageScreenshotOf(scenario, row.id, "after-load").status, pictured ? 200 : 404, row.at);
-    // 一覧に出すのは after-load だけ。筋書きは after-behaviors の絵を名指さない
-    assert.equal(stageScreenshotOf(scenario, row.id, "after-behaviors").status, 404, row.at);
+    // 一覧に出すのは after-load だけ。筋書きは after-capture-scripts の絵を名指さない
+    assert.equal(stageScreenshotOf(scenario, row.id, "after-capture-scripts").status, 404, row.at);
   }
   assert.ok(rows.some((row) => typeof row.screenshot?.bytes === "number"), "絵の在る行が在る");
   assert.deepEqual(stageScreenshotOf(scenario, idOf("good.wacz"), "after-load"), { status: 404, body: { error: "not found" } });
@@ -2307,7 +2309,7 @@ test("2 本の差分は、capture-ledger の /api/archives/:id/changes と同じ
   for (const quote of summarized.quotes) assert.ok(summarized.hunks.flat().some((line) => line.startsWith("+") && line.includes(quote.text)), quote.text);
   assert.deepEqual([plain.summary, plain.significance, plain.headline, plain.quotes], [null, null, null, []]);
   assert.deepEqual([plain.recipeDiffers, plain.stageDiffers], [true, true]);
-  assert.deepEqual([plain.before.stage, plain.after.stage], ["after-behaviors", null]);
+  assert.deepEqual([plain.before.stage, plain.after.stage], ["after-capture-scripts", null]);
   assert.deepEqual([plain.before.browserhiveVersion, plain.after.browserhiveVersion], ["29.0.1", "29.0.2"]);
   assert.equal(same.sameBy, "digest");
   // 比べられない訳は、今を先に見る。どちらかの撮り方が分からなければ recipeDiffers は null
