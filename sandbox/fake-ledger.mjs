@@ -313,7 +313,7 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   variables: values.variables,
   secrets: values.secrets,
   userAgent: values.userAgent ?? null,
-  // ページの JS が受け取った乱数を控えるよう頼んだか (capture-ledger v0.105.0。CAPTURE-378)。頼まなければ false
+  // ページの JS が受け取った乱数を記録するよう頼んだか (capture-ledger v0.105.0。CAPTURE-378)。頼まなければ false
   recordRandom: values.recordRandom === true,
 });
 
@@ -563,7 +563,7 @@ const CAPTURE_FIELDS = [
   "document",
   "windowsNotOpened",
   "screenshots",
-  // ページの JS が受け取った乱数の控えの要約 (BrowserHive WACZ Profile 1.26.0 の `browserhive:capture.random`。capture-ledger
+  // ページの JS が受け取った乱数の記録の要約 (BrowserHive WACZ Profile 1.26.0 の `browserhive:capture.random`。capture-ledger
   // v0.105.0 が通す。CAPTURE-378)。それより前の取り込みのページには書かない (鍵ごと出ない)
   "random",
 ];
@@ -1562,7 +1562,7 @@ export const hostTypesOf = (s, read = readBeside) => {
  *
  * 答えの文と形は capture-ledger から写した (v0.58.0。対象サイトの 400 と既定が空の 400 は v0.61.0。試験が固定する。確かめる所は
  * v0.86.1 で src/api/crawls.ts から src/crawl/prepare.ts の `prepareCrawl` に移った)。**写していない物**: `Idempotency-Key` の
- * 無い頼みの 400 (v0.97.0。代役は鍵を見ない)、乱数を控える頼みに配備の形式の wacz が無いときの 400 (v0.105.0)。
+ * 無い頼みの 400 (v0.97.0。代役は鍵を見ない)、乱数を記録する頼みに配備の形式の wacz が無いときの 400 (v0.105.0)。
  * 順も一部違う —— capture-ledger は schema の誤り (userAgent の型・起点が空・scripts の形) を `seeds is required` より先に言う。
  * **走行中の 1 本は、受けた行だけで数える** —— 台本の走行中の行は飾りで、それで 409 に
  * すると何も始められない。409 を見たいなら、走っている間にもう 1 度始める。
@@ -1594,7 +1594,7 @@ export const submitCrawl = (rows, body, now, runsSeconds, versions, windmill = N
   if (userAgent !== "" && !/^[\x20-\x7e]{1,512}$/.test(userAgent)) {
     return { status: 400, body: { error: "userAgent must be printable ASCII, at most 512 characters" } };
   }
-  // ページの JS が受け取った乱数を控えるか (capture-ledger v0.105.0。schema は真偽だけを受け、省けば false)
+  // ページの JS が受け取った乱数を記録するか (capture-ledger v0.105.0。schema は真偽だけを受け、省けば false)
   if ("recordRandom" in body && typeof body.recordRandom !== "boolean") return schemaError("body/recordRandom must be boolean");
   if (body.seeds.length === 0) return schemaError("body/seeds must NOT have fewer than 1 items");
   if (!body.seeds.every(httpUrl)) {

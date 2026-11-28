@@ -1538,7 +1538,7 @@ const LEDGER_CAPTURE_KEYS = new Set([
   // CAPTURE-270 の第 4 部: 節目のスクリーンショットの成り行き（BrowserHive v30.2.0 から）と、失敗の時点の絵が在るか
   "screenshots",
   "failureScreenshot",
-  // CAPTURE-378: ページの JS が受け取った乱数の控えの要約（BrowserHive WACZ Profile 1.26.0。capture-ledger v0.105.0 から）
+  // CAPTURE-378: ページの JS が受け取った乱数の記録の要約（BrowserHive WACZ Profile 1.26.0。capture-ledger v0.105.0 から）
   "random",
 ]);
 const TRACE_SAMPLE = "trace-timeline.wacz";
@@ -1976,7 +1976,7 @@ test("User-Agent は capture-ledger と同じ文で断る。行は立たない",
   assert.deepEqual(refused(1), [400, "body/userAgent must be string"]);
 });
 
-// ── 乱数を控えるか（capture-ledger v0.105.0 の recordRandom。CAPTURE-378）──────────────
+// ── 乱数を記録するか（capture-ledger v0.105.0 の recordRandom。CAPTURE-378）──────────────
 
 test("recordRandom は行に残り、詳しい答えが真偽で返す。省けば false。真偽でなければ断り、行は立たない", () => {
   const start = (body) => {

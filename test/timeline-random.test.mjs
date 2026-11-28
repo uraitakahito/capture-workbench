@@ -1,5 +1,5 @@
 /**
- * 「経緯」の画面の計算のうち、答えの `capture.random`（ページの JS が受け取った乱数の控えの要約。BrowserHive WACZ Profile
+ * 「経緯」の画面の計算のうち、答えの `capture.random`（ページの JS が受け取った乱数の記録の要約。BrowserHive WACZ Profile
  * 1.26.0 の `browserhive:capture.random` を capture-ledger v0.105.0 が通した物。CAPTURE-378）を読む所（`public/timeline.js`）。
  *
  * 形は Profile の表の例（`{ recorded: true, documents: 2, draws: 318, truncated: false }`）と、`skipped` の 3 つの理由。
@@ -13,14 +13,14 @@ import { randomOf, randomText } from "../public/timeline.js";
 
 const shown = (random) => randomText(randomOf({ status: "success", random }));
 
-test("乱数を控えた取り込みは、値の行の数を言う", () => {
+test("乱数を記録した取り込みは、値の行の数を言う", () => {
   assert.deepEqual(randomOf({ random: { recorded: true, documents: 2, draws: 318, truncated: false } }), {
     recorded: true,
     draws: 318,
     truncated: false,
   });
-  assert.equal(shown({ recorded: true, documents: 2, draws: 318, truncated: false }), "乱数の控え 318 回");
-  assert.equal(shown({ recorded: true, documents: 1, draws: 0, truncated: false }), "乱数の控え 0 回");
+  assert.equal(shown({ recorded: true, documents: 2, draws: 318, truncated: false }), "乱数を 318 回記録した");
+  assert.equal(shown({ recorded: true, documents: 1, draws: 0, truncated: false }), "乱数を 0 回記録した");
   setLang("en");
   try {
     assert.equal(shown({ recorded: true, documents: 2, draws: 318, truncated: false }), "318 random values recorded");
@@ -30,8 +30,8 @@ test("乱数を控えた取り込みは、値の行の数を言う", () => {
   }
 });
 
-test("行が欠けているかもしれない控え（truncated）には、印を足す", () => {
-  assert.equal(shown({ recorded: true, documents: 2, draws: 5000, truncated: true }), "乱数の控え 5,000 回（欠けがありうる）");
+test("行が欠けているかもしれない記録（truncated）には、印を足す", () => {
+  assert.equal(shown({ recorded: true, documents: 2, draws: 5000, truncated: true }), "乱数を 5,000 回記録した（欠けがありうる）");
   setLang("en");
   try {
     assert.equal(shown({ recorded: true, documents: 2, draws: 5000, truncated: true }), "5,000 random values recorded (may be incomplete)");
@@ -40,9 +40,9 @@ test("行が欠けているかもしれない控え（truncated）には、印�
   }
 });
 
-test("文書を伏せた取り込み（withheld）は、控えを残さなかったと言う", () => {
+test("文書を伏せた取り込み（withheld）は、記録を残さなかったと言う", () => {
   assert.deepEqual(randomOf({ random: { recorded: false, skipped: "withheld" } }), { recorded: false, skipped: "withheld" });
-  assert.equal(shown({ recorded: false, skipped: "withheld" }), "乱数は控えていない（文書を伏せたので残さない）");
+  assert.equal(shown({ recorded: false, skipped: "withheld" }), "乱数は記録していない（文書を伏せたので残さない）");
   setLang("en");
   try {
     assert.equal(shown({ recorded: false, skipped: "withheld" }), "random values not kept (the document was withheld)");
@@ -51,10 +51,10 @@ test("文書を伏せた取り込み（withheld）は、控えを残さなかっ
   }
 });
 
-test("控えられなかった取り込み（failed）は、そう言う。知らない理由は届いた字のまま", () => {
-  assert.equal(shown({ recorded: false, skipped: "failed" }), "乱数を控えられなかった");
-  assert.equal(shown({ recorded: false, skipped: "too-large" }), "乱数は控えていない（too-large）");
-  assert.equal(shown({ recorded: false }), "乱数は控えていない（理由は書かれていない）");
+test("記録できなかった取り込み（failed）は、そう言う。知らない理由は届いた字のまま", () => {
+  assert.equal(shown({ recorded: false, skipped: "failed" }), "乱数を記録できなかった");
+  assert.equal(shown({ recorded: false, skipped: "too-large" }), "乱数は記録していない（too-large）");
+  assert.equal(shown({ recorded: false }), "乱数は記録していない（理由は書かれていない）");
   setLang("en");
   try {
     assert.equal(shown({ recorded: false, skipped: "failed" }), "random values could not be recorded");

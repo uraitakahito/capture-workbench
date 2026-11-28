@@ -296,7 +296,7 @@ const $ = (id) => document.getElementById(id);
 // index.html は字を書かず、鍵（data-i18n）を書く。描く前に、いまの言語の字を入れる
 applyI18n();
 
-/** 新しいクロールの画面に、読み直すと消える書きかけが在るか（起点・その場の TS・User-Agent・「乱数を控える」・変数の値・予定の名前）。 */
+/** 新しいクロールの画面に、読み直すと消える書きかけが在るか（起点・その場の TS・User-Agent・「乱数を記録する」・変数の値・予定の名前）。 */
 const startDraft = () =>
   ["start-seeds", "start-inline-source", "start-inline-name", "start-ua-text", "schedule-name"].some(
     (id) => $(id).value.trim() !== "",
@@ -715,7 +715,7 @@ const valuesOf = (one) => {
       ? tag("p", `User-Agent: ${one.userAgent}`)
       : tag("p", t("crawls.detail.uaDefault"), "muted"),
   );
-  // ページの JS が受け取った乱数を控えるよう頼んだクロールだけ（capture-ledger v0.105.0 から。前の行と、頼まなかった行は何も足さない）
+  // ページの JS が受け取った乱数を記録するよう頼んだクロールだけ（capture-ledger v0.105.0 から。前の行と、頼まなかった行は何も足さない）
   if (one.recordRandom === true) box.append(tag("p", t("crawls.detail.recordRandom")));
   const vars = Object.entries(one.variables ?? {});
   const secrets = one.secrets ?? [];
@@ -5201,7 +5201,7 @@ const drawTraceHead = () => {
   const facts = [
     axis === undefined ? undefined : t("trace.facts.total", { took: secondsText(axis.endMs) }),
     typeof capture.httpStatusCode === "number" ? `HTTP ${String(capture.httpStatusCode)}` : undefined,
-    // ページの JS が受け取った乱数の控え。頼まなかった取り込みと、欄の無い取り込みには何も足さない
+    // ページの JS が受け取った乱数の記録。頼まなかった取り込みと、欄の無い取り込みには何も足さない
     randomText(randomOf(capture)),
   ].filter((fact) => fact !== undefined);
   const line = tag("p", facts.join(t("common.sep.dot")), "trace-facts");
