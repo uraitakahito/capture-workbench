@@ -168,6 +168,37 @@ export const crawlsPage = (rows, page = CRAWLS_PAGE) => {
 };
 
 /**
+ * capture-ledger が自分で訳す文 (クロールの失敗の文。capture-ledger の src/i18n/locales の写し。t-evv8)。capture-ledger は、行に
+ * 文の鍵と埋めた値 (`errorKey`・`errorParams`) を持ち、頼みの `Accept-Language` の言語で `error` を組んで返す。
+ * 鍵の無い行 (flow が報告した文・人が打った字) は、保存された字のまま返す。
+ */
+const LEDGER_MESSAGES = {
+  ja: {
+    "crawl.nothingCaptured": "1 枚も撮れませんでした（取れず {failed}・見送り {skipped}）。",
+    "crawl.nothingCapturedBecause": "1 枚も撮れませんでした（取れず {failed}・見送り {skipped}）。最初の理由: {reason}",
+    "crawl.nothingCapturedBackfilled": "1 枚も撮れませんでした（030 で直した過去の行）",
+  },
+  en: {
+    "crawl.nothingCaptured": "No pages were captured ({failed} failed, {skipped} skipped).",
+    "crawl.nothingCapturedBecause": "No pages were captured ({failed} failed, {skipped} skipped). First reason: {reason}",
+    "crawl.nothingCapturedBackfilled": "No pages were captured (a past row fixed by migration 030).",
+  },
+};
+
+/**
+ * 頼みの言語。capture-ledger は `Accept-Language` を重みの順に読むが、workbench の中継が運ぶのは `ja` か `en` ちょうどだけ
+ * なので、代役はその 2 つだけを見る。**付いていなければ英語** (capture-ledger の既定)。
+ */
+export const spokenIn = (headers) => (headers["accept-language"] === "ja" ? "ja" : "en");
+
+/** 行の `error` を、その言語で組む。鍵の無い行・知らない鍵の行は、保存された字のまま。 */
+export const spoken = (row, lang) => {
+  const pattern = typeof row.errorKey === "string" ? LEDGER_MESSAGES[lang][row.errorKey] : undefined;
+  if (pattern === undefined) return row;
+  return { ...row, error: pattern.replace(/\{(\w+)\}/gu, (_, name) => String(row.errorParams?.[name] ?? "")) };
+};
+
+/**
  * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.107.0) と同じ。v0.57.4 の欄に、合本の欄
  * (`replayBundle`) が v0.73.0 から、`pagesFailed` が v0.77.0 から (capture-ledger と同じく、ページの行の failed を数える)、
  * 定期の回の欄が v0.87.0 から、`dispatch` が v0.98.0 から、`linksRecorded` が v0.99.0 から、始めた者の名前と出どころ
@@ -192,6 +223,9 @@ export const crawlRow = (c, now) => ({
   pagesCaptured: c.pagesCaptured ?? 0,
   pagesFailed: (c.pages ?? []).filter((page) => page.state === "failed").length,
   error: c.error ?? null,
+  // 文の鍵と埋めた値 (capture-ledger v0.118.0 から。t-evv8)。capture-ledger が自分で書いた文にだけ在る
+  errorKey: c.errorKey ?? null,
+  errorParams: c.errorParams ?? null,
   waczCount: c.waczCount ?? 0,
   lastJob: c.lastJobId === undefined ? null : { id: c.lastJobId, depth: c.lastJobDepth ?? 0 },
   // 一番新しい段を Windmill に投げた様子 (capture-ledger CAPTURE-180)。台本に無い行は null (段の行を入れる前の形)
@@ -306,6 +340,8 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
   pagesFailed: (c.pages ?? []).filter((page) => page.state === "failed").length,
   finishedAt: c.finishedAt ?? null,
   error: c.error ?? null,
+  errorKey: c.errorKey ?? null,
+  errorParams: c.errorParams ?? null,
   scripts: scripts.map(detailScript),
   replayBundle: replayBundleOf(c),
   dispatch: c.dispatch ?? null,
@@ -1663,6 +1699,8 @@ export const submittedRow = (row, now) => {
     pagesCaptured: done ? row.seeds.length : 0,
     pagesFailed: 0,
     error: null,
+    errorKey: null,
+    errorParams: null,
     waczCount: 0,
     lastJob: null,
     dispatch: null,
@@ -1914,6 +1952,12 @@ export const scheduleRow = (c) => ({
   createdAt: c.createdAt ?? "2026-11-01T00:00:00.000Z",
   // capture-ledger は、まだ比べていない回にも change を null で返す (v0.93.0・CAPTURE-167)
   recentRuns: (c.recentRuns ?? []).map((run) => ({ ...run, change: run.change ?? null })),
+});
+
+/** 予定の答えの回の `error` を、その言語で組む (capture-ledger は、予定の答えを返すどのエンドポイントでも同じに組む)。 */
+export const spokenSchedule = (schedule, lang) => ({
+  ...schedule,
+  recentRuns: schedule.recentRuns.map((run) => spoken(run, lang)),
 });
 
 /**
@@ -2212,7 +2256,7 @@ const handle = (req, res, raw) => {
     return;
   }
   if (req.method === "GET" && pathname === "/api/schedules") {
-    send(res, 200, { schedules: schedulesIn(s).map(scheduleRow) });
+    send(res, 200, { schedules: schedulesIn(s).map((c) => spokenSchedule(scheduleRow(c), spokenIn(req.headers))) });
     return;
   }
   if (req.method === "POST" && pathname === "/api/schedules") {
@@ -2229,7 +2273,7 @@ const handle = (req, res, raw) => {
       return;
     }
     createdSchedules.push(answer.row);
-    send(res, answer.status, scheduleRow(answer.row));
+    send(res, answer.status, spokenSchedule(scheduleRow(answer.row), spokenIn(req.headers)));
     return;
   }
   const acted = /^\/api\/schedules\/([^/]+)\/(pause|resume|run|repin|delete)$/.exec(pathname);
@@ -2251,7 +2295,7 @@ const handle = (req, res, raw) => {
       repin: { outdated: false, scripts: row.scripts?.map((script) => ({ ...script, version: script.latest ?? script.version })) },
     }[acted[2]];
     scheduleEdits.set(row.id, { ...scheduleEdits.get(row.id), ...edit });
-    send(res, acted[2] === "run" ? 202 : 200, scheduleRow({ ...row, ...edit }));
+    send(res, acted[2] === "run" ? 202 : 200, spokenSchedule(scheduleRow({ ...row, ...edit }), spokenIn(req.headers)));
     return;
   }
   // robots.txt の例外 (t-6bc6)。一覧・登録・取り消し。足した行と取り消しは、代役が起きている間だけ覚える
@@ -2303,8 +2347,11 @@ const handle = (req, res, raw) => {
   }
   if (req.method === "GET" && pathname === "/api/crawls") {
     const now = Date.now();
+    const lang = spokenIn(req.headers);
     send(res, 200, {
-      crawls: crawlsPage([...submitted.map((row) => submittedRow(row, now)), ...s.crawls.map((c) => crawlRow(c, STARTED))]),
+      crawls: crawlsPage([...submitted.map((row) => submittedRow(row, now)), ...s.crawls.map((c) => crawlRow(c, STARTED))]).map(
+        (row) => spoken(row, lang),
+      ),
     });
     return;
   }
@@ -2442,7 +2489,7 @@ const handle = (req, res, raw) => {
             });
             return withRunFields(detail, row);
           })();
-    send(res, detail === undefined ? 404 : 200, detail ?? { error: "not found" });
+    send(res, detail === undefined ? 404 : 200, detail === undefined ? { error: "not found" } : spoken(detail, spokenIn(req.headers)));
     return;
   }
   if (req.method === "GET" && pathname === "/api/archives") {

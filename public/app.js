@@ -329,8 +329,17 @@ const signInAgain = (res, body) => {
   }
 };
 
+/**
+ * workbench の server への頼み。**画面の頼みは、みなここを通す**（`fetch` を直に呼ばない。`npm run check` の
+ * `check:ask` が見る）—— いまの画面の言語を `Accept-Language` で付ける。server はそれを capture-ledger へ運び、
+ * capture-ledger は、自分で訳す文（クロールの失敗の文）をその言語で返す。capture-ledger は、言語の付かない頼みには
+ * 英語で返すので、付け忘れた頼みが 1 つでも在ると、日本語の画面に英語の文が出る。
+ */
+const ask = (path, init = {}) =>
+  fetch(path, { ...init, headers: { ...init.headers, "accept-language": langOf() } });
+
 const api = async (path) => {
-  const res = await fetch(path);
+  const res = await ask(path);
   const body = await res.json();
   signInAgain(res, body);
   // 状態も持たせる（開いた行の 404 を「見つからない」と言い分ける）
@@ -339,7 +348,7 @@ const api = async (path) => {
 };
 
 const post = async (path) => {
-  const res = await fetch(path, { method: "POST" });
+  const res = await ask(path, { method: "POST" });
   const body = await res.json();
   signInAgain(res, body);
   if (!res.ok) throw new Error(errorText(body) ?? `${path} → ${String(res.status)}`);
@@ -629,7 +638,7 @@ const askFix = async (crawlId, name) => {
   let status = 0;
   let body = {};
   try {
-    const res = await fetch(`/api/crawls/${crawlId}/inline/${enc(name)}/fix`, {
+    const res = await ask(`/api/crawls/${crawlId}/inline/${enc(name)}/fix`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",
@@ -1144,7 +1153,7 @@ const diagnosedOf = async (crawlId, detail) => {
   const kept = before instanceof Error ? undefined : before?.diagnosed;
   if (kept !== undefined && kept.kind !== "trouble") return kept;
   try {
-    const res = await fetch(`/api/crawls/${crawlId}/diagnostics`);
+    const res = await ask(`/api/crawls/${crawlId}/diagnostics`);
     return diagnosisOf(res.status, await res.json().catch(() => ({})));
   } catch (err) {
     return diagnosisOf(0, { error: failedText(err) });
@@ -1155,7 +1164,7 @@ const diagnosedOf = async (crawlId, detail) => {
  * 1 本の詳しい所。**失敗の文が先** —— compile の段で落ちたクロールは 1 枚も撮っていないので
  * failures が空で、それだけを出すと「取れなかったページはありません」と、成功のように読める。
  * 次が合本を書けなかった理由。合本はクロールを止めない派生物なので warn の色で、再生の link が無い（前の版を開く）
- * 訳をここで言う。capture-ledger の文は言い換えない。
+ * 訳をここで言う。capture-ledger の文は言い換えない（capture-ledger が自分で書いた失敗の文は、頼みの言語で届く。`ask`）。
  */
 const detailOf = (one) => {
   const bundleFailure = replayBundleFailure(one.replayBundle);
@@ -2037,7 +2046,7 @@ const declaredChanged = askWhenSettled({
     let status = 0;
     let body = {};
     try {
-      const res = await fetch("/api/scripts/check", {
+      const res = await ask("/api/scripts/check", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: asked,
@@ -2087,7 +2096,7 @@ const startCrawl = async (event) => {
   let status = 0;
   let answer = {};
   try {
-    const res = await fetch("/api/crawls", {
+    const res = await ask("/api/crawls", {
       method: "POST",
       headers: { "content-type": "application/json", "idempotency-key": startKey.key },
       body: text,
@@ -2149,7 +2158,7 @@ const postJson = async (path, body = {}) => {
   let status = 0;
   let answer = {};
   try {
-    const res = await fetch(path, {
+    const res = await ask(path, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -2590,7 +2599,7 @@ const runSearch = async (words) => {
   let res;
   let body;
   try {
-    res = await fetch(searchPath(words));
+    res = await ask(searchPath(words));
     body = await res.json().catch(() => ({}));
   } catch (err) {
     if (seq === searching.seq) failed(searchFailure(0, { message: failedText(err) }));
@@ -2659,7 +2668,7 @@ const IN_CATALOG = placeOf("reading");
 
 /** 404 なら undefined（在らないのは誤りではなく、言い方を変えるだけ）。ほかの失敗は投げる。 */
 const find = async (path) => {
-  const res = await fetch(path);
+  const res = await ask(path);
   if (res.status === 404) return undefined;
   const body = await res.json();
   if (!res.ok) throw new Error(errorText(body) ?? `${path} → ${String(res.status)}`);
@@ -3737,7 +3746,7 @@ const drawSchedules = () => {
 const refreshSchedules = async () => {
   clearTimeout(schedulesTimer);
   try {
-    const res = await fetch(SCHEDULES_PATH, { signal: AbortSignal.timeout(SCHEDULES_TIMEOUT_MS) });
+    const res = await ask(SCHEDULES_PATH, { signal: AbortSignal.timeout(SCHEDULES_TIMEOUT_MS) });
     const body = await res.json();
     if (!res.ok) throw new Error(errorText(body) ?? `${SCHEDULES_PATH} → ${String(res.status)}`);
     schedules = body.schedules;
@@ -3843,7 +3852,7 @@ const drawExemptions = () => {
 
 const loadExemptions = async () => {
   try {
-    const res = await fetch(EXEMPTIONS_PATH);
+    const res = await ask(EXEMPTIONS_PATH);
     const body = await res.json();
     signInAgain(res, body);
     exemptionsNoRoute = noRoute(res.status, body);
@@ -4223,7 +4232,7 @@ const openChanges = async (crawlId, pageId) => {
     changesView = { crawlId: undefined, detail: undefined, toc: [] };
     $("change-detail").hidden = true;
     try {
-      const res = await fetch(CHANGES_PATH);
+      const res = await ask(CHANGES_PATH);
       const body = await res.json();
       signInAgain(res, body);
       if (!res.ok) throw new Error(changesError(res.status, body));
@@ -4242,7 +4251,7 @@ const openChanges = async (crawlId, pageId) => {
   changesView = { crawlId, detail: undefined, toc: [], pageId };
   $("change-detail").hidden = true;
   try {
-    const one = await fetch(changeDetailPath(crawlId));
+    const one = await ask(changeDetailPath(crawlId));
     const detail = await one.json();
     signInAgain(one, detail);
     if (!one.ok) throw new Error(changesError(one.status, detail));
@@ -4501,7 +4510,7 @@ const loadHistory = (view) => {
     let status = 0;
     let body = {};
     try {
-      const res = await fetch(historyPath(view.url, view.rows === undefined ? undefined : view.next));
+      const res = await ask(historyPath(view.url, view.rows === undefined ? undefined : view.next));
       status = res.status;
       body = await res.json().catch(() => ({}));
       signInAgain(res, body);
@@ -4542,7 +4551,7 @@ const loadHistoryChange = async () => {
   let status = 0;
   let body = {};
   try {
-    const res = await fetch(archiveChangesPath(afterId, beforeId));
+    const res = await ask(archiveChangesPath(afterId, beforeId));
     status = res.status;
     body = await res.json().catch(() => ({}));
     signInAgain(res, body);
@@ -5118,7 +5127,7 @@ let traceView = { crawlId: undefined };
 
 /** status と本文の両方を受ける読み手。daemon は失敗を 400 と `{ code, message }` で返すので、status を捨てない。 */
 const fetchJson = async (path) => {
-  const res = await fetch(path);
+  const res = await ask(path);
   let body;
   try {
     body = await res.json();
@@ -6249,7 +6258,7 @@ const start = async () => {
   // （`signInAgain`）。置き換える前だと / が戻り先になり、行き先が落ちる
   bridge();
   try {
-    settings = await (await fetch("/healthz")).json();
+    settings = await (await ask("/healthz")).json();
     const who = settings.signedIn;
     $("who").textContent =
       who === null || who === undefined

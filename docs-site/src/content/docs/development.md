@@ -112,7 +112,15 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
 - **What is not translated:** what was stored, or written by another system, and arrives as
   data: states such as `captured`, step names, log lines, and stored failure reasons (a crawl's
   `error`, the reason of a schedule's run, the reason a bundle could not be written; only the
-  phrases the workbench itself sent are looked up, as above). Also proper names
+  phrases the workbench itself sent are looked up, as above). **The page does not translate a
+  crawl's `error`, but the ledger may have:** every request the page makes carries the screen's
+  language (`Accept-Language: ja` or `en`, added by `ask` in `public/app.js` and passed on by the
+  server; see [Routes](/routes/#api--passed-through-to-the-ledger)), and a ledger that looks at
+  it returns the sentences it wrote itself — a crawl that ended with no page captured — in that
+  language. What the flow reported, what a person typed, and anything from a ledger that does
+  not look at the language still arrive as stored. Because the ledger answers a request without
+  a language in English, **a request must not call `fetch` directly**: `npm run check` fails on
+  one (`check:ask`). Also proper names
   (ReplayWeb.page ↗, run ↗, WACZ, User-Agent), units (`ms`, `KiB`) and Claude's summaries, which
   the ledger has written in Japanese (the changes view says so in English). The validation
   report is not the workbench's to translate either: the daemon writes it in the language the

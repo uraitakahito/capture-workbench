@@ -61,6 +61,7 @@ import {
   relayFor,
   safePath,
   screenAnswer,
+  spokenLanguage,
   Told,
   TooLarge,
   WRITE_LIMIT,
@@ -315,7 +316,8 @@ const server = createServer((request, reply) => {
       const params = paramsFor(route.op, route.params); // 壊れた引数は署名をもらう前に 400
       const upstream = await viaSignedUrl(
         {
-          toLedger: (path, method, body) => toLedger(path, method, body, session),
+          toLedger: (path, method, body) =>
+            toLedger(path, method, body, session, spokenLanguage(request.headers)),
           call: (href) => toDaemon(`/${route.op}`, { source: { kind: "uri", uri: href }, ...params }),
         },
         route.archiveId,
@@ -358,7 +360,8 @@ const server = createServer((request, reply) => {
       return;
     }
     // 節目のスクリーンショット（`lib.mjs` の `isScreenshotRoute`）だけはバイト列のまま、ほかは字のまま返す
-    void toLedger(url, "GET", undefined, session)
+    // 頼みの言語だけは運ぶ（`lib.mjs` の `spokenLanguage`）。capture-ledger が、失敗の文をその言語で返す
+    void toLedger(url, "GET", undefined, session, spokenLanguage(request.headers))
       .then((res) => relayFor(url)(reply, res))
       .catch((err) => {
         failed(reply, err);

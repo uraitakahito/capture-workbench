@@ -39,7 +39,7 @@ export const moreOf = (list) =>
     : { label: t("crawls.pages.more", { count: count(list.pages.length + 1) }), want: list.pages.length + 1 };
 
 /**
- * 結末: capture-ledger の state をそのまま、理由（skip_reason）があれば後ろに。**state は言い分けない** —— 決めるのは
+ * 結末: capture-ledger の state をそのまま、理由（`reason`）があれば後ろに。**state は言い分けない** —— 決めるのは
  * capture-ledger で、増えても workbench を直さずに済む。
  */
 export const outcomeOf = (page, crawlState) => {

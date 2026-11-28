@@ -175,6 +175,7 @@ export const tNodes = (name, parts = {}) => {
 /**
  * 届いたデータの句（保存された失敗の理由など）を、辞書に在れば訳す。無ければ届いた字のまま ——
  * ほかのシステムが書いた字と、辞書を足す前に保存された字は、言い換えずに出す。`prefix` は鍵の頭。
+ * capture-ledger が自分で書いた失敗の文は、ここで訳さない —— capture-ledger が、頼みの言語（`app.js` の `ask`）で返す。
  */
 export const phraseText = (prefix, phrase) => {
   const name = `${prefix}.${String(phrase)}`;

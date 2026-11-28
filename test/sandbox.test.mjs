@@ -84,6 +84,9 @@ import {
   scriptRows,
   searchOf,
   signedUrlOf,
+  spoken,
+  spokenIn,
+  spokenSchedule,
   stageScreenshotOf,
   submitCrawl,
   submittedRow,
@@ -106,7 +109,7 @@ const NOW = Date.parse("2026-10-12T12:00:00.000Z");
 /**
  * capture-ledger の src/api/crawls.ts が /api/crawls の 1 行に返す欄 (v0.57.4 の欄に、`replayBundle` が v0.73.0、`pagesFailed` が v0.77.0、
  * 定期の回の欄が v0.87.0、`dispatch` が v0.98.0、`linksRecorded` が v0.99.0、始めた者の名前と出どころが v0.112.0、
- * 「いま撮る」を押した者が v0.113.0 から。v0.113.0 と同じ)。
+ * 「いま撮る」を押した者が v0.113.0 から、文の鍵と埋めた値が v0.118.0 から。v0.118.0 と同じ)。
  */
 const LEDGER_CRAWL_KEYS = [
   "crawlId",
@@ -128,6 +131,9 @@ const LEDGER_CRAWL_KEYS = [
   "pagesCaptured",
   "pagesFailed",
   "error",
+  // 文の鍵と埋めた値 (capture-ledger v0.118.0 から。t-evv8)
+  "errorKey",
+  "errorParams",
   "waczCount",
   "lastJob",
   // 一番新しい段を Windmill に投げた様子 (capture-ledger CAPTURE-180)
@@ -347,6 +353,36 @@ test("読めない起点・空の起点・seeds の無い body は、capture-led
     });
   }
   assert.equal(rows.length, 0, "断った本は行にしない");
+});
+
+test("失敗の文は、頼みの言語で返す（鍵の在る行だけ。付いていなければ英語）", () => {
+  // capture-ledger の既定は英語。workbench の中継が運ぶのは ja か en ちょうどだけ
+  assert.equal(spokenIn({ "accept-language": "ja" }), "ja");
+  assert.equal(spokenIn({ "accept-language": "en" }), "en");
+  assert.equal(spokenIn({}), "en");
+  assert.equal(spokenIn({ "accept-language": "ja,en;q=0.5" }), "en");
+
+  const nothing = scenario.crawls.find((c) => c.errorKey !== undefined);
+  assert.ok(nothing, "台本に、鍵の在る失敗の行が要る");
+  const row = crawlRow(nothing, NOW);
+  // 日本語は、行に保存された字と 1 字も違わない（capture-ledger は、保存する字を同じ辞書で組む）
+  assert.equal(spoken(row, "ja").error, nothing.error);
+  assert.equal(spoken(row, "en").error, "No pages were captured (2 failed, 0 skipped). First reason: timeout");
+  // 鍵と値は、言語で変わらない
+  assert.deepEqual(spoken(row, "en").errorParams, { failed: 2, skipped: 0, reason: "timeout" });
+  assert.equal(spoken(crawlDetail(nothing), "en").error, spoken(row, "en").error);
+
+  // 鍵の無い行（flow の文・人が打った字）と、知らない鍵の行は、保存された字のまま
+  const typed = crawlRow(scenario.crawls.find((c) => typeof c.error === "string" && c.errorKey === undefined), NOW);
+  assert.equal(spoken(typed, "en"), typed);
+  const unknown = { ...row, errorKey: "crawl.somethingNew" };
+  assert.equal(spoken(unknown, "en"), unknown);
+
+  // 予定の答えの回も同じ
+  const schedule = { id: "s", recentRuns: [{ crawlId: "a", ...row }, { crawlId: "b", error: "windmill unreachable" }] };
+  const said = spokenSchedule(schedule, "en");
+  assert.equal(said.recentRuns[0].error, "No pages were captured (2 failed, 0 skipped). First reason: timeout");
+  assert.equal(said.recentRuns[1].error, "windmill unreachable");
 });
 
 test("受けた行も、capture-ledger の /api/crawls と同じ欄を持つ", () => {
