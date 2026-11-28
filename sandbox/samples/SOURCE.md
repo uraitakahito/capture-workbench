@@ -35,7 +35,7 @@ corpus は Unlicense（public domain）。
 | --- | --- | --- |
 | `trace-timeline.wacz` | BrowserHive **v30.0.0** が、[capture-fixtures](https://github.com/uraitakahito/capture-fixtures) の `/charset/` を 2026-11-13 に撮った WACZ（署名なし・要求と応答の対が 11 個・WARC は `archive/data-000.warc.gz` の 1 本） | `16ae219d159f2e9b535cfa0c7b685cbd928f7bdd0c0fe70db1de5982365ec22c` |
 
-経緯の画面（`#trace/…`。CAPTURE-270）を見るための物。corpus の標本は BrowserHive の取り込みではないので、ログと時刻の合う
+経緯の画面（`/trace/…`。CAPTURE-270）を見るための物。corpus の標本は BrowserHive の取り込みではないので、ログと時刻の合う
 レコードを持たない。台本（`sandbox/scenario.json`）のクロール `5b0c000b` のページ 1301 が、このファイルの id（ファイル名から
 決まる）と、同じ取り込みの答え（取り込みの欄・ログ・要求の行 `trace`）を持つ。画面は、1301 では要求を `trace` の行から
 棒にし、WACZ のレコードは読まない。ページ 1303 は、同じ取り込みを `trace` の無い答えの形（BrowserHive v30.0.0 より前）に

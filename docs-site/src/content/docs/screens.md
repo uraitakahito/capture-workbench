@@ -10,7 +10,7 @@ The URL also names the row opened in the crawls view and the origin it is narrow
 in the changes view, and what is being read in the script collection view. The history of a URL, inside the
 changes view, is `/history/<URL>`. **Sending the URL is enough to show someone the same view**: they open it
 and see the same tab, row and narrowing (after signing in, if they have to; the workbench returns to the
-same path). Back and forward step through the views and the rows opened.
+same path, up to 2,000 characters — see [Routes](/routes/)). Back and forward step through the views and the rows opened.
 
 Addresses from before v0.62.0 (`/#crawls`, `/#trace/…`, `/#wacz/…`) still open: the workbench replaces
 them with the path (`#wacz/…` becomes `/archive/…`, and `#search/<words>` becomes `/search?q=<words>`).
@@ -68,7 +68,8 @@ the crawl's bundle.
   the rows of one app client, the scheduled runs, or the unknown ones. They appear only when the
   rows on screen come from two or more origins, and they narrow only the one page on screen. The
   chosen origin goes into the URL (`?from=`) without adding a step to Back; a chip that would hide
-  the open row closes it. The **Crawls** tab returns to the row and origin you left. `cli`
+  the open row closes it. Opening such a URL drops `from` when the list has no chip for that origin,
+  or when the row the URL names is not from it. The **Crawls** tab returns to the row and origin you left. `cli`
   holds both the rows a person started with the local `idp:token` and the rows an AI agent started as
   the dedicated user `ai-cli`; tell them apart by name.
 - **The seed URL takes two lines, the site first.** The top line is the host (with the port, if
@@ -133,9 +134,9 @@ the crawl's bundle.
 ⑤ Windmill で調べる (Inspect in Windmill), the link to inspect_crawl
 
 - **Click a row to see why it failed, what ran in the page, which values it was given, and the
-  URLs that could not be fetched.** The URL becomes `/crawls/<crawl id>`, and opening it opens the
-  same row; one row is open at a time (clicking another closes the first, and clicking it again
-  closes it). Only then does the workbench fetch `/api/crawls/:id`. A crawl older than the newest 50
+  URLs that could not be fetched.** Only then does the workbench fetch `/api/crawls/:id`. The URL
+  becomes `/crawls/<crawl id>`, and opening it opens the same row; one row is open at a time
+  (clicking another closes the first, and clicking it again closes it). A crawl older than the newest 50
   in the list still opens from its URL: it is fetched on its own and put on top of the table, marked
   一覧の外 (not in the list). A crawl that does not exist, or that this sign-in cannot see, shows
   このクロールは見つかりません (this crawl was not found) above the table. The ledger's
