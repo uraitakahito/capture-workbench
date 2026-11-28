@@ -41,49 +41,52 @@ import { isPartialBundle, replayBundleHref } from "../public/players.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
 import {
+  archiveChangeOf,
   archiveRows,
   catalogOf,
-  crawlDetail,
-  crawlRow,
-  createSchedule,
-  scheduleRow,
   changeDetail,
   changeRuns,
+  checkInline,
+  crawlDetail,
+  crawlRow,
   crawlRulesCheck,
+  crawlsPage,
+  createSchedule,
   decisionsOf,
   defaultSet,
   diagnosticsOf,
   fixOf,
+  historyArchives,
+  historyOf,
   hostTypesOf,
   idOf,
   inlineSource,
   latestEnabled,
-  pageList,
+  linkGraphOf,
   pageFailureScreenshot,
+  pageLinksOf,
+  pageList,
   pageLog,
   pageRow,
   pageTrace,
   pickable,
+  readDeclared,
   readingLastGood,
   replayBundleOf,
+  RUN_FIELDS,
   scenarioAt,
+  scheduleRow,
+  SCREENSHOT_HEADERS,
   scriptRows,
   searchOf,
   signedUrlOf,
-  SCREENSHOT_HEADERS,
   stageScreenshotOf,
-  checkInline,
-  readDeclared,
   submitCrawl,
   submittedRow,
+  summarizeChange,
   versionOf,
   versionsOf,
-  linkGraphOf,
-  pageLinksOf,
-  archiveChangeOf,
-  historyArchives,
-  historyOf,
-  summarizeChange,
+  withRunFields,
 } from "../sandbox/fake-ledger.mjs";
 import { marksOf as historyMarksOf, pickPair } from "../public/history.js";
 import { warcRecord, zipEntry } from "./wacz-entry.mjs";
@@ -2291,4 +2294,23 @@ test("要約の断りは capture-ledger と同じ句: 差分と同じ 404・422�
   assert.equal(summarize(pricing(1), { since: pricing(2), force: true }).body.message, "body must NOT have additional properties");
   assert.equal(summarize(pricing(1), { since: "nope" }).body.message, 'body/since must match format "uuid"');
   assert.equal(summarize("nope", { since: pricing(2) }).body.message, 'params/id must match format "uuid"');
+});
+
+test("/api/crawls は capture-ledger と同じく、始めた時刻の新しい順で 50 本まで。並びは台本のまま", () => {
+  const rows = Array.from({ length: 51 }, (_, i) => ({ crawlId: String(i), startedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString() }));
+  const kept = crawlsPage(rows, 50);
+  assert.equal(kept.length, 50);
+  assert.equal(kept.some((row) => row.crawlId === "0"), false); // いちばん古い行が外れる
+  assert.deepEqual(kept.map((row) => row.crawlId), rows.slice(1).map((row) => row.crawlId)); // 並びは元のまま
+  const few = crawlsPage(scenario.crawls.map((c) => crawlRow(c, NOW)), 5).map((row) => row.crawlId.slice(0, 8));
+  assert.deepEqual(few, ["5b0c0001", "5b0c0002", "5b0c0007", "5b0c0008", "5b0c0009"]);
+  assert.equal(crawlsPage(rows.slice(0, 11), 50).length, 11);
+});
+
+test("1 本の答えは、一覧の行と同じ走った回の欄（startedAt・lastJob・schedule…）を持つ（capture-ledger と同じ）", () => {
+  for (const c of scenario.crawls) {
+    const row = crawlRow(c, NOW);
+    const detail = withRunFields(crawlDetail(scenarioAt(c, NOW)), row);
+    for (const name of RUN_FIELDS) assert.deepEqual(detail[name], row[name], `${c.crawlId} ${name}`);
+  }
 });

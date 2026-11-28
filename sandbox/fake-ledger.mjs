@@ -140,6 +140,29 @@ const runRequesterOf = (c) => ({
 });
 
 /**
+ * /api/crawls が返す本数の上限。capture-ledger の src/api/crawls.ts の `CRAWLS_PAGE`（50）と同じ —— 一覧に出ない古い
+ * クロールも、/api/crawls/:id では引ける。台本は 50 本に足りないので、上限の外の行（workbench の「一覧の外」）を
+ * 見るときは、代役を host で起こして `SANDBOX_CRAWLS_PAGE` で小さくする（docs の「開発」の「サンドボックスで開く」。
+ * container-compose 1.2.0 は environment の値を展開しないので、compose からは渡せない）。
+ */
+const asked = Number(process.env.SANDBOX_CRAWLS_PAGE);
+/** 正の整数の時だけ受ける（空・数でない値で一覧を空にしない）。 */
+export const CRAWLS_PAGE = Number.isInteger(asked) && asked > 0 ? asked : 50;
+/**
+ * capture-ledger と同じく、始めた時刻の新しい順で `page` 本を残す。**並びは台本のまま** —— 並べ替えると docs の絵が
+ * 替わる（capture-ledger の並びとは前から違う）。残すかどうかだけを capture-ledger に合わせる。
+ */
+export const crawlsPage = (rows, page = CRAWLS_PAGE) => {
+  const keep = new Set(
+    [...rows]
+      .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))
+      .slice(0, page)
+      .map((row) => row.crawlId),
+  );
+  return rows.filter((row) => keep.has(row.crawlId));
+};
+
+/**
  * /api/crawls の 1 行。欄は capture-ledger の src/api/crawls.ts (v0.107.0) と同じ。v0.57.4 の欄に、合本の欄
  * (`replayBundle`) が v0.73.0 から、`pagesFailed` が v0.77.0 から (capture-ledger と同じく、ページの行の failed を数える)、
  * 定期の回の欄が v0.87.0 から、`dispatch` が v0.98.0 から、`linksRecorded` が v0.99.0 から、始めた者の名前と出どころ
@@ -240,9 +263,17 @@ const valuesIn = (c) => ({
   recordRandom: c.recordRandom === true,
 });
 
+/** 1 本の答えに、一覧の行と同じ「走った回の欄」を足す (capture-ledger の 1 本の答えも持つ)。 */
+export const RUN_FIELDS = Object.freeze(["startedAt", "lastJob", "schedule", "scheduledFor", "scheduleMissed"]);
+export const withRunFields = (detail, row) => ({
+  ...detail,
+  ...Object.fromEntries(RUN_FIELDS.map((name) => [name, row[name]])),
+});
+
 /**
- * /api/crawls/:id。capture-ledger の答え (v0.107.0) のうち、workbench が読まない `perHostDelayMs`・`hostParallelism`・
- * `startedAt`・`lastJob`・`schedule`・`scheduledFor`・`scheduleMissed` は返さない (ほかの欄は capture-ledger と同じ名前)。
+ * /api/crawls/:id。capture-ledger の答え (v0.107.0) のうち、workbench が読まない `perHostDelayMs`・`hostParallelism` は
+ * 返さない (ほかの欄は capture-ledger と同じ名前)。走った回の欄 (`startedAt`・`lastJob`・`schedule`・`scheduledFor`・
+ * `scheduleMissed`) は一覧の行と同じ値で、エンドポイントが `withRunFields` で足す (workbench の「一覧の外」の行が読む)。
  * 始めた主体と組織・名前と出どころ・「いま撮る」を押した者は、v0.112.0・v0.113.0 から 1 本の答えにも在る (CAPTURE-450)。受けた行は走らせたものと値を行に
  * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ capture-ledger の既定。
  * `replayBundle` は一覧の行と同じ形 (capture-ledger も同じ関数で組む)。
@@ -2058,7 +2089,7 @@ const handle = (req, res, raw) => {
   if (req.method === "GET" && pathname === "/api/crawls") {
     const now = Date.now();
     send(res, 200, {
-      crawls: [...submitted.map((row) => submittedRow(row, now)), ...s.crawls.map((c) => crawlRow(c, STARTED))],
+      crawls: crawlsPage([...submitted.map((row) => submittedRow(row, now)), ...s.crawls.map((c) => crawlRow(c, STARTED))]),
     });
     return;
   }
@@ -2184,14 +2215,18 @@ const handle = (req, res, raw) => {
       mine === undefined
         ? (() => {
             const c = s.crawls.find((x) => x.crawlId === one[1]);
-            return c === undefined ? undefined : crawlDetail(scenarioAt(c, STARTED));
+            return c === undefined ? undefined : withRunFields(crawlDetail(scenarioAt(c, STARTED)), crawlRow(c, STARTED));
           })()
-        : crawlDetail(submittedRow(mine, Date.now()), mine.scripts, mine.rules, {
-            variables: mine.variables,
-            userAgent: mine.userAgent,
-            recordRandom: mine.recordRandom,
-            secrets: mine.secrets,
-          });
+        : (() => {
+            const row = submittedRow(mine, Date.now());
+            const detail = crawlDetail(row, mine.scripts, mine.rules, {
+              variables: mine.variables,
+              userAgent: mine.userAgent,
+              recordRandom: mine.recordRandom,
+              secrets: mine.secrets,
+            });
+            return withRunFields(detail, row);
+          })();
     send(res, detail === undefined ? 404 : 200, detail ?? { error: "not found" });
     return;
   }
