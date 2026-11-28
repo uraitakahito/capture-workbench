@@ -71,13 +71,30 @@ authorization code with PKCE (Proof Key for Code Exchange). The code is in `src/
   once: a callback another page made, one that took too long, or a second use is a 400. It turns the
   code into tokens at the IdP's token endpoint, keeps them in a session in memory, sets the cookie
   `workbench_session` (HttpOnly, SameSite=Lax) and redirects to the remembered view (`/` without one).
-- `GET /logout` drops the session and the cookie, and redirects to `/`.
+- `GET /logout` drops the session and the cookie, then redirects to **the IdP's logout endpoint**
+  (`…/logout?client_id=…&logout_uri=http://127.0.0.1:<WORKBENCH_PORT>/login`). The IdP drops its own
+  sign-in (the browser's cookie) and sends you back to `/login`, so you land on the sign-in form and
+  can sign in as another user. Dropping only the workbench's session leaves the IdP's sign-in in
+  place, and you come straight back as the same user without a form. The IdP's
+  logout endpoint is not in the discovery, so it is derived from the authorization endpoint
+  (`…/oauth2/authorize`, the Cognito shape). Without a sign-in configuration, when the discovery
+  cannot be reached, or when the shape differs, it redirects to `/` as before and writes the reason
+  to standard error. Signing out of the IdP does not revoke the tokens already issued (they stay
+  valid until they expire; the workbench drops them from memory and never gave them to the browser).
 - Without a session (when the sign-in is configured), a view's path redirects to `/login?back=<that
   path>`, and `/` answers a small page that turns an old `/#…` address into a path and goes to
   `/login?back=…` (the server cannot see the part after `#`).
 
-The callback is `http://127.0.0.1:<WORKBENCH_PORT>/callback`, and it must match what the IdP has
-registered exactly. These routes are GET, because the way back from the IdP is a GET redirect, so
+The callback is `http://127.0.0.1:<WORKBENCH_PORT>/callback` and the sign-out URL is
+`http://127.0.0.1:<WORKBENCH_PORT>/login`; both must match what the IdP's app client has registered
+exactly (even an added query is refused). Locally, capture-ledger's `pnpm run idp:bootstrap`
+registers them on Floci (`dev:up` runs it every time). **On production Cognito, register
+`http://127.0.0.1:<WORKBENCH_PORT>/login` as an allowed sign-out URL of the app client.** Without it,
+**Sign out** stops at the IdP with `logout_uri is not registered for this client` (400) — if you see
+that locally, run `pnpm run idp:bootstrap` in capture-ledger again (it does not recreate the pool,
+and you stay signed in).
+
+These routes are GET, because the way back from the IdP is a GET redirect, so
 the checks of the routes that write (`Origin`, JSON) do not apply; the `state` and PKCE refuse a way
 back that another page made.
 
