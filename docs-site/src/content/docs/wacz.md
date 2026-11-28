@@ -49,7 +49,7 @@ the daemon (the routes are listed in [Routes](/routes/)).
 ## The validation view
 
 **Validate** (検証) on an archive row enters the validation view for that archive. The URL is
-`#check/<archiveId>`, or `#check/<archiveId>/browserhive` for the other profile, so a result can be
+`/check/<archiveId>`, or `/check/<archiveId>/browserhive` for the other profile, so a result can be
 handed to someone as a link. Entering the view validates once; going back to the same archive and
 profile shows the answer already fetched, and **Validate again** (検証し直す) fetches it again.
 
@@ -110,9 +110,9 @@ checkout. To restart it, run `pnpm run dev:up --from validator` in capture-ledge
 
 ## The WACZ view
 
-**Open** on an archive row enters the view for that archive. The URL is `#wacz/<archiveId>`, and
+**Open** on an archive row enters the view for that archive. The URL is `/archive/<archiveId>`, and
 the selected entry and line are part of it too, so you can point at
-`#wacz/<archiveId>/indexes%2Findex.cdxj:66`.
+`/archive/<archiveId>/indexes%2Findex.cdxj:66`.
 
 Opening it runs a validation (with the `spec` profile), and the tree on the left is built from the
 report's entries. The bar at the top gives the verdict, counted in rules as in the validation view,

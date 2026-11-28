@@ -22,6 +22,7 @@ not.
 | `GET /api/archives/:id/screenshots/:stage` | passed through to the ledger (a stage screenshot; passes as WebP bytes, not as text) |
 | `/api/*` (the rest) | passed through to the ledger (GET only) |
 | `/wacz/:id/…` | signed by the ledger, then answered by the daemon |
+| `GET` a view's path (`/crawls`, `/crawls/<id>`, `/trace/…`, `/archive/…`, … — the first word is one of `SCREENS` in `public/paths.js`) | `public/index.html`, which opens the view from the path (when the sign-in is configured and there is no session, a redirect to `/login?back=<path>`) |
 | anything else | the files in `public/` |
 
 The routing is in `src/server.mjs`; parsing and rewriting the `/wacz/` routes is in

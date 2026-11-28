@@ -48,7 +48,7 @@ capture-ledger に署名をもらい、その URL を daemon に渡します（�
 ## 検証の画面
 
 アーカイブの行の「検証」を押すと、その 1 本の検証の画面に入ります。
-URL は `#check/<archiveId>`（もう 1 つの profile では `#check/<archiveId>/browserhive`）なので、結果をリンクで人に渡せます。
+URL は `/check/<archiveId>`（もう 1 つの profile では `/check/<archiveId>/browserhive`）なので、結果をリンクで人に渡せます。
 画面に入ると 1 度検証します。同じアーカイブと profile に戻ったときは、取った答えをそのまま出し、「検証し直す」で取り直します。
 
 - **結論は rule で数えます。**
@@ -99,7 +99,7 @@ wacz-validator を出しても、動いている daemon は起こしたときの
 ## WACZ の画面
 
 アーカイブの行の「開く」で、その 1 本の画面に入ります。
-URL は `#wacz/<archiveId>` で、選んだ entry と行まで載ります（`#wacz/<archiveId>/indexes%2Findex.cdxj:66` のように指せます）。
+URL は `/archive/<archiveId>` で、選んだ entry と行まで載ります（`/archive/<archiveId>/indexes%2Findex.cdxj:66` のように指せます）。
 
 開くと検証（`spec` の profile）が走り、左の木は報告の entry の一覧から組みます。
 上の帯には、検証の画面と同じく rule で数えた結論と、検証の画面へのリンク（「検証の画面で見る」）が出ます。

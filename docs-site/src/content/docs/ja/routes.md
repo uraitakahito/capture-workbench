@@ -21,6 +21,7 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 | `GET /api/archives/:id/screenshots/:stage` | capture-ledger へ素通し（節目のスクリーンショット。字でなく WebP のバイト列のまま通す） |
 | `/api/*`（ほか） | capture-ledger へ素通し（GET だけ） |
 | `/wacz/:id/…` | capture-ledger に署名をもらい、daemon へ |
+| 画面の path への `GET`（`/crawls`・`/crawls/<id>`・`/trace/…`・`/archive/…` など。頭の語は `public/paths.js` の `SCREENS`） | `public/index.html`。画面が path から開く（サインインの設定が在ってセッションが無ければ、`/login?back=<path>` へ回す） |
 | それ以外 | `public/` のファイル |
 
 エンドポイント（`POST /api/crawls` のような、HTTP の method と path の組）の振り分けは `src/server.mjs` に、`/wacz/` のエンドポイントの読みと組み替えは `src/wacz.mjs` に在ります。
