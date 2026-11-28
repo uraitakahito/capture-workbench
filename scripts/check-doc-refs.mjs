@@ -212,6 +212,8 @@ const SHOTS = resolve(ROOT, SHOTS_REL);
 // 2026-11-28 に全部の枠を 403 → 406 KB（CAPTURE-450 でクロールの一覧の「始めた人」に名前・app client・申告の席の印を足し、
 // 開いた行に「始めた人:」の 1 行を足したので、crawls が 23.0 → 26.2 KB・crawl-detail が 34.5 → 36.8 KB、全部で 405.7 KB。
 // 前の 2 回と同じ「増えた分を KB に切り上げて上げる・1 枚の枠は上げない」に従った。2 枚とも 1 枚の枠の中）。
+// 上の「全部で …」と 1 枚ごとの KB は、どれもその回の値で、後の撮り直しで変わる（枠を上げない撮り直しは、ここに書かない）。
+// 今の合計は、site:check が最後の行（「絵 N 枚で … KB」）に出す。
 const BUDGET = { one: 39 * 1024, all: 406 * 1024 };
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const manifest = JSON.parse(readFileSync(join(SHOTS, "shots.json"), "utf8"));
