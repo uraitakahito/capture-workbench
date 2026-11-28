@@ -74,7 +74,8 @@
  * - **ページの JS が受け取った乱数を残すことは「乱数を記録する」、残した物は「乱数の記録」と書く。** 2026-11 に（t-azdk）、
  *   「乱数を控える」「乱数の控え」から替えた（画面の字・docs・コメント・試験の名前）。「控える」はふつう「やめておく」と
  *   読まれ、新しいクロールの欄が乱数を使わない設定に見えた（英語はもとから Record random values）。「記録」だけでは
- *   WARC の記録・通信の記録と取り違えるので、名詞は「乱数の記録」と修飾を付ける。乱数と並ぶ形だけを見るので、
+ *   WARC の記録・通信の記録と取り違えるので、名詞は「乱数の記録」と修飾を付ける。乱数と並ぶ形と、乱数の字の無い
+ *   よく戻る形（控えるスクリプト・控えた取り込み・控えなかった取り込み）だけを見るので、
  *   ほかの意味の「控え」（docs の絵の控え・控えめ）は見ない。browserhive・capture-ledger・capture-scheduler も見張っている
  *
  * 書き手（人と Claude）は長くこの形で書いてきたので、見張らなければ戻ってくる。
@@ -169,7 +170,7 @@ const OLD_INLINE =
  */
 const BH_ARCHIVE = /BrowserHive\s*(?:の|'s)\s*WA(?:RC|CZ)(?!\s*Profile)/u;
 /** 乱数を残す意味の「控え」（t-azdk）。乱数と並ぶ形だけで、ほかの意味の「控え」は見ない。 */
-const OLD_RANDOM = /乱数\s*[をのは]\s*控え|控えた\s*乱数/u;
+const OLD_RANDOM = /乱数\s*[をのは]\s*控え|控えた\s*乱数|控える\s*スクリプト|控え(?:た|なかった)\s*取り込み/u;
 /** replayweb-player の旧い名前の形（replay と、2026-11 の CAPTURE-465 までの replayweb-server・public/replayweb.js）。語の replay は禁じない（上の注記）。 */
 const OLD_REPLAY_NAMES =
   /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b|\breplayweb[-_]server\b|REPLAYWEB_SERVER|\breplaywebServer|\bpublic\/replayweb\.js\b|\btest\/replayweb\.test\.mjs\b/u;
@@ -287,7 +288,7 @@ const RULES = [
     say:
       "乱数の「控え」が残っています。ページの JS が受け取った乱数を残すことは「乱数を記録する」（記録した・記録しなかった・" +
       "記録できなかった）、残した物は「乱数の記録」と書きます（t-azdk）。",
-    hits: ["乱数を控える", "乱数の控え 3 回", "乱数は控えていない", "控えた乱数"],
+    hits: ["乱数を控える", "乱数の控え 3 回", "乱数は控えていない", "控えた乱数", "先に控えるスクリプト", "控えた取り込み", "控えなかった取り込み"],
     misses: ["乱数を記録する", "乱数の記録", "shots.json の控え", "控えめな行"],
   },
 ];
