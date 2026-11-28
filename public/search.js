@@ -13,23 +13,15 @@ import { replaywebHref, replaywebSourceHref, replaywebTs } from "./players.js";
 /** 検索のエンドポイント。語はそのまま `q` に（capture-ledger は空を 400 で断る）。 */
 export const searchPath = (words) => `/api/search?${new URLSearchParams({ q: words })}`;
 
-/** 検索の画面の URL。`#search/<語>`（語が空なら `#search`）。 */
-export const searchHash = (words) => (words === "" ? "#search" : `#search/${encodeURIComponent(words)}`);
+/** 検索の画面の URL。`/search?q=<語>`（語が空なら `/search`）。語は path に置かない —— 語が `.`・`..` の時に URL の読みが畳む。 */
+export const searchHref = (words) => (words === "" ? "/search" : `/search?${new URLSearchParams({ q: words })}`);
 
 /**
- * `#search` と `#search/<語>` を読む。検索の画面でなければ undefined、語が無ければ空文字。
- * 符号が壊れていても画面は開き、語は空にする（打ち直せばよい）。
+ * `/search` と `/search?q=<語>` を読む（`pathname` と `search` は `location` の 2 つ）。検索の画面でなければ undefined、
+ * 語が無ければ空文字。ほかの query（`?lang=`）は見ない。
  */
-export const parseSearchHash = (hash) => {
-  if (hash === "#search") return "";
-  const m = /^#search\/(.*)$/s.exec(hash);
-  if (m === null) return undefined;
-  try {
-    return decodeURIComponent(m[1]).trim();
-  } catch {
-    return "";
-  }
-};
+export const parseSearchHref = (pathname, search = "") =>
+  pathname === "/search" ? (new URLSearchParams(search).get("q") ?? "").trim() : undefined;
 
 /** 答えをそろえる。`hits` は配列、`total` は数（capture-ledger は見せてよい当たりの数を返す。無ければ行の数）。 */
 export const answerOf = (body) => {

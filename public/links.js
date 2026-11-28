@@ -1,5 +1,5 @@
 /**
- * クロールごとの「リンクの構成」の画面（`#links/<クロールの id>[/<ページの id>]`・CAPTURE-246）。capture-ledger の
+ * クロールごとの「リンクの構成」の画面（`/links/<クロールの id>[/<ページの id>]`・CAPTURE-246）。capture-ledger の
  * `GET /api/crawls/:id/links` と `…/links/:page` の答えを、図に描く形にするだけで、数え直しも判断もしない
  * （どのリンクがどうなったかを決めて残したのは capture-ledger）。ここが決めるのは、URL の形・字・色の種類・
  * **図の配置**と、畳み方。DOM には触らない —— ブラウザは `/links.js` として読み、試験は `node --test` から import する。
@@ -8,17 +8,17 @@
  */
 import { t } from "./i18n.js";
 
-const LINKS_HASH = /^#links\/([0-9a-f-]{36})(?:\/([0-9]{1,18}))?$/;
+const LINKS_HREF = /^\/links\/([0-9a-f-]{36})(?:\/([0-9]{1,18}))?$/;
 
-/** `#links/<クロールの id>[/<ページの id>]` を読む。違う形なら undefined。 */
-export const parseLinksHash = (hash) => {
-  const m = LINKS_HASH.exec(String(hash));
+/** `/links/<クロールの id>[/<ページの id>]` を読む。違う形なら undefined。 */
+export const parseLinksHref = (hash) => {
+  const m = LINKS_HREF.exec(String(hash));
   return m === null ? undefined : { crawlId: m[1], pageId: m[2] };
 };
 
-/** `parseLinksHash` の逆。ページが無ければクロールだけ。 */
-export const linksHash = (crawlId, pageId) =>
-  pageId === undefined || pageId === null ? `#links/${crawlId}` : `#links/${crawlId}/${pageId}`;
+/** `parseLinksHref` の逆。ページが無ければクロールだけ。 */
+export const linksHref = (crawlId, pageId) =>
+  pageId === undefined || pageId === null ? `/links/${crawlId}` : `/links/${crawlId}/${pageId}`;
 
 /** クロール 1 本のリンクの構成のエンドポイント。 */
 export const linksPath = (crawlId) => `/api/crawls/${encodeURIComponent(crawlId)}/links`;

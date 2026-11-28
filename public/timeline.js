@@ -1,5 +1,5 @@
 /**
- * 取り込み 1 回の「経緯」の画面（`#trace/<クロールの id>/<ページの id>`・CAPTURE-270）。capture-ledger の
+ * 取り込み 1 回の「経緯」の画面（`/trace/<クロールの id>/<ページの id>`・CAPTURE-270）。capture-ledger の
  * `GET /api/crawls/:id/pages/:page/trace` の答えと、WACZ の中の WARC のレコードの一覧（`/wacz/<archive の id>/records`）
  * を、1 本の時間軸に並べる形にするだけで、数え直しも判断もしない。DOM には触らない —— ブラウザは `/timeline.js`
  * として読み、試験は `node --test` から import する。
@@ -36,16 +36,16 @@
  */
 import { errorText, t } from "./i18n.js";
 
-const TRACE_HASH = /^#trace\/([0-9a-f-]{36})\/([0-9]{1,18})$/;
+const TRACE_HREF = /^\/trace\/([0-9a-f-]{36})\/([0-9]{1,18})$/;
 
-/** `#trace/<クロールの id>/<ページの id>` を読む。違う形なら undefined。 */
-export const parseTraceHash = (hash) => {
-  const m = TRACE_HASH.exec(String(hash));
+/** `/trace/<クロールの id>/<ページの id>` を読む。違う形なら undefined。 */
+export const parseTraceHref = (hash) => {
+  const m = TRACE_HREF.exec(String(hash));
   return m === null ? undefined : { crawlId: m[1], pageId: m[2] };
 };
 
-/** `parseTraceHash` の逆。 */
-export const traceHash = (crawlId, pageId) => `#trace/${crawlId}/${pageId}`;
+/** `parseTraceHref` の逆。 */
+export const traceHref = (crawlId, pageId) => `/trace/${crawlId}/${pageId}`;
 
 /** 取り込み 1 回の経緯のエンドポイント（capture-ledger）。 */
 export const tracePath = (crawlId, pageId) =>

@@ -5,12 +5,12 @@ import {
   changeBandLines,
   changeOf,
   changesError,
-  changesHash,
+  changesHref,
   hunkLines,
   japaneseNote,
   neighborsOf,
   pageClaudeLine,
-  parseChangesHash,
+  parseChangesHref,
   pickPage,
   quoteLineOf,
   runTimeText,
@@ -35,23 +35,23 @@ const PAGE = "22222222-2222-4222-8222-222222222222";
 const change = (over) => ({ state: "summarized", pagesCompared: 5, pagesChanged: 3, significance: "minor", headline: "h", ...over });
 
 describe("前回からの変化（CAPTURE-167）", () => {
-  it("hash は #changes・#changes/<回>・#changes/<回>/<今回の WACZ の id> だけ", () => {
-    assert.deepEqual(parseChangesHash("#changes"), { crawlId: undefined, pageId: undefined });
-    assert.deepEqual(parseChangesHash(`#changes/${ID}`), { crawlId: ID, pageId: undefined });
-    assert.deepEqual(parseChangesHash(`#changes/${ID}/${PAGE}`), { crawlId: ID, pageId: PAGE });
-    assert.equal(parseChangesHash("#changes/nope"), undefined);
-    assert.equal(parseChangesHash(`#changes/${ID}/nope`), undefined);
-    assert.equal(parseChangesHash(`#changes/${ID}/${PAGE.slice(1)}`), undefined);
-    assert.equal(parseChangesHash(`#changes/${ID}/${PAGE}/x`), undefined);
-    assert.equal(parseChangesHash(`#changes/${"-".repeat(36)}`), undefined);
-    assert.equal(parseChangesHash("#crawls"), undefined);
+  it("path は /changes・/changes/<回>・/changes/<回>/<今回の WACZ の id> だけ", () => {
+    assert.deepEqual(parseChangesHref("/changes"), { crawlId: undefined, pageId: undefined });
+    assert.deepEqual(parseChangesHref(`/changes/${ID}`), { crawlId: ID, pageId: undefined });
+    assert.deepEqual(parseChangesHref(`/changes/${ID}/${PAGE}`), { crawlId: ID, pageId: PAGE });
+    assert.equal(parseChangesHref("/changes/nope"), undefined);
+    assert.equal(parseChangesHref(`/changes/${ID}/nope`), undefined);
+    assert.equal(parseChangesHref(`/changes/${ID}/${PAGE.slice(1)}`), undefined);
+    assert.equal(parseChangesHref(`/changes/${ID}/${PAGE}/x`), undefined);
+    assert.equal(parseChangesHref(`/changes/${"-".repeat(36)}`), undefined);
+    assert.equal(parseChangesHref("/crawls"), undefined);
   });
 
   it("hash は往復する", () => {
     for (const [crawlId, pageId] of [[ID, PAGE], [ID, undefined]]) {
-      assert.deepEqual(parseChangesHash(changesHash(crawlId, pageId)), { crawlId, pageId });
+      assert.deepEqual(parseChangesHref(changesHref(crawlId, pageId)), { crawlId, pageId });
     }
-    assert.equal(changesHash(ID, null), `#changes/${ID}`);
+    assert.equal(changesHref(ID, null), `/changes/${ID}`);
   });
 
   it("回の変化の字と色。無い・古い capture-ledger は「—」", () => {

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { isBackPath, isScreenPath, loginHref, MAX_PATH, pathFromHash, SCREENS } from "../public/paths.js";
+import { isBackPath, isScreenPath, keepLang, loginHref, MAX_PATH, pathFromHash, SCREENS, screenTarget } from "../public/paths.js";
 
 const CRAWL = "5b0c0003-6a1e-4000-8000-000000000003";
 
@@ -117,4 +117,32 @@ test("戻り先は画面の path で MAX_PATH 字まで。画面の見分けに�
   assert.equal(edge.length, MAX_PATH);
   assert.equal(isBackPath(edge), true);
   assert.equal(isBackPath("/logout"), false);
+});
+
+test("押した link のうち、画面の中の行き先だけを拾う（ほかはブラウザに任せる）", () => {
+  const origin = "http://127.0.0.1:7081";
+  assert.equal(screenTarget("/schedules", origin), "/schedules");
+  assert.equal(screenTarget(`${origin}/trace/${CRAWL}/1301`, origin), `/trace/${CRAWL}/1301`);
+  assert.equal(screenTarget("/search?q=a%20b", origin), "/search?q=a%20b");
+  for (const href of [
+    "/logout",
+    "/api/crawls",
+    "/wacz/a1/record/body?offset=1&length=2",
+    "/login",
+    "http://127.0.0.1:9000/crawls",
+    "https://replayweb.test/?source=x",
+    "/crawls#x",
+    "#crawls",
+    "/app.js",
+  ]) {
+    assert.equal(screenTarget(href, origin), undefined, href);
+  }
+});
+
+test("行き先に、今の URL の ?lang= を運ぶ（ほかの query は運ばない）", () => {
+  assert.equal(keepLang("/crawls", ""), "/crawls");
+  assert.equal(keepLang("/crawls", "?from=ai"), "/crawls");
+  assert.equal(keepLang("/crawls", "?lang=en"), "/crawls?lang=en");
+  assert.equal(keepLang("/search?q=a", "?lang=en&q=b"), "/search?q=a&lang=en");
+  assert.equal(keepLang("/search?q=%E6%97%A5", "?lang=ja"), "/search?q=%E6%97%A5&lang=ja");
 });

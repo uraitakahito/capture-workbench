@@ -14,13 +14,13 @@ import {
   isWarc,
   kindCounts,
   lineLabel,
-  parseWaczHash,
+  parseWaczHref,
   recordCells,
   recordKind,
   recordOpener,
   rowsOfKind,
   typeName,
-  waczHash,
+  waczHref,
   warcinfoNote,
   warcinfoOf,
   warcinfoTag,
@@ -297,11 +297,11 @@ test("索引の行の fields から、開くレコードの位置を取る", () 
 });
 
 test("画面の URL は行まで指せて、読み戻せる", () => {
-  const hash = waczHash("3a34dd38-1f05", "indexes/index.cdxj", 66);
-  assert.equal(hash, "#wacz/3a34dd38-1f05/indexes%2Findex.cdxj:66");
-  assert.deepEqual(parseWaczHash(hash), { archiveId: "3a34dd38-1f05", path: "indexes/index.cdxj", n: 66 });
-  assert.deepEqual(parseWaczHash("#wacz/abc"), { archiveId: "abc", path: undefined, n: undefined });
-  assert.equal(parseWaczHash("#archives"), undefined);
+  const hash = waczHref("3a34dd38-1f05", "indexes/index.cdxj", 66);
+  assert.equal(hash, "/archive/3a34dd38-1f05/indexes%2Findex.cdxj:66");
+  assert.deepEqual(parseWaczHref(hash), { archiveId: "3a34dd38-1f05", path: "indexes/index.cdxj", n: 66 });
+  assert.deepEqual(parseWaczHref("/archive/abc"), { archiveId: "abc", path: undefined, n: undefined });
+  assert.equal(parseWaczHref("/archives"), undefined);
   assert.equal(isWarc("archive/data.warc.gz"), true);
   assert.equal(isWarc("indexes/index.cdxj"), false);
 });

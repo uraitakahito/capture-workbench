@@ -104,7 +104,7 @@ const validateVia = async (page, file) => {
   }, file);
   await page.waitForFunction(() => document.querySelector("#check-body .check-band") !== null);
   await page.evaluate(() => {
-    location.hash = "archives";
+    document.querySelector('#tabs button[data-face="archives"]').click();
   });
   await page.waitForFunction(() => !document.getElementById("face-archives").hidden);
 };
@@ -149,7 +149,7 @@ const writeStartWhole = async (page) => {
 const SHOTS = [
   {
     name: "tabs",
-    hash: "#start",
+    path: "/start",
     // タブが増えて、題と並べると本文の幅を超えた。タブだけを撮る。タブ「変化」（CAPTURE-167）でタブだけでも本文の幅を超えたので、
     // 表と同じく縮めて載せる（字は 1 割ほど縮むだけで読める）
     box: "#tabs",
@@ -159,7 +159,7 @@ const SHOTS = [
   },
   {
     name: "crawls",
-    hash: "#crawls",
+    path: "/crawls",
     box: "#face-crawls table",
     // 起点の欄が 2 行で行が高い（CAPTURE-404）。11 行を全部写すと絵の予算を超えるので、8 行（見出し 36.6 ＋ 59.8 × 7 ＋ 41.4）で切る。
     // 走行中・打ち切り・失敗・完走の行と、番号の丸の 2 つは、この中に入る
@@ -183,7 +183,7 @@ const SHOTS = [
   },
   {
     name: "schedules",
-    hash: "#schedules",
+    path: "/schedules",
     // 帯と、最初の予定（失敗が並ぶ）。帯は全部の画面に出るので、絵はここの 1 枚に任せる
     box: "#schedule-band, #schedules article:first-child",
     wide: true,
@@ -195,7 +195,7 @@ const SHOTS = [
     // 前回からの変化（CAPTURE-167・目次と 1 ページは CAPTURE-236）。開いた回（台本の「毎時の確認」の直近の回）。左に目次、
     // 右に既定のページ（目次の先頭）の差分・Claude の 1 行・引用・前と今の再生の link。回を開くと一覧の表は隠れる
     name: "changes",
-    hash: "#changes/5c0d0006-6a1e-4000-8000-000000000006",
+    path: "/changes/5c0d0006-6a1e-4000-8000-000000000006",
     box: "#change-detail",
     // 目次と 1 ページの 2 段は COLUMN より広い。本文に縮めて載せる。右は差分の行の帯だけなので 840 で切る
     // （切らないと 956px で 38.6 KB になった。1 枚の枠は `scripts/check-doc-refs.mjs` の `BUDGET.one`）
@@ -210,7 +210,7 @@ const SHOTS = [
     // URL の履歴（CAPTURE-462）。同じ URL の取り込みの表（前と今の丸・1 つ前から・撮り方）と、選んだ 2 本の差分と
     // Claude の要約。開いた直後は、いちばん新しい比べられる行と、その 1 つ前が選ばれている
     name: "history",
-    hash: "#history/https%3A%2F%2Fsandbox.test%2Fpricing",
+    path: "/history/https%3A%2F%2Fsandbox.test%2Fpricing",
     box: "#history-detail",
     // 7 欄の表は COLUMN より広い。本文に縮めて載せる（変化の絵と同じ）
     wide: true,
@@ -225,7 +225,7 @@ const SHOTS = [
   },
   {
     name: "crawl-detail",
-    hash: "#crawls",
+    path: "/crawls",
     box: "#crawls tr.detail td",
     // 開いた行は表の幅に伸びる。左の COLUMN を切り、「規則ごと」と Windmill の 1 行まで入れる
     maxWidth: COLUMN,
@@ -256,7 +256,7 @@ const SHOTS = [
     name: "links",
     // リンクの構成（CAPTURE-246）。代役の 5b0c0003（深さ 1・8 ページ）で、ガイドの頁（304）を選んだ所。
     // 数の内訳の帯から図まで。図は列 3 本で COLUMN に収まる（`public/links.js` の SIZE）
-    hash: "#links/5b0c0003-6a1e-4000-8000-000000000003/304",
+    path: "/links/5b0c0003-6a1e-4000-8000-000000000003/304",
     box: "#links-split, .links-frame",
     maxWidth: COLUMN,
     ready: () =>
@@ -272,7 +272,7 @@ const SHOTS = [
   },
   {
     name: "crawl-pages",
-    hash: "#crawls",
+    path: "/crawls",
     box: "#crawls tr.detail .pages",
     // 開いた行の「ページ」の表（台本の 5b0c0009）。時間切れのページのログを開いて写す。表は中身の幅で、COLUMN に収まる
     // （URL の欄は、左に撮った時の絵、右に 2 行の URL。CAPTURE-432。URL が 1 行のままでは約 719px になった）。
@@ -314,7 +314,7 @@ const SHOTS = [
     // 取り込み 1 回の経緯（CAPTURE-270）。代役の 5b0c000b のページ 1301 —— BrowserHive v30.0.0 が capture-fixtures の
     // /charset/ を撮った本物の答え（取り込みの欄・ログ・要求の行）。題の行から要求の並びまで（注記とログは写さない）。
     // 時間軸は窓の幅いっぱいに伸びるので、表と同じく縮めて載せる（狭く切ると、軸の右が欠ける）
-    hash: "#trace/5b0c000b-6a1e-4000-8000-00000000000b/1301",
+    path: "/trace/5b0c000b-6a1e-4000-8000-00000000000b/1301",
     box: "#trace-head, #trace-chart, #trace-requests",
     wide: true,
     ready: () =>
@@ -333,7 +333,7 @@ const SHOTS = [
   },
   {
     name: "start",
-    hash: "#start",
+    path: "/start",
     box: ".start-side",
     until: "#start-go",
     prepare: writeStartWhole,
@@ -359,7 +359,7 @@ const SHOTS = [
   },
   {
     name: "start-js",
-    hash: "#start",
+    path: "/start",
     box: ".start-code",
     maxHeight: 300,
     prepare: writeStart,
@@ -372,7 +372,7 @@ const SHOTS = [
   },
   {
     name: "start-rules",
-    hash: "#start",
+    path: "/start",
     box: ".start-code",
     until: "#start-said",
     prepare: async (page) => {
@@ -406,7 +406,7 @@ const SHOTS = [
   },
   {
     name: "start-read",
-    hash: "#start",
+    path: "/start",
     box: ".start-code",
     snap: "#start-read-lines li",
     maxHeight: 300,
@@ -425,7 +425,7 @@ const SHOTS = [
   },
   {
     name: "archives",
-    hash: "#archives",
+    path: "/archives",
     box: "#face-archives table",
     // 頭の 5 行の下で切る（行の下の端に合わせる）。行は撮った時の絵（60px。CAPTURE-432）で約 69px になり、見出し（約 36px）と
     // 5 行で約 381px。上限はそこに少し足した値で、6 行目は入らない。代役の並びは撮った時刻の新しい順で、頭の 5 行に
@@ -465,7 +465,7 @@ const SHOTS = [
     name: "search",
     // 台本の searchPages を「ランプ」で引く。good.wacz は写しの行（after-behaviors）、datapackage-bad-hash.wacz は
     // 写しの無い取り込みの文書の行が当たり、見えない ghost.wacz は出ない
-    hash: `#search/${encodeURIComponent("ランプ")}`,
+    path: `/search?${new URLSearchParams({ q: "ランプ" })}`,
     box: "#face-search",
     maxWidth: COLUMN,
     ready: () =>
@@ -474,15 +474,15 @@ const SHOTS = [
   },
   {
     name: "scripts",
-    hash: "#scripts/autoscroll",
+    path: "/scripts/autoscroll",
     box: "#reading-list",
     ready: () =>
       document.querySelector("#reading-list a.ritem.on")?.textContent.startsWith("autoscroll") === true &&
-      document.querySelector('#reading-list a.ritem[href="#scripts/types/host.d.ts"]') !== null,
+      document.querySelector('#reading-list a.ritem[href="/scripts/types/host.d.ts"]') !== null,
   },
   {
     name: "script-read",
-    hash: "#scripts/autoscroll",
+    path: "/scripts/autoscroll",
     box: "#face-scripts .vmain",
     snap: "#reading-lines li",
     maxHeight: 300,
@@ -728,7 +728,8 @@ try {
     await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
     await page.emulateTimezone("Asia/Tokyo");
     await page.evaluateOnNewDocument(freeze, NOW);
-    await page.goto(`${BASE}/?lang=ja${shot.hash}`, { waitUntil: "networkidle0" });
+    // 画面の URL（path）に ?lang=ja を足す（検索の画面は ?q= の後ろに）
+    await page.goto(`${BASE}${shot.path}${shot.path.includes("?") ? "&" : "?"}lang=ja`, { waitUntil: "networkidle0" });
     await page.addStyleTag({
       content:
         "*{caret-color:transparent!important;animation:none!important;transition:none!important}" +

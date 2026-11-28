@@ -18,18 +18,18 @@ export const CHANGES_PATH = "/api/changes";
 export const changeDetailPath = (crawlId) => `/api/crawls/${encodeURIComponent(crawlId)}/changes`;
 
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const CHANGES_HASH = new RegExp(`^#changes/(${UUID})(?:/(${UUID}))?$`);
+const CHANGES_HREF = new RegExp(`^/changes/(${UUID})(?:/(${UUID}))?$`);
 
-/** `#changes`・`#changes/<クロールの id>`・`#changes/<クロールの id>/<今回の WACZ の id>`。ほかは undefined。 */
-export const parseChangesHash = (hash) => {
-  if (hash === "#changes") return { crawlId: undefined, pageId: undefined };
-  const m = CHANGES_HASH.exec(String(hash));
+/** `/changes`・`/changes/<クロールの id>`・`/changes/<クロールの id>/<今回の WACZ の id>`。ほかは undefined。 */
+export const parseChangesHref = (hash) => {
+  if (hash === "/changes") return { crawlId: undefined, pageId: undefined };
+  const m = CHANGES_HREF.exec(String(hash));
   return m === null ? undefined : { crawlId: m[1], pageId: m[2] };
 };
 
-/** `parseChangesHash` の逆。ページが無ければ回だけ。 */
-export const changesHash = (crawlId, pageId) =>
-  pageId === undefined || pageId === null ? `#changes/${crawlId}` : `#changes/${crawlId}/${pageId}`;
+/** `parseChangesHref` の逆。ページが無ければ回だけ。 */
+export const changesHref = (crawlId, pageId) =>
+  pageId === undefined || pageId === null ? `/changes/${crawlId}` : `/changes/${crawlId}/${pageId}`;
 
 /** 重さの字。知らない重さは、届いた字のまま。 */
 export const significanceText = (significance) =>

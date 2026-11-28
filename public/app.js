@@ -15,7 +15,7 @@ import {
   DEFAULT_PROFILE,
   PROFILES,
   checkBandOf,
-  checkHash,
+  checkHref,
   checkVerdict,
   countsText,
   flaggedEntries,
@@ -24,7 +24,7 @@ import {
   notRunText,
   opensFirst,
   outcomeMark,
-  parseCheckHash,
+  parseCheckHref,
   ruleGroupsOf,
   ruleIssuesOf,
   verdict,
@@ -64,6 +64,7 @@ import {
   withNocheck,
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
+import { keepLang, loginHref, pathFromHash, screenTarget } from "/paths.js";
 import { ORIGIN_ALL, originChips, startedByLine, whoMarks, whoOf, withOrigin } from "/requester.js";
 import {
   actionAnswer,
@@ -91,12 +92,12 @@ import {
   changeDetailPath,
   changeOf,
   changesError,
-  changesHash,
+  changesHref,
   hunkLines,
   japaneseNote,
   neighborsOf,
   pageClaudeLine,
-  parseChangesHash,
+  parseChangesHref,
   pickPage,
   quoteLineOf,
   runTimeText,
@@ -114,13 +115,13 @@ import {
   boxLabelOf,
   indexOf,
   layoutOf,
-  linksHash,
+  linksHref,
   linksPath,
   linkOutcomeOf,
   originOf,
   pageKind,
   pageLinksPath,
-  parseLinksHash,
+  parseLinksHref,
   splitOf,
 } from "/links.js";
 import {
@@ -139,7 +140,7 @@ import {
   hasTrace,
   locateScreenshots,
   marksOf as traceMarksOf,
-  parseTraceHash,
+  parseTraceHref,
   percentOf,
   randomOf,
   randomText,
@@ -165,7 +166,7 @@ import {
   tallyOf as traceTallyOf,
   ticksOf,
   timingOf,
-  traceHash,
+  traceHref,
   tracePath,
   traceReasonText,
 } from "/timeline.js";
@@ -176,12 +177,12 @@ import {
   differsNotes,
   diffMarkOf,
   historyError,
-  historyHash,
+  historyHref,
   historyPath,
   marksOf as historyMarksOf,
   mayBeBefore,
   originText,
-  parseHistoryHash,
+  parseHistoryHref,
   pickPair,
   reasonText as historyReasonText,
   slashVariantOf,
@@ -208,9 +209,9 @@ import {
   answerOf,
   highlightParts,
   hitReplaywebHref,
-  parseSearchHash,
+  parseSearchHref,
   searchFailure,
-  searchHash,
+  searchHref,
   searchPath,
   stageLabel,
 } from "/search.js";
@@ -241,9 +242,9 @@ import {
   metaOf,
   optionsText,
   parseReading,
-  readingHash,
+  readingHref,
   standingOf,
-  TYPES_HASH,
+  TYPES_HREF,
 } from "/reading.js";
 import {
   bodyLabel,
@@ -256,12 +257,12 @@ import {
   isWarc,
   kindCounts,
   lineLabel,
-  parseWaczHash,
+  parseWaczHref,
   recordCells,
   recordOpener,
   rowsOfKind,
   typeName,
-  waczHash,
+  waczHref,
   warcinfoNote,
   warcinfoOf,
   warcinfoTag,
@@ -299,7 +300,10 @@ let settings = {};
  * workbench を起動し直すとセッションは消えるので、開いたままの画面はここを通る。
  */
 const signInAgain = (res, body) => {
-  if (res.status === 401 && typeof body.login === "string") location.assign(body.login);
+  // 戻り先は今の画面の path（server が state と一緒に覚え、サインインの後に戻す。`src/auth.mjs`）
+  if (res.status === 401 && typeof body.login === "string") {
+    location.assign(body.login === "/login" ? loginHref(here()) : body.login);
+  }
 };
 
 const api = async (path) => {
@@ -420,8 +424,31 @@ const bundleLink = (href, text, crawl) => {
   return a;
 };
 
-/** workbench の中の行き先（hash）。新しいタブで開かない。 */
-const hashCell = (href, text) => {
+// ── 画面の URL（path）────────────────────────────────────────────────
+/** 今の画面の URL（path と query）。 */
+const here = () => location.pathname + location.search;
+
+/**
+ * 画面の URL を替えて開く（`route`）。`replace` なら履歴に積まない。今と同じ URL なら何もしない（hash の頃の
+ * `location.hash = 同じ字` と同じ —— 開き直さない）。
+ */
+const navigate = (href, { replace = false } = {}) => {
+  const to = keepLang(href, location.search);
+  if (to === here()) return;
+  if (replace) history.replaceState(null, "", to);
+  else history.pushState(null, "", to);
+  route();
+};
+
+/** 画面の中の細かい選び（WACZ の行・読む所の行など）を、**route を呼ばずに** URL だけに書く。書いた URL を返す。 */
+const remember = (href) => {
+  const to = keepLang(href, location.search);
+  history.replaceState(null, "", to);
+  return to;
+};
+
+/** workbench の中の行き先（画面の path）。押すと同じタブで開く（document の click が拾う）。 */
+const screenCell = (href, text) => {
   const td = document.createElement("td");
   const a = document.createElement("a");
   a.href = href;
@@ -431,12 +458,12 @@ const hashCell = (href, text) => {
 };
 
 /**
- * URL の履歴（`#history/…`・CAPTURE-462）への link。workbench の中の行き先なので、新しいタブで開かない。取り込みの id が
+ * URL の履歴（`/history/…`・CAPTURE-462）への link。workbench の中の行き先なので、新しいタブで開かない。取り込みの id が
  * 在れば、その取り込みを「今」に選んだ形で開く（無ければ URL だけ）。
  */
 const historyLink = (url, archiveId) => {
   const a = document.createElement("a");
-  a.href = historyHash(url, { afterId: archiveId });
+  a.href = historyHref(url, { afterId: archiveId });
   a.textContent = t("history.link");
   a.className = "history-link";
   return a;
@@ -613,7 +640,7 @@ const ranOf = (one) => {
     } else {
       // 走った版を読む。番号は使い回されうるので sha256 の頭も渡し、読む所が食い違いを言う
       const read = tag("a", t("crawls.detail.read"));
-      read.href = readingHash({ id: script.id, version: script.version, sha: script.sha256.slice(0, 12) });
+      read.href = readingHref({ id: script.id, version: script.version, sha: script.sha256.slice(0, 12) });
       item.append(read);
     }
     list.append(item);
@@ -703,13 +730,13 @@ const valuesOf = (one) => {
   return box;
 };
 
-/** 開いた行から、そのクロールのリンクの構成（`#links/<クロールの id>`・CAPTURE-246）へ。 */
+/** 開いた行から、そのクロールのリンクの構成（`/links/<クロールの id>`・CAPTURE-246）へ。 */
 const linksLineOf = (one) => {
   const line = document.createElement("p");
   line.className = "links-line";
   const toLinks = (text) => {
     const a = tag("a", text);
-    a.href = linksHash(one.crawlId);
+    a.href = linksHref(one.crawlId);
     return a;
   };
   line.append(...tNodes("crawls.detail.linksLine", { a: toLinks }));
@@ -834,11 +861,11 @@ const drawLog = (state) => {
   }
   const lost = droppedOf(dropped);
   if (lost !== undefined) bar.append(tag("span", lost, "state warn"));
-  // BrowserHive WACZ に封じた同じ行（profile を除けば答えの行と同じ）を、WACZ の画面で開く。同じタブで（hash の行き先）
+  // BrowserHive WACZ に封じた同じ行（profile を除けば答えの行と同じ）を、WACZ の画面で開く。同じタブで（画面の path の行き先）
   const sealed = waczLogTarget(answer.page);
   if (sealed !== undefined) {
     const a = document.createElement("a");
-    a.href = waczHash(sealed.archiveId, sealed.path);
+    a.href = waczHref(sealed.archiveId, sealed.path);
     a.textContent = t("crawls.log.openInWacz");
     a.title = t("crawls.log.openInWaczTitle", { path: sealed.path });
     bar.append(a);
@@ -972,7 +999,7 @@ const pagesOf = (one) => {
     // 取り込みの答えが在るページ（撮れた・取れなかった）には、経緯（#trace/…）への link。列は足さない
     if (page.taskId !== null && page.taskId !== undefined) {
       const trace = document.createElement("a");
-      trace.href = traceHash(one.crawlId, page.id);
+      trace.href = traceHref(one.crawlId, page.id);
       trace.textContent = t("crawls.pages.trace");
       trace.className = "trace-link";
       said.append(" ", trace);
@@ -1235,7 +1262,7 @@ const drawCrawls = () => {
     // **2 つの数を 1 つの欄に混ぜない。** リンクの数は撮れた数の分母ではない（`linksOf`）
     row.append(cell(String(crawl.pagesCaptured), "num mono"));
     // 数を押すと、リンクの構成（#links/<クロールの id>）。1 枚も撮れていない行（−）は link にしない
-    const links = crawl.pagesCaptured === 0 ? cell(linksOf(crawl), "num mono") : hashCell(linksHash(crawl.crawlId), linksOf(crawl));
+    const links = crawl.pagesCaptured === 0 ? cell(linksOf(crawl), "num mono") : screenCell(linksHref(crawl.crawlId), linksOf(crawl));
     links.className = "num mono";
     const note = linksNoteOf(crawl);
     if (note !== undefined) {
@@ -1370,7 +1397,7 @@ const drawPicks = (scripts) => {
     // 中身を読む。ふつうに押せば右の列でこの版を開き、修飾キーならスクリプト集の画面を別のタブで（data-read の
     // click）。label の中の <a> は、押してもチェックを替えない —— 押せないチェックの横でも読める
     const read = tag("a", t("start.scripts.read"), "read");
-    read.href = readingHash({ id: script.id, version: script.version });
+    read.href = readingHref({ id: script.id, version: script.version });
     read.dataset.read = "";
     const why = script.sites.length === 0 ? undefined : tag("span", "", "why");
     // 既定に入らないスクリプト。チェックは外れた状態で出るが、付ければ走る（capture-ledger は名指しを通す）
@@ -1590,8 +1617,8 @@ const intoForm = (name, phase, source) => {
   $(phase === "preload" ? "start-inline-preload" : "start-inline-behavior").checked = true;
   $("start-inline-source").value = source;
   $("start-answer").hidden = true; // 前の答えは、戻した TS の物ではない
-  location.hash = "start";
-  // 画面とタブを今出す —— 隠れた箱には focus が効かない（hashchange が画面を出すのは、この後）
+  navigate("/start");
+  // 画面とタブを今出す —— 隠れた箱には focus が効かない（URL が既に /start なら、navigate は何もしない）
   show("start");
   showStartTab("js");
   drawSource();
@@ -1932,7 +1959,7 @@ const startCrawl = async (event) => {
   // 202 は始めた 1 本、409 は塞いでいる 1 本。どちらも印を付けて、すぐ引き直す
   if (typeof answer.crawlId === "string") {
     spotlight = answer.crawlId;
-    location.hash = "crawls"; // 印は一覧の画面で見る
+    navigate("/crawls"); // 印は一覧の画面で見る
     await refresh();
   }
 };
@@ -2028,7 +2055,7 @@ $("start-inline-file").addEventListener("change", () => void readFileIntoForm())
 
 // ── 検証 ───────────────────────────────────────────────────────────
 /**
- * 検証の画面（`#check/<archiveId>[/<profile>]`・CAPTURE-457）。wacz-validator の報告の `rules` を、範囲ごとに束ねた
+ * 検証の画面（`/check/<archiveId>[/<profile>]`・CAPTURE-457）。wacz-validator の報告の `rules` を、範囲ごとに束ねた
  * チェックリストに描く。**文は 1 つも持たない** —— rule の説明・指摘の文・出典は、daemon が解決して返したものを
  * そのまま出す（`renderJson(report, locale)`）。ここで言い換えると、検証器が言い始めたことと workbench がずれていく。
  * 並べ方と印は `public/check.js`。
@@ -2049,7 +2076,7 @@ $("start-inline-file").addEventListener("change", () => void readFileIntoForm())
 const checks = new Map();
 
 /** 画面の状態。`answers` は `<id>\t<profile>` → 答え（報告か Error）。待っている間は `asking` にその鍵。 */
-const checkView = { archiveId: undefined, profile: DEFAULT_PROFILE, hash: undefined, asking: undefined, answers: new Map() };
+const checkView = { archiveId: undefined, profile: DEFAULT_PROFILE, href: undefined, asking: undefined, answers: new Map() };
 const answerKey = (archiveId, profile) => `${archiveId}\t${profile}`;
 
 /** 「仕様どおりか」の欄。結論はここに残る（引き直しをまたいでも）。spec でない答えは、profile の名前を添える。 */
@@ -2060,7 +2087,7 @@ const verdictCellOf = (id) => {
   const v = checkVerdict(seen?.answer);
   if (v === undefined) return td;
   const a = tag("a", v.text, `state ${v.kind}`);
-  a.href = checkHash(id, seen.profile);
+  a.href = checkHref(id, seen.profile);
   td.append(a);
   if (seen.profile !== DEFAULT_PROFILE) td.append(tag("span", ` ${seen.profile}`, "muted mono"));
   return td;
@@ -2089,14 +2116,14 @@ const openCheck = ({ archiveId, profile }) => {
   const archive = archives.find((a) => a.id === archiveId);
   if (archive === undefined) {
     trouble(t("wacz.archiveNotVisible", { id: archiveId }));
-    location.hash = "archives";
+    navigate("/archives", { replace: true });
     return;
   }
   show("check");
   $("tab-check").hidden = false;
   checkView.archiveId = archiveId;
   checkView.profile = profile;
-  checkView.hash = location.hash;
+  checkView.href = here();
   if (checkView.answers.has(answerKey(archiveId, profile))) drawCheck();
   else void validateArchive(archiveId, profile);
 };
@@ -2208,7 +2235,7 @@ const drawCheck = () => {
   switcher.setAttribute("aria-label", t("check.profile.label"));
   for (const p of PROFILES) {
     const b = button(p, () => {
-      location.hash = checkHash(archiveId, p);
+      navigate(checkHref(archiveId, p));
     });
     b.disabled = p === profile;
     if (p === profile) b.setAttribute("aria-current", "true");
@@ -2217,7 +2244,7 @@ const drawCheck = () => {
   const again = button(t("check.again"), () => void validateArchive(archiveId, profile));
   again.disabled = checkView.asking === key;
   const toWacz = tag("a", t("check.openWacz"));
-  toWacz.href = waczHash(archiveId);
+  toWacz.href = waczHref(archiveId);
   head.append(switcher, again, toWacz);
   face.append(head);
 
@@ -2311,8 +2338,8 @@ const drawArchives = () => {
     );
     row.append(verdictCellOf(archive.id));
     // 検証は画面で（CAPTURE-457）。押すと検証の画面へ移り、そこで 1 度検証する
-    row.append(hashCell(checkHash(archive.id), t("archives.row.validate")));
-    row.append(hashCell(waczHash(archive.id), t("archives.row.open")));
+    row.append(screenCell(checkHref(archive.id), t("archives.row.validate")));
+    row.append(screenCell(waczHref(archive.id), t("archives.row.open")));
     const replays = document.createElement("td");
     replays.className = "replays";
     for (const viewer of VIEWERS) {
@@ -2331,8 +2358,8 @@ const drawArchives = () => {
  * 検索の答えない capture-ledger（OpenSearch が落ちている・古い capture-ledger）で、周回ごと落とさないため。
  */
 const searching = {
-  /** 最後に開いた URL。タブ「検索」はここへ戻る（WACZ の画面の wacz.hash と同じ） */
-  hash: undefined,
+  /** 最後に開いた URL。タブ「検索」はここへ戻る（WACZ の画面の wacz.href と同じ） */
+  href: undefined,
   /** 最後に引いた語。同じ語の URL へ戻っただけなら引き直さない */
   words: undefined,
   /** 引いた回の番号。遅れて届いた前の答えで、後の答えを上書きしない */
@@ -2372,7 +2399,7 @@ const drawHits = (hits) => {
     go.className = "hit-go";
     if (known.has(hit.archiveId)) {
       const open = document.createElement("a");
-      open.href = waczHash(hit.archiveId);
+      open.href = waczHref(hit.archiveId);
       open.textContent = t("search.hit.open");
       go.append(open);
     }
@@ -2432,10 +2459,9 @@ const runSearch = async (words) => {
 $("search").onsubmit = (event) => {
   event.preventDefault();
   const words = $("search-words").value.trim();
-  const hash = searchHash(words);
   // 同じ語でも、押したら引き直す（索引は後から増える）。違う語なら URL を替え、route が引く
-  if (location.hash === hash) void runSearch(words);
-  else location.hash = hash;
+  if (parseSearchHref(location.pathname, location.search) === words) void runSearch(words);
+  else navigate(searchHref(words));
 };
 
 // ── スクリプト集（読む所）──────────────────────────────────────────
@@ -2445,8 +2471,8 @@ $("search").onsubmit = (event) => {
  * （入れると、型を取り込んでいない capture-ledger で引き直し全体が落ちる）。
  */
 const reading = {
-  /** 最後に開いた URL。タブ「スクリプト集」はここへ戻る（WACZ の画面の wacz.hash と同じ） */
-  hash: undefined,
+  /** 最後に開いた URL。タブ「スクリプト集」はここへ戻る（WACZ の画面の wacz.href と同じ） */
+  href: undefined,
   /** 開いている物: URL が名指した物（target）と、その中身（doc。版か型） */
   open: undefined,
   /** 1 版の中身。`id@版` で覚え、版の一覧の sha256 と食い違えば取り直す（番号は使い回される） */
@@ -2520,7 +2546,7 @@ const drawReadingList = () => {
   if (key !== reading.listKey) {
     reading.listKey = key;
     const nav = $("reading-list");
-    const item = (s) => listItem(readingHash({ id: s.id }), s.id, `v${String(s.version)}`, s.id, s.sites);
+    const item = (s) => listItem(readingHref({ id: s.id }), s.id, `v${String(s.version)}`, s.id, s.sites);
     const anywhere = reading.latest.filter((s) => s.enabled && s.sites.length === 0);
     const onSites = reading.latest.filter((s) => s.enabled && s.sites.length > 0);
     const off = reading.latest.filter((s) => !s.enabled);
@@ -2540,7 +2566,7 @@ const drawReadingList = () => {
     nav.append(tag("span", t("scripts.list.types"), "grp"));
     if (types === null) nav.append(tag("span", t("scripts.list.typesMissing"), "muted"));
     if (types !== null && types !== undefined) {
-      nav.append(listItem(TYPES_HASH, "host.d.ts", `v${String(types.version)}`, TYPES_KEY));
+      nav.append(listItem(TYPES_HREF, "host.d.ts", `v${String(types.version)}`, TYPES_KEY));
     }
   }
   markListed();
@@ -2597,13 +2623,12 @@ const drawLines = (at, source, line) => {
   if (line !== undefined) markLine(at, line, { scroll: true });
 };
 
-// 押した行を URL に。**hashchange を発火させずに**（WACZ の画面の remember と同じ。発火すると読み直す）
+// 押した行を URL に。**route を呼ばずに**（`remember`。呼ぶと読み直す）
 IN_CATALOG.lines.addEventListener("click", (event) => {
   const li = event.target.closest("li");
   if (li === null || reading.open?.doc === undefined) return;
   const n = Number(li.dataset.n);
-  reading.hash = readingHash({ ...reading.open.target, line: n });
-  history.replaceState(null, "", reading.hash);
+  reading.href = remember(readingHref({ ...reading.open.target, line: n }));
   markLine(IN_CATALOG, n, { scroll: false });
 });
 
@@ -2733,7 +2758,7 @@ const chipsOf = (id, versions, shown, defaultVersion) => {
   box.className = "rchips";
   for (const v of versions) {
     const a = document.createElement("a");
-    a.href = readingHash({ id, version: v.version });
+    a.href = readingHref({ id, version: v.version });
     a.textContent =
       v.version === defaultVersion
         ? t("scripts.chip.default", { version: v.version })
@@ -2832,7 +2857,7 @@ const hostTypes = async (asked) => {
 };
 
 /**
- * 読む所を開く。何も名指さなければ（`#scripts`）一覧の頭を開き、URL をそれに替える（履歴は
+ * 読む所を開く。何も名指さなければ（`/scripts`）一覧の頭を開き、URL をそれに替える（履歴は
  * 増やさない）。型は最初の 1 回だけ訊く（hostTypes）。
  */
 const openReading = async (asked) => {
@@ -2848,9 +2873,9 @@ const openReading = async (asked) => {
       // 一覧の頭（対象サイトの無い物が先に並ぶ）
       const first = reading.latest.find((s) => s.enabled && s.sites.length === 0) ?? reading.latest[0];
       target = first !== undefined ? { id: first.id } : reading.types !== null ? {} : undefined;
-      if (target !== undefined) history.replaceState(null, "", readingHash(target));
+      if (target !== undefined) remember(readingHref(target));
     }
-    reading.hash = location.hash;
+    reading.href = here();
     drawReadingList();
     if (target === undefined) {
       reading.open = undefined;
@@ -2917,8 +2942,8 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
     // その場の TS は対象サイトを持たない。スクリプトの冒頭の見分けが、ほかのサイトでは何もさせない
     ...(doc.sites.length === 0 ? [] : [t("scripts.template.sites", { sites: doc.sites.join(t("common.sep.dot")) })]),
   ].join(t("common.sep.sentence"));
-  location.hash = "start";
-  // 画面とタブを今出す —— 隠れた箱には focus が効かない（hashchange が画面を出すのは、この後）。
+  navigate("/start");
+  // 画面とタブを今出す —— 隠れた箱には focus が効かない（URL が既に /start なら、navigate は何もしない）。
   // 読む窓は閉じない —— タブで元と見比べられる
   show("start");
   showStartTab("js");
@@ -2930,7 +2955,7 @@ const putTemplate = (doc, { replace = false, at = IN_CATALOG } = {}) => {
 // ── 新しいクロールの読む窓 ─────────────────────────────────────────
 /**
  * 新しいクロールの右の列で読んでいる物（スクリプトの 1 版か受け皿の型）。開けるのは 1 つで、別の「読む」で
- * 入れ替わる。target は readingHash の形（版つきのスクリプトの 1 版か、id の無い受け皿の型）。
+ * 入れ替わる。target は readingHref の形（版つきのスクリプトの 1 版か、id の無い受け皿の型）。
  */
 const startRead = { target: undefined, doc: undefined, ticket: 0 };
 const IN_START = placeOf("start-read");
@@ -2965,7 +2990,7 @@ const showStartTab = (tab) => {
 const drawStartReadHead = () => {
   const { target, doc } = startRead;
   const full = tag("a", t("start.read.openInCollection"));
-  full.href = readingHash(target);
+  full.href = readingHref(target);
   if (target.id === undefined) {
     drawReadingHead(IN_START, { facts: metaOf(doc), actions: [copyButton(doc.source), full] });
     return;
@@ -3030,7 +3055,7 @@ $("start").addEventListener("click", (event) => {
   void readInStart(parseReading(a.getAttribute("href")));
 });
 
-// 読む窓の行を押すと印を付ける。URL は #start のまま（行を人に渡すのはスクリプト集の画面で）
+// 読む窓の行を押すと印を付ける。URL は /start のまま（行を人に渡すのはスクリプト集の画面で）
 IN_START.lines.addEventListener("click", (event) => {
   const li = event.target.closest("li");
   if (li !== null) markLine(IN_START, Number(li.dataset.n), { scroll: false });
@@ -3052,13 +3077,12 @@ const wacz = {
   selected: undefined,
   /** 一覧のレコード（読んだ窓の合計）と、種別の絞り。 */
   records: undefined,
-  hash: undefined,
+  href: undefined,
 };
 
-const remember = (path, n) => {
-  wacz.hash = waczHash(wacz.archive.id, path, n);
-  // **hashchange を発火させずに** URL だけ替える（発火すると route が検証をやり直す）。
-  history.replaceState(null, "", wacz.hash);
+// **route を呼ばずに** URL だけ替える（呼ぶと route が検証をやり直す）。
+const rememberWacz = (path, n) => {
+  wacz.href = remember(waczHref(wacz.archive.id, path, n));
 };
 
 const drawWaczBar = (status) => {
@@ -3076,7 +3100,7 @@ const drawWaczBar = (status) => {
   // 結論は検証の画面と同じ言い方（rule で数える）。中身はリンクの先の検証の画面で読む（CAPTURE-457）
   const v = verdict(wacz.report);
   const toCheck = tag("a", t("wacz.bar.openCheck"));
-  toCheck.href = checkHash(archive.id);
+  toCheck.href = checkHref(archive.id);
   bar.append(
     tag("span", v.text, `mono state ${v.kind}`),
     toCheck,
@@ -3143,7 +3167,7 @@ const openWacz = async ({ archiveId, path, n }) => {
   const archive = archives.find((a) => a.id === archiveId);
   if (archive === undefined) {
     trouble(t("wacz.archiveNotVisible", { id: archiveId }));
-    location.hash = "archives";
+    navigate("/archives", { replace: true });
     return;
   }
   show("wacz");
@@ -3154,7 +3178,7 @@ const openWacz = async ({ archiveId, path, n }) => {
     wacz.rows = [];
     wacz.selected = undefined;
     wacz.records = undefined;
-    wacz.hash = waczHash(archiveId);
+    wacz.href = waczHref(archiveId);
     $("wacz-tree").replaceChildren();
     $("wacz-head").replaceChildren();
     $("wacz-content").replaceChildren();
@@ -3177,7 +3201,7 @@ const selectEntry = async (path, n) => {
   if (entry === undefined || !entry.present) return;
   wacz.selected = path;
   wacz.records = undefined;
-  remember(path, n);
+  rememberWacz(path, n);
   drawTree();
   $("wacz-content").replaceChildren();
   try {
@@ -3230,7 +3254,7 @@ const loadLines = async (path, from) => {
 const openLine = async (path, n) => {
   const id = wacz.archive.id;
   for (const li of document.querySelectorAll("#wacz-lines li")) li.classList.toggle("sel", li.dataset.n === String(n));
-  remember(path, n);
+  rememberWacz(path, n);
   const line = await api(`/wacz/${enc(id)}/line?path=${enc(path)}&n=${String(n)}`);
   if (wacz.selected !== path) return;
   const panel = document.createElement("div");
@@ -3487,12 +3511,12 @@ const scheduleRunRow = (run, timeZone) => {
   if (run.change === null || run.change === undefined) {
     row.append(cell(change.text, "muted"));
   } else {
-    const changed = hashCell(`#changes/${run.crawlId}`, change.text);
+    const changed = screenCell(changesHref(run.crawlId), change.text);
     changed.className = `state ${change.kind}`;
     if (run.change.headline) changed.title = run.change.headline;
     row.append(changed);
   }
-  const id = hashCell("#crawls", run.crawlId.slice(0, 8));
+  const id = screenCell("/crawls", run.crawlId.slice(0, 8));
   id.className = "mono";
   id.querySelector("a").onclick = () => {
     spotlight = run.crawlId;
@@ -3575,7 +3599,7 @@ const refreshSchedules = async () => {
 // ── 前回からの変化（CAPTURE-167・目次と 1 ページは CAPTURE-236） ──────────────────────────
 /**
  * いま開いている回。`crawlId` が替わったときだけ回の答えを読み、ページを替えても読み直さない。`detail` が undefined の
- * 間は読んでいる途中（遅れて届いた前の回の答えは捨てる）。一覧（`#changes`）を開くと消える。
+ * 間は読んでいる途中（遅れて届いた前の回の答えは捨てる）。一覧（`/changes`）を開くと消える。
  */
 let changesView = { crawlId: undefined, detail: undefined, toc: [] };
 
@@ -3625,7 +3649,7 @@ const drawChangeList = (runs) => {
     // 並びは始まった順なので、始まった時刻で言う（遅れた回にだけ本来の時刻。CAPTURE-235）
     row.append(cell(runTimeText(run), "mono"));
     const said = changeOf(run);
-    const changed = hashCell(changesHash(run.crawlId), said.text);
+    const changed = screenCell(changesHref(run.crawlId), said.text);
     changed.className = `state ${said.kind}`;
     row.append(changed);
     row.append(cell(run.restricted ? t("changes.list.restricted") : (run.headline ?? ""), "wide"));
@@ -3656,7 +3680,7 @@ const changeStepsOf = (crawlId, toc, row) => {
   const step = (to, text) => {
     if (to === undefined || to.id === null) return tag("span", text, "muted");
     const a = document.createElement("a");
-    a.href = changesHash(crawlId, to.id);
+    a.href = changesHref(crawlId, to.id);
     a.textContent = text;
     return a;
   };
@@ -3762,7 +3786,7 @@ const drawChangePage = (pane, page, { claude } = {}) => {
   pane.append(diff.box);
 };
 
-/** 目次。押すと hash を書く（ブラウザの戻るで 1 つ前のページへ）。 */
+/** 目次。押すと URL を替える（ブラウザの戻るで 1 つ前のページへ）。 */
 const drawChangeToc = (detail, toc, row) => {
   const box = $("change-toc");
   box.replaceChildren();
@@ -3778,7 +3802,7 @@ const drawChangeToc = (detail, toc, row) => {
       li.append(...label, url);
     } else {
       const a = document.createElement("a");
-      a.href = changesHash(detail.crawlId, entry.id);
+      a.href = changesHref(detail.crawlId, entry.id);
       a.append(...label, url);
       if (entry === row) a.setAttribute("aria-current", "page");
       li.append(a);
@@ -3795,7 +3819,7 @@ const drawChangeHead = (detail) => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = "#changes";
+  toList.href = "/changes";
   toList.textContent = t("changes.head.back");
   back.append(toList);
   head.append(back);
@@ -3848,7 +3872,7 @@ const changesAnswer = (text) => {
 };
 
 /**
- * タブ「変化」を開いたときに引く（一覧の引き直しの輪には入れない。毎朝 1 回しか変わらない）。一覧（`#changes`）を
+ * タブ「変化」を開いたときに引く（一覧の引き直しの輪には入れない。毎朝 1 回しか変わらない）。一覧（`/changes`）を
  * 開くと一覧を読み、回を開くと一覧を隠して回の答えを 1 度だけ読む。
  */
 const openChanges = async (crawlId, pageId) => {
@@ -3912,9 +3936,9 @@ const openChanges = async (crawlId, pageId) => {
  */
 let historyView = { url: undefined };
 
-/** 丸を選び直す。hash を書き換えるだけで、描き直しは route が呼ぶ `openHistory` に任せる（戻るで前の比較へ戻れる）。 */
+/** 丸を選び直す。URL を替えるだけで、描き直しは route が呼ぶ `openHistory` に任せる（戻るで前の比較へ戻れる）。 */
 const pickHistory = (pair) => {
-  location.hash = historyHash(historyView.url, pair);
+  navigate(historyHref(historyView.url, pair));
 };
 
 const drawHistoryHead = () => {
@@ -3924,7 +3948,7 @@ const drawHistoryHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = "#changes";
+  toList.href = "/changes";
   toList.textContent = t("changes.head.back");
   back.append(toList);
   const h2 = document.createElement("h2");
@@ -3972,7 +3996,7 @@ const drawHistoryList = () => {
     if (variant !== undefined) {
       const hint = tag("p", t("history.empty.hint"), "muted");
       const other = document.createElement("a");
-      other.href = historyHash(variant);
+      other.href = historyHref(variant);
       other.textContent = variant;
       other.className = "mono";
       hint.append(" ", other);
@@ -4150,7 +4174,7 @@ const loadHistory = (view) => {
     view.error = undefined;
     if (view.rows === undefined && typeof body.url === "string" && body.url !== view.url) {
       view.url = body.url;
-      if (historyView === view) history.replaceState(null, "", historyHash(view.url, view.named));
+      if (historyView === view) remember(historyHref(view.url, view.named));
     }
     view.rows = [...(view.rows ?? []), ...(Array.isArray(body.archives) ? body.archives : [])];
     view.next = typeof body.next === "string" ? body.next : null;
@@ -4282,7 +4306,7 @@ const openHistory = (asked) => {
 $("history-open").onsubmit = (event) => {
   event.preventDefault();
   const url = $("history-url").value.trim();
-  if (url !== "") location.hash = historyHash(url);
+  if (url !== "") navigate(historyHref(url));
 };
 
 // ── リンクの構成（#links/<クロールの id>[/<ページの id>]・CAPTURE-246） ─────────────
@@ -4320,7 +4344,7 @@ const drawLinksHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = "#crawls";
+  toList.href = "/crawls";
   toList.textContent = t("links.back");
   back.append(toList);
   head.append(back);
@@ -4378,10 +4402,10 @@ const drawLinksSplit = () => {
   box.append(bar, legend);
 };
 
-/** 選んだページを替える。URL は hashchange を発火させずに替える（発火すると route が読み直す）。 */
+/** 選んだページを替える。URL は route を呼ばずに替える（呼ぶと route が読み直す）。 */
 const pickLinksPage = (pageId) => {
   linksView.pageId = pageId;
-  history.replaceState(null, "", linksHash(linksView.crawlId, pageId));
+  remember(linksHref(linksView.crawlId, pageId));
   drawLinksGraph();
   drawLinksPanel();
   if (pageId !== undefined) void loadLinksPage(pageId);
@@ -4591,7 +4615,7 @@ const drawLinksPanel = () => {
   const byId = new Map(graph.pages.map((one) => [one.id, one]));
   const pageLink = (id) => {
     const a = document.createElement("a");
-    a.href = linksHash(crawlId, id);
+    a.href = linksHref(crawlId, id);
     a.className = "mono";
     a.textContent = boxLabelOf(byId.get(id)?.url ?? id, origin, 60);
     return a;
@@ -4807,7 +4831,7 @@ const drawTraceHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = "#crawls";
+  toList.href = "/crawls";
   toList.textContent = t("trace.back");
   back.append(toList);
   head.append(back);
@@ -4853,7 +4877,7 @@ const drawTraceHead = () => {
     line.append(t("common.sep.dot"), hasTrace(answer) ? t("trace.facts.noWaczLines") : t("trace.facts.noWacz"));
   } else {
     const open = document.createElement("a");
-    open.href = waczHash(answer.archive.id);
+    open.href = waczHref(answer.archive.id);
     open.textContent = t("trace.facts.openWacz");
     line.append(t("common.sep.dot"), open);
   }
@@ -5687,42 +5711,49 @@ const show = (face) => {
 };
 
 /**
- * URL が画面を決める。`#check/…` は検証の画面、`#wacz/…` は WACZ の画面、`#scripts` と `#scripts/…` はスクリプト集の画面（読む所）、
- * `#search` と `#search/<語>` は検索の画面、`#links/…` と `#trace/…` はクロールの画面の中（リンクの構成・経緯）、
- * `#changes/…` は変化の画面、`#history/…` は変化の画面の中（URL の履歴）、それ以外はほかの画面のどれか。
+ * URL（path）が画面を決める。`/check/…` は検証の画面、`/archive/…` は WACZ の画面、`/scripts` と `/scripts/…` はスクリプト集の画面
+ * （読む所）、`/search` と `/search?q=<語>` は検索の画面、`/links/…` と `/trace/…` はクロールの画面の中（リンクの構成・経緯）、
+ * `/changes/…` は変化の画面、`/history/…` は変化の画面の中（URL の履歴）、それ以外はほかの画面のどれか。形は `public/paths.js`。
+ * 読むのは path だけ（query は検索の語のほか見ない —— `?lang=` が付いていても同じ画面）。
  */
 const route = () => {
-  // リンクの構成（#links/…）と経緯（#trace/…）は、同じ一覧を隠す。**先に両方を閉じ、後から開く** —— 片方から
+  const path = location.pathname;
+  // `/` は一覧の画面。URL も /crawls に置き換える（送る URL を画面と合わせる）
+  if (path === "/" || path === "/index.html") {
+    navigate("/crawls", { replace: true });
+    return;
+  }
+  // リンクの構成（/links/…）と経緯（/trace/…）は、同じ一覧を隠す。**先に両方を閉じ、後から開く** —— 片方から
   // もう片方へ移ったときに、閉じる側が一覧を出し直さないように（開く側は下の枝で、閉じた後に一覧を隠す）
-  if (parseLinksHash(location.hash) === undefined) closeLinks();
-  if (parseTraceHash(location.hash) === undefined) closeTrace();
-  // URL の履歴（#history/…）は、変化の画面の一覧を隠す。ほかへ移ったら閉じる（一覧を出し直すのは openChanges）
-  const past = parseHistoryHash(location.hash);
+  if (parseLinksHref(path) === undefined) closeLinks();
+  if (parseTraceHref(path) === undefined) closeTrace();
+  // URL の履歴（/history/…）は、変化の画面の一覧を隠す。ほかへ移ったら閉じる（一覧を出し直すのは openChanges）
+  const past = parseHistoryHref(path);
   if (past === undefined) closeHistory();
-  const checking = parseCheckHash(location.hash);
+  const checking = parseCheckHref(path);
   if (checking !== undefined) {
     openCheck(checking);
     return;
   }
-  const target = parseWaczHash(location.hash);
+  const target = parseWaczHref(path);
   if (target !== undefined) {
     void openWacz(target);
     return;
   }
-  const words = parseSearchHash(location.hash);
+  const words = parseSearchHref(path, location.search);
   if (words !== undefined) {
     show("search");
-    searching.hash = location.hash;
+    searching.href = here();
     if (words !== searching.words) void runSearch(words);
     return;
   }
-  const links = parseLinksHash(location.hash);
+  const links = parseLinksHref(path);
   if (links !== undefined) {
     show("crawls");
     openLinks(links.crawlId, links.pageId);
     return;
   }
-  const trace = parseTraceHash(location.hash);
+  const trace = parseTraceHref(path);
   if (trace !== undefined) {
     show("crawls");
     openTrace(trace.crawlId, trace.pageId);
@@ -5733,19 +5764,19 @@ const route = () => {
     openHistory(past);
     return;
   }
-  const changes = parseChangesHash(location.hash);
+  const changes = parseChangesHref(path);
   if (changes !== undefined) {
     show("changes");
     void openChanges(changes.crawlId, changes.pageId);
     return;
   }
-  const asked = parseReading(location.hash);
-  if (asked !== undefined || location.hash === "#scripts") {
+  const asked = parseReading(path);
+  if (asked !== undefined || path === "/scripts") {
     show("scripts");
     void openReading(asked);
     return;
   }
-  const face = location.hash.slice(1);
+  const face = path.slice(1);
   show(FACES.includes(face) && !["check", "wacz", "scripts", "search"].includes(face) ? face : "crawls");
 };
 
@@ -5753,19 +5784,52 @@ const route = () => {
 for (const b of document.querySelectorAll("#tabs button")) {
   b.onclick = () => {
     const face = b.dataset.face;
-    location.hash =
+    navigate(
       face === "check"
-        ? (checkView.hash ?? "archives")
+        ? (checkView.href ?? "/archives")
         : face === "wacz"
-        ? (wacz.hash ?? "archives")
-        : face === "scripts"
-          ? (reading.hash ?? "scripts")
-          : face === "search"
-            ? (searching.hash ?? "search")
-            : face;
+          ? (wacz.href ?? "/archives")
+          : face === "scripts"
+            ? (reading.href ?? "/scripts")
+            : face === "search"
+              ? (searching.href ?? "/search")
+              : `/${face}`,
+    );
   };
 }
-window.addEventListener("hashchange", route);
+
+/**
+ * 古い hash の URL（v0.61.0 までの `/#trace/…`）を path に置き換える（`public/paths.js` の橋）。渡ったら true。
+ * 送られた URL と bookmark が残るので、外さない。
+ */
+const bridge = () => {
+  const path = pathFromHash(location.hash);
+  if (path === undefined) return false;
+  history.replaceState(null, "", keepLang(path, location.search));
+  return true;
+};
+
+// ブラウザの戻る・進む。**hash の移りでは何もしない** —— 画面の中で `/#…` の link を押すと popstate と hashchange が
+// 両方来る。置き換えと route は hashchange の側で 1 度だけ（2 度読み込まない）
+window.addEventListener("popstate", () => {
+  if (pathFromHash(location.hash) === undefined) route();
+});
+window.addEventListener("hashchange", () => {
+  if (bridge()) route();
+});
+
+// 画面の中の行き先の link（同じ origin の画面の path）は、読み込み直さずに開く。修飾キー・中ボタン・target 付き・
+// `/logout`・`/api/…`・`/wacz/…` はブラウザに任せる（新しいタブで開ける・server へ届く）。先に要素の手が
+// 止めた物（スクリプトの「読む」など）は触らない
+document.addEventListener("click", (event) => {
+  if (event.defaultPrevented || !plainClick(event)) return;
+  const a = event.target instanceof Element ? event.target.closest("a[href]") : null;
+  if (a === null || (a.target !== "" && a.target !== "_self") || a.hasAttribute("download")) return;
+  const to = screenTarget(a.href, location.origin);
+  if (to === undefined) return;
+  event.preventDefault();
+  navigate(to);
+});
 
 // ── 読み込みの間隔 ─────────────────────────────────────────────────
 /**
@@ -5825,6 +5889,7 @@ const start = async () => {
   syncStart(); // 上限を知ってから、欄の下の行を出す
   void refreshSchedules(); // 別の輪。クロールの表を待たせない
   await refresh();
+  bridge();
   route();
 };
 

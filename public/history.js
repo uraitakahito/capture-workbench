@@ -1,5 +1,5 @@
 /**
- * URL の履歴の画面（`#history/<URL>`・CAPTURE-462）の、画面に依らない部分。capture-ledger の `GET /api/history`（同じ URL の
+ * URL の履歴の画面（`/history/<URL>`・CAPTURE-462）の、画面に依らない部分。capture-ledger の `GET /api/history`（同じ URL の
  * 取り込みの一覧）・`GET /api/archives/:id/changes`（選んだ 2 本の差分）・`POST /api/archives/:id/changes/summary`（その差分の
  * Claude の要約）の答えを、字と印にするだけで、比べも要約もしない。DOM には触らない —— ブラウザは `/history.js` として読み、
  * 試験は `node --test` から import する。
@@ -32,20 +32,20 @@ export const summaryBody = (beforeId) => ({ since: beforeId });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
- * 画面の hash。`#history/<URL>`・`#history/<URL>/<今の id>`・`#history/<URL>/<前の id>/<今の id>`。URL は符号にする
+ * 画面の path。`/history/<URL>`・`/history/<URL>/<今の id>`・`/history/<URL>/<前の id>/<今の id>`。URL は符号にする
  * （`encodeURIComponent`。`/` を残すと、id との境が分からない）。「前」だけの形は無い —— 「今」が無ければ URL だけ。
  */
-export const historyHash = (url, { beforeId, afterId } = {}) => {
-  const head = `#history/${encodeURIComponent(url)}`;
+export const historyHref = (url, { beforeId, afterId } = {}) => {
+  const head = `/history/${encodeURIComponent(url)}`;
   if (afterId === undefined || afterId === null) return head;
   return beforeId === undefined || beforeId === null ? `${head}/${afterId}` : `${head}/${beforeId}/${afterId}`;
 };
 
-/** `historyHash` の逆。違う形・壊れた符号・空の URL・id の形でない物は undefined。 */
-export const parseHistoryHash = (hash) => {
+/** `historyHref` の逆。違う形・壊れた符号・空の URL・id の形でない物は undefined。 */
+export const parseHistoryHref = (hash) => {
   const text = String(hash);
-  if (!text.startsWith("#history/")) return undefined;
-  const parts = text.slice("#history/".length).split("/");
+  if (!text.startsWith("/history/")) return undefined;
+  const parts = text.slice("/history/".length).split("/");
   if (parts.length > 3 || !parts.slice(1).every((id) => UUID.test(id))) return undefined;
   let url;
   try {
@@ -150,7 +150,7 @@ export const slashVariantOf = (url) => {
 };
 
 /**
- * 選ぶ 2 本。`named` は hash が名指した id（`parseHistoryHash` の `beforeId`・`afterId`）。
+ * 選ぶ 2 本。`named` は hash が名指した id（`parseHistoryHref` の `beforeId`・`afterId`）。
  *
  *   - 名指しが無ければ、いちばん新しい比べられる行と、その 1 つ前の比べられる行。比べられる行が 1 本以下なら選ばない
  *     （続きを読めば 2 本そろいうる）

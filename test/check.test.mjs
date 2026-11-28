@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   checkBandOf,
-  checkHash,
+  checkHref,
   checkVerdict,
   countsText,
   flaggedEntries,
@@ -15,7 +15,7 @@ import {
   notRunText,
   opensFirst,
   outcomeMark,
-  parseCheckHash,
+  parseCheckHref,
   issuePlaceOf,
   tallyOf,
   verdict,
@@ -35,18 +35,18 @@ const zero = { error: 0, warning: 0, info: 0 };
 const rule = (name, outcome, extra = {}) => ({ rule: name, outcome, counts: zero, description: `${name} の説明`, docs: [], conformance: "MUST", ...extra });
 
 test("URL: 既定の profile は書かず、知らない profile と形の合わない URL は読まない", () => {
-  assert.equal(checkHash("a/b"), "#check/a%2Fb");
-  assert.equal(checkHash("x", "spec"), "#check/x");
-  assert.equal(checkHash("x", "browserhive"), "#check/x/browserhive");
-  assert.deepEqual(parseCheckHash("#check/a%2Fb"), { archiveId: "a/b", profile: "spec" });
-  assert.deepEqual(parseCheckHash("#check/x/browserhive"), { archiveId: "x", profile: "browserhive" });
+  assert.equal(checkHref("a/b"), "/check/a%2Fb");
+  assert.equal(checkHref("x", "spec"), "/check/x");
+  assert.equal(checkHref("x", "browserhive"), "/check/x/browserhive");
+  assert.deepEqual(parseCheckHref("/check/a%2Fb"), { archiveId: "a/b", profile: "spec" });
+  assert.deepEqual(parseCheckHref("/check/x/browserhive"), { archiveId: "x", profile: "browserhive" });
   // 往復して同じ所へ
-  for (const p of ["spec", "browserhive"]) assert.deepEqual(parseCheckHash(checkHash("id 1", p)), { archiveId: "id 1", profile: p });
-  assert.equal(parseCheckHash("#check/x/lenient"), undefined);
-  assert.equal(parseCheckHash("#check/"), undefined);
-  assert.equal(parseCheckHash("#check/x/spec/more"), undefined);
-  assert.equal(parseCheckHash("#wacz/x"), undefined);
-  assert.equal(parseCheckHash("#check/%E0%A4%A"), undefined); // decode できない
+  for (const p of ["spec", "browserhive"]) assert.deepEqual(parseCheckHref(checkHref("id 1", p)), { archiveId: "id 1", profile: p });
+  assert.equal(parseCheckHref("/check/x/lenient"), undefined);
+  assert.equal(parseCheckHref("/check/"), undefined);
+  assert.equal(parseCheckHref("/check/x/spec/more"), undefined);
+  assert.equal(parseCheckHref("/archive/x"), undefined);
+  assert.equal(parseCheckHref("/check/%E0%A4%A"), undefined); // decode できない
 });
 
 test("結論は rule で数え、落ちた rule が在れば赤・警告の rule が在れば黄", () => {
@@ -136,11 +136,11 @@ test("数と、見なかった理由", () => {
 test("場所: 行の在る指摘は WACZ の画面のその行（0 始まり）へ、byte の位置は字だけ、entry の無い指摘は無し", () => {
   assert.deepEqual(issuePlaceOf("id", { location: { entry: "indexes/index.cdxj", line: 12 } }), {
     text: "indexes/index.cdxj:12",
-    href: "#wacz/id/indexes%2Findex.cdxj:11",
+    href: "/archive/id/indexes%2Findex.cdxj:11",
   });
   assert.deepEqual(issuePlaceOf("id", { location: { entry: "archive/data.warc.gz", offset: 4096 } }), {
     text: "archive/data.warc.gz @4096",
-    href: "#wacz/id/archive%2Fdata.warc.gz",
+    href: "/archive/id/archive%2Fdata.warc.gz",
   });
   assert.equal(issuePlaceOf("id", { location: { line: 3 } }), undefined);
   assert.equal(issuePlaceOf("id", {}), undefined);
