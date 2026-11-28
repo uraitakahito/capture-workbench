@@ -348,6 +348,8 @@
               <!-- 状態と「取り消す」は左の端（列が多く、狭い窓では表が横に流れる） -->
               <th data-i18n="exemptions.col.state"></th>
               <th data-i18n="exemptions.col.id"></th>
+              <!-- 組織。行の組織が 2 つ以上ある時だけ出す（app.js の drawExemptions） -->
+              <th id="exemptions-col-org" hidden data-i18n="exemptions.col.org"></th>
               <th data-i18n="exemptions.col.host"></th>
               <th data-i18n="exemptions.col.pattern"></th>
               <th data-i18n="exemptions.col.scope"></th>

@@ -164,7 +164,7 @@ const WRITE_ROUTES = [
   /^\/api\/crawls\/[0-9a-f-]+\/failed$/,
   /^\/api\/archives\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/changes\/summary$/,
   /^\/api\/robots-exemptions$/,
-  /^\/api\/robots-exemptions\/[0-9]{1,18}\/revoke$/,
+  /^\/api\/robots-exemptions\/[1-9][0-9]{0,17}\/revoke$/,
 ];
 
 export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url));

@@ -142,6 +142,7 @@ test("書き込みのエンドポイントは、robots.txt の例外を登録す
   assert.equal(isWriteRoute("/api/robots-exemptions/123456789012345678/revoke"), true);
   // 19 桁・数字でない番号・知らない操作・末尾の足し・query
   assert.equal(isWriteRoute("/api/robots-exemptions/1234567890123456789/revoke"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/012/revoke"), false);
   assert.equal(isWriteRoute("/api/robots-exemptions/5b0c0008-6a1e-4000-8000-000000000008/revoke"), false);
   assert.equal(isWriteRoute("/api/robots-exemptions//revoke"), false);
   assert.equal(isWriteRoute("/api/robots-exemptions/1"), false);

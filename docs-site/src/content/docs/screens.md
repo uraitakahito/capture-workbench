@@ -1002,12 +1002,15 @@ The routes are there from capture-ledger v0.116.0, and the rows take effect in c
   subject's ID when there is no name) and the limits (per day / links per crawl). When the ledger
   returns it (from v0.117.0), the number of pages lifted by the row in the last 24 hours is shown too;
   it counts the pages the crawl went to capture, failed ones included, as the daily limit does.
-  Only the rows of organizations you can start crawls for are listed.
-- **Revoke** (取り消す) is on active rows. It asks first. A revocation takes effect from the next level
+  Only the rows of organizations you can start crawls for are listed. When the rows belong to two or
+  more organizations, an organization column appears next to the number (the overlap and User-Agent
+  rules are per organization).
+- **Revoke** (取り消す) is on active rows. It asks first, naming the number, organization, host and path pattern. A revocation takes effect from the next level
   that is sent, not for levels already sent. A revoked row cannot be restored; register a new one.
 - **Register with the form below the table**: the organization (those of the signed-in person; not a
   choice when there is one), host, path pattern (`/` when empty), scope, which crawls it applies to,
-  the User-Agent sent, the reason (required), the expiry and the two limits (100 and 20 by default).
+  the User-Agent sent, the reason (required), the expiry (required) and the two limits (100 and 20 by default).
+  When the ledger has no such routes (older than v0.116.0), the list says so and the form is not shown.
   The expiry is picked as a date: 30 days ahead by default, active until the end of that day (23:59:59
   in this device's time), at most 90 days from registration. The User-Agent is `BrowserHive/<version>`,
   optionally with one URL of a page that describes it (`BrowserHive/1.0 (+https://example.com/bot)`);

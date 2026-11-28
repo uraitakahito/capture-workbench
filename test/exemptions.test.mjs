@@ -14,6 +14,7 @@ import {
   exemptionsHref,
   expiresAtOf,
   expiryDates,
+  hasOrgs,
   hasUsed,
   limitsText,
   listError,
@@ -243,4 +244,10 @@ test("一覧を読めないとき: エンドポイントの無い capture-ledger
   assert.equal(listError(404, { error: "not found" }), "404 —— 見つかりません");
   assert.equal(listError(502, { error: "ledger unreachable", params: { url: "http://127.0.0.1:7070", cause: "ECONNREFUSED" } }).startsWith("502 —— "), true);
   assert.equal(listError(500, {}), "500 —— 答えに文がありません");
+});
+
+test("hasOrgs: 行の組織が 2 つ以上ある時だけ、組織の列を出す", () => {
+  assert.equal(hasOrgs([]), false);
+  assert.equal(hasOrgs([exemption(), exemption({ id: "13" })]), false);
+  assert.equal(hasOrgs([exemption(), exemption({ id: "13", orgId: "globex" })]), true);
 });

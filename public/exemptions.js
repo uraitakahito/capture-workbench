@@ -88,6 +88,9 @@ export const limitsText = (row) => `${count(row.dailyLimit)} / ${count(row.linkL
  */
 export const hasUsed = (rows) => rows.some((row) => typeof row.usedLast24h === "number");
 
+/** 行の組織が 2 つ以上あるか。あるときだけ組織の列を出す（重なりと名乗りの決まりは組織ごと —— 同じホストの行が並んでも別の組織の物と分かるように）。 */
+export const hasOrgs = (rows) => new Set(rows.map((row) => row.orgId)).size > 1;
+
 /** 24 時間で外した枚数の字。数の無い行は「—」（0 とは別のこと）。 */
 export const usedText = (row) => (typeof row.usedLast24h === "number" ? count(row.usedLast24h) : "—");
 
@@ -184,11 +187,14 @@ export const registerAnswer = (status, answer) => {
 export const revokeAnswer = (status, answer) =>
   status === 200 ? { kind: "ok", text: t("exemptions.revoke.done") } : { kind: "bad", text: refusedText(status, answer) };
 
+/** エンドポイントの無い capture-ledger の 404（Fastify の既定の形）か。capture-ledger 自身の「見つからない」は `not found`。 */
+export const noRoute = (status, body) => status === 404 && body?.error !== "not found";
+
 /**
  * 一覧を読めなかったときの文。エンドポイントの無い capture-ledger（v0.116.0 より前）の 404 は、capture-ledger の
  * 「見つからない」（`not found`）と言い分ける。
  */
 export const listError = (status, body) =>
-  status === 404 && body?.error !== "not found"
+  noRoute(status, body)
     ? t("exemptions.error.noRoute")
     : t("exemptions.error.statusSaid", { status: String(status), said: errorText(body) ?? t("common.noText") });

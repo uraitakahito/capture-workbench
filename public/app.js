@@ -73,9 +73,11 @@ import {
   EXEMPTIONS_PATH,
   exemptionsHref,
   expiryDates,
+  hasOrgs,
   hasUsed,
   limitsText,
   listError,
+  noRoute,
   parseExemptionsHref,
   registerAnswer,
   revokeAnswer,
@@ -3757,6 +3759,8 @@ let exemptions = [];
 let exemptionsError;
 /** 一度でも読めたか。読める前に「一覧にありません」と言わない。 */
 let exemptionsRead = false;
+/** エンドポイントの無い capture-ledger（v0.116.0 より前）か。登録の欄を隠す（押しても 404 が返るだけ）。 */
+let exemptionsNoRoute = false;
 /** URL が名指した行（`/exemptions/<番号>`）。その行に印を付ける。 */
 let exemptionSpot;
 
@@ -3770,7 +3774,7 @@ const exemptionsSaid = (said) => {
 
 /** 押す前に確かめてから、取り消しを頼む。答えを 1 行で出して、引き直す。 */
 const revokeExemption = async (row) => {
-  const ask = t("exemptions.ask.revoke", { id: row.id, host: row.host, pattern: row.pathPattern });
+  const ask = t("exemptions.ask.revoke", { id: row.id, org: row.orgId, host: row.host, pattern: row.pathPattern });
   if (!window.confirm(ask)) return;
   const { status, answer } = await postJson(revokePath(row.id));
   exemptionsSaid(revokeAnswer(status, answer));
@@ -3781,7 +3785,7 @@ const revokeExemption = async (row) => {
  * 一覧の 1 行。効いていない行は薄くし（状態の欄が字で言う）、取り消すボタンは効いている行にだけ出す。**状態とボタンは
  * 左の端の欄** —— 列が多く、狭い窓では表が横に流れるので、右の端に置くと見えない。
  */
-const exemptionRow = (row, used) => {
+const exemptionRow = (row, used, orgs) => {
   const tr = document.createElement("tr");
   tr.className = [row.state === "active" ? "" : "off", row.id === exemptionSpot ? "spot" : ""].join(" ").trim();
   // 長い字（User-Agent・理由）は 1 行で末尾を省く。全文は title に。幅の上限は中の span に付ける（.url-box と同じ訳）
@@ -3802,6 +3806,7 @@ const exemptionRow = (row, used) => {
   tr.append(
     state,
     cell(`#${String(row.id)}`, "mono"),
+    ...(orgs ? [cell(row.orgId, "mono")] : []),
     cell(row.host, "mono"),
     cell(row.pathPattern, "mono"),
     cell(scopeText(row.scope)),
@@ -3819,10 +3824,13 @@ const exemptionRow = (row, used) => {
 const drawExemptions = () => {
   const rows = sortExemptions(exemptions);
   const used = hasUsed(rows);
+  const orgs = hasOrgs(rows);
   $("exemptions-col-used").hidden = !used;
+  $("exemptions-col-org").hidden = !orgs;
+  $("exemption-form").hidden = exemptionsNoRoute;
   $("exemptions-table").hidden = rows.length === 0;
   $("exemptions-empty").hidden = rows.length > 0 || !exemptionsRead || exemptionsError !== undefined;
-  $("exemptions").replaceChildren(...rows.map((row) => exemptionRow(row, used)));
+  $("exemptions").replaceChildren(...rows.map((row) => exemptionRow(row, used, orgs)));
   const note = $("exemptions-note");
   note.hidden = exemptionsError === undefined;
   if (exemptionsError !== undefined) note.textContent = t("exemptions.error.unreadable", { said: exemptionsError });
@@ -3838,6 +3846,7 @@ const loadExemptions = async () => {
     const res = await fetch(EXEMPTIONS_PATH);
     const body = await res.json();
     signInAgain(res, body);
+    exemptionsNoRoute = noRoute(res.status, body);
     if (!res.ok) throw new Error(listError(res.status, body));
     exemptions = body.exemptions;
     exemptionsRead = true;
