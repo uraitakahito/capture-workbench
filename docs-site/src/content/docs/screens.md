@@ -3,11 +3,17 @@ title: Screens
 description: What each view shows — crawls, start, schedules, changes, the history of a URL, archives, search, script collection, validation and WACZ — how a crawl's state is worded, and how often capture-workbench polls
 ---
 
-capture-workbench is a set of views you switch with the tabs at the top, and the `#` in the URL decides
-which view is shown (`#crawls`, `#start`, `#schedules`, `#changes`, `#archives`, `#search`, `#scripts`).
-The URL also names the words searched for in the search view, the run and the page opened in the changes view,
-and what is being read in the script collection view.
-The history of a URL, inside the changes view, is `#history/<URL>`.
+capture-workbench is a set of views you switch with the tabs at the top, and the path of the URL decides
+which view is shown (`/crawls`, `/start`, `/schedules`, `/changes`, `/archives`, `/search`, `/scripts`).
+The URL also names the row opened in the crawls view and the origin it is narrowed to
+(`/crawls/<crawl id>?from=<origin>`), the words searched for in the search view, the run and the page opened
+in the changes view, and what is being read in the script collection view. The history of a URL, inside the
+changes view, is `/history/<URL>`. **Sending the URL is enough to show someone the same view**: they open it
+and see the same tab, row and narrowing (after signing in, if they have to; the workbench returns to the
+same path). Back and forward step through the views and the rows opened.
+
+Addresses from before v0.62.0 (`/#crawls`, `/#trace/…`, `/#wacz/…`) still open: the workbench replaces
+them with the path (`#wacz/…` becomes `/archive/…`, and `#search/<words>` becomes `/search?q=<words>`).
 
 ![The tabs at the top: クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
 
@@ -60,7 +66,9 @@ the crawl's bundle.
   says the same in one "始めた人:" ("Started by:") line.
 - **You can narrow the list by origin.** The "出どころ:" ("From:") chips above the table keep only
   the rows of one app client, the scheduled runs, or the unknown ones. They appear only when the
-  rows on screen come from two or more origins, and they narrow only the one page on screen. `cli`
+  rows on screen come from two or more origins, and they narrow only the one page on screen. The
+  chosen origin goes into the URL (`?from=`) without adding a step to Back; a chip that would hide
+  the open row closes it. The **Crawls** tab returns to the row and origin you left. `cli`
   holds both the rows a person started with the local `idp:token` and the rows an AI agent started as
   the dedicated user `ai-cli`; tell them apart by name.
 - **The seed URL takes two lines, the site first.** The top line is the host (with the port, if
@@ -125,7 +133,12 @@ the crawl's bundle.
 ⑤ Windmill で調べる (Inspect in Windmill), the link to inspect_crawl
 
 - **Click a row to see why it failed, what ran in the page, which values it was given, and the
-  URLs that could not be fetched.** Only then does the workbench fetch `/api/crawls/:id`. The ledger's
+  URLs that could not be fetched.** The URL becomes `/crawls/<crawl id>`, and opening it opens the
+  same row; one row is open at a time (clicking another closes the first, and clicking it again
+  closes it). Only then does the workbench fetch `/api/crawls/:id`. A crawl older than the newest 50
+  in the list still opens from its URL: it is fetched on its own and put on top of the table, marked
+  一覧の外 (not in the list). A crawl that does not exist, or that this sign-in cannot see, shows
+  このクロールは見つかりません (this crawl was not found) above the table. The ledger's
   `error` comes first, in its own words (a level sent to Windmill again comes even before it, with
   the count and the last error): a crawl that failed at the compile step captured nothing, so
   its list of failed pages is empty and would otherwise read like a success. Next is what ran, in the
@@ -240,7 +253,7 @@ the crawl's bundle.
 ### Link structure
 
 Clicking the links number on the list opens that crawl's link structure (the URL is
-`#links/<crawl id>`). The tab stays **Crawls**; the view replaces the list, and **← Crawl list** (← クロールの一覧) goes
+`/links/<crawl id>`). The tab stays **Crawls**; the view replaces the list, and **← Crawl list** (← クロールの一覧) goes
 back. The numbers and outcomes are what the ledger kept, one row per link, at each level report
 (`GET /api/crawls/:id/links`); the workbench only draws them.
 
@@ -264,7 +277,7 @@ back. The numbers and outcomes are what the ledger kept, one row per link, at ea
 - **Clicking a box lists that page's links below.** The pages that link to it, and its own links
   grouped as **Entered the next level** (次の段に入れた), **Already had a row** (もう行がある),
   **Cut by the page limit**, **Cut by the depth limit** and **Dropped by a rule** (`GET /api/crawls/:id/links/<page id>`). The URL
-  becomes `#links/<crawl id>/<page id>`. In the figure the lines touching that page stand out, and
+  becomes `/links/<crawl id>/<page id>`. In the figure the lines touching that page stand out, and
   the edges that are not in the tree (links to a page that already had a row, dotted) appear;
   **Show all edges not in the tree** (木に無い辺を全部出す) shows them all without a selection.
 - **▾ folds what is under a page.** A folded box says how many pages it hides (`+17 pg`; ＋17 枚). A figure
@@ -282,7 +295,7 @@ The layout and wording are in `public/links.js` (`layoutOf` and others), pinned 
 ### One capture's trace
 
 **Trace** (経緯), after a page's outcome in the pages table, opens the trace of that one capture (the
-URL is `#trace/<crawl id>/<page id>`). The tab stays **Crawls**; the view replaces the list, and
+URL is `/trace/<crawl id>/<page id>`). The tab stays **Crawls**; the view replaces the list, and
 **← Crawl list** goes back. The link is there for pages that have a capture's answer (captured or
 failed), not for pages still waiting or skipped.
 
@@ -680,7 +693,7 @@ a window for reading a registered script, and, while **Follow links** is chosen,
   and the check at the top of the script (comparing `location.hostname`) keeps it idle on other
   sites.
 - **The types of `__bh` are one link away.** The note under the left column links to them
-  (`#scripts/types/host.d.ts`); a plain click opens them in the right column's reading window.
+  (`/scripts/types/host.d.ts`); a plain click opens them in the right column's reading window.
 - **The row gets a mark, and is not opened.** The mark is remembered by id and put back each time
   the table is redrawn.
 
@@ -688,7 +701,7 @@ It is sent through `POST /api/crawls` in [Routes](/routes/).
 
 ## Schedules
 
-The schedules and their runs (`#schedules`). The clock lives in
+The schedules and their runs (`/schedules`). The clock lives in
 [capture-ledger](https://github.com/uraitakahito/capture-ledger); this view reads the state and asks
 for actions.
 
@@ -721,7 +734,7 @@ Rows on the crawls view carry a `scheduled` (定期) mark, and `scheduled · 2 m
 ## Changes
 
 How a scheduled run differs from the previous run of the same schedule with the same recipe
-(`#changes`, `#changes/<crawl id>`, `#changes/<crawl id>/<WACZ id of this run>`). Comparing and summarizing happen in
+(`/changes`, `/changes/<crawl id>`, `/changes/<crawl id>/<WACZ id of this run>`). Comparing and summarizing happen in
 [capture-ledger](https://github.com/uraitakahito/capture-ledger); this view only reads.
 
 **Open the history of a URL** (URL の履歴を開く) above the list opens the [history](#history) of the URL you paste.
@@ -760,8 +773,8 @@ opens the run; **← Change list** (← 変化の一覧) goes back.
 ## History
 
 Every capture of one URL, newest first, with the text diff of any two you pick
-(`#history/<URL>`, `#history/<URL>/<id of the After capture>`,
-`#history/<URL>/<id of the Before capture>/<id of the After capture>`; the URL is percent-encoded).
+(`/history/<URL>`, `/history/<URL>/<id of the After capture>`,
+`/history/<URL>/<id of the Before capture>/<id of the After capture>`; the URL is percent-encoded).
 The tab stays **Changes** (変化): the history takes the place of the change list, and **← Change list** (← 変化の一覧) goes back.
 Listing and comparing happen in [capture-ledger](https://github.com/uraitakahito/capture-ledger); this view only reads.
 It is not limited to scheduled runs: captures from a crawl started by hand are listed too when the URL is the same.
@@ -847,13 +860,13 @@ The WACZ files you can see, newest capture first.
   the host, the bottom line the path and query. Hover over the cell to read the whole URL.
 - **A `—` under Complete? (完全か) means "unknown".** The ledger's `waczComplete` is null for
   that row, which is not the same as **Incomplete** (欠けあり).
-- **Validate (検証) enters the validation view** (`#check/<archiveId>`), which validates once.
+- **Validate (検証) enters the validation view** (`/check/<archiveId>`), which validates once.
   Opening the list does not run it. The verdict, counted in rules, also stays in the row's
   **Conforms?** (仕様どおりか) cell as a link back to the view, so after looking at several archives
   you can tell how each one did without validating again. Reloading the page clears them. The
   report comes back in the language of the screen. What the view shows is in
   [Inspecting a WACZ](/wacz/#the-validation-view).
-- **Open (開く) enters the WACZ view** (`#wacz/<archiveId>`).
+- **Open (開く) enters the WACZ view** (`/archive/<archiveId>`).
 - **"ReplayWeb.page ↗" and "Web Capture ↗" open the captured URL in a viewer.** The link is built from the replay origin the
   server hands out through `/healthz`, the `objectKey` the ledger returns, and the row's URL and
   capture time (`#view=replay&url=…&ts=…`). The page's own scripts run there, so pictures that the
@@ -867,7 +880,7 @@ The WACZ files you can see, newest capture first.
 ## Search
 
 The view that searches the titles and text of captured pages with the ledger's full-text search
-(`#search/<words>`).
+(`/search?q=<words>`).
 
 ![The search view: a search for ランプ (lamp) lists two hits, the first a document row and the second the after-behaviors snapshot, with the matching words marked](../../assets/screens/search.webp)
 
@@ -909,11 +922,11 @@ On the right is the TypeScript the ledger keeps, before it becomes JavaScript, w
 
 | URL | Opens |
 | --- | --- |
-| `#scripts` | the first script in the list (the URL changes to name it) |
-| `#scripts/autoscroll` | the version that runs by default (for a script that does not, the newest) |
-| `#scripts/autoscroll@1` | version 1, enabled or not |
-| `#scripts/autoscroll@1:33` | version 1, with line 33 marked and scrolled into the middle |
-| `#scripts/types/host.d.ts` | the types of `__bh` |
+| `/scripts` | the first script in the list (the URL changes to name it) |
+| `/scripts/autoscroll` | the version that runs by default (for a script that does not, the newest) |
+| `/scripts/autoscroll@1` | version 1, enabled or not |
+| `/scripts/autoscroll@1:33` | version 1, with line 33 marked and scrolled into the middle |
+| `/scripts/types/host.d.ts` | the types of `__bh` |
 
 - **The heading says which version you are reading.** Chips list every version of the id, the
   default one marked `(default)` (既定) and disabled ones `(disabled)` (無効). Under them are the line count, the size, the start of the sha256, the day
