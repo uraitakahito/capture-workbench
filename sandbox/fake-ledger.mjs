@@ -147,6 +147,15 @@ const runRequesterOf = (c) => ({
  * (`runRequestedBy`・`runRequestedByName`) が v0.113.0 から足された (CAPTURE-450)。
  * 時刻は台本の「何秒前」から、now (代役が起きた時刻) を基準に組む。走行中は終わりが無い。
  */
+/**
+ * /api/crawls が返す本数の上限。capture-ledger の src/api/crawls.ts の `CRAWLS_PAGE`（50）と同じ —— 一覧に出ない古い
+ * クロールも、/api/crawls/:id では引ける。台本は 50 本に足りないので、上限の外の行（workbench の「一覧の外」）を
+ * 見るときは、代役を host で起こして `SANDBOX_CRAWLS_PAGE` で小さくする（docs の「開発」の「サンドボックスで開く」。
+ * container-compose 1.2.0 は environment の値を展開しないので、compose からは渡せない）。
+ */
+export const CRAWLS_PAGE = Number(process.env.SANDBOX_CRAWLS_PAGE ?? "50");
+export const crawlsPage = (rows, page = CRAWLS_PAGE) => rows.slice(0, page);
+
 export const crawlRow = (c, now) => ({
   crawlId: c.crawlId,
   state: c.state,
@@ -241,8 +250,9 @@ const valuesIn = (c) => ({
 });
 
 /**
- * /api/crawls/:id。capture-ledger の答え (v0.107.0) のうち、workbench が読まない `perHostDelayMs`・`hostParallelism`・
- * `startedAt`・`lastJob`・`schedule`・`scheduledFor`・`scheduleMissed` は返さない (ほかの欄は capture-ledger と同じ名前)。
+ * /api/crawls/:id。capture-ledger の答え (v0.107.0) のうち、workbench が読まない `perHostDelayMs`・`hostParallelism` は
+ * 返さない (ほかの欄は capture-ledger と同じ名前)。走った回の欄 (`startedAt`・`lastJob`・`schedule`・`scheduledFor`・
+ * `scheduleMissed`) は一覧の行と同じ値で、エンドポイントが `withRunFields` で足す (workbench の「一覧の外」の行が読む)。
  * 始めた主体と組織・名前と出どころ・「いま撮る」を押した者は、v0.112.0・v0.113.0 から 1 本の答えにも在る (CAPTURE-450)。受けた行は走らせたものと値を行に
  * 持たない (行の欄は一覧と揃えて試験が固定している) ので、`scripts` と `values` で渡す。規則は行に無ければ capture-ledger の既定。
  * `replayBundle` は一覧の行と同じ形 (capture-ledger も同じ関数で組む)。
@@ -250,6 +260,13 @@ const valuesIn = (c) => ({
  * 写しで、`"keep"` か null。台本の行も、この形で書く)。`failures` の要素は
  * `{ url, depth, reason, page }` (page はページの行の id。CAPTURE-18。capture-ledger v0.69.0 から)。
  */
+/** 1 本の答えに、一覧の行と同じ「走った回の欄」を足す (capture-ledger の 1 本の答えも持つ)。 */
+export const RUN_FIELDS = Object.freeze(["startedAt", "lastJob", "schedule", "scheduledFor", "scheduleMissed"]);
+export const withRunFields = (detail, row) => ({
+  ...detail,
+  ...Object.fromEntries(RUN_FIELDS.map((name) => [name, row[name]])),
+});
+
 export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEFAULT_RULES, values = valuesIn(c)) => ({
   crawlId: c.crawlId,
   seeds: c.seeds,
@@ -2058,7 +2075,7 @@ const handle = (req, res, raw) => {
   if (req.method === "GET" && pathname === "/api/crawls") {
     const now = Date.now();
     send(res, 200, {
-      crawls: [...submitted.map((row) => submittedRow(row, now)), ...s.crawls.map((c) => crawlRow(c, STARTED))],
+      crawls: crawlsPage([...submitted.map((row) => submittedRow(row, now)), ...s.crawls.map((c) => crawlRow(c, STARTED))]),
     });
     return;
   }
@@ -2184,14 +2201,18 @@ const handle = (req, res, raw) => {
       mine === undefined
         ? (() => {
             const c = s.crawls.find((x) => x.crawlId === one[1]);
-            return c === undefined ? undefined : crawlDetail(scenarioAt(c, STARTED));
+            return c === undefined ? undefined : withRunFields(crawlDetail(scenarioAt(c, STARTED)), crawlRow(c, STARTED));
           })()
-        : crawlDetail(submittedRow(mine, Date.now()), mine.scripts, mine.rules, {
-            variables: mine.variables,
-            userAgent: mine.userAgent,
-            recordRandom: mine.recordRandom,
-            secrets: mine.secrets,
-          });
+        : (() => {
+            const row = submittedRow(mine, Date.now());
+            const detail = crawlDetail(row, mine.scripts, mine.rules, {
+              variables: mine.variables,
+              userAgent: mine.userAgent,
+              recordRandom: mine.recordRandom,
+              secrets: mine.secrets,
+            });
+            return withRunFields(detail, row);
+          })();
     send(res, detail === undefined ? 404 : 200, detail ?? { error: "not found" });
     return;
   }

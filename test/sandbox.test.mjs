@@ -41,49 +41,53 @@ import { isPartialBundle, replayBundleHref } from "../public/players.js";
 import { diagnosisOf, failedOnTypes, fixAnswer, hasErrorsIn } from "../public/fix.js";
 import { asTemplate, defaultIds, seedHosts } from "../public/start.js";
 import {
+  archiveChangeOf,
   archiveRows,
   catalogOf,
-  crawlDetail,
-  crawlRow,
-  createSchedule,
-  scheduleRow,
   changeDetail,
   changeRuns,
+  checkInline,
+  crawlDetail,
+  crawlRow,
   crawlRulesCheck,
+  CRAWLS_PAGE,
+  crawlsPage,
+  createSchedule,
   decisionsOf,
   defaultSet,
   diagnosticsOf,
   fixOf,
+  historyArchives,
+  historyOf,
   hostTypesOf,
   idOf,
   inlineSource,
   latestEnabled,
-  pageList,
+  linkGraphOf,
   pageFailureScreenshot,
+  pageLinksOf,
+  pageList,
   pageLog,
   pageRow,
   pageTrace,
   pickable,
+  readDeclared,
   readingLastGood,
   replayBundleOf,
+  RUN_FIELDS,
   scenarioAt,
+  scheduleRow,
+  SCREENSHOT_HEADERS,
   scriptRows,
   searchOf,
   signedUrlOf,
-  SCREENSHOT_HEADERS,
   stageScreenshotOf,
-  checkInline,
-  readDeclared,
   submitCrawl,
   submittedRow,
+  summarizeChange,
   versionOf,
   versionsOf,
-  linkGraphOf,
-  pageLinksOf,
-  archiveChangeOf,
-  historyArchives,
-  historyOf,
-  summarizeChange,
+  withRunFields,
 } from "../sandbox/fake-ledger.mjs";
 import { marksOf as historyMarksOf, pickPair } from "../public/history.js";
 import { warcRecord, zipEntry } from "./wacz-entry.mjs";
@@ -2291,4 +2295,20 @@ test("要約の断りは capture-ledger と同じ句: 差分と同じ 404・422�
   assert.equal(summarize(pricing(1), { since: pricing(2), force: true }).body.message, "body must NOT have additional properties");
   assert.equal(summarize(pricing(1), { since: "nope" }).body.message, 'body/since must match format "uuid"');
   assert.equal(summarize("nope", { since: pricing(2) }).body.message, 'params/id must match format "uuid"');
+});
+
+test("/api/crawls は capture-ledger と同じく 50 本まで（上限の外は /api/crawls/:id で引く）", () => {
+  assert.equal(CRAWLS_PAGE, 50);
+  const rows = Array.from({ length: 51 }, (_, i) => ({ crawlId: String(i) }));
+  assert.equal(crawlsPage(rows).length, 50);
+  assert.equal(crawlsPage(rows, 5).length, 5);
+  assert.equal(crawlsPage(rows.slice(0, 11)).length, 11);
+});
+
+test("1 本の答えは、一覧の行と同じ走った回の欄（startedAt・lastJob・schedule…）を持つ（capture-ledger と同じ）", () => {
+  for (const c of scenario.crawls) {
+    const row = crawlRow(c, NOW);
+    const detail = withRunFields(crawlDetail(scenarioAt(c, NOW)), row);
+    for (const name of RUN_FIELDS) assert.deepEqual(detail[name], row[name], `${c.crawlId} ${name}`);
+  }
 });

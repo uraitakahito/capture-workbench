@@ -65,6 +65,7 @@ import {
 } from "/start.js";
 import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
 import { keepLang, loginHref, pathFromHash, screenTarget } from "/paths.js";
+import { crawlsHref, parseCrawlsHref } from "/crawls.js";
 import { ORIGIN_ALL, originChips, startedByLine, whoMarks, whoOf, withOrigin } from "/requester.js";
 import {
   actionAnswer,
@@ -310,7 +311,8 @@ const api = async (path) => {
   const res = await fetch(path);
   const body = await res.json();
   signInAgain(res, body);
-  if (!res.ok) throw new Error(errorText(body) ?? `${path} → ${String(res.status)}`);
+  // 状態も持たせる（開いた行の 404 を「見つからない」と言い分ける）
+  if (!res.ok) throw Object.assign(new Error(errorText(body) ?? `${path} → ${String(res.status)}`), { status: res.status });
   return body;
 };
 
@@ -1149,9 +1151,8 @@ const detailRow = (crawl) => {
 
 /** 開いた行を、覚えた答えで描き直す（その行だけ）。移したログの箱は、流した位置も戻す。 */
 const redrawDetail = (crawlId) => {
-  const crawl = crawls.find((c) => c.crawlId === crawlId);
   const row = document.querySelector(`tr.detail[data-crawl="${CSS.escape(crawlId)}"]`);
-  if (crawl !== undefined && row !== null) row.replaceWith(detailRow(crawl));
+  if (row !== null) row.replaceWith(detailRow({ crawlId }));
   restoreScroll();
 };
 
@@ -1180,46 +1181,86 @@ const loadDetail = async (crawlId) => {
     one = asError(err);
   }
   if (!opened.has(crawlId)) return; // 待っている間に閉じた
+  const listed = crawls.some((c) => c.crawlId === crawlId);
+  // 一覧の外の行（URL で名指した古い・知らない id）が 404 なら、無いか見えない。行を開かずに「見つからない」と言う
+  if (!listed && one instanceof Error && one.status === 404) {
+    opened.delete(crawlId);
+    views.delete(crawlId);
+    crawlMissing = crawlId;
+    drawCrawls();
+    return;
+  }
   opened.set(crawlId, one);
-  redrawDetail(crawlId);
+  // 一覧の外の行は、頭の行も 1 本の答えから描く（描き直しは一覧ごと）
+  if (listed) redrawDetail(crawlId);
+  else drawCrawls();
 };
 
 /**
  * 引き直しの後、開いている行の答えを新しくする。**引くのは、まだ答えが無い・引けなかった・
- * 走行中・状態が変わった行だけ** —— 終わった行は 1 度で足りる。1 ページ目から外れた行は忘れる。
+ * 走行中・状態が変わった行だけ** —— 終わった行は 1 度で足りる。開いた行は URL が名指すので、1 ページ目
+ * （新しい 50 本）から外れても忘れない（一覧の外の行として出す）。
  */
 const refreshOpened = () => {
   for (const [crawlId, one] of opened) {
     const crawl = crawls.find((c) => c.crawlId === crawlId);
-    if (crawl === undefined) {
-      opened.delete(crawlId);
-      views.delete(crawlId);
-      continue;
-    }
     const stale =
       one === undefined ||
       one instanceof Error ||
-      crawl.state === "running" ||
-      one.state !== crawl.state;
+      (crawl ?? one).state === "running" ||
+      (crawl !== undefined && one.state !== crawl.state);
     if (stale) void loadDetail(crawlId);
   }
 };
 
-/** 一覧を絞る出どころ（`requester.js` の鍵）。引き直しても選んだまま。 */
+/** 一覧を絞る出どころ（`requester.js` の鍵）。URL の `?from=` が決め（`route`）、引き直しても選んだまま。 */
 let crawlOrigin = ORIGIN_ALL;
+
+/** URL が名指した行が無い・見えない時の id（一覧の上に「見つからない」と出す）。無ければ undefined。 */
+let crawlMissing;
+
+/** 開いている行（URL が名指した 1 本）。無ければ undefined。 */
+const openedId = () => opened.keys().next().value;
+
+/** 一覧の画面にいる時だけ、開いた行と出どころを URL に書く（route は呼ばない）。 */
+const rememberCrawls = () => {
+  if (parseCrawlsHref(location.pathname) !== undefined) remember(crawlsHref(openedId(), crawlOrigin));
+};
+
+/** URL の行と出どころで、一覧の画面を開く（`route` から）。行は 1 本だけ —— ほかに開いていた行は閉じる。 */
+const openCrawls = ({ crawlId, known, from }) => {
+  crawlOrigin = from;
+  crawlMissing = known ? undefined : crawlId;
+  const id = known ? crawlId : undefined;
+  for (const other of [...opened.keys()]) {
+    if (other === id) continue;
+    opened.delete(other);
+    views.delete(other);
+  }
+  if (id !== undefined && !opened.has(id)) {
+    opened.set(id, undefined);
+    void loadDetail(id);
+  }
+  drawCrawls();
+};
 
 /** 出どころで絞る chip（CAPTURE-450）。引いた一覧に出どころが 2 種類以上在るときだけ出す。 */
 const drawOriginChips = () => {
   const bar = $("crawls-filter");
   const chips = originChips(crawls);
-  // 選んでいた出どころが一覧から消えたら、「すべて」に戻す（chip が無いのに絞られたままにしない）
-  if (!chips.some((chip) => chip.id === crawlOrigin)) crawlOrigin = ORIGIN_ALL;
+  // 選んでいた出どころが一覧から消えたら、「すべて」に戻す（chip が無いのに絞られたままにしない）。URL も
+  if (!chips.some((chip) => chip.id === crawlOrigin) && crawlOrigin !== ORIGIN_ALL) {
+    crawlOrigin = ORIGIN_ALL;
+    rememberCrawls();
+  }
   bar.hidden = chips.length === 0;
   bar.replaceChildren(
     ...(chips.length === 0 ? [] : [tag("span", t("crawls.filter.label"), "muted")]),
     ...chips.map((chip) => {
+      // 押すと URL の from を置き換える（chip を押すたびに戻るが要らないように、履歴には積まない）
       const one = button(chip.text, () => {
         crawlOrigin = chip.id;
+        rememberCrawls();
         drawCrawls();
       });
       one.className = chip.id === crawlOrigin ? "chip on" : "chip";
@@ -1232,8 +1273,28 @@ const drawCrawls = () => {
   const body = $("crawls");
   body.replaceChildren();
   $("crawls-empty").hidden = crawls.length > 0;
+  const open = openedId();
+  const answer = open === undefined ? undefined : opened.get(open);
+  const listed = open === undefined || crawls.some((c) => c.crawlId === open);
+  // 開いた行が出どころで隠れるなら、行を取る（絞り込みを「すべて」に戻し、URL の from も外す）
+  if (listed && open !== undefined && !withOrigin(crawls, crawlOrigin).some((c) => c.crawlId === open)) {
+    crawlOrigin = ORIGIN_ALL;
+    rememberCrawls();
+  }
   drawOriginChips();
-  for (const crawl of withOrigin(crawls, crawlOrigin)) {
+  // 一覧の上の 1 行: URL の行が見つからない・一覧の外の行が引けなかった
+  const note = $("crawls-note");
+  const noteText =
+    crawlMissing !== undefined
+      ? t("crawls.missing", { id: crawlMissing })
+      : !listed && answer instanceof Error
+        ? failedText(answer)
+        : undefined;
+  note.hidden = noteText === undefined;
+  note.textContent = noteText ?? "";
+  // 一覧の外の行（新しい 50 本より古い・URL で名指した行）は、1 本の答えから頭の行を描いて、一覧の頭に置く
+  const outside = !listed && answer !== undefined && !(answer instanceof Error) ? [{ ...answer, outside: true }] : [];
+  for (const crawl of [...outside, ...withOrigin(crawls, crawlOrigin)]) {
     const state = stateOf(crawl);
     const row = document.createElement("tr");
     row.className = crawl.crawlId === spotlight ? "head spot" : "head";
@@ -1246,7 +1307,13 @@ const drawCrawls = () => {
       stateCell.append(" ", badge);
     }
     row.append(stateCell);
-    row.append(cell(crawl.crawlId.slice(0, 8), "mono"));
+    const idCell = cell(crawl.crawlId.slice(0, 8), "mono");
+    if (crawl.outside) {
+      const badge = tag("span", t("crawls.outside"), "who-mark");
+      badge.title = t("crawls.outsideTitle");
+      idCell.append(" ", badge);
+    }
+    row.append(idCell);
     // 始めた人（CAPTURE-450）。名前が在れば名前（title に主体の ID）、無ければ今までどおり主体の ID
     const by = whoOf(crawl);
     const who = cell(by.text);
@@ -1276,7 +1343,8 @@ const drawCrawls = () => {
       links.title = note;
     }
     row.append(links);
-    row.append(cell(String(crawl.waczCount), "num mono"));
+    // 1 本の答え（一覧の外の行）は WACZ の数を持たない
+    row.append(cell(crawl.waczCount === undefined ? "−" : String(crawl.waczCount), "num mono"));
     row.append(cell(took(crawl), "num mono"));
     // 行き先: run と、capture-ledger が合本を書けていれば、クロールを 1 つのアーカイブとして replayweb-player で。**run ↗ が先頭**
     // （docs の画面の絵の印が、この欄の先頭の link を指す）
@@ -1286,16 +1354,10 @@ const drawCrawls = () => {
       if (replay !== undefined) go.append(bundleLink(replay, replayBundleText(crawl, viewer), crawl));
     }
     row.append(go);
+    // 押すと URL を替える（開く: /crawls/<id>・閉じる: /crawls）。開け閉めは route が URL から決める
     row.onclick = (event) => {
       if (event.target instanceof HTMLAnchorElement) return;
-      if (opened.delete(crawl.crawlId)) {
-        views.delete(crawl.crawlId);
-        if (row.nextElementSibling?.classList.contains("detail")) row.nextElementSibling.remove();
-        return;
-      }
-      opened.set(crawl.crawlId, undefined);
-      row.after(detailRow(crawl));
-      void loadDetail(crawl.crawlId);
+      navigate(crawlsHref(opened.has(crawl.crawlId) ? undefined : crawl.crawlId, crawlOrigin));
     };
     body.append(row);
     // 開いていた行は、最後の答えで開き直す（表は引くたびに作り直す）
@@ -4350,7 +4412,7 @@ const drawLinksHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = screenHref("/crawls");
+  toList.href = screenHref(crawlsHref(crawlId)); // 一覧へ戻ると、この行が開いている（ここへはその行から来る）
   toList.textContent = t("links.back");
   back.append(toList);
   head.append(back);
@@ -4837,7 +4899,7 @@ const drawTraceHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = screenHref("/crawls");
+  toList.href = screenHref(crawlsHref(crawlId)); // 一覧へ戻ると、この行が開いている（ここへはその行から来る）
   toList.textContent = t("trace.back");
   back.append(toList);
   head.append(back);
@@ -5773,6 +5835,12 @@ const route = () => {
   if (past !== undefined) {
     show("changes");
     openHistory(past);
+    return;
+  }
+  const listed = parseCrawlsHref(path, location.search);
+  if (listed !== undefined) {
+    show("crawls");
+    openCrawls(listed);
     return;
   }
   const changes = parseChangesHref(path);
