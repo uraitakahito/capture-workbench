@@ -384,4 +384,8 @@ test("index.html を配る所の決め: 画面の path には index.html、サ�
   assert.deepEqual(ask("/crawls", { method: "POST", signedIn: true }), { kind: "static" });
   assert.deepEqual(ask("/crawls/../logout"), { kind: "static" });
   assert.deepEqual(ask("/wacz/a1/lines"), { kind: "static" });
+  // 長い画面の URL も画面（404 にしない）。戻り先には長すぎるので、サインインの後は最初の画面に戻る
+  const long = `/history/${"a".repeat(2001)}`;
+  assert.deepEqual(ask(long, { signedIn: true }), { kind: "index" });
+  assert.deepEqual(ask(long), { kind: "login", location: "/login" });
 });

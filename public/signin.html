@@ -6,5 +6,8 @@
     <!-- サインインしていない時の `/`（`src/lib.mjs` の `screenAnswer`）。古い hash の URL を戻り先に替えて、サインインへ回す -->
     <script type="module" src="/signin.js"></script>
   </head>
-  <body></body>
+  <body>
+    <!-- JS が読めない時の逃げ道（ふだんは読み込みの前に /login へ回るので、見えない） -->
+    <p><a href="/login">Sign in</a></p>
+  </body>
 </html>

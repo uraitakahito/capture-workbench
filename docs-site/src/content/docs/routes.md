@@ -62,14 +62,18 @@ You sign in on the IdP (identity provider: Amazon Cognito in production, locally
 authorization code with PKCE (Proof Key for Code Exchange). The code is in `src/auth.mjs`.
 
 - `GET /login` reads the IdP's discovery (`<WORKBENCH_OIDC_ISSUER>/.well-known/openid-configuration`)
-  once, remembers a fresh `state` and PKCE verifier, and redirects to the IdP's sign-in page. Without
+  once, remembers a fresh `state` and PKCE verifier, and redirects to the IdP's sign-in page. With
+  `?back=<path>` it also remembers, with the `state`, the view to return to after signing in (only a
+  view's path such as `/crawls/<id>`, up to 2,000 characters; anything else returns to `/`). Without
   `WORKBENCH_OIDC_ISSUER` and `WORKBENCH_OIDC_CLIENT_ID` it answers a 503 that names them.
 - `GET /callback` is where the IdP sends you back. **It checks the `state`**, and each one works
   once: a callback another page made, one that took too long, or a second use is a 400. It turns the
   code into tokens at the IdP's token endpoint, keeps them in a session in memory, sets the cookie
-  `workbench_session` (HttpOnly, SameSite=Lax) and redirects to `/`.
+  `workbench_session` (HttpOnly, SameSite=Lax) and redirects to the remembered view (`/` without one).
 - `GET /logout` drops the session and the cookie, and redirects to `/`.
-- `/` without a session redirects to `/login` (when the sign-in is configured).
+- Without a session (when the sign-in is configured), a view's path redirects to `/login?back=<that
+  path>`, and `/` answers a small page that turns an old `/#…` address into a path and goes to
+  `/login?back=…` (the server cannot see the part after `#`).
 
 The callback is `http://127.0.0.1:<WORKBENCH_PORT>/callback`, and it must match what the IdP has
 registered exactly. These routes are GET, because the way back from the IdP is a GET redirect, so

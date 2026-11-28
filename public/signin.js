@@ -5,4 +5,7 @@
  */
 import { loginHref, pathFromHash } from "/paths.js";
 
-location.replace(loginHref(pathFromHash(location.hash)));
+// hash も付けたまま回す。IdP がフォームを出さずに戻す時（IdP のサインインが生きている時・sandbox の代役）は、ブラウザが
+// hash を /callback の後まで持ち越すので、画面がまだ hash で開く版でも同じ画面に着く（path で開く版では、起動の橋が
+// 同じ path に置き換えるだけ）
+location.replace(loginHref(pathFromHash(location.hash)) + location.hash);

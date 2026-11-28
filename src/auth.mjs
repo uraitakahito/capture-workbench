@@ -25,7 +25,7 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 
-import { isScreenPath } from "../public/paths.js";
+import { isBackPath } from "../public/paths.js";
 
 /** セッションの cookie の名前。 */
 export const SESSION_COOKIE = "workbench_session";
@@ -126,7 +126,7 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
 
   /**
    * サインインの画面の URL。state と verifier と、サインインの後に戻す画面の path（`back`）を覚える。
-   * **戻り先は画面の path だけ**（`public/paths.js` の `isScreenPath`）—— ほかは捨てて `/`（よそへ回さない・
+   * **戻り先は画面の path だけ**（`public/paths.js` の `isBackPath`）—— ほかは捨てて `/`（よそへ回さない・
    * `Location` に入れられない字を持ち込まない）。
    */
   const beginLogin = async (back) => {
@@ -134,7 +134,7 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
     for (const [state, entry] of pending) if (now() - entry.at > PENDING_MS) pending.delete(state);
     const state = base64url(randomBytes(16));
     const { verifier, challenge } = pkcePair();
-    pending.set(state, { verifier, at: now(), back: isScreenPath(back) ? back : "/" });
+    pending.set(state, { verifier, at: now(), back: isBackPath(back) ? back : "/" });
     const query = new URLSearchParams({
       response_type: "code",
       client_id: clientId,

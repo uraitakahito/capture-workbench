@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { isScreenPath, loginHref, MAX_PATH, pathFromHash, SCREENS } from "../public/paths.js";
+import { isBackPath, isScreenPath, loginHref, MAX_PATH, pathFromHash, SCREENS } from "../public/paths.js";
 
 const CRAWL = "5b0c0003-6a1e-4000-8000-000000000003";
 
@@ -52,7 +52,6 @@ test("よそ・API・壊れた字は画面の path でない（戻り先にし�
     "/healthz",
     "/app.js",
     "/crawlsx",
-    `/crawls/${"a".repeat(MAX_PATH)}`,
   ]) {
     assert.equal(isScreenPath(path), false, String(path));
   }
@@ -107,4 +106,15 @@ test("サインインへ回す URL は、戻り先を 1 つの値にして載せ
   // %2F が 1 段解けない（URLSearchParams で読み戻すと、元の字のまま）
   const href = loginHref("/history/https%3A%2F%2Fsandbox.test%2Fpricing");
   assert.equal(new URLSearchParams(href.split("?")[1]).get("back"), "/history/https%3A%2F%2Fsandbox.test%2Fpricing");
+});
+
+test("戻り先は画面の path で MAX_PATH 字まで。画面の見分けには長さを掛けない（長い URL の履歴の画面も開く）", () => {
+  const long = `/history/${"a".repeat(MAX_PATH)}`;
+  assert.equal(isScreenPath(long), true);
+  assert.equal(isBackPath(long), false);
+  assert.equal(loginHref(long), "/login");
+  const edge = `/history/${"a".repeat(MAX_PATH - "/history/".length)}`;
+  assert.equal(edge.length, MAX_PATH);
+  assert.equal(isBackPath(edge), true);
+  assert.equal(isBackPath("/logout"), false);
 });

@@ -58,13 +58,15 @@ workbench は開いたときにこれを読み、誰としてサインインし�
 コードは `src/auth.mjs` に在ります。
 
 - `GET /login` は、IdP の discovery（`<WORKBENCH_OIDC_ISSUER>/.well-known/openid-configuration`）を 1 度だけ読み、新しい `state` と PKCE の verifier を覚えて、IdP のサインインの画面へ回します。
+  `?back=<path>` が在れば、サインインの後に戻す画面も `state` と一緒に覚えます（`/crawls/<id>` のような画面の path で 2,000 字までの物だけ。ほかは `/` に戻す）。
   `WORKBENCH_OIDC_ISSUER` と `WORKBENCH_OIDC_CLIENT_ID` が無ければ、その 2 つを名指す 503 を返します。
 - `GET /callback` は、IdP が戻す先です。
   **`state` を照らし、1 つの `state` は 1 度だけ通す。**
   よそのページが作った戻り・時間が掛かりすぎた戻り・2 度目は 400 です。
-  code を IdP の token endpoint でトークンに替え、メモリのセッションに持ち、cookie `workbench_session`（HttpOnly・SameSite=Lax）を付けて `/` へ回します。
+  code を IdP の token endpoint でトークンに替え、メモリのセッションに持ち、cookie `workbench_session`（HttpOnly・SameSite=Lax）を付けて、覚えた画面（無ければ `/`）へ回します。
 - `GET /logout` は、セッションと cookie を消して `/` へ回します。
-- セッションの無い `/` は、`/login` へ回します（サインインの設定が在るとき）。
+- セッションが無いとき（サインインの設定が在るとき）、画面の path は `/login?back=<その path>` へ回します。
+  `/` は、古い `/#…` のアドレスを path に替えて `/login?back=…` へ回す小さなページを返します（server は `#` の後ろを見られない）。
 
 戻り先は `http://127.0.0.1:<WORKBENCH_PORT>/callback` で、IdP に登録した物と一字一句同じでなければなりません。
 IdP から戻る道は GET のリダイレクトなので、これらは GET で、書き込みのエンドポイントの門（`Origin`・JSON）は掛けません。

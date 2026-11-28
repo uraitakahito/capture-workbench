@@ -85,10 +85,10 @@ export const contentType = (path) => {
 /**
  * workbench の index.html を配る所の決め（API・サインイン・書き込みの経路の後、静的な file の前）。`server.mjs` はこの答えを配るだけ。
  *
- *   index   `public/index.html` を返す（画面の path。画面が `route` で path から開く）
+ *   index   `public/index.html` を返す（画面の path。画面が `route` で path から開く —— 段 2（t-jfky）から。それまでは最初の画面）
  *   signin  `public/signin.html` を返す（サインインしていない時の `/`。server は hash を見られないので、画面の側で
  *           古い hash の URL（`/#trace/…`）を戻り先に替えてから `/login` へ回す）
- *   login   `302` でサインインへ回す（サインインしていない時の画面の path。戻り先を `?back=` に載せる）
+ *   login   `302` でサインインへ回す（サインインしていない時の画面の path。戻り先を `?back=` に載せる。長すぎれば載せない）
  *   static  今までどおり `public/` の file（無ければ 404）
  *
  * サインインの設定が無ければ（`configured` が false）、どこも配る —— API の 401 が理由を言う（今と同じ）。

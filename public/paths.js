@@ -27,7 +27,7 @@ export const SCREENS = Object.freeze([
   "history",
 ]);
 
-/** 戻り先として覚える長さの上限。IdP の state と一緒にメモリに持つので、際限なく受けない。 */
+/** 戻り先として覚える長さの上限。IdP の state と一緒にメモリに持つので、際限なく受けない（画面の path の見分けには掛けない）。 */
 export const MAX_PATH = 2000;
 
 /** 印字できる ASCII（`%` の符号を含む）。CR・LF や ASCII の外の字は `Location` に入れると node が投げる。 */
@@ -37,11 +37,12 @@ const PRINTABLE = /^[\x21-\x7e]+$/;
 const DOTS = /^(?:\.|%2e){1,2}$/i;
 
 /**
- * 画面の path か（query を付けてよい。hash は付けない）。サインインの後の戻り先（`/login?back=`）と、
- * 画面の中で拾う link の見分けに使う。**よそへ回さない**: `/` 1 つで始まり、`//`・`\`・scheme を持たない。
+ * 画面の path か（query を付けてよい。hash は付けない）。server が index.html を返す path と、画面の中で拾う link の
+ * 見分けに使う。**よそへ回さない**: `/` 1 つで始まり、`//`・`\`・scheme を持たない。長さは見ない（長い URL の
+ * 履歴の画面も開く）—— 戻り先の限りは `isBackPath`。
  */
 export const isScreenPath = (href) => {
-  if (typeof href !== "string" || href.length > MAX_PATH || !PRINTABLE.test(href)) return false;
+  if (typeof href !== "string" || !PRINTABLE.test(href)) return false;
   if (!href.startsWith("/") || href.startsWith("//") || href.includes("\\") || href.includes("#")) return false;
   const [pathname] = href.split("?");
   const parts = pathname.split("/").slice(1);
@@ -92,6 +93,12 @@ export const pathFromHash = (hash) => {
   return isScreenPath(path) ? path : undefined;
 };
 
+/**
+ * サインインの後に戻してよい path か。画面の path で、`MAX_PATH` 字まで（IdP の state と一緒にメモリに持つ）。
+ * 長すぎる物は捨てる —— サインインの後は最初の画面に戻る。
+ */
+export const isBackPath = (href) => isScreenPath(href) && href.length <= MAX_PATH;
+
 /** サインインの画面へ回す URL。戻り先は `encodeURIComponent` で 1 つの値にする（`?from=` が `/login` の query に混ざらない）。 */
 export const loginHref = (back) =>
-  back === undefined || !isScreenPath(back) ? "/login" : `/login?back=${encodeURIComponent(back)}`;
+  back === undefined || !isBackPath(back) ? "/login" : `/login?back=${encodeURIComponent(back)}`;
