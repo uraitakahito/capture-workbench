@@ -23,6 +23,9 @@ export const ruleTallies = (rules, decisions) => {
 /**
  * 落とした物。規則で落とした物と、どれにも当たらなかった物と、robots.txt で取らなかったページを、
  * ホスト名ごとに（段を跨いで足し、例は最初の 1 本）。辿った物と撮るだけの物は入れない。
+ *
+ * robots.txt の行は、そのうち例外の行の上限で止まった数（`limited`。capture-ledger v0.117.0 から。`pages` に含まれる）が
+ * 1 以上のときだけ、`limited` を持つ（0 と、欄の無い古い capture-ledger では持たない）。
  */
 export const dropsOf = (decisions, robots) => {
   const rows = new Map();
@@ -38,9 +41,32 @@ export const dropsOf = (decisions, robots) => {
   }
   return [
     ...rows.values(),
-    ...robots.map((row) => ({ why: "robots", hostname: row.hostname, links: row.pages, sample: row.samples[0] ?? "" })),
+    ...robots.map((row) => ({
+      why: "robots",
+      hostname: row.hostname,
+      links: row.pages,
+      sample: row.samples[0] ?? "",
+      ...(row.limited > 0 && { limited: row.limited }),
+    })),
   ];
 };
+
+/**
+ * robots.txt が断ったが、例外の行で外して撮ったページ（答えの `robotsOverridden`。capture-ledger v0.117.0 から。
+ * t-6bc6）。例外とホスト名ごとの行を、並びは capture-ledger のまま、例は最初の 1 本にする。**落とした物（`dropsOf`）には
+ * 混ぜない** —— 撮った物なので。欄の無い答え（それより前の capture-ledger）は空。
+ *
+ * `pages` は撮れたページの数で、`failed` は外して撮りに行ったが撮れなかったページの数（`pages` には入らない）。
+ * `failed` の無い行は 0 にする。
+ */
+export const overriddenOf = (robotsOverridden) =>
+  (Array.isArray(robotsOverridden) ? robotsOverridden : []).map((row) => ({
+    exemptionId: String(row.exemptionId),
+    hostname: row.hostname,
+    pages: row.pages,
+    failed: typeof row.failed === "number" ? row.failed : 0,
+    sample: row.samples?.[0] ?? "",
+  }));
 
 /**
  * Windmill の走らせる画面に、引数を入れて開く URL。**引数は hash に JSON で置く** —— Windmill（1.806）は

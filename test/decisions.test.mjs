@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { dropsOf, inspectHref, ruleTallies } from "../public/decisions.js";
+import { dropsOf, inspectHref, overriddenOf, ruleTallies } from "../public/decisions.js";
 import { count } from "../public/format.js";
 import { setLang, t } from "../public/i18n.js";
 
@@ -62,6 +62,45 @@ test("落とした物は、規則とホスト名ごとに段を跨いで足し�
     { why: 0, hostname: "nowhere.invalid", links: 1, sample: "http://nowhere.invalid/" },
     { why: "robots", hostname: "capture-fixtures.capture-ledger", links: 1, sample: "http://capture-fixtures.capture-ledger:8080/links/hidden" },
   ]);
+});
+
+test("robots.txt を例外で外して撮った物は、例外とホスト名ごとの行のまま（例は最初の 1 本）。落とした物には混ぜない", () => {
+  const robotsOverridden = [
+    { exemptionId: "12", hostname: "site.test", pages: 3, failed: 2, samples: ["https://site.test/private/a", "https://site.test/private/b"] },
+    { exemptionId: "12", hostname: "www.site.test", pages: 1, failed: 0, samples: [] },
+    // failed の無い行（欄を足す前の答え）は 0
+    { exemptionId: "15", hostname: "site.test", pages: 2, samples: ["https://site.test/members/"] },
+  ];
+  // pages は撮れた数、failed は外して撮りに行き撮れなかった数（pages に足さない）
+  assert.deepEqual(overriddenOf(robotsOverridden), [
+    { exemptionId: "12", hostname: "site.test", pages: 3, failed: 2, sample: "https://site.test/private/a" },
+    { exemptionId: "12", hostname: "www.site.test", pages: 1, failed: 0, sample: "" },
+    { exemptionId: "15", hostname: "site.test", pages: 2, failed: 0, sample: "https://site.test/members/" },
+  ]);
+  // 欄の無い答え（capture-ledger v0.117.0 より前）と空の並びは、何も出さない
+  assert.deepEqual(overriddenOf(undefined), []);
+  assert.deepEqual(overriddenOf([]), []);
+  // 落とした物は、外して撮った物を数えない（robots の行だけ）
+  assert.deepEqual(dropsOf([], [{ hostname: "site.test", pages: 1, samples: ["https://site.test/admin/"] }]), [
+    { why: "robots", hostname: "site.test", links: 1, sample: "https://site.test/admin/" },
+  ]);
+});
+
+test("robots.txt で落とした行は、例外の上限で止まった数（limited）が 1 以上のときだけ、それを持つ", () => {
+  const robots = (limited) => [{ hostname: "site.test", pages: 3, ...(limited === undefined ? {} : { limited }), samples: ["https://site.test/admin/"] }];
+  const plain = { why: "robots", hostname: "site.test", links: 3, sample: "https://site.test/admin/" };
+  // limited は pages に含まれる（数は足さない）
+  assert.deepEqual(dropsOf([], robots(2)), [{ ...plain, limited: 2 }]);
+  assert.deepEqual(dropsOf([], robots(0)), [plain]);
+  // 欄の無い答え（capture-ledger v0.117.0 より前）
+  assert.deepEqual(dropsOf([], robots(undefined)), [plain]);
+});
+
+test("開いた行の字: 「うち上限で止まった N」と「撮れなかった N」", () => {
+  assert.equal(t("crawls.decided.limited", { n: 1204 }), "うち上限で止まった 1,204");
+  assert.equal(t("crawls.decided.overriddenFailed", { n: 2 }), "撮れなかった 2");
+  assert.equal(inEnglish(() => t("crawls.decided.limited", { n: 1 })), "1 of them stopped by the limit");
+  assert.equal(inEnglish(() => t("crawls.decided.overriddenFailed", { n: 2 })), "2 failed");
 });
 
 test("Windmill の走らせる画面は、hash に JSON の引数を置いて開く（id は全部）", () => {

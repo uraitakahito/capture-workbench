@@ -63,9 +63,30 @@ import {
   variablesOf,
   withNocheck,
 } from "/start.js";
-import { dropsOf, inspectHref, ruleTallies } from "/decisions.js";
+import { dropsOf, inspectHref, overriddenOf, ruleTallies } from "/decisions.js";
 import { keepLang, loginHref, pathFromHash, screenTarget } from "/paths.js";
 import { crawlsHref, parseCrawlsHref } from "/crawls.js";
+import {
+  appliesText,
+  createdByText,
+  exemptionBody,
+  EXEMPTIONS_PATH,
+  exemptionsHref,
+  expiryDates,
+  hasOrgs,
+  hasUsed,
+  limitsText,
+  listError,
+  noRoute,
+  parseExemptionsHref,
+  registerAnswer,
+  revokeAnswer,
+  revokePath,
+  scopeText,
+  sortExemptions,
+  stateOf as exemptionStateOf,
+  usedText,
+} from "/exemptions.js";
 import { ORIGIN_ALL, originChips, originOf as requesterOf, startedByLine, whoMarks, whoOf, withOrigin } from "/requester.js";
 import {
   actionAnswer,
@@ -227,6 +248,7 @@ import {
   moreOf,
   msOf,
   outcomeOf,
+  overrideOf,
   readPages,
   reasonText,
   rowsOf,
@@ -753,7 +775,9 @@ const linksLineOf = (one) => {
 
 /**
  * 規則が何を決めたか（capture-ledger の `GET /api/crawls/:id/decisions`）。規則ごとの数（段を跨いで足し、0 回の規則に
- * 印）と、落とした物（規則・どれにも当たらない・robots.txt、ホスト名ごと）、その下に Windmill で調べる 1 行。
+ * 印）と、落とした物（規則・どれにも当たらない・robots.txt、ホスト名ごと）、robots.txt を例外で外して撮った物
+ * （`robotsOverridden`。t-6bc6。落とした物とは別の表で、例外の番号は例外の画面へ。撮れなかった数は分けて出す）、
+ * その下に Windmill で調べる 1 行。robots.txt で落とした行には、そのうち例外の上限で止まった数を添える。
  * **決めたリンクが 1 本も無ければ数を並べない** —— リンクの無いページでも全部の規則に「当たって
  * いません」が付き、読み違える。読めなければ 1 行で言う（capture-ledger が古ければエンドポイントが無い）。
  */
@@ -795,6 +819,8 @@ const decisionsOf = (one) => {
     box.append(tag("p", t("crawls.decided.dropped")));
     const table = document.createElement("table");
     table.className = "drops";
+    // robots.txt の行のうち、例外の上限で止まった数。どの行にも無ければ、欄ごと出さない
+    const limited = drops.some((d) => d.limited !== undefined);
     for (const d of drops) {
       const row = document.createElement("tr");
       row.append(
@@ -807,7 +833,28 @@ const decisionsOf = (one) => {
         ),
         cell(d.hostname, "mono"),
         cell(t("crawls.decided.urls", { n: d.links }), "num mono"),
+        ...(limited ? [cell(d.limited === undefined ? "" : t("crawls.decided.limited", { n: d.limited }))] : []),
         cell(d.sample, "mono muted"),
+      );
+      table.append(row);
+    }
+    box.append(table);
+  }
+  const overridden = overriddenOf(decided.robotsOverridden);
+  if (overridden.length > 0) {
+    box.append(tag("p", t("crawls.decided.overridden")));
+    const table = document.createElement("table");
+    table.className = "drops";
+    // 外して撮りに行き、撮れなかった数（撮れた数には入らない）。どの行も 0 なら、欄ごと出さない
+    const failed = overridden.some((o) => o.failed > 0);
+    for (const o of overridden) {
+      const row = document.createElement("tr");
+      row.append(
+        screenCell(exemptionsHref(o.exemptionId), t("exemptions.ref", { id: o.exemptionId })),
+        cell(o.hostname, "mono"),
+        cell(t("crawls.decided.urls", { n: o.pages }), "num mono"),
+        ...(failed ? [cell(o.failed > 0 ? t("crawls.decided.overriddenFailed", { n: o.failed }) : "", "state warn")] : []),
+        cell(o.sample, "mono muted"),
       );
       table.append(row);
     }
@@ -1000,6 +1047,13 @@ const pagesOf = (one) => {
     url.append(line);
     const outcome = document.createElement("td");
     const said = tag("span", outcomeOf(page, one.state), "outcome");
+    // robots.txt が断っていたが、例外の行で外したページ（t-6bc6）。結末の後ろに足し、例外の画面のその行へ。列は足さない
+    const lifted = overrideOf(page);
+    if (lifted !== undefined) {
+      const a = tag("a", lifted.text, "exemption-link");
+      a.href = screenHref(exemptionsHref(lifted.id));
+      said.append(" ", a);
+    }
     for (const viewer of VIEWERS) {
       const replay = replayBundleHref(settings[viewer.setting], one.replayBundle, page);
       if (replay !== undefined) said.append(" ", bundleLink(replay, viewerText(viewer), one));
@@ -3696,6 +3750,194 @@ const refreshSchedules = async () => {
   schedulesTimer = setTimeout(() => void refreshSchedules(), pollMs(schedules));
 };
 
+// ── robots.txt の例外（t-6bc6）──────────────────────────────────────
+/**
+ * 最後に読めた行と、読めなかった理由。**引くのは、この画面を開いたときと、登録・取り消しの後だけ** —— 行は人が手で
+ * 足す物で、一覧の引き直しの輪には入れない。読めなければ 1 行で言い、最後に描けた表は残す。
+ */
+let exemptions = [];
+let exemptionsError;
+/** 一度でも読めたか。読める前に「一覧にありません」と言わない。 */
+let exemptionsRead = false;
+/** エンドポイントの無い capture-ledger（v0.116.0 より前）か。登録の欄を隠す（押しても 404 が返るだけ）。 */
+let exemptionsNoRoute = false;
+/** URL が名指した行（`/exemptions/<番号>`）。その行に印を付ける。 */
+let exemptionSpot;
+
+/** 画面の上の 1 行（取り消しの答え）。 */
+const exemptionsSaid = (said) => {
+  const line = $("exemptions-answer");
+  line.hidden = false;
+  line.className = `start-answer state ${said.kind}`;
+  line.textContent = said.text;
+};
+
+/** 押す前に確かめてから、取り消しを頼む。答えを 1 行で出して、引き直す。 */
+const revokeExemption = async (row) => {
+  const ask = t("exemptions.ask.revoke", { id: row.id, org: row.orgId, host: row.host, pattern: row.pathPattern });
+  if (!window.confirm(ask)) return;
+  const { status, answer } = await postJson(revokePath(row.id));
+  exemptionsSaid(revokeAnswer(status, answer));
+  await loadExemptions();
+};
+
+/**
+ * 一覧の 1 行。効いていない行は薄くし（状態の欄が字で言う）、取り消すボタンは効いている行にだけ出す。**状態とボタンは
+ * 左の端の欄** —— 列が多く、狭い窓では表が横に流れるので、右の端に置くと見えない。
+ */
+const exemptionRow = (row, used, orgs) => {
+  const tr = document.createElement("tr");
+  tr.className = [row.state === "active" ? "" : "off", row.id === exemptionSpot ? "spot" : ""].join(" ").trim();
+  // 長い字（User-Agent・理由）は 1 行で末尾を省く。全文は title に。幅の上限は中の span に付ける（.url-box と同じ訳）
+  const clipped = (text, className) => {
+    const td = document.createElement("td");
+    td.append(tag("span", text, className));
+    td.title = String(text);
+    return td;
+  };
+  const by = clipped(createdByText(row), "exemption-clip by");
+  by.title = `${String(row.createdBy)} ${dateTime(new Date(row.createdAt))}`;
+  const said = exemptionStateOf(row);
+  const state = document.createElement("td");
+  const word = tag("span", said.text, `state ${said.kind}`);
+  if (said.title !== undefined) word.title = said.title;
+  state.append(word);
+  if (row.state === "active") state.append(" ", button(t("exemptions.action.revoke"), () => void revokeExemption(row)));
+  tr.append(
+    state,
+    cell(`#${String(row.id)}`, "mono"),
+    ...(orgs ? [cell(row.orgId, "mono")] : []),
+    cell(row.host, "mono"),
+    cell(row.pathPattern, "mono"),
+    cell(scopeText(row.scope)),
+    cell(appliesText(row.appliesTo)),
+    clipped(row.userAgent, "exemption-clip mono"),
+    clipped(row.reason, "exemption-clip"),
+    cell(dateTime(new Date(row.expiresAt))),
+    by,
+    cell(limitsText(row), "num mono"),
+    ...(used ? [cell(usedText(row), "num mono")] : []),
+  );
+  return tr;
+};
+
+const drawExemptions = () => {
+  const rows = sortExemptions(exemptions);
+  const used = hasUsed(rows);
+  const orgs = hasOrgs(rows);
+  $("exemptions-col-used").hidden = !used;
+  $("exemptions-col-org").hidden = !orgs;
+  $("exemption-form").hidden = exemptionsNoRoute;
+  $("exemptions-table").hidden = rows.length === 0;
+  $("exemptions-empty").hidden = rows.length > 0 || !exemptionsRead || exemptionsError !== undefined;
+  $("exemptions").replaceChildren(...rows.map((row) => exemptionRow(row, used, orgs)));
+  const note = $("exemptions-note");
+  note.hidden = exemptionsError === undefined;
+  if (exemptionsError !== undefined) note.textContent = t("exemptions.error.unreadable", { said: exemptionsError });
+  // URL が名指した番号が一覧に無い（無い番号・見えない組織の行）。読めてから言う
+  const missing = $("exemptions-missing");
+  missing.hidden =
+    exemptionSpot === undefined || !exemptionsRead || exemptionsError !== undefined || rows.some((row) => row.id === exemptionSpot);
+  if (!missing.hidden) missing.textContent = t("exemptions.missing", { id: exemptionSpot });
+};
+
+const loadExemptions = async () => {
+  try {
+    const res = await fetch(EXEMPTIONS_PATH);
+    const body = await res.json();
+    signInAgain(res, body);
+    exemptionsNoRoute = noRoute(res.status, body);
+    if (!res.ok) throw new Error(listError(res.status, body));
+    exemptions = body.exemptions;
+    exemptionsRead = true;
+    exemptionsError = undefined;
+  } catch (err) {
+    exemptionsError = failedText(err);
+  }
+  drawExemptions();
+};
+
+/** 登録する組織。`/healthz` の名乗りの組織が 2 つ以上なら選んだ物、1 つならそれ、無ければ空（capture-ledger が 403 で言う）。 */
+const exemptionOrg = () => $("exemption-org").querySelector("select")?.value ?? settings.signedIn?.groups?.[0] ?? "";
+
+/**
+ * 登録の欄の、開くたびに決まる所: 組織（1 度だけ組む —— 選び直しを消さない）と、期限の日付の範囲（今日から数える。
+ * 選んだ日付は残す）。
+ */
+const syncExemptionForm = () => {
+  const box = $("exemption-org");
+  if (box.childNodes.length === 0) {
+    const groups = settings.signedIn?.groups ?? [];
+    if (groups.length > 1) {
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", t("exemptions.form.org"));
+      for (const group of groups) {
+        const option = tag("option", group);
+        option.value = group;
+        select.append(option);
+      }
+      box.append(select);
+    } else {
+      box.append(groups.length === 1 ? tag("span", groups[0], "mono") : tag("span", t("exemptions.form.noOrg"), "state warn"));
+    }
+  }
+  const dates = expiryDates();
+  const expires = $("exemption-expires");
+  expires.min = dates.min;
+  expires.max = dates.max;
+  if (expires.value === "") expires.value = dates.value;
+};
+
+/**
+ * いまの欄の中身で登録を頼む。**送る前に検査しない** —— 字の決まりも、admin かどうかも capture-ledger が見て、文で答える。
+ * 答えは 1 行で、400 が欄を名指していれば（`field`）その欄の行の下に、ほかはボタンの下に出す。
+ */
+const registerExemption = async (event) => {
+  event.preventDefault();
+  const form = $("exemption-form");
+  $("exemption-go").disabled = true;
+  const { status, answer } = await postJson(
+    EXEMPTIONS_PATH,
+    exemptionBody({
+      orgId: exemptionOrg(),
+      host: $("exemption-host").value,
+      pathPattern: $("exemption-pattern").value,
+      scope: $("exemption-scope").value,
+      appliesTo: $("exemption-applies").value,
+      userAgent: $("exemption-ua").value,
+      reason: $("exemption-reason").value,
+      expires: $("exemption-expires").value,
+      dailyLimit: $("exemption-daily").value,
+      linkLimit: $("exemption-links").value,
+    }),
+  );
+  $("exemption-go").disabled = false;
+  const said = registerAnswer(status, answer);
+  for (const el of form.querySelectorAll("[aria-invalid]")) el.removeAttribute("aria-invalid");
+  // 欄の名前は capture-ledger の答えの字なので、selector に組まずに照らす
+  const at = [...form.querySelectorAll("[data-field]")].find((el) => el.dataset.field === said.field);
+  at?.querySelector("input, select, textarea")?.setAttribute("aria-invalid", "true");
+  const line = $("exemption-answer");
+  (at?.closest(".start-row") ?? $("exemption-go-row")).after(line);
+  line.hidden = false;
+  line.className = `start-answer state ${said.kind}`;
+  line.textContent = said.text;
+  if (status === 201) {
+    // 同じ行を 2 度送らないように、行ごとに変わる欄だけ空にする（User-Agent・期限・上限は次の登録でも同じことが多い）
+    $("exemption-host").value = "";
+    $("exemption-reason").value = "";
+    await loadExemptions();
+  }
+};
+$("exemption-form").addEventListener("submit", (event) => void registerExemption(event));
+
+const openExemptions = ({ id }) => {
+  exemptionSpot = id;
+  syncExemptionForm();
+  drawExemptions();
+  void loadExemptions();
+};
+
 // ── 前回からの変化（CAPTURE-167・目次と 1 ページは CAPTURE-236） ──────────────────────────
 /**
  * いま開いている回。`crawlId` が替わったときだけ回の答えを読み、ページを替えても読み直さない。`detail` が undefined の
@@ -5802,7 +6044,7 @@ const openTrace = (crawlId, pageId) => {
 };
 
 // ── 画面の切り替え ───────────────────────────────────────────────────
-const FACES = ["crawls", "start", "schedules", "changes", "archives", "search", "scripts", "check", "wacz"];
+const FACES = ["crawls", "start", "schedules", "changes", "archives", "search", "scripts", "exemptions", "check", "wacz"];
 
 const show = (face) => {
   for (const b of document.querySelectorAll("#tabs button")) {
@@ -5815,7 +6057,8 @@ const show = (face) => {
 /**
  * URL（path）が画面を決める。`/check/…` は検証の画面、`/archive/…` は WACZ の画面、`/scripts` と `/scripts/…` はスクリプト集の画面
  * （読む所）、`/search` と `/search?q=<語>` は検索の画面、`/links/…` と `/trace/…` はクロールの画面の中（リンクの構成・経緯）、
- * `/changes/…` は変化の画面、`/history/…` は変化の画面の中（URL の履歴）、それ以外はほかの画面のどれか。形は `public/paths.js`。
+ * `/changes/…` は変化の画面、`/history/…` は変化の画面の中（URL の履歴）、`/exemptions` と `/exemptions/<番号>` は robots.txt の
+ * 例外の画面、それ以外はほかの画面のどれか。形は `public/paths.js`。
  * 読むのは path だけ（query は検索の語のほか見ない —— `?lang=` が付いていても同じ画面）。
  */
 const route = () => {
@@ -5887,6 +6130,12 @@ const route = () => {
   if (asked !== undefined || path === "/scripts") {
     show("scripts");
     void openReading(asked);
+    return;
+  }
+  const excepted = parseExemptionsHref(path);
+  if (excepted !== undefined) {
+    show("exemptions");
+    openExemptions(excepted);
     return;
   }
   const face = path.slice(1);

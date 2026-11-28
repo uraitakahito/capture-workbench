@@ -16,6 +16,7 @@ import {
   moreOf,
   msOf,
   outcomeOf,
+  overrideOf,
   pagesPath,
   readPages,
   WACZ_LOG_PATH,
@@ -134,6 +135,20 @@ test("結末: 終わったクロールの pending は、報告が来ないまま
   assert.equal(outcomeOf(pending), "pending");
   // ほかの状態には添えない
   assert.equal(outcomeOf(page("5"), "failed"), "captured");
+});
+
+test("結末: 理由 robots-exemption-limit（例外の型に当たったが、上限で止まった）も、言い換えずに出す", () => {
+  assert.equal(outcomeOf(page("6", { state: "skipped", reason: "robots-exemption-limit", taskId: null })), "skipped: robots-exemption-limit");
+  assert.equal(inEnglish(() => outcomeOf(page("6", { state: "skipped", reason: "robots-exemption-limit" }))), "skipped: robots-exemption-limit");
+});
+
+test("robots.txt を例外で外したページ（robotsExemptionId）には、番号と、結末の後ろに足す字。外していない・欄が無いなら何も足さない", () => {
+  assert.deepEqual(overrideOf(page("7", { robotsExemptionId: "12" })), { id: "12", text: "robots.txt を例外 #12 で外した" });
+  assert.equal(inEnglish(() => overrideOf(page("7", { robotsExemptionId: "12" })).text), "robots.txt lifted by exemption #12");
+  // 外していないページは null、capture-ledger v0.117.0 より前は欄が無い
+  assert.equal(overrideOf(page("8", { robotsExemptionId: null })), undefined);
+  assert.equal(overrideOf(page("9")), undefined);
+  assert.equal(overrideOf(page("10", { robotsExemptionId: "" })), undefined);
 });
 
 test("数: logCounts が null なら「—」（読んでいない）、0 は色なし、0 より大きい warn と error に色", () => {

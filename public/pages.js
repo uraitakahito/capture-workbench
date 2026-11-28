@@ -55,6 +55,15 @@ export const outcomeOf = (page, crawlState) => {
 };
 
 /**
+ * robots.txt が断っていたが、例外の行（`robotsExemptionId`。capture-ledger v0.117.0 から。t-6bc6）で外したページの印。
+ * 番号と、結末の後ろに足す字。欄が無い（それより前の capture-ledger）か null（外していない）なら undefined。
+ */
+export const overrideOf = (page) =>
+  typeof page.robotsExemptionId === "string" && page.robotsExemptionId !== ""
+    ? { id: page.robotsExemptionId, text: t("crawls.pages.robotsOverridden", { id: page.robotsExemptionId }) }
+    : undefined;
+
+/**
  * ページの行の、level ごとの数（warn か error）。`logCounts` が null なのは「capture-ledger が、その取り込みの
  * `.result.json` から数を読んでいない」で、0 とは別のことなので「—」。0 より大きければ色を付ける。
  * kind は画面の色（bad・warn・muted）で、0 は色なし（undefined）。

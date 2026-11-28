@@ -75,7 +75,18 @@
     "        在るかどうかの真偽にし、絵は GET /api/crawls/:id/pages/:page/trace/failure-screenshot で { contentType, base64 } にして返す。",
     "        5b0c000b の 1304 は絵が 2 枚、1305 と 1306 は絵を残さなかった取り込み (withheld・secret)、1307 は文書が 503 を返して失敗の時点の絵が在る取り込み。",
     "crawls の pages の screenshot: ページの行の読み込みの後の節目のスクリーンショット (アーカイブの行と同じ形。CAPTURE-432)。省けば null。",
-    "        5b0c000b の 1304〜1306 は同じ WACZ のアーカイブの行と同じ値、5b0c0009 の 1201 は絵 (stageScreenshots が絵を充てる)・1203 は withheld。"
+    "        5b0c000b の 1304〜1306 は同じ WACZ のアーカイブの行と同じ値、5b0c0009 の 1201 は絵 (stageScreenshots が絵を充てる)・1203 は withheld。",
+    "exemptions: robots.txt の例外 (GET /api/robots-exemptions。capture-ledger v0.116.0・t-6bc6)。組織の admin が「このホストのこの path の型は、robots.txt が",
+    "        断っていても撮る」と登録した行。時刻は「何日前・何日後」で書く (createdDaysAgo・expiresInDays・revokedDaysAgo。絶対の時刻で書くと、",
+    "        効いている見本が日が経つと切れる)。状態は代役が capture-ledger と同じ決め方で出す —— 見本は、効いている行 (1)・期限の切れた行 (2)・",
+    "        取り消した行 (3)。usedLast24h は 24 時間の内にその行で外したページの数 (v0.117.0。省けば 0)。createdByName を省いた行は null",
+    "        (画面は主体の ID を出す)。画面から登録した行と取り消しは、代役が起きている間だけ在る。",
+    "crawls の pages の robotsExemptionId・crawls の robotsOverridden: robots.txt が断っていて、例外の行で外したページの行の番号と、判断の答え",
+    "        (GET /api/crawls/:id/decisions) の「例外で外して撮った物」(例外とホスト名ごと。capture-ledger v0.117.0)。5b0c0004 が見本で、ページ 1402 は",
+    "        例外 1 で外して撮れた行、1403 は型に当たったが上限で止まった行 (理由 robots-exemption-limit)、1404 は robots.txt で撮らなかった行。",
+    "        robots の行の limited は、そのうち上限で止まった数 (pages に含まれる)。robotsOverridden の行の pages は撮れた数、failed は外して撮りに行き",
+    "        撮れなかった数 (pages に入らない)。どちらも省けば 0。「撮れなかった N」を見るなら、5b0c0004 の robotsOverridden の行に failed を書く",
+    "        (見本は書いていない —— 撮れなかったページの行を足すと、クロールの一覧の「N 枚取れず」が変わり、docs の絵が替わる)。"
   ],
   "capturedAt": "2026-10-12T09:00:00.000Z",
   "emptyCatalog": false,
@@ -420,7 +431,76 @@
       "pagesDiscovered": 180,
       "waczCount": 50,
       "lastJobId": "019a5b0c-0004-7000-8000-000000000004",
-      "lastJobDepth": 2
+      "lastJobDepth": 2,
+      "decisions": [
+        {
+          "depth": 1,
+          "rule": 1,
+          "action": "follow",
+          "hostname": "sandbox.test",
+          "links": 179,
+          "samples": [
+            "https://sandbox.test/blog/2026/11/"
+          ]
+        }
+      ],
+      "robots": [
+        {
+          "hostname": "sandbox.test",
+          "pages": 2,
+          "limited": 1,
+          "samples": [
+            "https://sandbox.test/private/notes"
+          ]
+        }
+      ],
+      "robotsOverridden": [
+        {
+          "exemptionId": "1",
+          "hostname": "sandbox.test",
+          "pages": 1,
+          "samples": [
+            "https://sandbox.test/private/report"
+          ]
+        }
+      ],
+      "pages": [
+        {
+          "id": "1401",
+          "url": "https://sandbox.test/blog/",
+          "depth": 0,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1401-7000-8000-000000001401",
+          "archiveId": "a5b0c140-1401-4000-8000-000000001401",
+          "capturedAt": "2026-10-12T08:15:00.000Z"
+        },
+        {
+          "id": "1402",
+          "url": "https://sandbox.test/private/report",
+          "depth": 1,
+          "state": "captured",
+          "reason": null,
+          "taskId": "019a5b0c-1402-7000-8000-000000001402",
+          "archiveId": "a5b0c140-1402-4000-8000-000000001402",
+          "capturedAt": "2026-10-12T08:16:00.000Z",
+          "robotsExemptionId": "1"
+        },
+        {
+          "id": "1403",
+          "url": "https://sandbox.test/private/notes",
+          "depth": 1,
+          "state": "skipped",
+          "reason": "robots-exemption-limit"
+        },
+        {
+          "id": "1404",
+          "url": "https://sandbox.test/admin/",
+          "depth": 1,
+          "state": "skipped",
+          "reason": "robots"
+        }
+      ]
     },
     {
       "crawlId": "5b0c0005-6a1e-4000-8000-000000000005",
@@ -3321,6 +3401,50 @@
           }
         }
       ]
+    }
+  ],
+  "exemptions": [
+    {
+      "id": "1",
+      "host": "sandbox.test",
+      "pathPattern": "/private/",
+      "scope": "links",
+      "appliesTo": "all",
+      "userAgent": "BrowserHive/1.0 (+https://sandbox.test/bot)",
+      "reason": "サイトの持ち主から、/private/ の下を撮ってよいと文書で許しを受けた（2026-11 の依頼）",
+      "createdBy": "3f1c9a52-0000-4000-8000-00000000a11c",
+      "createdByName": "alice",
+      "createdDaysAgo": 3,
+      "expiresInDays": 27,
+      "usedLast24h": 1
+    },
+    {
+      "id": "2",
+      "host": "archive.sandbox.test",
+      "scope": "seeds",
+      "appliesTo": "human",
+      "userAgent": "BrowserHive/1.0",
+      "reason": "移行の前に、古い資料のページを 1 度だけ撮る",
+      "createdBy": "3f1c9a52-0000-4000-8000-00000000a11c",
+      "createdDaysAgo": 40,
+      "expiresInDays": -10
+    },
+    {
+      "id": "3",
+      "host": "sandbox.test",
+      "pathPattern": "/search",
+      "scope": "seeds",
+      "userAgent": "BrowserHive/1.0 (+https://sandbox.test/bot)",
+      "reason": "検索の結果のページを、持ち主の確かめが済むまで撮る",
+      "createdBy": "3f1c9a52-0000-4000-8000-00000000a11c",
+      "createdByName": "alice",
+      "createdDaysAgo": 20,
+      "expiresInDays": 10,
+      "revokedDaysAgo": 5,
+      "revokedBy": "3f1c9a52-0000-4000-8000-00000000a11c",
+      "revokedByName": "alice",
+      "dailyLimit": 50,
+      "linkLimit": 5
     }
   ],
   "schedules": [

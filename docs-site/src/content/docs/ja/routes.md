@@ -1,6 +1,6 @@
 ---
 title: エンドポイント
-description: capture-workbench のサーバが答えるエンドポイント —— /healthz、サインイン、capture-ledger への素通し、書き込みのエンドポイント（クロールを始める・その場の TS の直し方を訊く・定期実行の予定を作る／操作する・走ったままのクロールを締める・差分を Claude に要約させる）、その場の TS の宣言を訊くエンドポイント、WACZ の中身を読む /wacz/ のエンドポイント。Host の門、通すヘッダと、失敗の形
+description: capture-workbench のサーバが答えるエンドポイント —— /healthz、サインイン、capture-ledger への素通し、書き込みのエンドポイント（クロールを始める・その場の TS の直し方を訊く・定期実行の予定を作る／操作する・走ったままのクロールを締める・差分を Claude に要約させる・robots.txt の例外を登録する／取り消す）、その場の TS の宣言を訊くエンドポイント、WACZ の中身を読む /wacz/ のエンドポイント。Host の門、通すヘッダと、失敗の形
 ---
 
 capture-workbench のサーバは中継しかしません。
@@ -18,6 +18,8 @@ workbench のロジックはブラウザの側（`public/`）に在り、サー�
 | `POST /api/schedules/:id/<操作>` | capture-ledger へ（書き込み。`pause`・`resume`・`run`・`repin`・`delete`） |
 | `POST /api/crawls/:id/failed` | capture-ledger へ（書き込み。走ったままのクロールを締める） |
 | `POST /api/archives/:id/changes/summary` | capture-ledger へ（書き込み。選んだ 2 本の取り込みの差分を、Claude に要約させる） |
+| `POST /api/robots-exemptions` | capture-ledger へ（書き込み。robots.txt の例外を登録する） |
+| `POST /api/robots-exemptions/:id/revoke` | capture-ledger へ（書き込み。robots.txt の例外を取り消す） |
 | `GET /api/archives/:id/screenshots/:stage` | capture-ledger へ素通し（節目のスクリーンショット。字でなく WebP のバイト列のまま通す） |
 | `/api/*`（ほか） | capture-ledger へ素通し（GET だけ） |
 | `/wacz/:id/…` | capture-ledger に署名をもらい、daemon へ |
@@ -106,7 +108,7 @@ capture-ledger は CORS（Cross-Origin Resource Sharing。別のオリジンの�
 
 どのエンドポイントを読むかは workbench（`public/app.js`）が決め、サーバは選びません。
 エンドポイントの一覧（allowlist）は持っていません。
-だから capture-ledger の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）と `GET /api/crawls/:id/pages/:page/trace`（1 ページの取り込みの経緯）と `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`（その取り込みの失敗の時点の絵）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）、`GET /api/search`（検索の画面が引く全文検索）、`GET /api/history`（履歴が引く、同じ URL の取り込みの一覧）と `GET /api/archives/:id/changes`（履歴で選んだ 2 本の差分）、`GET /api/archives/:id/screenshots/:stage`（撮った時の絵。返し方だけが上の例外）も、ここでは何も要りません。どれも読み取りのエンドポイントで、一覧と同じく素通しです。
+だから capture-ledger の `GET /api/crawl-rules/check`（新しいクロールの画面が、書いている規則を確かめる）と `GET /api/crawls/:id/decisions`（開いたクロールの規則が何を決めたか）、`GET /api/crawls/:id/pages`（開いたクロールのページの表）と `GET /api/crawls/:id/pages/:page/log`（1 ページのログ）と `GET /api/crawls/:id/pages/:page/trace`（1 ページの取り込みの経緯）と `GET /api/crawls/:id/pages/:page/trace/failure-screenshot`（その取り込みの失敗の時点の絵）、`GET /api/crawls/:id/diagnostics`（型の検査で落ちたクロールの型の誤り）、`GET /api/search`（検索の画面が引く全文検索）、`GET /api/history`（履歴が引く、同じ URL の取り込みの一覧）と `GET /api/archives/:id/changes`（履歴で選んだ 2 本の差分）、`GET /api/robots-exemptions`（robots.txt の例外の画面が並べる行）、`GET /api/archives/:id/screenshots/:stage`（撮った時の絵。返し方だけが上の例外）も、ここでは何も要りません。どれも読み取りのエンドポイントで、一覧と同じく素通しです。
 ページの表の続きは、capture-ledger が本文の `next` で言います（中継が返すのは状態と `content-type` と本文だけで、ほかのヘッダは落ちるため）。
 
 ## POST /api/crawls —— クロールを始める
@@ -213,6 +215,33 @@ workbench は答えを描くだけです。
 | 422 | 2 本の URL が違う（`different url`）、差分が無い（`nothing to summarize`）、「今」の取り込みがクロールに繋がらず、費用を数える組織が無い（`no organization`）、Claude が断った（`claude refused`） |
 | 429 `claude budget exhausted` | 組織がこの月の上限に届いた（`spentUsd` と `budgetUsd` つき）。Claude は呼ばない |
 | 502 | Claude が答えなかった（`claude failed`）、保管庫が答えなかった（`storage unreachable`） |
+
+## POST /api/robots-exemptions —— robots.txt の例外を登録する・取り消す
+
+これも書き込みのエンドポイントです。
+robots.txt の例外の画面（[画面](/screens/)）が使います。
+登録する `POST /api/robots-exemptions` と、取り消す `POST /api/robots-exemptions/:id/revoke` の 2 つの形です。
+読むのは `GET /api/robots-exemptions` で、ほかの読み取りのエンドポイントと同じ素通しです。
+capture-ledger のエンドポイントは v0.116.0 からです。
+
+- 門とアクセストークンは `POST /api/crawls` と同じです（`Origin`・JSON・1 MiB）。本文の無い取り消しも `{}` を送ります。
+- **中継するのは、この形ちょうどだけ。**
+  番号は capture-ledger の連番で、1〜18 桁の数字だけを通します。`/revoke` の後ろには何も付きません（query も）。
+  形は `src/lib.mjs` の `isWriteRoute` に在ります。
+- **取り消すのも POST です。** 中継の書き込みのエンドポイントは POST だけなので、capture-ledger のエンドポイントもその形にしてあります。
+- 登録の本文は `{ orgId, host, pathPattern?, scope, appliesTo?, userAgent, reason, expiresAt, dailyLimit?, linkLimit? }` です。
+  `expiresAt` は offset つきの ISO 8601 で、workbench は選んだ日付の終わり（その端末の時刻の 23:59:59）を UTC の `…Z` で送ります。
+  空の欄（path の型・上限）は送らず、capture-ledger の既定（`/`・100・20）になります。
+- 判断は capture-ledger がします。workbench は欄を検査せず、誰が登録してよいかも見ません。
+  ページは、断りの句が辞書に在れば画面の言語に訳し（`ledger.error.<句>`）、無ければ届いたまま出します。
+
+| capture-ledger の答え | いつ |
+| --- | --- |
+| 201（登録）・200（取り消し） | 登録した行・取り消した行 |
+| 400 `{ "error": "<句>", "field": "<欄>" }` | 登録の欄の字が決まりに合わない（最初の 1 つ。workbench は、名指された欄の下に文を出す）。本文の知らない鍵と型の違いは Fastify の定型の 400（`message`） |
+| 403 | 組織の admin でない（`not an organization admin`）、機械の主体（`machine identities cannot manage robots exemptions`）、ヘッダで名乗る capture-ledger（`robots exemptions are not available with header identities`） |
+| 404 `{"error":"not found"}` | 取り消す行が無い、または名乗りの組織の行でない |
+| 409 | 登録: 同じ組織・ホスト・path の型で効いている行がもう在る（`id` つき）、同じホストの効いている行が別の User-Agent を使っている（`userAgent` つき）。取り消し: もう取り消してある、期限が過ぎている |
 
 ## /wacz/:id/… —— WACZ の中身を読む
 

@@ -1,6 +1,6 @@
 ---
 title: Routes
-description: What capture-workbench's server answers — /healthz, signing in, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script, creating and operating a schedule, closing a crawl left running, asking Claude to summarize a diff), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
+description: What capture-workbench's server answers — /healthz, signing in, the pass-through to the ledger, the routes that write (starting a crawl, asking how to fix an inline script, creating and operating a schedule, closing a crawl left running, asking Claude to summarize a diff, registering and revoking a robots.txt exemption), the route that asks what an inline script declares, and the /wacz/ routes into a WACZ. The Host check, which headers pass, and what failures look like
 ---
 
 capture-workbench's server only relays. The workbench's logic lives in the browser (`public/`); all the
@@ -18,6 +18,8 @@ not.
 | `POST /api/schedules/:id/<action>` | the ledger (writes: `pause`, `resume`, `run`, `repin`, `delete`) |
 | `POST /api/crawls/:id/failed` | the ledger (writes: closes a crawl left running) |
 | `POST /api/archives/:id/changes/summary` | the ledger (writes: has Claude summarize the diff of the two captures picked) |
+| `POST /api/robots-exemptions` | the ledger (writes: registers a robots.txt exemption) |
+| `POST /api/robots-exemptions/:id/revoke` | the ledger (writes: revokes a robots.txt exemption) |
 | `POST /api/scripts/check` | the ledger (asks what an inline script declares; writes nothing, and goes through the same checks because the source travels in the body) |
 | `GET /api/archives/:id/screenshots/:stage` | passed through to the ledger (a stage screenshot; passes as WebP bytes, not as text) |
 | `/api/*` (the rest) | passed through to the ledger (GET only) |
@@ -135,7 +137,7 @@ opened crawl's rules decided), `GET /api/crawls/:id/pages` (an opened crawl's pa
 (the screenshot at that capture's failure), `GET /api/crawls/:id/diagnostics` (the type
 errors of a crawl that failed the type check), `GET /api/search` (the search view's full-text
 search), `GET /api/history` (the captures of one URL, which the history lists),
-`GET /api/archives/:id/changes` (the diff of the two captures picked there) and `GET /api/archives/:id/screenshots/:stage` (the picture as captured; only how it is
+`GET /api/archives/:id/changes` (the diff of the two captures picked there), `GET /api/robots-exemptions` (the rows the robots.txt exemptions view lists) and `GET /api/archives/:id/screenshots/:stage` (the picture as captured; only how it is
 returned is the exception above) need nothing here: they are reads, and pass through like the lists. The ledger says where the pages table continues in the body (`next`),
 since the relay returns only the status, `content-type` and body, and drops the other headers.
 
@@ -253,6 +255,36 @@ workbench only draws the answer.
 | 422 | the two captures are of different URLs (`different url`), there is no diff (`nothing to summarize`), the After capture is not tied to a crawl so there is no organization to charge (`no organization`), or Claude declined (`claude refused`) |
 | 429 `claude budget exhausted` | the organization reached this month's limit (with `spentUsd` and `budgetUsd`); Claude is not called |
 | 502 | Claude did not answer (`claude failed`), or the store did not answer (`storage unreachable`) |
+
+## POST /api/robots-exemptions — registering and revoking a robots.txt exemption
+
+These write too. The robots.txt exemptions view ([Screens](/screens/)) uses them. There are two shapes:
+`POST /api/robots-exemptions` registers a row and `POST /api/robots-exemptions/:id/revoke` revokes one.
+Reading is `GET /api/robots-exemptions`, passed through like any other read. The ledger has these routes
+from v0.116.0.
+
+- The checks and the access token are the same as `POST /api/crawls` (`Origin`, JSON, 1 MiB). A revoke
+  has no body and still sends `{}`.
+- **Only exactly these shapes are relayed.** The id is the ledger's serial number, and only 1 to 18
+  digits pass; nothing follows `/revoke` (no query either). The shapes are in `isWriteRoute` in
+  `src/lib.mjs`.
+- **Revoking is a POST too.** The relay only writes with POST, so the ledger's route has that shape.
+- The body that registers is
+  `{ orgId, host, pathPattern?, scope, appliesTo?, userAgent, reason, expiresAt, dailyLimit?, linkLimit? }`.
+  `expiresAt` is ISO 8601 with an offset: the workbench sends the end of the chosen day (23:59:59 in the
+  device's time) as UTC (`…Z`). Empty fields (the path pattern, the limits) are not sent, so the ledger's
+  defaults apply (`/`, 100 and 20).
+- The ledger decides. The workbench does not check the fields, nor who may register. The page shows the
+  ledger's phrase in the screen's language when its dictionary has it (`ledger.error.<phrase>`), and as
+  it arrived when it does not.
+
+| The ledger's answer | When |
+| --- | --- |
+| 201 (register), 200 (revoke) | the row registered, or the row revoked |
+| 400 `{ "error": "<phrase>", "field": "<field>" }` | a field does not follow the rules (the first one found; the workbench shows the sentence under the field named). Unknown keys and wrong types in the body are Fastify's own 400 (`message`) |
+| 403 | not an organization admin (`not an organization admin`), a machine identity (`machine identities cannot manage robots exemptions`), or a ledger that takes identities from headers (`robots exemptions are not available with header identities`) |
+| 404 `{"error":"not found"}` | no such row to revoke, or the row is not of one of the identity's organizations |
+| 409 | registering: an active row already covers the same organization, host and path pattern (with its `id`), or active rows for the host use a different User-Agent (with that `userAgent`). Revoking: already revoked, or already expired |
 
 ## /wacz/:id/… — routes into a WACZ
 
