@@ -12,7 +12,7 @@
 import { t } from "./i18n.js";
 
 /** 受け皿の型の URL。スクリプトの id は encodeURIComponent してから載せるので `/` を含まず、取り違えない */
-export const TYPES_HASH = "#scripts/types/host.d.ts";
+export const TYPES_HREF = "/scripts/types/host.d.ts";
 
 const num = (s) => (s === undefined ? undefined : Number(s));
 
@@ -21,22 +21,22 @@ const num = (s) => (s === undefined ? undefined : Number(s));
  * クロールの「読む」だけが付ける —— 版の番号は、消して足し直すと別の中身に使い回される。
  * `id` を省けば受け皿の型。
  */
-export const readingHash = ({ id, version, sha, line }) =>
+export const readingHref = ({ id, version, sha, line }) =>
   (id === undefined
-    ? TYPES_HASH
-    : `#scripts/${encodeURIComponent(id)}` +
+    ? TYPES_HREF
+    : `/scripts/${encodeURIComponent(id)}` +
       (version === undefined ? "" : `@${String(version)}`) +
       (version === undefined || sha === undefined ? "" : `~${sha}`)) +
   (line === undefined ? "" : `:${String(line)}`);
 
 /**
- * `#scripts/<id>[@<版>[~<sha の頭>]][:<行>]` と `#scripts/types/host.d.ts[:<行>]` を読む。
+ * `/scripts/<id>[@<版>[~<sha の頭>]][:<行>]` と `/scripts/types/host.d.ts[:<行>]` を読む。
  * 合わなければ undefined。型は `{ line }` だけ（`id` が無い）。
  */
-export const parseReading = (hash) => {
-  const types = /^#scripts\/types\/host\.d\.ts(?::(\d+))?$/.exec(hash);
+export const parseReading = (path) => {
+  const types = /^\/scripts\/types\/host\.d\.ts(?::(\d+))?$/.exec(path);
   if (types !== null) return { line: num(types[1]) };
-  const m = /^#scripts\/([^/@:~]+)(?:@(\d+)(?:~([0-9a-f]{6,64}))?)?(?::(\d+))?$/.exec(hash);
+  const m = /^\/scripts\/([^/@:~]+)(?:@(\d+)(?:~([0-9a-f]{6,64}))?)?(?::(\d+))?$/.exec(path);
   if (m === null) return undefined;
   try {
     return { id: decodeURIComponent(m[1]), version: num(m[2]), sha: m[3], line: num(m[4]) };

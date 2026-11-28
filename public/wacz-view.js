@@ -210,15 +210,15 @@ export const recordOpener = (fields) => {
   return { path: `archive/${filename}`, offset, length };
 };
 
-/** 画面の URL。`#wacz/<archiveId>` に、選んだ entry と行を足せる。 */
-export const waczHash = (archiveId, path, n) =>
-  `#wacz/${encodeURIComponent(archiveId)}` +
+/** 画面の URL。`/archive/<archiveId>` に、選んだ entry と行を足せる。 */
+export const waczHref = (archiveId, path, n) =>
+  `/archive/${encodeURIComponent(archiveId)}` +
   (path === undefined ? "" : `/${encodeURIComponent(path)}`) +
   (n === undefined ? "" : `:${String(n)}`);
 
-/** `#wacz/<archiveId>[/<path>[:<n>]]` を読む。合わなければ undefined。 */
-export const parseWaczHash = (hash) => {
-  const m = /^#wacz\/([^/]+)(?:\/([^:]+)(?::(\d+))?)?$/.exec(hash);
+/** `/archive/<archiveId>[/<path>[:<n>]]` を読む。合わなければ undefined。 */
+export const parseWaczHref = (path) => {
+  const m = /^\/archive\/([^/]+)(?:\/([^:]+)(?::(\d+))?)?$/.exec(path);
   if (m === null) return undefined;
   try {
     return {

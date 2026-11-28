@@ -9,9 +9,9 @@ import {
   answerOf,
   highlightParts,
   hitReplaywebHref,
-  parseSearchHash,
+  parseSearchHref,
   searchFailure,
-  searchHash,
+  searchHref,
   searchPath,
   stageLabel,
 } from "../public/search.js";
@@ -49,19 +49,23 @@ test("検索のエンドポイントは語を q に符号化して運ぶ（空�
   assert.equal(new URLSearchParams(searchPath("a b&c").split("?")[1]).get("q"), "a b&c");
 });
 
-test("検索の画面の URL は #search/<語> で、読み直すと同じ語に戻る", () => {
-  assert.equal(searchHash(""), "#search");
-  for (const words of ["MacBook", "個人情報", "a/b c#d"]) {
-    assert.equal(parseSearchHash(searchHash(words)), words);
+test("検索の画面の URL は /search?q=<語> で、読み直すと同じ語に戻る", () => {
+  assert.equal(searchHref(""), "/search");
+  for (const words of ["MacBook", "個人情報", "a/b c#d", ".", "..", "a&q=b"]) {
+    const [pathname, query] = searchHref(words).split("?");
+    assert.equal(pathname, "/search", words);
+    assert.equal(parseSearchHref(pathname, `?${query}`), words);
   }
 });
 
-test("検索の画面でない hash は undefined、語の無い #search は空文字、壊れた符号も空文字", () => {
-  assert.equal(parseSearchHash("#crawls"), undefined);
-  assert.equal(parseSearchHash("#searching"), undefined);
-  assert.equal(parseSearchHash("#search"), "");
-  assert.equal(parseSearchHash("#search/"), "");
-  assert.equal(parseSearchHash("#search/%E3%81"), "");
+test("検索の画面でない path は undefined、語の無い /search は空文字。ほかの query は見ない", () => {
+  assert.equal(parseSearchHref("/crawls", ""), undefined);
+  assert.equal(parseSearchHref("/searching", "?q=x"), undefined);
+  assert.equal(parseSearchHref("/search/x", ""), undefined);
+  assert.equal(parseSearchHref("/search", ""), "");
+  assert.equal(parseSearchHref("/search"), "");
+  assert.equal(parseSearchHref("/search", "?q="), "");
+  assert.equal(parseSearchHref("/search", "?lang=en&q=%20MacBook%20"), "MacBook");
 });
 
 test("答えの total は数のまま使い、無ければ行の数にする", () => {

@@ -82,7 +82,7 @@ export const pathFromHash = (hash) => {
     try {
       words = decodeURIComponent(rest.slice(1)).trim();
     } catch {
-      words = ""; // 壊れた符号。検索の画面は開き、語は空にする（今の parseSearchHash と同じ）
+      words = ""; // 壊れた符号。検索の画面は開き、語は空にする（今の parseSearchHref と同じ）
     }
     path = words === "" ? "/search" : `/search?q=${encodeURIComponent(words)}`;
   } else {
@@ -102,3 +102,30 @@ export const isBackPath = (href) => isScreenPath(href) && href.length <= MAX_PAT
 /** サインインの画面へ回す URL。戻り先は `encodeURIComponent` で 1 つの値にする（`?from=` が `/login` の query に混ざらない）。 */
 export const loginHref = (back) =>
   back === undefined || !isBackPath(back) ? "/login" : `/login?back=${encodeURIComponent(back)}`;
+
+/**
+ * 押した link が、画面の中の行き先か。そうなら path と query（画面が `pushState` で開く）、ちがえば undefined
+ * （ブラウザに任せる —— `/logout`・`/api/…`・`/wacz/…`・よその origin は server へ届く）。
+ */
+export const screenTarget = (href, origin) => {
+  let url;
+  try {
+    url = new URL(href, origin);
+  } catch {
+    return undefined;
+  }
+  const target = url.pathname + url.search;
+  return url.origin === origin && url.hash === "" && isScreenPath(target) ? target : undefined;
+};
+
+/**
+ * 行き先に、今の URL の `?lang=` を運ぶ。言語の選びを覚えられなかった時（`i18n.js` の `switchedUrl`）は、選びが
+ * URL にしか無い —— 運ばないと、次に読み直した時に言語が戻る。
+ */
+export const keepLang = (href, search) => {
+  const lang = new URLSearchParams(search).get("lang");
+  if (lang === null) return href;
+  const url = new URL(href, "http://workbench.invalid");
+  url.searchParams.set("lang", lang);
+  return url.pathname + url.search;
+};

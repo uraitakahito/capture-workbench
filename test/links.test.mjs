@@ -13,13 +13,13 @@ import {
   indexOf,
   boxLabelOf,
   layoutOf,
-  linksHash,
+  linksHref,
   linksPath,
   originOf,
   linkOutcomeOf,
   pageKind,
   pageLinksPath,
-  parseLinksHash,
+  parseLinksHref,
   splitOf,
 } from "../public/links.js";
 import { setLang, t } from "../public/i18n.js";
@@ -62,14 +62,14 @@ const GRAPH = {
 };
 
 test("URL の形: クロールだけ・ページつき・違う形", () => {
-  assert.deepEqual(parseLinksHash(`#links/${CRAWL}`), { crawlId: CRAWL, pageId: undefined });
-  assert.deepEqual(parseLinksHash(`#links/${CRAWL}/757`), { crawlId: CRAWL, pageId: "757" });
-  assert.equal(parseLinksHash("#links"), undefined);
-  assert.equal(parseLinksHash(`#links/${CRAWL}/abc`), undefined);
-  assert.equal(parseLinksHash(`#crawls/${CRAWL}`), undefined);
-  assert.equal(linksHash(CRAWL), `#links/${CRAWL}`);
-  assert.equal(linksHash(CRAWL, "757"), `#links/${CRAWL}/757`);
-  assert.deepEqual(parseLinksHash(linksHash(CRAWL, "757")), { crawlId: CRAWL, pageId: "757" });
+  assert.deepEqual(parseLinksHref(`/links/${CRAWL}`), { crawlId: CRAWL, pageId: undefined });
+  assert.deepEqual(parseLinksHref(`/links/${CRAWL}/757`), { crawlId: CRAWL, pageId: "757" });
+  assert.equal(parseLinksHref("/links"), undefined);
+  assert.equal(parseLinksHref(`/links/${CRAWL}/abc`), undefined);
+  assert.equal(parseLinksHref(`/crawls/${CRAWL}`), undefined);
+  assert.equal(linksHref(CRAWL), `/links/${CRAWL}`);
+  assert.equal(linksHref(CRAWL, "757"), `/links/${CRAWL}/757`);
+  assert.deepEqual(parseLinksHref(linksHref(CRAWL, "757")), { crawlId: CRAWL, pageId: "757" });
 });
 
 test("エンドポイントの path", () => {

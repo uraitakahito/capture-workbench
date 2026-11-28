@@ -13,9 +13,9 @@ import {
   metaOf,
   optionsText,
   parseReading,
-  readingHash,
+  readingHref,
   standingOf,
-  TYPES_HASH,
+  TYPES_HREF,
 } from "../public/reading.js";
 import { setLang, t } from "../public/i18n.js";
 
@@ -36,43 +36,43 @@ test("URL は書いて読むと元に戻る（版を省く・版・版と sha �
     { id: "autoscroll", version: 1, sha: "c9956819ffea", line: 33 },
   ];
   for (const target of forms) {
-    const back = parseReading(readingHash(target));
+    const back = parseReading(readingHref(target));
     assert.deepEqual(
       Object.fromEntries(Object.entries(back).filter(([, v]) => v !== undefined)),
       target,
     );
   }
-  assert.equal(readingHash({ line: 12 }), "#scripts/types/host.d.ts:12");
-  assert.deepEqual(parseReading(readingHash({})), { line: undefined });
-  assert.equal(readingHash({}), TYPES_HASH);
+  assert.equal(readingHref({ line: 12 }), "/scripts/types/host.d.ts:12");
+  assert.deepEqual(parseReading(readingHref({})), { line: undefined });
+  assert.equal(readingHref({}), TYPES_HREF);
 });
 
 test("/ と空白を含む id は % にして載せ、読むと元の id に戻る", () => {
-  const hash = readingHash({ id: "a/b c", version: 3 });
-  assert.equal(hash, "#scripts/a%2Fb%20c@3");
+  const hash = readingHref({ id: "a/b c", version: 3 });
+  assert.equal(hash, "/scripts/a%2Fb%20c@3");
   assert.equal(parseReading(hash).id, "a/b c");
 });
 
 test("受け皿の型と、id が types のスクリプトを取り違えない", () => {
-  assert.deepEqual(parseReading("#scripts/types/host.d.ts:12"), { line: 12 });
-  assert.equal(parseReading("#scripts/types").id, "types");
+  assert.deepEqual(parseReading("/scripts/types/host.d.ts:12"), { line: 12 });
+  assert.equal(parseReading("/scripts/types").id, "types");
   // id の中の / は % になるので、型の URL にはならない
-  assert.equal(parseReading(readingHash({ id: "types/host.d.ts" })).id, "types/host.d.ts");
+  assert.equal(parseReading(readingHref({ id: "types/host.d.ts" })).id, "types/host.d.ts");
   // 型の URL に似ているが型ではない path は、id としても読まない
-  assert.equal(parseReading("#scripts/types/other.d.ts"), undefined);
+  assert.equal(parseReading("/scripts/types/other.d.ts"), undefined);
 });
 
 test("合わない形は undefined（壊れた %・版の無い sha・ほかの画面の URL）", () => {
-  assert.equal(parseReading("#scripts/%E0"), undefined);
-  assert.equal(parseReading("#scripts/autoscroll~c9956819ffea"), undefined);
-  assert.equal(parseReading("#scripts/autoscroll@1~XYZ"), undefined);
-  assert.equal(parseReading("#wacz/1234/behaviors/custom.jsonl:2"), undefined);
-  assert.equal(parseReading("#scripts"), undefined);
-  assert.equal(parseReading("#scripts/"), undefined);
+  assert.equal(parseReading("/scripts/%E0"), undefined);
+  assert.equal(parseReading("/scripts/autoscroll~c9956819ffea"), undefined);
+  assert.equal(parseReading("/scripts/autoscroll@1~XYZ"), undefined);
+  assert.equal(parseReading("/archive/1234/behaviors/custom.jsonl:2"), undefined);
+  assert.equal(parseReading("/scripts"), undefined);
+  assert.equal(parseReading("/scripts/"), undefined);
 });
 
 test("sha の頭は版があるときだけ載せる（版の無い URL は既定の版を指し、確かめる相手が無い）", () => {
-  assert.equal(readingHash({ id: "autofetch", sha: "6aa6f4459d92" }), "#scripts/autofetch");
+  assert.equal(readingHref({ id: "autofetch", sha: "6aa6f4459d92" }), "/scripts/autofetch");
 });
 
 test("行は改行で数え、最後の改行の後ろの空の 1 行は数えない", () => {
@@ -137,9 +137,9 @@ test("サイト用のスクリプトの既定の版は、起点が対象サイ�
 });
 
 test("読む窓のタブの名前は id と版（型は host.d.ts）。URL から読んだ物をそのまま渡せる", () => {
-  assert.equal(labelOf(parseReading("#scripts/autoscroll@2")), "autoscroll v2");
-  assert.equal(labelOf(parseReading("#scripts/autofetch")), "autofetch");
-  assert.equal(labelOf(parseReading(TYPES_HASH)), "host.d.ts");
+  assert.equal(labelOf(parseReading("/scripts/autoscroll@2")), "autoscroll v2");
+  assert.equal(labelOf(parseReading("/scripts/autofetch")), "autofetch");
+  assert.equal(labelOf(parseReading(TYPES_HREF)), "host.d.ts");
 });
 
 test("英語の見出しの文: 行とバイトは単数と複数を分け、桁を区切る。日付の形は変えない", () => {

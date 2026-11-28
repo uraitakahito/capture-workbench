@@ -1,5 +1,5 @@
 /**
- * 検証の画面（`#check/<archiveId>[/<profile>]`・CAPTURE-457）の純関数。**ブラウザが読むのと同じファイル**を `node --test` が読む。
+ * 検証の画面（`/check/<archiveId>[/<profile>]`・CAPTURE-457）の純関数。**ブラウザが読むのと同じファイル**を `node --test` が読む。
  *
  * 画面は wacz-validator の報告の `rules`（v0.52.0 から。rule 1 本の結果を 1 行）を、範囲（rule の名前の `/` の前）ごとに
  * 束ねたチェックリストにする。**文は 1 つも持たない** —— rule の説明・指摘の文・出典は、daemon が解いて返した物を
@@ -8,7 +8,7 @@
  * 数は rule で数える。報告の `summary` は単位が混ざる（`passed` は rule の数、`failed` は指摘の数）ので、画面では読まない。
  */
 import { t } from "./i18n.js";
-import { waczHash } from "./wacz-view.js";
+import { waczHref } from "./wacz-view.js";
 
 /** 画面が選ばせる profile。並びは切り替えの button の並び。既定は先頭（daemon の既定と同じ `spec`）。 */
 export const PROFILES = Object.freeze(["spec", "browserhive"]);
@@ -20,13 +20,13 @@ export const RAN = Object.freeze(["failed", "warned", "noted", "passed"]);
 export const NOT_RUN = Object.freeze(["skipped", "excluded"]);
 
 // ── URL ───────────────────────────────────────────────────────────
-/** 画面の URL。既定の profile は書かない（`#check/<id>`）。 */
-export const checkHash = (archiveId, profile = DEFAULT_PROFILE) =>
-  `#check/${encodeURIComponent(archiveId)}` + (profile === DEFAULT_PROFILE ? "" : `/${profile}`);
+/** 画面の URL。既定の profile は書かない（`/check/<id>`）。 */
+export const checkHref = (archiveId, profile = DEFAULT_PROFILE) =>
+  `/check/${encodeURIComponent(archiveId)}` + (profile === DEFAULT_PROFILE ? "" : `/${profile}`);
 
-/** `#check/<archiveId>[/<profile>]` を読む。知らない profile・合わない形は undefined。 */
-export const parseCheckHash = (hash) => {
-  const m = /^#check\/([^/]+)(?:\/([^/]+))?$/.exec(hash);
+/** `/check/<archiveId>[/<profile>]` を読む。知らない profile・合わない形は undefined。 */
+export const parseCheckHref = (path) => {
+  const m = /^\/check\/([^/]+)(?:\/([^/]+))?$/.exec(path);
   if (m === null) return undefined;
   const profile = m[2] ?? DEFAULT_PROFILE;
   if (!PROFILES.includes(profile)) return undefined;
@@ -183,7 +183,7 @@ export const issuePlaceOf = (archiveId, issue) => {
   const line = Number.isInteger(loc.line) && loc.line > 0 ? loc.line : undefined;
   const text =
     loc.entry + (line === undefined ? "" : `:${String(line)}`) + (loc.offset === undefined ? "" : ` @${String(loc.offset)}`);
-  return { text, href: waczHash(archiveId, loc.entry, line === undefined ? undefined : line - 1) };
+  return { text, href: waczHref(archiveId, loc.entry, line === undefined ? undefined : line - 1) };
 };
 
 /** 中のファイルのうち、印を付ける物（欠けた entry と、指摘のある entry）の数。 */

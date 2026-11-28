@@ -20,7 +20,7 @@ import {
   isNoEntry,
   marksOf,
   metadataKind,
-  parseTraceHash,
+  parseTraceHref,
   parseWarcFields,
   percentOf,
   readRecords,
@@ -35,7 +35,7 @@ import {
   stoppedStepOf,
   tallyOf,
   ticksOf,
-  traceHash,
+  traceHref,
   tracePath,
   traceReasonText,
   warcName,
@@ -58,11 +58,11 @@ const timedOut = sample.timedOut;
 const WARC = "archive/data-000.warc.gz";
 
 test("URL の形: クロールとページの組だけを読む", () => {
-  assert.deepEqual(parseTraceHash(`#trace/${CRAWL}/968`), { crawlId: CRAWL, pageId: "968" });
-  assert.equal(parseTraceHash(`#trace/${CRAWL}`), undefined);
-  assert.equal(parseTraceHash(`#trace/${CRAWL}/abc`), undefined);
-  assert.equal(parseTraceHash(`#links/${CRAWL}/968`), undefined);
-  assert.equal(traceHash(CRAWL, "968"), `#trace/${CRAWL}/968`);
+  assert.deepEqual(parseTraceHref(`/trace/${CRAWL}/968`), { crawlId: CRAWL, pageId: "968" });
+  assert.equal(parseTraceHref(`/trace/${CRAWL}`), undefined);
+  assert.equal(parseTraceHref(`/trace/${CRAWL}/abc`), undefined);
+  assert.equal(parseTraceHref(`/links/${CRAWL}/968`), undefined);
+  assert.equal(traceHref(CRAWL, "968"), `/trace/${CRAWL}/968`);
   assert.equal(tracePath(CRAWL, "968"), `/api/crawls/${CRAWL}/pages/968/trace`);
   assert.equal(warcName(0), WARC);
   assert.equal(warcName(12), "archive/data-012.warc.gz");

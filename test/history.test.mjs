@@ -13,12 +13,12 @@ import {
   differsNotes,
   diffMarkOf,
   historyError,
-  historyHash,
+  historyHref,
   historyPath,
   marksOf,
   mayBeBefore,
   originText,
-  parseHistoryHash,
+  parseHistoryHref,
   pickPair,
   reasonText,
   slashVariantOf,
@@ -78,36 +78,36 @@ describe("URL の履歴（CAPTURE-462）", () => {
         { beforeId: undefined, afterId: A },
         { beforeId: B, afterId: A },
       ]) {
-        const hash = historyHash(url, named);
-        assert.deepEqual(parseHistoryHash(hash), { url, ...named }, hash);
+        const hash = historyHref(url, named);
+        assert.deepEqual(parseHistoryHref(hash), { url, ...named }, hash);
         // URL は符号にする —— 頭の後ろの区切りは、id の前の / だけ
-        assert.equal(hash.slice("#history/".length).split("/").length, 1 + Object.values(named).filter(Boolean).length, hash);
+        assert.equal(hash.slice("/history/".length).split("/").length, 1 + Object.values(named).filter(Boolean).length, hash);
       }
     }
-    assert.equal(historyHash("https://site.test/a", {}), "#history/https%3A%2F%2Fsite.test%2Fa");
-    assert.equal(historyHash("https://site.test/a", { afterId: A }), `#history/https%3A%2F%2Fsite.test%2Fa/${A}`);
-    assert.equal(historyHash("https://site.test/a", { beforeId: B, afterId: A }), `#history/https%3A%2F%2Fsite.test%2Fa/${B}/${A}`);
+    assert.equal(historyHref("https://site.test/a", {}), "/history/https%3A%2F%2Fsite.test%2Fa");
+    assert.equal(historyHref("https://site.test/a", { afterId: A }), `/history/https%3A%2F%2Fsite.test%2Fa/${A}`);
+    assert.equal(historyHref("https://site.test/a", { beforeId: B, afterId: A }), `/history/https%3A%2F%2Fsite.test%2Fa/${B}/${A}`);
     // 「前」だけの形は無い。null も「無い」
-    assert.equal(historyHash("https://site.test/a", { beforeId: B }), "#history/https%3A%2F%2Fsite.test%2Fa");
-    assert.equal(historyHash("https://site.test/a", { beforeId: null, afterId: null }), "#history/https%3A%2F%2Fsite.test%2Fa");
+    assert.equal(historyHref("https://site.test/a", { beforeId: B }), "/history/https%3A%2F%2Fsite.test%2Fa");
+    assert.equal(historyHref("https://site.test/a", { beforeId: null, afterId: null }), "/history/https%3A%2F%2Fsite.test%2Fa");
   });
 
   it("壊れた符号・空の URL・id の形でない物・ほかの画面の hash は「読めない」", () => {
-    const head = "#history/https%3A%2F%2Fsite.test%2F";
-    assert.equal(parseHistoryHash("#history/%E0%A4%A"), undefined);
-    assert.equal(parseHistoryHash("#history/%"), undefined);
-    assert.equal(parseHistoryHash("#history/"), undefined);
-    assert.equal(parseHistoryHash("#history"), undefined);
-    assert.equal(parseHistoryHash(`${head}/nope`), undefined);
-    assert.equal(parseHistoryHash(`${head}/${A.slice(1)}`), undefined);
-    assert.equal(parseHistoryHash(`${head}/${A}/nope`), undefined);
-    assert.equal(parseHistoryHash(`${head}/${B}/${A}/${C}`), undefined);
-    assert.equal(parseHistoryHash(`${head}/${A}/`), undefined);
+    const head = "/history/https%3A%2F%2Fsite.test%2F";
+    assert.equal(parseHistoryHref("/history/%E0%A4%A"), undefined);
+    assert.equal(parseHistoryHref("/history/%"), undefined);
+    assert.equal(parseHistoryHref("/history/"), undefined);
+    assert.equal(parseHistoryHref("/history"), undefined);
+    assert.equal(parseHistoryHref(`${head}/nope`), undefined);
+    assert.equal(parseHistoryHref(`${head}/${A.slice(1)}`), undefined);
+    assert.equal(parseHistoryHref(`${head}/${A}/nope`), undefined);
+    assert.equal(parseHistoryHref(`${head}/${B}/${A}/${C}`), undefined);
+    assert.equal(parseHistoryHref(`${head}/${A}/`), undefined);
     // 符号にしていない URL は、/ で切れて id の形にならない
-    assert.equal(parseHistoryHash("#history/https://site.test/a"), undefined);
-    assert.equal(parseHistoryHash("#changes"), undefined);
-    assert.equal(parseHistoryHash(`#changes/${A}`), undefined);
-    assert.equal(parseHistoryHash(""), undefined);
+    assert.equal(parseHistoryHref("/history/https://site.test/a"), undefined);
+    assert.equal(parseHistoryHref("/changes"), undefined);
+    assert.equal(parseHistoryHref(`/changes/${A}`), undefined);
+    assert.equal(parseHistoryHref(""), undefined);
   });
 
   it("エンドポイントの path: 一覧は url と before、差分は今の id と since、要約は今の id と本文の since", () => {
