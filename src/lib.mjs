@@ -224,15 +224,35 @@ export const relay = async (reply, res) => {
 /** `/api/*` の GET の答えの返し方。節目のスクリーンショットの形だけはバイト列のまま（`pass`）、ほかは字（`relay`）。 */
 export const relayFor = (url) => (isScreenshotRoute(url) ? pass : relay);
 
+/** 画面が持つ言語。capture-ledger が自分で訳す文の言語（`ja`・`en`）と同じ。 */
+export const SCREEN_LANGS = Object.freeze(["ja", "en"]);
+
 /**
- * 書き込みの中継で capture-ledger へ運ぶ、要求の見出し。**運ぶのは `POST /api/crawls` の `Idempotency-Key` だけ**
- * （CAPTURE-180）。capture-ledger は鍵ごとに最初の答えを覚え、同じ鍵の送り直しには同じクロールを返す ——
+ * 中継で capture-ledger へ運ぶ、頼みの言語（t-evv8）。画面は、いまの画面の言語を `Accept-Language: ja` か `en` の形で
+ * 付けて頼む（`public/app.js` の `ask`）。**値がちょうどその 2 つのどちらかのときだけ運ぶ** —— browser が自分で付ける値
+ * （`ja,en-US;q=0.9` など）は browser の設定で、画面の言語（利用者の選び）とは違いうるので運ばない。
+ *
+ * 値の形で見分けるので、browser が言語を 1 つだけ送るとき（`en` だけ）は、画面が付けた物と見分けられない。
+ * だから **capture-ledger の訳す答えを読む頼みは、必ず `ask` を通す**（`npm run check` の `check:ask` が見る）——
+ * `ask` は browser の値を画面の言語で上書きする。運ばなかった頼みには、capture-ledger は英語で返す。
+ */
+export const spokenLanguage = (headers) => {
+  const lang = headers["accept-language"];
+  return SCREEN_LANGS.includes(lang) ? { "accept-language": lang } : {};
+};
+
+/**
+ * 書き込みの中継で capture-ledger へ運ぶ、要求の見出し。`POST /api/crawls` の `Idempotency-Key`（CAPTURE-180）と、
+ * 頼みの言語（`spokenLanguage`）。capture-ledger は鍵ごとに最初の答えを覚え、同じ鍵の送り直しには同じクロールを返す ——
  * 応答が切れた後に押し直しても、2 本目が始まらない。ほかの見出しは運ばない（中継は形を絞るだけ）。
  * 鍵の字は検査しない（capture-ledger が 400 で言う）。
  */
 export const forwardedHeaders = (url, headers) => {
   const key = headers["idempotency-key"];
-  return url === "/api/crawls" && typeof key === "string" ? { "idempotency-key": key } : {};
+  return {
+    ...(url === "/api/crawls" && typeof key === "string" ? { "idempotency-key": key } : {}),
+    ...spokenLanguage(headers),
+  };
 };
 
 /**

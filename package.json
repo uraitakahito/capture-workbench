@@ -20,9 +20,10 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env --env-file-if-exists=.env.local src/server.mjs",
     "test": "node --import ./test/no-dns.ts --import ./test/lang-ja.mjs --test \"test/*.test.mjs\"",
-    "check": "node --check src/server.mjs && node --check src/lib.mjs && node --check src/wacz.mjs && node --check public/highlight-worker.js && ! grep -rq --include='*.js' innerHTML public && npm test && npm run check:terms && npm run check:i18n && npm run check:test-hosts",
+    "check": "node --check src/server.mjs && node --check src/lib.mjs && node --check src/wacz.mjs && node --check public/highlight-worker.js && ! grep -rq --include='*.js' innerHTML public && npm test && npm run check:terms && npm run check:i18n && npm run check:ask && npm run check:test-hosts",
     "check:terms": "node scripts/check-terms.mjs",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "check:ask": "node scripts/check-ask.mjs",
     "vendor": "npm ci --prefix highlighter && npm run build --prefix highlighter",
     "vendor:check": "npm run vendor && git diff --exit-code -- public/vendor",
     "sandbox": "(container image inspect sandbox-validator:latest >/dev/null 2>&1 || npm run sandbox:build) && container-compose up -d && node --watch --env-file=sandbox/sandbox.env src/server.mjs",

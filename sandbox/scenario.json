@@ -541,7 +541,13 @@
       "pagesCaptured": 0,
       "pagesDiscovered": 0,
       "waczCount": 0,
-      "error": "[1] 撮る相手が答えない",
+      "error": "1 枚も撮れませんでした（取れず 2・見送り 0）。最初の理由: timeout",
+      "errorKey": "crawl.nothingCapturedBecause",
+      "errorParams": {
+        "failed": 2,
+        "skipped": 0,
+        "reason": "timeout"
+      },
       "failures": [
         {
           "url": "https://sandbox.test/slow",

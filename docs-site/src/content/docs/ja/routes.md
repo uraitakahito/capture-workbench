@@ -91,6 +91,11 @@ capture-ledger は CORS（Cross-Origin Resource Sharing。別のオリジンの�
 
 - path と query はそのままで、capture-ledger へは GET で通します。
   GET 以外は 405 です（書き込みのエンドポイントは下の `POST` の物だけ）。
+- **頼みの言語は運びます。ブラウザのほかの見出しは運びません。**
+  頼みの `Accept-Language` が、ちょうど `ja` か `en`（ページが付ける、画面の言語）のときだけ、capture-ledger へ運びます。
+  言語を見る版の capture-ledger は、自分で書く文（1 枚も撮れなかったクロールの `error`）を、その言語で返します。その前の版は見出しを読まず、保存された字を返します。
+  ブラウザが自分で付ける値（`ja,en-US;q=0.9`）は運びません。ブラウザの設定で、画面の言語ではないためです。
+  言語を見る版の capture-ledger は、言語の付かない頼みには英語で返します。下の `POST` のエンドポイントも、同じく運びます。
 - そのセッションのアクセストークンを `Authorization: Bearer` で付けます。
   セッションが無ければ 401 `{"error":"not signed in","params":{},"login":"/login"}` を返し、ページは `/login` へ移ります。
 - **capture-ledger から 401 を受けたら、refresh token で取得し直して 1 度だけやり直す。**
@@ -124,11 +129,11 @@ workbench のサーバが持つ書き込みのエンドポイントの 1 つで�
   別のサイトのページに、利用者のブラウザから POST させる手（CSRF）を止めるためです。
   Chrome の Private Network Access には頼りません。
 - アクセストークンの付け方と、401 でのやり直しは、上の `/api/*` と同じです。
-- **画面は「始める」に鍵（`Idempotency-Key`）を付け、サーバはそれだけを capture-ledger へ運びます。**
+- **画面は「始める」に鍵（`Idempotency-Key`）を付け、サーバはそれを capture-ledger へ運びます。**
   鍵は押したときにブラウザが作り（`crypto.randomUUID()`）、答えが届かない（繋がらない・5xx）間は、同じ本文で押し直しても同じ鍵を送ります。
   capture-ledger は鍵ごとに最初の答えを覚えているので、応答が切れた後に押し直しても 2 本目は始まらず、最初のクロールが返ります。
   欄を直してから押すと本文が変わるので、鍵も作り直します。202 か 4xx を受け取った後に押すと、新しい鍵です。
-  ほかの見出しは運びません（ほかの書き込みのエンドポイントにも、鍵は運びません）。
+  ほかに運ぶ見出しは、頼みの言語（上の `/api/*` の項）だけです。ほかの書き込みのエンドポイントには、鍵は運びません。
 
 | capture-ledger の答え | いつ |
 | --- | --- |
@@ -285,7 +290,7 @@ daemon の `date` や `connection` は、workbench の応答に混ぜません�
 **workbench のサーバ自身の JSON の失敗は、文ではなく、句と値です**（`{"error":"<句>","params":{…}}`）。
 句は `src/lib.mjs` の `ERROR_PHRASES` に在ります。
 ページが、句を自分の言語の文にします（辞書の鍵は `workbench.error.<句>`。[開発](/development/#画面の文言)）。どう直すかの 1 文も、辞書の側に在ります。
-capture-ledger が自分で書いた断りは、capture-ledger の本文のまま通します。ページは、それも同じ辞書で読みます（鍵は `ledger.error.<句>` と `ledger.hint.<鍵>`）。辞書に無い句と理由は、届いたまま出します。
+capture-ledger が自分で書いた断りは、capture-ledger の本文のまま通します。ページは、それも同じ辞書で読みます（鍵は `ledger.error.<句>` と `ledger.hint.<鍵>`）。辞書に無い句と理由は、届いたまま出します。クロールの `error` は、辞書では読みません。言語を見る版の capture-ledger が、頼みの言語で返します（上記）。
 ページを通らずにブラウザへ直に出る答え（`/login`・`/callback`・405 の text）は言語を選べないので、英語と日本語を並べて書いてあります（` / ` で区切るか、2 行に分ける）。
 
 | 状態 | いつ | 本文 |

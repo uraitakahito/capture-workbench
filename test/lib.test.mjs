@@ -27,6 +27,7 @@ import {
   relayFor,
   safePath,
   screenAnswer,
+  spokenLanguage,
   Told,
   TooLarge,
   WRITE_LIMIT,
@@ -254,12 +255,33 @@ test("書き込みのエンドポイントの上限は、capture-ledger の POST
   assert.equal(WRITE_LIMIT, 1024 * 1024);
 });
 
-test("中継で運ぶ見出しは、POST /api/crawls の Idempotency-Key だけ", () => {
+test("Idempotency-Key を運ぶのは、POST /api/crawls だけ", () => {
   const headers = { "idempotency-key": "k1", cookie: "s=1", authorization: "Bearer x" };
   assert.deepEqual(forwardedHeaders("/api/crawls", headers), { "idempotency-key": "k1" });
   // ほかの書き込みには運ばない・鍵が無ければ何も足さない
   assert.deepEqual(forwardedHeaders("/api/schedules", headers), {});
   assert.deepEqual(forwardedHeaders("/api/crawls", { cookie: "s=1" }), {});
+});
+
+test("頼みの言語は、ちょうど ja か en のときだけ運ぶ", () => {
+  // 画面が付けた言語（public/app.js の ask）
+  assert.deepEqual(spokenLanguage({ "accept-language": "ja" }), { "accept-language": "ja" });
+  assert.deepEqual(spokenLanguage({ "accept-language": "en" }), { "accept-language": "en" });
+  // browser が自分で付ける値・知らない言語・無い時は運ばない（capture-ledger は英語で返す）
+  for (const value of ["ja,en-US;q=0.9,en;q=0.8", "en-US", "fr", "*", "", "JA"]) {
+    assert.deepEqual(spokenLanguage({ "accept-language": value }), {}, value);
+  }
+  assert.deepEqual(spokenLanguage({}), {});
+  // **値の形で見分ける**: browser が言語を 1 つだけ送る時（`en` だけ）は、画面が付けた物と見分けられず、運ばれる。
+  // だから画面の頼みは、みな ask を通す（browser の値を画面の言語で上書きする。scripts/check-ask.mjs が見る）
+  assert.deepEqual(spokenLanguage({ "accept-language": "en", cookie: "s=1" }), { "accept-language": "en" });
+});
+
+test("書き込みの中継も、頼みの言語を運ぶ（Idempotency-Key の決まりは変わらない）", () => {
+  const headers = { "idempotency-key": "k1", "accept-language": "ja", cookie: "s=1" };
+  assert.deepEqual(forwardedHeaders("/api/crawls", headers), { "idempotency-key": "k1", "accept-language": "ja" });
+  assert.deepEqual(forwardedHeaders("/api/schedules", headers), { "accept-language": "ja" });
+  assert.deepEqual(forwardedHeaders("/api/schedules", { ...headers, "accept-language": "ja,en;q=0.5" }), {});
 });
 
 // ── 節目のスクリーンショットの中継（CAPTURE-432）────────────────────────────
