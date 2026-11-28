@@ -96,7 +96,9 @@ and you stay signed in).
 
 These routes are GET, because the way back from the IdP is a GET redirect, so
 the checks of the routes that write (`Origin`, JSON) do not apply; the `state` and PKCE refuse a way
-back that another page made.
+back that another page made. **`/logout` is not protected**: it stays a GET link, so another page
+that sends the browser to `/logout` signs you out (the only harm is signing in again; nothing more
+can be read or written).
 
 ## /api/* — passed through to the ledger
 

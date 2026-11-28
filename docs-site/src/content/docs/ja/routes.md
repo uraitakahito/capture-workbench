@@ -80,6 +80,7 @@ workbench は開いたときにこれを読み、誰としてサインインし�
 登録が無いと、「サインアウト」が IdP の `logout_uri is not registered for this client`（400）で止まります —— 手元で出たら、capture-ledger で `pnpm run idp:bootstrap` を打ち直します（プールは作り直されず、サインインもそのまま）。
 IdP から戻る道は GET のリダイレクトなので、これらは GET で、書き込みのエンドポイントの門（`Origin`・JSON）は掛けません。
 代わりに `state` と PKCE が、よそのページが作った戻りを断ります。
+**`/logout` は守っていません。** GET のリンクのままなので、よそのページがブラウザを `/logout` へ飛ばすと、サインアウトさせられます（害は、サインインのし直しだけ。読める物・書ける物は増えません）。
 
 ## /api/* —— capture-ledger へ素通し
 
