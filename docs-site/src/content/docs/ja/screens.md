@@ -287,7 +287,7 @@ capture-ledger がクロールの合本を書いていれば、隣の「ReplayWe
 - **題の行が、乱数を記録した数を言う。**
   capture-ledger v0.105.0 から、答えの `capture.random` が BrowserHive の要約（[`browserhive:capture.random`](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.26.0/ja/#random)）を運びます。
   記録した取り込みは「乱数を N 回記録した」です（N は答えの `draws`。`random/values.jsonl` の値の行の数）。答えの `truncated` が行の欠けうることを言うときは「（欠けがありうる）」が付きます。
-  記録するよう頼んだのに記録の無い取り込みは、理由を言います。`withheld` は「乱数は記録していない（文書を伏せたので残さない）」、`failed` は「乱数を記録できなかった」です。画面の知らない理由は、届いた字のまま出します。
+  乱数を記録するよう頼んだのに乱数の記録の無い取り込みは、理由を言います。`withheld` は「乱数は記録していない（文書を伏せたので残さない）」、`failed` は「乱数を記録できなかった」です。画面の知らない理由は、届いた字のまま出します。
   頼まなかった取り込み（`not-requested`）と、答えに `random` の欄が無い取り込み（古い capture-ledger か BrowserHive）には、何も出ません。
 - **図の帯と印は、押すと下に欄が出る。**
   始まりと長さ（帯）か、時刻（印）を、秒で言います。
