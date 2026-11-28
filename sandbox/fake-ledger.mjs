@@ -51,6 +51,11 @@
  * **代役は比べも要約もしない** —— 差分と要約は scenario.json に書いた物で、書いていない 2 本は、文字の digest が同じなら「同じ」、
  * 違えば「WACZ が保管庫に無い」と答える。
  *
+ * robots.txt の例外 (t-6bc6。capture-ledger v0.116.0) の 3 つのエンドポイントにも、scenario.json の `exemptions` から答える —— 一覧
+ * (`GET /api/robots-exemptions`)・登録 (`POST /api/robots-exemptions`)・取り消し (`POST …/:id/revoke`)。画面から足した行と
+ * 取り消しは、代役が起きている間だけ覚える。**認可は真似ない**ので、admin でない・機械の主体・ヘッダの経路の 403 は出ない。
+ * ページの行の `robotsExemptionId` と、判断の答えの `robotsOverridden` (どちらも v0.117.0 から) も、台本から返す。
+ *
  * 試験から関数を import できるように、server は直に走らせたときだけ立てる。
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -313,14 +318,19 @@ export const crawlDetail = (c, scripts = c.scripts ?? [], rules = c.rules ?? DEF
 });
 
 /**
- * /api/crawls/:id/decisions。欄は capture-ledger v0.62.0 の src/api/crawls.ts と同じ。台本の行は
- * `decisions` と `robots` を持てる (無ければ空)。受けた行は何も辿っていないので空。
+ * /api/crawls/:id/decisions。欄は capture-ledger v0.62.0 の src/api/crawls.ts と同じで、v0.117.0 から `robotsOverridden`。
+ * `robots` の行の `limited` と `robotsOverridden` の行の `failed` も v0.117.0 から (台本が省けば 0)。
+ * 台本の行は `decisions`・`robots`・`robotsOverridden` を持てる (無ければ空)。受けた行は何も辿っていないので空。
  */
 export const decisionsOf = (c, rules = c.rules ?? DEFAULT_RULES) => ({
   crawlId: c.crawlId,
   rules,
   decisions: c.decisions ?? [],
-  robots: c.robots ?? [],
+  // `limited` は、そのうち例外の行の上限で止まった数 (v0.117.0。`pages` に含まれる)。台本が書かなければ 0
+  robots: (c.robots ?? []).map((row) => ({ ...row, limited: row.limited ?? 0 })),
+  // robots.txt が断ったが、例外の行で外したページ (capture-ledger v0.117.0。t-6bc6)。例外とホスト名ごと。無ければ空。
+  // `pages` は撮れた数、`failed` は外して撮りに行き、撮れなかった数 (`pages` に入らない)。台本が書かなければ 0
+  robotsOverridden: (c.robotsOverridden ?? []).map((row) => ({ ...row, failed: row.failed ?? 0 })),
 });
 
 /** `pages[].out` の鍵 (capture-ledger の src/crawl/links-read.ts の `KEY`)。 */
@@ -486,6 +496,8 @@ export const pageRow = (p) => ({
   bundledRev: p.bundledRev ?? null,
   logCounts: p.log === undefined ? null : { ...countsOf(p.log), dropped: p.log.dropped ?? 0 },
   screenshot: p.screenshot ?? null,
+  // robots.txt が断っていて、例外の行で外したページの、行の番号 (capture-ledger v0.117.0。t-6bc6)。外していなければ null
+  robotsExemptionId: p.robotsExemptionId ?? null,
 });
 
 /** ページの id の綴り (capture-ledger の src/api/crawls.ts の `PAGE_ID`。v0.69.0 から。bigserial を 18 桁までの字で持つ)。 */
@@ -1951,6 +1963,179 @@ export const createSchedule = (rows, body, now = Date.now()) => {
   return { status: 201, row };
 };
 
+const DAY_MS = 86_400_000;
+
+/**
+ * robots.txt の例外の 1 行 (t-6bc6)。欄は capture-ledger v0.116.0 の src/api/robots-exemptions.ts の `answerOf` と同じ。
+ * 台本の時刻は「何日前・何日後」(`createdDaysAgo`・`expiresInDays`・`revokedDaysAgo`) で、now を基準に組む —— 絶対の時刻で
+ * 書くと、効いている見本が日が経つと切れる。画面から足した行は絶対の時刻 (`createdAt`・`expiresAt`・`revokedAt`) を持つ。
+ * 状態は capture-ledger の `exemptionState` と同じ決め方 (取り消しが期限切れより先)。
+ */
+export const exemptionRow = (c, now) => {
+  const expiresAt = c.expiresAt ?? new Date(now + (c.expiresInDays ?? 30) * DAY_MS).toISOString();
+  const revokedAt =
+    c.revokedAt ?? (c.revokedDaysAgo === undefined ? null : new Date(now - c.revokedDaysAgo * DAY_MS).toISOString());
+  return {
+    id: c.id,
+    orgId: c.orgId ?? "acme",
+    host: c.host,
+    pathPattern: c.pathPattern ?? "/",
+    scope: c.scope,
+    appliesTo: c.appliesTo ?? "all",
+    userAgent: c.userAgent,
+    reason: c.reason,
+    dailyLimit: c.dailyLimit ?? 100,
+    linkLimit: c.linkLimit ?? 20,
+    createdBy: c.createdBy ?? "sandbox",
+    createdByName: c.createdByName ?? null,
+    createdAt: c.createdAt ?? new Date(now - (c.createdDaysAgo ?? 0) * DAY_MS).toISOString(),
+    expiresAt,
+    revokedAt,
+    revokedBy: c.revokedBy ?? null,
+    revokedByName: c.revokedByName ?? null,
+    state: revokedAt !== null ? "revoked" : Date.parse(expiresAt) > now ? "active" : "expired",
+  };
+};
+
+/**
+ * `GET /api/robots-exemptions` の行の並び。capture-ledger と同じく登録の新しい順 (同じ時刻なら番号の大きい順) で、一覧の行だけが
+ * `usedLast24h` (24 時間の内に、この行で robots.txt を外して撮りに行ったページの数。撮れなかった物も含む —— 上限と同じ数え方。
+ * v0.117.0 から) を持つ。台本に無ければ 0。
+ */
+export const exemptionList = (rows, now) =>
+  rows
+    .map((c) => ({ ...exemptionRow(c, now), usedLast24h: c.usedLast24h ?? 0 }))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || Number(BigInt(b.id) - BigInt(a.id)));
+
+/** 登録の本文の鍵 (capture-ledger の schema の `properties`)。ほかの鍵は capture-ledger と同じ文で 400。 */
+const EXEMPTION_BODY_KEYS = ["orgId", "host", "pathPattern", "scope", "appliesTo", "userAgent", "reason", "expiresAt", "dailyLimit", "linkLimit"];
+/** 例外の番号の綴り (capture-ledger の revoke の params の pattern)。 */
+const EXEMPTION_ID = /^[1-9][0-9]{0,17}$/;
+/** 名乗る User-Agent の形 (capture-ledger の src/exemptions/validate.ts の `USER_AGENT_FORM`)。 */
+const EXEMPTION_USER_AGENT = /^BrowserHive\/[0-9A-Za-z.+-]{1,32}(?: \(\+(https?:\/\/[\x21-\x27\x2a-\x7e]+)\))?$/;
+/** offset つきの ISO 8601 (同じファイルの `DATE_TIME`)。 */
+const EXEMPTION_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/** ホストを `url.host` の形に整える (capture-ledger の `normalizeHost` の写し)。整えられない字は undefined。 */
+const exemptionHost = (input) => {
+  const text = String(input).trim();
+  if (text === "" || text.length > 255 || /[\s*/\\@?#]/.test(text) || text.endsWith(".")) return undefined;
+  let url;
+  try {
+    url = new URL(`https://${text}`);
+  } catch {
+    return undefined;
+  }
+  return url.username !== "" || url.password !== "" || url.pathname !== "/" || url.search !== "" || url.hash !== "" || url.host === ""
+    ? undefined
+    : url.host;
+};
+
+/**
+ * `POST /api/robots-exemptions`。欄の確かめは capture-ledger v0.116.0 の `checkExemption` の写しで、同じ順に見て、最初の 1 つを
+ * 同じ句 (`error`) と欄の名前 (`field`) で断る。**写していない確かめが 2 つ在る** —— User-Agent の中のブラウザやほかの
+ * クローラの名前 (語の一覧) と、URL の中の製品の印の形。代役はどちらも通す。重なり (同じ組織・ホスト・path の型で効いている
+ * 行) と、同じホストの効いている行と違う User-Agent は、capture-ledger と同じ句の 409。認可は真似ない (403 は出ない)。
+ */
+export const createExemption = (rows, body, now = Date.now()) => {
+  if (body === null || typeof body !== "object" || Object.keys(body).some((key) => !EXEMPTION_BODY_KEYS.includes(key))) {
+    return schemaError("body must NOT have additional properties");
+  }
+  // 欄の型は schema が先に見る (字の欄は string、上限は integer)。代役は capture-ledger の読み替え (coerceTypes) を真似ず、断る
+  for (const key of EXEMPTION_BODY_KEYS) {
+    if (body[key] === undefined) continue;
+    const limit = key === "dailyLimit" || key === "linkLimit";
+    if (limit ? !Number.isInteger(body[key]) : typeof body[key] !== "string") {
+      return schemaError(`body/${key} must be ${limit ? "integer" : "string"}`);
+    }
+  }
+  const invalid = (field, error) => ({ status: 400, body: { error, field } });
+  const host = exemptionHost(body.host ?? "");
+  if (host === undefined) {
+    return invalid("host", "host must be a host name (with an optional port), without scheme, path, userinfo or wildcard");
+  }
+  const pathPattern = body.pathPattern ?? "/";
+  if (!pathPattern.startsWith("/")) return invalid("pathPattern", "pathPattern must start with /");
+  if (pathPattern.length > 256) return invalid("pathPattern", "pathPattern must be at most 256 characters");
+  if (!/^[\x21-\x7e]+$/.test(pathPattern) || pathPattern.includes("#")) {
+    return invalid("pathPattern", "pathPattern must be one line of printable ASCII without spaces or #");
+  }
+  if (body.scope !== "seeds" && body.scope !== "links") return invalid("scope", "scope must be seeds or links");
+  const appliesTo = body.appliesTo ?? "all";
+  if (appliesTo !== "all" && appliesTo !== "human") return invalid("appliesTo", "appliesTo must be all or human");
+  const userAgent = body.userAgent ?? "";
+  if (userAgent === "") return invalid("userAgent", "userAgent is required");
+  if (userAgent.length > 512) return invalid("userAgent", "userAgent must be at most 512 characters");
+  if (!EXEMPTION_USER_AGENT.test(userAgent)) {
+    return invalid(
+      "userAgent",
+      "userAgent must be BrowserHive/<version>, optionally followed by (+https://…) naming a page that describes it",
+    );
+  }
+  const reason = String(body.reason ?? "").trim();
+  if (reason === "") return invalid("reason", "reason must not be blank");
+  if ([...reason].length > 500) return invalid("reason", "reason must be at most 500 characters");
+  const expiresText = body.expiresAt ?? "";
+  const expires = EXEMPTION_DATE_TIME.test(expiresText) ? Date.parse(expiresText) : Number.NaN;
+  if (Number.isNaN(expires)) return invalid("expiresAt", "expiresAt must be an ISO 8601 date-time with an offset");
+  if (expires <= now) return invalid("expiresAt", "expiresAt must be in the future");
+  if (expires > now + 90 * DAY_MS) return invalid("expiresAt", "expiresAt must be within 90 days");
+  const within = (value, max) => Number.isInteger(value) && value >= 1 && value <= max;
+  const dailyLimit = body.dailyLimit ?? 100;
+  if (!within(dailyLimit, 10_000)) return invalid("dailyLimit", "dailyLimit must be an integer between 1 and 10000");
+  const linkLimit = body.linkLimit ?? 20;
+  if (!within(linkLimit, 1000)) return invalid("linkLimit", "linkLimit must be an integer between 1 and 1000");
+
+  const orgId = body.orgId ?? "acme";
+  const active = rows.map((c) => exemptionRow(c, now)).filter((row) => row.state === "active" && row.orgId === orgId && row.host === host);
+  const overlap = active.find((row) => row.pathPattern === pathPattern);
+  if (overlap !== undefined) {
+    return { status: 409, body: { error: "an active robots exemption already covers this host and path pattern", id: overlap.id } };
+  }
+  const other = active.find((row) => row.userAgent !== userAgent);
+  if (other !== undefined) {
+    return { status: 409, body: { error: "active robots exemptions for this host use a different user agent", userAgent: other.userAgent } };
+  }
+  const last = rows.reduce((max, c) => (BigInt(c.id) > max ? BigInt(c.id) : max), 0n);
+  const row = {
+    id: String(last + 1n),
+    orgId,
+    host,
+    pathPattern,
+    scope: body.scope,
+    appliesTo,
+    userAgent,
+    reason,
+    dailyLimit,
+    linkLimit,
+    createdAt: new Date(now).toISOString(),
+    expiresAt: new Date(expires).toISOString(),
+  };
+  return { status: 201, row };
+};
+
+/**
+ * `POST /api/robots-exemptions/:id/revoke`。番号の綴りが違えば 400 (Fastify の schema の形)、行が無ければ 404、もう取り消した行と
+ * 期限の過ぎた行は capture-ledger と同じ句の 409。取り消せたら、行に足す欄を `edit` で返す (覚えるのは呼び手)。
+ */
+export const revokeExemption = (rows, id, now = Date.now()) => {
+  if (!EXEMPTION_ID.test(id)) return schemaError('params/id must match pattern "^[1-9][0-9]{0,17}$"');
+  const c = rows.find((one) => one.id === id);
+  if (c === undefined) return { status: 404, body: { error: "not found" } };
+  const state = exemptionRow(c, now).state;
+  if (state === "revoked") return { status: 409, body: { error: "robots exemption is already revoked" } };
+  if (state === "expired") return { status: 409, body: { error: "robots exemption has already expired" } };
+  const edit = { revokedAt: new Date(now).toISOString(), revokedBy: "sandbox" };
+  return { status: 200, edit, body: exemptionRow({ ...c, ...edit }, now) };
+};
+
+/** 画面から足した例外と、取り消し (番号 → 上書きする欄)。台本は読むだけなので、代役が起きている間だけ覚える。 */
+const createdExemptions = [];
+const exemptionEdits = new Map();
+
+const exemptionsIn = (s) =>
+  [...(s.exemptions ?? []), ...createdExemptions].map((row) => ({ ...row, ...exemptionEdits.get(row.id) }));
+
 /** 台本は要求のたびに読む。書き換えると、代役を起こし直さずに画面に出る。 */
 const scenario = readingLastGood(() => JSON.parse(readFileSync(SCENARIO, "utf8")), 3000);
 
@@ -2067,6 +2252,36 @@ const handle = (req, res, raw) => {
     }[acted[2]];
     scheduleEdits.set(row.id, { ...scheduleEdits.get(row.id), ...edit });
     send(res, acted[2] === "run" ? 202 : 200, scheduleRow({ ...row, ...edit }));
+    return;
+  }
+  // robots.txt の例外 (t-6bc6)。一覧・登録・取り消し。足した行と取り消しは、代役が起きている間だけ覚える
+  if (req.method === "GET" && pathname === "/api/robots-exemptions") {
+    send(res, 200, { exemptions: exemptionList(exemptionsIn(s), Date.now()) });
+    return;
+  }
+  if (req.method === "POST" && pathname === "/api/robots-exemptions") {
+    let body;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      send(res, 400, { error: "body is not valid JSON" });
+      return;
+    }
+    const now = Date.now();
+    const answer = createExemption(exemptionsIn(s), body, now);
+    if (answer.row === undefined) {
+      send(res, answer.status, answer.body);
+      return;
+    }
+    createdExemptions.push(answer.row);
+    send(res, answer.status, exemptionRow(answer.row, now));
+    return;
+  }
+  const revoked = /^\/api\/robots-exemptions\/([^/]+)\/revoke$/.exec(pathname);
+  if (req.method === "POST" && revoked !== null) {
+    const answer = revokeExemption(exemptionsIn(s), revoked[1]);
+    if (answer.edit !== undefined) exemptionEdits.set(revoked[1], answer.edit);
+    send(res, answer.status, answer.body);
     return;
   }
   // 走ったままの行を締める (capture-ledger の /failed と同じ本文)。代役の台本の行は書き換えないので、閉じたとだけ答える

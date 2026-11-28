@@ -18,6 +18,9 @@ test("画面の path を受ける（query も）", () => {
     "/crawls?from=ai&lang=en",
     `/trace/${CRAWL}/1301`,
     "/history/https%3A%2F%2Fsandbox.test%2Fpricing",
+    "/exemptions",
+    "/exemptions/12",
+    "/exemptions?lang=en",
     "/search?q=%E6%97%A5%E6%9C%AC",
     "/archive/a1/archive%2Fdata.warc.gz:12",
     "/scripts/types/host.d.ts:3",
@@ -51,6 +54,8 @@ test("よそ・API・壊れた字は画面の path でない（戻り先にし�
     "/api/crawls",
     "/healthz",
     "/app.js",
+    "/exemptions.js",
+    "/api/robots-exemptions",
     "/crawlsx",
   ]) {
     assert.equal(isScreenPath(path), false, String(path));
@@ -94,7 +99,8 @@ test("古い hash の URL を path に替える（橋）", () => {
 });
 
 test("画面の hash でなければ橋を渡らない", () => {
-  for (const hash of ["", "#", "#nope", "#api/crawls", "#login", "#crawls/../logout", "#Crawls", "#crawls\nx"]) {
+  // #exemptions は、hash の頃（v0.61.0 まで）に無かった画面。橋に足さない
+  for (const hash of ["", "#", "#nope", "#api/crawls", "#login", "#crawls/../logout", "#Crawls", "#crawls\nx", "#exemptions"]) {
     assert.equal(pathFromHash(hash), undefined, hash);
   }
 });
@@ -124,6 +130,7 @@ test("押した link のうち、画面の中の行き先だけを拾う（ほ�
   assert.equal(screenTarget("/schedules", origin), "/schedules");
   assert.equal(screenTarget(`${origin}/trace/${CRAWL}/1301`, origin), `/trace/${CRAWL}/1301`);
   assert.equal(screenTarget("/search?q=a%20b", origin), "/search?q=a%20b");
+  assert.equal(screenTarget("/exemptions/12", origin), "/exemptions/12");
   for (const href of [
     "/logout",
     "/api/crawls",

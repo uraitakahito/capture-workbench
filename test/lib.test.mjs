@@ -136,6 +136,26 @@ test("書き込みのエンドポイントは、定期実行の予定を作る�
   assert.equal(isWriteRoute("/api/crawls/../failed"), false);
 });
 
+test("書き込みのエンドポイントは、robots.txt の例外を登録する・取り消す POST も通す（番号は 1〜18 桁の数字だけ）", () => {
+  assert.equal(isWriteRoute("/api/robots-exemptions"), true);
+  assert.equal(isWriteRoute("/api/robots-exemptions/1/revoke"), true);
+  assert.equal(isWriteRoute("/api/robots-exemptions/123456789012345678/revoke"), true);
+  // 19 桁・数字でない番号・知らない操作・末尾の足し・query
+  assert.equal(isWriteRoute("/api/robots-exemptions/1234567890123456789/revoke"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/5b0c0008-6a1e-4000-8000-000000000008/revoke"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions//revoke"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/1"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/1/delete"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/1/revoke/"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/1/revoke?x=1"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions?x=1"), false);
+  // fetch が .. を畳むので、capture-ledger のほかのエンドポイントへ回り込む形を断る
+  assert.equal(isWriteRoute("/api/robots-exemptions/../crawls"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/1%2F../revoke"), false);
+  assert.equal(isWriteRoute("/api/robots-exemptions/1/../../crawls"), false);
+});
+
 test("書き込みのエンドポイントは、クロールを始める・その場の TS の直し方を訊く・宣言を訊く POST を通し、末尾の足し・query・ほかの段を断る", () => {
   const id = "5b0c0008-6a1e-4000-8000-000000000008";
   assert.equal(isWriteRoute("/api/crawls"), true);

@@ -51,10 +51,13 @@ import {
   crawlRow,
   crawlRulesCheck,
   crawlsPage,
+  createExemption,
   createSchedule,
   decisionsOf,
   defaultSet,
   diagnosticsOf,
+  exemptionList,
+  exemptionRow,
   fixOf,
   historyArchives,
   historyOf,
@@ -73,6 +76,7 @@ import {
   readDeclared,
   readingLastGood,
   replayBundleOf,
+  revokeExemption,
   RUN_FIELDS,
   scenarioAt,
   scheduleRow,
@@ -1331,12 +1335,47 @@ test("確かめのエンドポイントは、行ごとの読めた種類と覆�
 test("判断のエンドポイントは、台本の行の規則・判断・robots を返す（受けた行は空）", () => {
   const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0007"));
   const answer = decisionsOf(c);
-  assert.deepEqual(Object.keys(answer), ["crawlId", "rules", "decisions", "robots"]);
+  // robotsOverridden は capture-ledger v0.117.0 から（t-6bc6）
+  assert.deepEqual(Object.keys(answer), ["crawlId", "rules", "decisions", "robots", "robotsOverridden"]);
   assert.ok(answer.decisions.length > 0 && answer.robots.length > 0, "画面の絵に出す行がある");
   // 台本の規則は capture-ledger が断らない並びであること（覆われた行を絵に載せない）
   const seeds = c.seeds.map((seed) => new URL(seed).href);
   assert.equal(submitCrawl([], { seeds, rules: c.rules, scripts: [] }, NOW, RUNS, versions).status, 202);
-  assert.deepEqual(decisionsOf({ crawlId: "x" }), { crawlId: "x", rules: [{ follow: "same-origin" }], decisions: [], robots: [] });
+  assert.deepEqual(decisionsOf({ crawlId: "x" }), {
+    crawlId: "x",
+    rules: [{ follow: "same-origin" }],
+    decisions: [],
+    robots: [],
+    robotsOverridden: [],
+  });
+});
+
+/** capture-ledger v0.117.0 の `robotsOverridden` の 1 行の欄（t-6bc6）。 */
+const LEDGER_ROBOTS_OVERRIDDEN_KEYS = ["exemptionId", "hostname", "pages", "failed", "samples"].sort();
+/** `robots` の 1 行の欄。`limited` は v0.117.0 から。 */
+const LEDGER_ROBOTS_KEYS = ["hostname", "pages", "limited", "samples"].sort();
+
+test("例外で外した見本のクロールは、ページの robotsExemptionId と判断の robotsOverridden が同じ例外を指す", () => {
+  const c = scenario.crawls.find((x) => x.crawlId.startsWith("5b0c0004"));
+  const overridden = decisionsOf(c).robotsOverridden;
+  assert.ok(overridden.length > 0);
+  for (const row of overridden) assert.deepEqual(Object.keys(row).sort(), LEDGER_ROBOTS_OVERRIDDEN_KEYS);
+  const pages = pageList(c, new URLSearchParams()).body.pages;
+  const lifted = pages.filter((page) => page.robotsExemptionId !== null);
+  // 外したページの数は、例外とホスト名ごとの撮れた数（pages）と撮れなかった数（failed）の合計と同じ。番号は台本の例外に在る
+  assert.equal(lifted.length, overridden.reduce((n, row) => n + row.pages + row.failed, 0));
+  assert.equal(lifted.filter((page) => page.state === "captured").length, overridden.reduce((n, row) => n + row.pages, 0));
+  // robots の行は limited を持ち（台本が省いた行は 0）、上限で止まったページの数と同じ
+  for (const one of scenario.crawls) for (const row of decisionsOf(one).robots) assert.deepEqual(Object.keys(row).sort(), LEDGER_ROBOTS_KEYS, one.crawlId);
+  const robots = decisionsOf(c).robots;
+  assert.equal(robots.reduce((n, row) => n + row.limited, 0), pages.filter((page) => page.reason === "robots-exemption-limit").length);
+  assert.equal(robots.reduce((n, row) => n + row.pages, 0), pages.filter((page) => page.state === "skipped").length);
+  for (const page of lifted) {
+    assert.ok(overridden.some((row) => row.exemptionId === page.robotsExemptionId && row.samples.includes(page.url)), page.id);
+    assert.ok(scenario.exemptions.some((row) => row.id === page.robotsExemptionId), page.id);
+  }
+  // 型に当たったが上限で止まったページと、robots.txt で撮らなかったページも 1 つずつ持つ（結末の字を見る場）
+  assert.deepEqual(pages.filter((page) => page.state === "skipped").map((page) => page.reason).sort(), ["robots", "robots-exemption-limit"]);
 });
 
 // ── ページのエンドポイント（capture-ledger v0.69.0 の GET /api/crawls/:id/pages と …/pages/:page/log の形。CAPTURE-18）────────
@@ -1355,6 +1394,8 @@ const LEDGER_PAGE_KEYS = [
   "logCounts",
   // 読み込みの後の節目のスクリーンショット (capture-ledger v0.107.0 の pageOf。CAPTURE-432)
   "screenshot",
+  // robots.txt を外した例外の行の番号 (capture-ledger v0.117.0 の pageOf。t-6bc6)
+  "robotsExemptionId",
 ].sort();
 /** ページの行の logCounts の欄（BrowserHive の答えの log.counts と dropped）。 */
 const LOG_COUNTS_KEYS = ["debug", "info", "warn", "error", "dropped"].sort();
@@ -2313,4 +2354,144 @@ test("1 本の答えは、一覧の行と同じ走った回の欄（startedAt・
     const detail = withRunFields(crawlDetail(scenarioAt(c, NOW)), row);
     for (const name of RUN_FIELDS) assert.deepEqual(detail[name], row[name], `${c.crawlId} ${name}`);
   }
+});
+
+// ── robots.txt の例外（capture-ledger v0.116.0 の src/api/robots-exemptions.ts の形。t-6bc6）────────────────────
+
+/** 行 1 つの答えの欄（`answerOf`。登録と取り消しの答え）。一覧の行だけが、v0.117.0 から `usedLast24h` も持つ。 */
+const LEDGER_EXEMPTION_KEYS = [
+  "id",
+  "orgId",
+  "host",
+  "pathPattern",
+  "scope",
+  "appliesTo",
+  "userAgent",
+  "reason",
+  "dailyLimit",
+  "linkLimit",
+  "createdBy",
+  "createdByName",
+  "createdAt",
+  "expiresAt",
+  "revokedAt",
+  "revokedBy",
+  "revokedByName",
+  "state",
+].sort();
+
+const DAY = 86_400_000;
+const exemptionBody = (over = {}) => ({
+  orgId: "acme",
+  host: "Shop.Site.test",
+  scope: "seeds",
+  userAgent: "BrowserHive/1.0",
+  reason: " 持ち主の許しを受けた ",
+  expiresAt: new Date(NOW + 30 * DAY).toISOString(),
+  ...over,
+});
+
+test("例外の行は capture-ledger と同じ欄を持ち、見本は効いている・切れた・取り消したを 1 つずつ持つ", () => {
+  for (const c of scenario.exemptions) {
+    assert.deepEqual(Object.keys(exemptionRow(c, NOW)).sort(), LEDGER_EXEMPTION_KEYS, c.id);
+    assert.match(c.id, /^[1-9][0-9]{0,17}$/);
+  }
+  const list = exemptionList(scenario.exemptions, NOW);
+  for (const row of list) assert.deepEqual(Object.keys(row).sort(), [...LEDGER_EXEMPTION_KEYS, "usedLast24h"].sort(), row.id);
+  assert.deepEqual(list.map((row) => row.state).sort(), ["active", "expired", "revoked"]);
+  // 並びは登録の新しい順（capture-ledger の listExemptions）
+  assert.deepEqual(list.map((row) => row.id), ["1", "3", "2"]);
+  // 取り消しが期限切れより先（取り消した行は、期限が過ぎても「取り消した」）
+  assert.equal(exemptionRow({ id: "9", expiresInDays: -1, revokedDaysAgo: 2 }, NOW).state, "revoked");
+  // 見本の行は、代役の登録の確かめを通る字（効いている行どうしは重ならず、同じホストは同じ User-Agent）
+  for (const c of scenario.exemptions) {
+    const body = exemptionBody({ host: c.host, pathPattern: c.pathPattern, scope: c.scope, userAgent: c.userAgent, reason: c.reason });
+    assert.equal(createExemption([], body, NOW).status, 201, c.id);
+  }
+});
+
+test("登録: 既定を埋めて 201。ホストは url.host の形に整え、理由は前後の空白を落とす。番号は続きの数", () => {
+  const answer = createExemption(scenario.exemptions, exemptionBody(), NOW);
+  assert.equal(answer.status, 201);
+  const row = exemptionRow(answer.row, NOW);
+  assert.deepEqual(Object.keys(row).sort(), LEDGER_EXEMPTION_KEYS);
+  assert.deepEqual(
+    [row.id, row.host, row.pathPattern, row.appliesTo, row.reason, row.dailyLimit, row.linkLimit, row.state],
+    ["4", "shop.site.test", "/", "all", "持ち主の許しを受けた", 100, 20, "active"],
+  );
+  assert.equal(row.createdAt, new Date(NOW).toISOString());
+});
+
+test("登録の断り: 欄の名前と句は capture-ledger と同じ字で、見る順も同じ（最初の 1 つ）", () => {
+  const refused = (over) => createExemption([], exemptionBody(over), NOW);
+  const table = [
+    [{ host: "https://site.test/" }, "host", "host must be a host name (with an optional port), without scheme, path, userinfo or wildcard"],
+    [{ host: "*.site.test" }, "host", "host must be a host name (with an optional port), without scheme, path, userinfo or wildcard"],
+    [{ pathPattern: "private" }, "pathPattern", "pathPattern must start with /"],
+    [{ pathPattern: `/${"a".repeat(256)}` }, "pathPattern", "pathPattern must be at most 256 characters"],
+    [{ pathPattern: "/a b" }, "pathPattern", "pathPattern must be one line of printable ASCII without spaces or #"],
+    [{ pathPattern: "/a#b" }, "pathPattern", "pathPattern must be one line of printable ASCII without spaces or #"],
+    [{ scope: "all" }, "scope", "scope must be seeds or links"],
+    [{ appliesTo: "machine" }, "appliesTo", "appliesTo must be all or human"],
+    [{ userAgent: "" }, "userAgent", "userAgent is required"],
+    [{ userAgent: `BrowserHive/${"1".repeat(512)}` }, "userAgent", "userAgent must be at most 512 characters"],
+    [
+      { userAgent: "MyBot/1.0" },
+      "userAgent",
+      "userAgent must be BrowserHive/<version>, optionally followed by (+https://…) naming a page that describes it",
+    ],
+    [{ reason: "  " }, "reason", "reason must not be blank"],
+    [{ reason: "あ".repeat(501) }, "reason", "reason must be at most 500 characters"],
+    [{ expiresAt: "2026-12-01T00:00:00" }, "expiresAt", "expiresAt must be an ISO 8601 date-time with an offset"],
+    [{ expiresAt: new Date(NOW).toISOString() }, "expiresAt", "expiresAt must be in the future"],
+    [{ expiresAt: new Date(NOW + 90 * DAY + 1000).toISOString() }, "expiresAt", "expiresAt must be within 90 days"],
+    [{ dailyLimit: 0 }, "dailyLimit", "dailyLimit must be an integer between 1 and 10000"],
+    [{ linkLimit: 1001 }, "linkLimit", "linkLimit must be an integer between 1 and 1000"],
+  ];
+  for (const [over, field, error] of table) {
+    assert.deepEqual(refused(over), { status: 400, body: { error, field } }, JSON.stringify(over));
+  }
+  // 2 つの欄が駄目なら、先に見る欄だけを言う
+  assert.equal(refused({ host: "", reason: "" }).body.field, "host");
+  // 断りの句は、どれも画面の辞書に訳が在る（辞書に無ければ、届いた英語の句のまま出る）
+  const ja = JSON.parse(readFileSync(new URL("../public/i18n/ja.json", import.meta.url), "utf8"));
+  for (const [, , error] of table) assert.ok(Object.hasOwn(ja, `ledger.error.${error}`), error);
+  // schema が見る物: 知らない鍵と、欄の型
+  assert.equal(refused({ note: "x" }).body.message, "body must NOT have additional properties");
+  assert.equal(refused({ dailyLimit: 1.5 }).body.message, "body/dailyLimit must be integer");
+  assert.equal(refused({ host: 5 }).body.message, "body/host must be string");
+});
+
+test("登録の 409: 同じ組織・ホスト・path の型で効いている行（番号つき）と、同じホストの別の User-Agent（その字つき）", () => {
+  const active = scenario.exemptions.find((c) => exemptionRow(c, NOW).state === "active");
+  const same = { host: active.host, pathPattern: active.pathPattern, userAgent: active.userAgent };
+  assert.deepEqual(createExemption(scenario.exemptions, exemptionBody(same), NOW), {
+    status: 409,
+    body: { error: "an active robots exemption already covers this host and path pattern", id: active.id },
+  });
+  assert.deepEqual(createExemption(scenario.exemptions, exemptionBody({ ...same, pathPattern: "/other/", userAgent: "BrowserHive/2.0" }), NOW), {
+    status: 409,
+    body: { error: "active robots exemptions for this host use a different user agent", userAgent: active.userAgent },
+  });
+  // 切れた行・取り消した行とは重ならない（効いている行だけを見る）
+  const expired = scenario.exemptions.find((c) => exemptionRow(c, NOW).state === "expired");
+  assert.equal(createExemption(scenario.exemptions, exemptionBody({ host: expired.host, userAgent: "BrowserHive/2.0" }), NOW).status, 201);
+  // 別の組織の行とも重ならない
+  assert.equal(createExemption(scenario.exemptions, exemptionBody({ ...same, orgId: "other" }), NOW).status, 201);
+});
+
+test("取り消し: 効いている行は 200 で取り消した行を返し、もう取り消した行・切れた行は 409、無い行は 404、綴りの違う番号は 400", () => {
+  const stateOfRow = (c) => exemptionRow(c, NOW).state;
+  const id = (state) => scenario.exemptions.find((c) => stateOfRow(c) === state).id;
+  const done = revokeExemption(scenario.exemptions, id("active"), NOW);
+  assert.equal(done.status, 200);
+  assert.deepEqual(Object.keys(done.body).sort(), LEDGER_EXEMPTION_KEYS);
+  assert.deepEqual([done.body.state, done.body.revokedAt, done.body.revokedBy], ["revoked", new Date(NOW).toISOString(), "sandbox"]);
+  // 覚えた取り消しを行に重ねると、次の一覧で取り消した行になる
+  const after = scenario.exemptions.map((c) => (c.id === id("active") ? { ...c, ...done.edit } : c));
+  assert.equal(exemptionList(after, NOW).find((row) => row.id === id("active")).state, "revoked");
+  assert.deepEqual(revokeExemption(scenario.exemptions, id("revoked"), NOW), { status: 409, body: { error: "robots exemption is already revoked" } });
+  assert.deepEqual(revokeExemption(scenario.exemptions, id("expired"), NOW), { status: 409, body: { error: "robots exemption has already expired" } });
+  assert.deepEqual(revokeExemption(scenario.exemptions, "999", NOW), { status: 404, body: { error: "not found" } });
+  assert.equal(revokeExemption(scenario.exemptions, "0x1", NOW).body.message, 'params/id must match pattern "^[1-9][0-9]{0,17}$"');
 });

@@ -17,12 +17,13 @@ import { STATUS_CODES } from "node:http";
 import { IntlMessageFormat } from "../public/vendor/intl-messageformat.js";
 import { errorText, hintsText, hintText, refusalTexts, setLang, t } from "../public/i18n.js";
 import { changesError } from "../public/changes.js";
+import { listError, registerAnswer, revokeAnswer } from "../public/exemptions.js";
 import { diagnosisOf, fixAnswer } from "../public/fix.js";
 import { actionAnswer, createAnswer } from "../public/schedules.js";
 import { inlineDeclared, startAnswer } from "../public/start.js";
 import { ERROR_PHRASES } from "../src/lib.mjs";
 import { argsOf } from "../scripts/check-i18n.mjs";
-import { catalogOf, createSchedule, HINT_KEYS, submitCrawl } from "../sandbox/fake-ledger.mjs";
+import { catalogOf, createExemption, createSchedule, HINT_KEYS, revokeExemption, submitCrawl } from "../sandbox/fake-ledger.mjs";
 
 const dict = (lang) => JSON.parse(readFileSync(new URL(`../public/i18n/${lang}.json`, import.meta.url), "utf8"));
 const DICTS = { ja: dict("ja"), en: dict("en") };
@@ -344,6 +345,10 @@ test("句を見て専用の文を出す所は、同じ句の辞書の文で始�
   assert.equal(changesError(404, { error: "not found" }), `404 —— ${said("not found")}`);
   assert.equal(diagnosisOf(404, { error: "not found" }).text, `404 —— ${said("not found")}`);
   assert.equal(fixAnswer(404, { error: "not found" }).text, `404 —— ${said("not found")}`);
+  // robots.txt の例外の答えも、句ごとの専用の文を持たない（状態の数と errorText の文）
+  assert.equal(revokeAnswer(404, { error: "not found" }).text, `404 —— ${said("not found")}`);
+  assert.equal(listError(404, { error: "not found" }), `404 —— ${said("not found")}`);
+  assert.equal(registerAnswer(403, { error: "not an organization admin" }).text, `403 —— ${said("not an organization admin")}`);
 });
 
 // ── 答えを文にする所 ─────────────────────────────────────────────────
@@ -431,4 +436,74 @@ test("宣言を確かめる答えと、型の誤りを取り直す答えも、�
   assert.equal(inlineDeclared(503, { error: "ts-compile unreachable" }).note, "宣言を確かめられません（503 —— ts-compile-service に届きません）");
   assert.equal(inEnglish(() => diagnosisOf(404, { error: "not found" }).text), "404 — Not found");
   assert.equal(inEnglish(() => fixAnswer(409, { error: "scripts compile" }).text), "409 — The scripts compile");
+});
+
+// ── robots.txt の例外の断り（capture-ledger v0.116.0 の src/api/robots-exemptions.ts と src/exemptions/validate.ts の句。t-6bc6）──
+
+/**
+ * capture-ledger が登録と取り消しで返す句。**capture-ledger の src から字のまま写した** —— 1 字でも違えば辞書の鍵が外れ、
+ * 画面には届いた英語の句がそのまま出る。capture-ledger が句を変えたら、ここと 2 つの辞書を直す。
+ */
+const EXEMPTION_PHRASES = [
+  // 400（`checkExemption` の `problem`。答えは `{ error, field }`）
+  "host must be a host name (with an optional port), without scheme, path, userinfo or wildcard",
+  "pathPattern must start with /",
+  "pathPattern must be at most 256 characters",
+  "pathPattern must be one line of printable ASCII without spaces or #",
+  "scope must be seeds or links",
+  "appliesTo must be all or human",
+  "userAgent is required",
+  "userAgent must be at most 512 characters",
+  "userAgent must not contain the name of a browser or of another crawler",
+  "userAgent must be BrowserHive/<version>, optionally followed by (+https://…) naming a page that describes it",
+  "userAgent URL must not hold a letter followed by / and a digit (the form of a product token)",
+  "reason must not be blank",
+  "reason must be at most 500 characters",
+  "expiresAt must be an ISO 8601 date-time with an offset",
+  "expiresAt must be in the future",
+  "expiresAt must be within 90 days",
+  "dailyLimit must be an integer between 1 and 10000",
+  "linkLimit must be an integer between 1 and 1000",
+  // 403（機械の主体・ヘッダで名乗る経路・admin でない）
+  "machine identities cannot manage robots exemptions",
+  "robots exemptions are not available with header identities",
+  "not an organization admin",
+  // 409（登録: 重なり・User-Agent の違い。取り消し: もう取り消した・期限が過ぎた）
+  "an active robots exemption already covers this host and path pattern",
+  "active robots exemptions for this host use a different user agent",
+  "robots exemption is already revoked",
+  "robots exemption has already expired",
+];
+
+test("robots.txt の例外の句は、どれも 2 つの辞書に訳が在る（届いた英語の句のまま出さない）", () => {
+  for (const phrase of EXEMPTION_PHRASES) {
+    for (const lang of ["ja", "en"]) assert.ok(Object.hasOwn(DICTS[lang], `ledger.error.${phrase}`), `${lang}: ${phrase}`);
+    assert.notEqual(errorText({ error: phrase }), phrase, phrase);
+    assert.notEqual(inEnglish(() => errorText({ error: phrase })), phrase, phrase);
+  }
+  // 字の中の <版> は、タグと読ませない（辞書の文では ' で囲む）
+  const form = "userAgent must be BrowserHive/<version>, optionally followed by (+https://…) naming a page that describes it";
+  assert.equal(errorText({ error: form }), "名乗る User-Agent は BrowserHive/<版> で、後ろに書けるのは説明のページを指す (+https://…) だけです");
+  assert.equal(
+    inEnglish(() => errorText({ error: form })),
+    "The User-Agent must be BrowserHive/<version>, optionally followed by (+https://…) naming a page that describes it",
+  );
+});
+
+test("代役の例外の断りを答えにすると、日本語も英語も句が訳され、400 は欄の名前を持つ", () => {
+  const NOW_AT = Date.parse("2026-11-28T03:00:00.000Z");
+  const body = { orgId: "acme", host: "site.test", scope: "seeds", userAgent: "BrowserHive/1.0", reason: "r", expiresAt: "2026-12-20T00:00:00Z" };
+  const blank = createExemption([], { ...body, reason: " " }, NOW_AT);
+  assert.deepEqual(registerAnswer(blank.status, blank.body), { kind: "bad", text: "400 —— 理由が空です", field: "reason" });
+  assert.equal(inEnglish(() => registerAnswer(blank.status, blank.body).text), "400 — The reason must not be blank");
+  const rows = [{ id: "7", host: "site.test", scope: "seeds", userAgent: "BrowserHive/1.0", reason: "r", expiresInDays: 5 }];
+  const overlap = createExemption(rows, body, NOW_AT);
+  assert.equal(registerAnswer(overlap.status, overlap.body).text, "409 —— 同じホストと path の型で、効いている例外がもう在ります: 例外 #7");
+  const agent = createExemption(rows, { ...body, pathPattern: "/a", userAgent: "BrowserHive/2.0" }, NOW_AT);
+  assert.equal(
+    inEnglish(() => registerAnswer(agent.status, agent.body).text),
+    "409 — Active exemptions for this host use a different User-Agent: BrowserHive/1.0",
+  );
+  const gone = revokeExemption([{ ...rows[0], expiresInDays: -1 }], "7", NOW_AT);
+  assert.equal(revokeAnswer(gone.status, gone.body).text, "409 —— この例外は、もう期限が切れています");
 });

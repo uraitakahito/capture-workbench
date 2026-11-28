@@ -25,6 +25,7 @@ export const SCREENS = Object.freeze([
   "links",
   "trace",
   "history",
+  "exemptions",
 ]);
 
 /** 戻り先として覚える長さの上限。IdP の state と一緒にメモリに持つので、際限なく受けない（画面の path の見分けには掛けない）。 */

@@ -1,10 +1,10 @@
 ---
 title: Screens
-description: What each view shows — crawls, start, schedules, changes, the history of a URL, archives, search, script collection, validation and WACZ — how a crawl's state is worded, and how often capture-workbench polls
+description: What each view shows — crawls, start, schedules, changes, the history of a URL, archives, search, script collection, robots.txt exemptions, validation and WACZ — how a crawl's state is worded, and how often capture-workbench polls
 ---
 
 capture-workbench is a set of views you switch with the tabs at the top, and the path of the URL decides
-which view is shown (`/crawls`, `/start`, `/schedules`, `/changes`, `/archives`, `/search`, `/scripts`).
+which view is shown (`/crawls`, `/start`, `/schedules`, `/changes`, `/archives`, `/search`, `/scripts`, `/exemptions`).
 The URL also names the row opened in the crawls view and the origin it is narrowed to
 (`/crawls/<crawl id>?from=<origin>`), the words searched for in the search view, the run and the page opened
 in the changes view, and what is being read in the script collection view. The history of a URL, inside the
@@ -15,7 +15,7 @@ same path, up to 2,000 characters — see [Routes](/routes/)). Back and forward 
 Addresses from before v0.62.0 (`/#crawls`, `/#trace/…`, `/#wacz/…`) still open: the workbench replaces
 them with the path (`#wacz/…` becomes `/archive/…`, and `#search/<words>` becomes `/search?q=<words>`).
 
-![The tabs at the top: クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索 and スクリプト集, with 新しいクロール selected](../../assets/screens/tabs.webp)
+![The tabs at the top: クロール, 新しいクロール, 定期実行, 変化, アーカイブ, 検索, スクリプト集 and robots.txt の例外, with 新しいクロール selected](../../assets/screens/tabs.webp)
 
 | View | What it lists |
 | --- | --- |
@@ -26,6 +26,7 @@ them with the path (`#wacz/…` becomes `/archive/…`, and `#search/<words>` be
 | Archives | the WACZ files you can see, with a picture of each as captured; from a row, validate, open it in the WACZ view, or open in [replayweb-player](https://github.com/uraitakahito/replayweb-player) (which plays a WACZ back in the browser) |
 | Search | the full-text search. |
 | Script collection | the scripts that run inside the captured page and the types they are written against. |
+| robots.txt exemptions | the rows that say "capture this path pattern on this host even where robots.txt disallows it"; an organization admin registers and revokes them |
 | Validation | one archive's validation, rule by rule; see [Inspecting a WACZ](/wacz/#the-validation-view) |
 | WACZ | inside one WACZ; see [Inspecting a WACZ](/wacz/) |
 
@@ -184,7 +185,14 @@ the crawl's bundle.
   `/api/crawls/:id/decisions`, fetched together with the detail). First, per rule, the distinct URLs it
   matched, counted per level and added up (a URL found on two levels counts twice); a rule that never matched is marked **Never matched** (当たっていません),
   since a rule that never fires usually does not say what its author meant. Then what was dropped,
-  by host name: by a rule, by no rule, and the pages robots.txt kept the crawl from taking. A crawl
+  by host name: by a rule, by no rule, and the pages robots.txt kept the crawl from taking. A robots.txt row
+  adds **N of them stopped by the limit** (うち上限で止まった N) when some of its pages were stopped by an
+  exemption's limit (the ledger's `limited`, from v0.117.0; they are part of the row's count). Pages that
+  robots.txt disallowed but a [robots.txt exemption](#robotstxt-exemptions) lifted are listed apart from what was
+  dropped, per exemption and host name (the ledger's `robotsOverridden`, from v0.117.0; nothing is shown
+  when there are none). The count is the pages captured; pages the crawl went to capture but failed are
+  shown apart as **N failed** (撮れなかった N) and are not part of that count. The exemption's number goes
+  to its row in the exemptions view. A crawl
   that looked at no links says so in one line instead of listing rules that all show 0. Last is a
   link, **Inspect in Windmill** (Windmill で調べる), to the script `f/waggle/inspect_crawl` in Windmill
   with this crawl's id already filled in (Windmill keeps a run's arguments in the URL's hash).
@@ -200,7 +208,11 @@ the crawl's bundle.
   together with the detail), after what the rules decided. They come in the order the ledger
   recorded them, each with its URL, its outcome, the number of warn and error lines in its log, and
   a **Log** (ログ) button. The outcome is the ledger's state (`captured`, `failed` and so on), not
-  reworded, followed by the reason a page was skipped or failed, if any. The ledger keeps a page
+  reworded, followed by the reason a page was skipped or failed, if any. The reason
+  `robots-exemption-limit` is a page that matched the pattern of a [robots.txt exemption](#robotstxt-exemptions)
+  but was stopped by the row's limit (not reworded either). A page captured with robots.txt lifted by an
+  exemption has **robots.txt lifted by exemption #12** (robots.txt を例外 #12 で外した) after its outcome,
+  which goes to that row in the exemptions view (the ledger's `robotsExemptionId`, from v0.117.0). The ledger keeps a page
   that never got a report as `pending` (whether it was captured is unknown), so in a crawl that has
   ended such a page reads `pending (no report: the crawl ended first)`
   (`pending（報告なし —— クロールが先に終わった）`) — a crawl that failed the type check captured nothing, and its seed would otherwise
@@ -973,12 +985,60 @@ lazy-loads, yet the capture still succeeds and an archive still comes out. The r
 includes the command that imports the scripts with [capture-ledger](https://github.com/uraitakahito/capture-ledger) (the
 ledger that starts crawls and records what came back).
 
+## robots.txt exemptions
+
+The rows an organization admin registered to say "capture this path pattern on this host even where
+robots.txt disallows it" (`/exemptions`). The rows belong to
+[capture-ledger](https://github.com/uraitakahito/capture-ledger); this view lists them and asks the
+ledger to register or revoke one. The ledger decides what the fields may hold and who may register.
+The routes are there from capture-ledger v0.116.0, and the rows take effect in crawls from v0.117.0
+(v0.116.0 only registers, lists and revokes).
+
+- **Active rows come first; expired and revoked rows follow.** The **State** (状態) column at the left
+  edge says Active (効いている), Expired (期限切れ) or Revoked (取り消し済み) in words, not by color
+  alone. Hovering the state of a revoked row shows when it was revoked and by whom. The columns are the
+  number, host, path pattern, scope (seeds only / followed links too), which crawls it applies to (all /
+  only those started by a person), the User-Agent sent, the reason, the expiry, who registered it (the
+  subject's ID when there is no name) and the limits (per day / links per crawl). When the ledger
+  returns it (from v0.117.0), the number of pages lifted by the row in the last 24 hours is shown too;
+  it counts the pages the crawl went to capture, failed ones included, as the daily limit does.
+  Only the rows of organizations you can start crawls for are listed.
+- **Revoke** (取り消す) is on active rows. It asks first. A revocation takes effect from the next level
+  that is sent, not for levels already sent. A revoked row cannot be restored; register a new one.
+- **Register with the form below the table**: the organization (those of the signed-in person; not a
+  choice when there is one), host, path pattern (`/` when empty), scope, which crawls it applies to,
+  the User-Agent sent, the reason (required), the expiry and the two limits (100 and 20 by default).
+  The expiry is picked as a date: 30 days ahead by default, active until the end of that day (23:59:59
+  in this device's time), at most 90 days from registration. The User-Agent is `BrowserHive/<version>`,
+  optionally with one URL of a page that describes it (`BrowserHive/1.0 (+https://example.com/bot)`);
+  the names of browsers and of other crawlers are refused. Active rows for the same host must use the
+  same User-Agent.
+- **Three cautions are always shown above the fields.** Followed links are lifted only when they match
+  the path pattern, even on a row whose scope is "followed links too". Every lift is recorded in the
+  crawl and in the WACZ. The terms of use of the site are yours to check separately (this only lifts
+  the skip that robots.txt asks for).
+- **The form checks nothing, and a refusal is one line.** The button is there even when you are not an
+  admin. When the ledger refuses, the view shows the status and the ledger's phrase as a sentence. A 403
+  is one of three: not an organization admin, a machine identity (client credentials), or a ledger that
+  takes identities from headers. A 400 says which field is wrong and why; it appears under the field
+  the answer names, and the field gets a red border. A 409 is either an active row that already covers
+  the same host and path pattern (its number is added) or active rows for the host that use a different
+  User-Agent (that string is added). Phrases are translated when the dictionary has them and shown as
+  received otherwise.
+- **A number in the URL marks that row** (`/exemptions/12`). That is where **exemption #12** (例外 #12)
+  and **robots.txt lifted by exemption #12** in an opened crawl row lead. A number that is not in the
+  list (no such row, or a row of an organization you cannot see) is said in one line.
+- **It is fetched when opened and after registering or revoking**, not polled. The routes are
+  capture-ledger's `GET /api/robots-exemptions`, `POST /api/robots-exemptions` and
+  `POST /api/robots-exemptions/:id/revoke`, through the workbench's relay ([Routes](/routes/)). A ledger
+  without the routes is said in one line.
+
 ## Polling
 
 While at least one crawl is running, the lists are fetched every 2 seconds; otherwise every 30
 seconds. A crawl that has just finished keeps the 2-second pace until its last bundle version shows
 up, for at most a minute. Without keeping a copy, the workbench still looks live while something runs, and stays
-quiet when nothing does. The search and changes views do not poll; they fetch only when you search or open them. The history inside the changes view is the same: it fetches when opened, on **Read on**, and when you pick two captures again. Schedules
+quiet when nothing does. The search and changes views do not poll; they fetch only when you search or open them. The robots.txt exemptions view is the same: it fetches when opened and after registering or revoking. The history inside the changes view is the same: it fetches when opened, on **Read on**, and when you pick two captures again. Schedules
 are fetched on a separate loop, every 30 seconds, and every 5 seconds while one is queued or running.
 It is separate so that being unable to read schedules does not stop the crawl table too.
 

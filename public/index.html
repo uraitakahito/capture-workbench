@@ -17,6 +17,7 @@
         <button type="button" id="tab-archives" data-face="archives" data-i18n="common.tab.archives"></button>
         <button type="button" id="tab-search" data-face="search" data-i18n="common.tab.search"></button>
         <button type="button" id="tab-scripts" data-face="scripts" data-i18n="common.tab.scripts"></button>
+        <button type="button" id="tab-exemptions" data-face="exemptions" data-i18n="common.tab.exemptions"></button>
         <button type="button" id="tab-check" data-face="check" hidden data-i18n="common.tab.check"></button>
         <button type="button" id="tab-wacz" data-face="wacz" hidden>WACZ</button>
       </nav>
@@ -326,6 +327,99 @@
         <p id="schedules-answer" class="start-answer" hidden></p>
         <p id="schedules-empty" class="empty" hidden data-i18n="schedules.empty"></p>
         <div id="schedules"></div>
+      </section>
+
+      <!--
+        robots.txt の例外（t-6bc6）。組織の admin が「このホストのこの path の型は、robots.txt が断っていても撮る」を、理由・期限・
+        名乗る User-Agent と一緒に登録する。行は capture-ledger の資源（GET /api/robots-exemptions）で、ここは並べて、登録と
+        取り消しを頼むだけ。効いている行が上、切れた行と取り消した行はその下（状態は字で言う）。URL に番号を載せると
+        （/exemptions/<番号>。クロールの画面の「例外 #N」から来る）、その行に印が付く。
+        登録の欄は検査しない —— 字の決まりも、誰が登録してよいかも capture-ledger が決め、断りは 1 行の文で出す（400 は、
+        答えが名指した欄の下に）。ボタンは admin でなくても出す。引くのは、この画面を開いたときと、登録・取り消しの後だけ。
+      -->
+      <section id="face-exemptions" hidden>
+        <p id="exemptions-answer" class="start-answer" hidden></p>
+        <p id="exemptions-note" class="start-answer state bad" hidden></p>
+        <p id="exemptions-missing" class="start-answer state bad" hidden></p>
+        <p id="exemptions-empty" class="empty" hidden data-i18n="exemptions.empty"></p>
+        <table id="exemptions-table" class="exemptions" hidden>
+          <thead>
+            <tr>
+              <!-- 状態と「取り消す」は左の端（列が多く、狭い窓では表が横に流れる） -->
+              <th data-i18n="exemptions.col.state"></th>
+              <th data-i18n="exemptions.col.id"></th>
+              <th data-i18n="exemptions.col.host"></th>
+              <th data-i18n="exemptions.col.pattern"></th>
+              <th data-i18n="exemptions.col.scope"></th>
+              <th data-i18n="exemptions.col.applies"></th>
+              <th data-i18n="exemptions.col.userAgent"></th>
+              <th data-i18n="exemptions.col.reason"></th>
+              <th data-i18n="exemptions.col.expires"></th>
+              <th data-i18n="exemptions.col.createdBy"></th>
+              <th class="num wrap" data-i18n="exemptions.col.limits"></th>
+              <!-- 24 時間で外した数（capture-ledger v0.117.0 から。撮れなかったページも含む —— 1 日の上限と同じ数え方）。どの行にも無ければ、列ごと出さない（app.js の drawExemptions） -->
+              <th id="exemptions-col-used" class="num wrap" hidden data-i18n-title="exemptions.col.usedTitle" data-i18n="exemptions.col.used"></th>
+            </tr>
+          </thead>
+          <tbody id="exemptions"></tbody>
+        </table>
+        <p class="start-hint" data-i18n="exemptions.revoke.note"></p>
+        <!-- novalidate: 数と日付の範囲もブラウザに止めさせず、capture-ledger の文で言う -->
+        <form id="exemption-form" class="exemption-form" autocomplete="off" novalidate>
+          <fieldset class="start-run">
+            <legend data-i18n="exemptions.form.legend"></legend>
+            <!-- いつも見える注意。欄の字より先に読ませる -->
+            <ul class="exemption-notes">
+              <li data-i18n="exemptions.form.note.links"></li>
+              <li data-i18n="exemptions.form.note.recorded"></li>
+              <li data-i18n="exemptions.form.note.terms"></li>
+            </ul>
+            <!-- 組織は /healthz の signedIn.groups から。1 つなら選ばせずに出す（app.js の syncExemptionForm） -->
+            <div class="start-row" data-field="orgId"><span data-i18n="exemptions.form.org"></span> <span id="exemption-org"></span></div>
+            <div class="start-row" data-field="host">
+              <label><span data-i18n="exemptions.form.host"></span> <input type="text" id="exemption-host" class="mono" spellcheck="false" placeholder="www.example.com" /></label>
+            </div>
+            <p class="start-hint" data-i18n="exemptions.form.hostHint"></p>
+            <div class="start-row" data-field="pathPattern">
+              <label><span data-i18n="exemptions.form.pattern"></span> <input type="text" id="exemption-pattern" class="mono" spellcheck="false" value="/" /></label>
+            </div>
+            <p class="start-hint" data-i18n="exemptions.form.patternHint"></p>
+            <div class="start-row">
+              <label data-field="scope"><span data-i18n="exemptions.form.scope"></span>
+                <select id="exemption-scope">
+                  <option value="seeds" data-i18n="exemptions.scope.seeds"></option>
+                  <option value="links" data-i18n="exemptions.scope.links"></option>
+                </select>
+              </label>
+              <label data-field="appliesTo"><span data-i18n="exemptions.form.applies"></span>
+                <select id="exemption-applies">
+                  <option value="all" data-i18n="exemptions.applies.all"></option>
+                  <option value="human" data-i18n="exemptions.applies.human"></option>
+                </select>
+              </label>
+            </div>
+            <div class="start-row" data-field="userAgent">
+              <label><span data-i18n="exemptions.form.userAgent"></span> <input type="text" id="exemption-ua" class="mono" spellcheck="false" value="BrowserHive/1.0" /></label>
+            </div>
+            <p class="start-hint" data-i18n="exemptions.form.userAgentHint"></p>
+            <div class="start-row" data-field="reason">
+              <label><span data-i18n="exemptions.form.reason"></span> <textarea id="exemption-reason" rows="2"></textarea></label>
+            </div>
+            <div class="start-row" data-field="expiresAt">
+              <label><span data-i18n="exemptions.form.expires"></span> <input type="date" id="exemption-expires" /></label>
+            </div>
+            <p class="start-hint" data-i18n="exemptions.form.expiresHint"></p>
+            <div class="start-row">
+              <label data-field="dailyLimit"><span data-i18n="exemptions.form.dailyLimit"></span> <input type="number" id="exemption-daily" class="mono" min="1" max="10000" step="1" value="100" /></label>
+              <label data-field="linkLimit"><span data-i18n="exemptions.form.linkLimit"></span> <input type="number" id="exemption-links" class="mono" min="1" max="1000" step="1" value="20" /></label>
+            </div>
+            <p class="start-hint" data-i18n="exemptions.form.limitsHint"></p>
+            <div class="start-row" id="exemption-go-row">
+              <button type="submit" id="exemption-go" data-i18n="exemptions.form.go"></button>
+            </div>
+            <p id="exemption-answer" class="start-answer" hidden></p>
+          </fieldset>
+        </form>
       </section>
 
       <!--

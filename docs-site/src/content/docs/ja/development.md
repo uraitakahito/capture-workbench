@@ -65,7 +65,7 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
   字として書く波括弧は `'` で囲みます（`'{'chrome'}'`）。
   文にするのは、同梱した `public/vendor/intl-messageformat.js` です（[同梱した束](#同梱した束)）。
 - **鍵は `<画面>.<まとまり>.<意味>`。**
-  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`history`・`archives`・`search`・`scripts`・`wacz`・`links`・`trace`・`check`）、いくつかの画面の一覧に出る「見た目」の絵は `looks`、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。capture-ledger の断りの文は `ledger.error.<句>`・`ledger.hint.<鍵>`・`ledger.list.*` です（下に書きます）。
+  画面の名前はコードの名前（`crawls`・`start`・`schedules`・`changes`・`history`・`archives`・`search`・`scripts`・`exemptions`・`wacz`・`links`・`trace`・`check`）、いくつかの画面の一覧に出る「見た目」の絵は `looks`、どの画面にも出る物は `common`、workbench のサーバの誤りは `workbench.error.<句>` です（[失敗の見え方](/routes/#失敗の見え方)）。capture-ledger の断りの文は `ledger.error.<句>`・`ledger.hint.<鍵>`・`ledger.list.*` です（下に書きます）。
   **鍵は文字列をそのまま書き、組み立てません。**
   検査は、コードが名指す鍵と辞書を照らします。走らせたときに組み立てる鍵は、検査から見えません。
   値から字への対応は、鍵の表ではなく、字を返す関数で書きます（`public/start.js` の `actionText`）。
@@ -129,7 +129,7 @@ docs が 1 つの物に 2 つの語を当てていた所は、辞書で 1 つに
 
 | 鍵・まとまり | 日本語 | 英語 | 添え書き |
 | --- | --- | --- | --- |
-| `common.tab.*` | クロール・新しいクロール・定期実行・変化・アーカイブ・検索・スクリプト集 | Crawls・New crawl・Schedules・Changes・Archives・Search・Script collection | 見出しとボタンは、頭の 1 語だけ大文字 |
+| `common.tab.*` | クロール・新しいクロール・定期実行・変化・アーカイブ・検索・スクリプト集・robots.txt の例外 | Crawls・New crawl・Schedules・Changes・Archives・Search・Script collection・robots.txt exemptions | 見出しとボタンは、頭の 1 語だけ大文字 |
 | `crawls.state.running` | 走行中 | Running | |
 | `crawls.state.completed` | 完走 | Completed | capture-ledger の `stopReason` が `completed`。finished は、終わった行の全部を指す |
 | `crawls.state.maxDepth` | 打ち切り (深さ) | Cut (depth) | `crawls.state.maxPages` は Cut (pages) |
@@ -145,6 +145,11 @@ docs が 1 つの物に 2 つの語を当てていた所は、辞書で 1 つに
 | 起点 | 起点 | seed | |
 | 写し | 写し | snapshot | Copy はボタン「写す」 |
 | `wacz.type.frameSnapshot` | 枠の写し | frame snapshot | 仕様の和訳は「フレームの写し」 |
+| 例外 | 例外 | exemption | robots.txt の例外の行。capture-ledger の語（`robots-exemptions`） |
+| `exemptions.state.*` | 効いている・期限切れ・取り消し済み | Active・Expired・Revoked | capture-ledger の `state` は `active`・`expired`・`revoked` |
+| `exemptions.scope.*` | 起点だけ・辿ったリンクも | Seeds only・Followed links too | capture-ledger の `scope` は `seeds`・`links` |
+| `exemptions.col.userAgent` | 名乗る User-Agent | User-Agent sent | 「名乗り」は、誰として見るかにだけ使うので、名詞にしない |
+| `crawls.pages.robotsOverridden` | robots.txt を例外 #12 で外した | robots.txt lifted by exemption #12 | 外す ＝ lift。取り消す ＝ revoke |
 
 ## 試験が見るもの、見ないもの
 
@@ -203,6 +208,7 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | 直し方を訊く | クロール `5b0c0008`（型の検査で落ちた行）を開く。代役は `/api/crawls/:id/diagnostics` に台本の行の `diagnosed`（capture-ledger の答えそのまま。無い行は型を通る答え）で、`POST /api/crawls/:id/inline/:name/fix` に `fixes`（その場の TS の名前ごとの `{ status, body }`）で答える。**代役は Claude を呼ばない** —— `fixes` に無い名前は 404。`5b0c0008` は TS7006 の 1 件と、検査に通った直し（2〜3 行目。直した版は TypeScript 6.0.3 の strict で通る）を持つ。ほかの答えを見るなら、`fixes` に 429 や 422 の `status` と capture-ledger の本文を書く |
 | 定期実行 | タブ「定期実行」。回が失敗した予定（全部の画面に帯が出る）・順番待ちの予定・止めた予定が並ぶ。操作の結果は代役が起きている間だけ覚える。周回は無いので、「いま撮る」は頼みが立つだけ |
 | 前回からの変化 | タブ「変化」。台本の `changes`（`runs` が一覧、`details` がクロールの id ごとの 1 本）を、capture-ledger と同じ形のまま返す。予定「毎時の確認」の直近の回の `change` から、その回を開ける。**代役は比べも要約もしない** |
+| robots.txt の例外 | タブ「robots.txt の例外」。`sandbox/scenario.json` の `exemptions` から、capture-ledger の `GET /api/robots-exemptions`・`POST /api/robots-exemptions`・`POST /api/robots-exemptions/:id/revoke` と同じ形で答える（v0.116.0。一覧の `usedLast24h` は v0.117.0）。見本は、効いている行・期限の切れた行・取り消した行が 1 つずつ。見本の時刻は「何日前・何日後」で書いてあり、いつ開いても同じ状態で出る。登録は、欄の字を capture-ledger と同じ順に見て、同じ句と欄の名前で 400 を言う（理由を空にする・ホストに `https://` を付ける、など）。同じホストと path の型の効いている行が在れば 409、同じホストに別の User-Agent を書いても 409。**写していない確かめが 2 つ在る**: User-Agent の中のブラウザやほかのクローラの名前と、URL の中の製品の印の形（代役は通す）。登録した行と取り消しは、代役が起きている間だけ覚える。**403 は出ない**（代役は認可を真似ない）。クロール `5b0c0004` を開くと、ページの表に「robots.txt を例外 #1 で外した」（1402）と、理由 `robots-exemption-limit`（1403）・`robots`（1404）のページが在り、規則の判断に「robots.txt を例外で外して撮った物」と、robots.txt の行の「うち上限で止まった 1」が出る（ページの `robotsExemptionId` と、判断の `robotsOverridden`・`robots` の `limited`。v0.117.0 の形）。「撮れなかった N」を見るなら、台本のその行の `robotsOverridden` に `failed` を書く（見本は 0） |
 | URL の履歴 | タブ「変化」の一覧の上の欄に `https://sandbox.test/pricing` を貼る。`sandbox/scenario.json` の `history` から、capture-ledger の `GET /api/history`・`GET /api/archives/:id/changes`・`POST /api/archives/:id/changes/summary` と同じ形で答える。見本の取り込みは、予定の回・手で始めたクロール・撮り方が替わる行・比べられない行を持つ。開いた時に選ばれる 2 本は要約つきの差分で、手で始めたクロールの行を「今」に選ぶと、要約なしの差分に「Claude に要約させる」が出る（押すと、`history` の `summaries` に書いた要約が返る）。**代役は比べも要約もしない** —— 差分を書いていない 2 本は、文字の digest が同じなら「同じ」、違えば「WACZ が保管庫に無い」と答える。置き場の WACZ の URL は、まだ検めていない 1 本だけの履歴を返す |
 
 代役にできないこともあります。

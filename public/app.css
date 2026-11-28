@@ -2156,6 +2156,98 @@ body[data-face="scripts"] main {
   gap: 6px;
 }
 
+/*
+ * robots.txt の例外の画面（t-6bc6）。上に行の表（効いている行が上。効いていない行は薄くし、状態の欄が字で言う）、
+ * 下に登録の欄。URL が名指した行（/exemptions/<番号>）は、クロールの一覧の印（tr.head.spot）と同じ色で示す
+ */
+#exemptions tr.off td {
+  color: var(--muted);
+}
+
+#exemptions tr.spot td {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+#exemptions tr.spot td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* 数の列の見出しは長い（上限・24 時間で外した数）。折り返して、列を数の幅に近づける */
+#exemptions-table th.wrap {
+  white-space: normal;
+  min-width: 13em;
+}
+
+/* 長い字（User-Agent・理由・名前の無い人の主体の ID）は 1 行で末尾を省く（全文は td の title） */
+.exemption-clip {
+  display: block;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exemption-clip.by {
+  max-width: 14ch;
+}
+
+.exemption-form {
+  max-width: 84ch;
+  margin: 16px 0 24px;
+}
+
+.exemption-notes {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 12.5px;
+}
+
+.exemption-form input,
+.exemption-form select,
+.exemption-form textarea {
+  font: inherit;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.exemption-form input.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+}
+
+.exemption-form input[type="text"] {
+  width: 36ch;
+  max-width: 100%;
+}
+
+.exemption-form textarea {
+  width: 56ch;
+  max-width: 100%;
+}
+
+/* 狭い窓では、欄が見出しの下へ回る（枠からはみ出さない） */
+.exemption-form .start-row label {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.exemption-form input[type="number"] {
+  width: 9ch;
+}
+
+.exemption-form :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* capture-ledger の 400 が名指した欄。答えの文は、その欄の行の下に出る（app.js の registerExemption） */
+.exemption-form [aria-invalid="true"] {
+  border-color: var(--bad);
+}
+
 /* 前回からの変化の画面（CAPTURE-167）。回を開くと、左に回の全ページの目次、右に 1 ページ（CAPTURE-236）。差分は直し案の
    差分（tr.detail .difflines）と同じ色で、文脈の行は薄く、印の列は字と分けた帯 */
 #change-detail {

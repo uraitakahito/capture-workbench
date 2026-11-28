@@ -149,6 +149,8 @@ export const hostAllowed = (host, port) =>
  * - `/api/crawls/<id>/failed` —— 走ったままのクロールを締める
  * - `/api/archives/<id>/changes/summary` —— 選んだ 2 本の取り込みの差分を、Claude に要約させる（CAPTURE-462。本文は
  *   前の取り込みの id。capture-ledger は費用を数え、同じ差分には 2 度払わない）。id は UUID の形だけを通す
+ * - `/api/robots-exemptions` —— robots.txt の例外を登録する（t-6bc6。組織の admin の人だけ —— 断るのは capture-ledger）
+ * - `/api/robots-exemptions/<id>/revoke` —— 例外を取り消す。id は capture-ledger の連番で、1〜18 桁の数字だけを通す
  *
  * **端を固めて照らす** —— 末尾の足し・query・`%`（`%2F` も `%2e%2e` も）・`.` を通さない。id と名前の字まで絞るのは、
  * fetch が URL の `..` を畳み、capture-ledger のほかのエンドポイントに届かせないため。判断は capture-ledger がする —— ここは中継する形を絞るだけ。
@@ -161,6 +163,8 @@ const WRITE_ROUTES = [
   /^\/api\/schedules\/[0-9a-f-]+\/(?:pause|resume|run|repin|delete)$/,
   /^\/api\/crawls\/[0-9a-f-]+\/failed$/,
   /^\/api\/archives\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/changes\/summary$/,
+  /^\/api\/robots-exemptions$/,
+  /^\/api\/robots-exemptions\/[0-9]{1,18}\/revoke$/,
 ];
 
 export const isWriteRoute = (url) => WRITE_ROUTES.some((route) => route.test(url));
