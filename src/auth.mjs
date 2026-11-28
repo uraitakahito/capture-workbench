@@ -25,6 +25,8 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 
+import { isScreenPath } from "../public/paths.js";
+
 /** セッションの cookie の名前。 */
 export const SESSION_COOKIE = "workbench_session";
 
@@ -81,7 +83,7 @@ export const whoOf = (accessToken) => {
  * @param {{ issuer: string, clientId: string, redirectUri: string, fetch?: typeof fetch, now?: () => number }} options
  */
 export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch, now = Date.now }) => {
-  /** @type {Map<string, { verifier: string, at: number }>} state → verifier */
+  /** @type {Map<string, { verifier: string, at: number, back: string }>} state → verifier と戻り先 */
   const pending = new Map();
   /** @type {Map<string, { accessToken: string, refreshToken?: string }>} */
   const sessions = new Map();
@@ -122,13 +124,17 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
     return discovery;
   };
 
-  /** サインインの画面の URL。state と verifier を覚える。 */
-  const beginLogin = async () => {
+  /**
+   * サインインの画面の URL。state と verifier と、サインインの後に戻す画面の path（`back`）を覚える。
+   * **戻り先は画面の path だけ**（`public/paths.js` の `isScreenPath`）—— ほかは捨てて `/`（よそへ回さない・
+   * `Location` に入れられない字を持ち込まない）。
+   */
+  const beginLogin = async (back) => {
     const { authorize } = await endpoints();
     for (const [state, entry] of pending) if (now() - entry.at > PENDING_MS) pending.delete(state);
     const state = base64url(randomBytes(16));
     const { verifier, challenge } = pkcePair();
-    pending.set(state, { verifier, at: now() });
+    pending.set(state, { verifier, at: now(), back: isScreenPath(back) ? back : "/" });
     const query = new URLSearchParams({
       response_type: "code",
       client_id: clientId,
@@ -160,7 +166,7 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
    * IdP から戻ってきた code をトークンに替え、セッションを作る。**state を照らす** ——
    * 知らない state（よそのページが作った callback・期限切れ・2 度目）は断る。
    *
-   * @returns {Promise<{ session: string } | { error: string }>}
+   * @returns {Promise<{ session: string, back: string } | { error: string }>}
    */
   const finishLogin = async (code, state) => {
     const entry = typeof state === "string" ? pending.get(state) : undefined;
@@ -180,7 +186,7 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
     }
     const session = base64url(randomBytes(24));
     sessions.set(session, tokens);
-    return { session };
+    return { session, back: entry.back };
   };
 
   /** セッションのトークン。無ければ undefined。 */

@@ -158,3 +158,31 @@ test("画面に出す名乗りは username と cognito:groups (検証はしな�
   assert.deepEqual(whoOf(jwt({ sub: "s-1" })), { user: "s-1", groups: [] });
   assert.deepEqual(claimsOf("not-a-jwt"), {});
 });
+
+test("サインインの後に、覚えた戻り先（画面の path）へ戻す。符号は解かずにそのまま", async () => {
+  for (const back of [
+    "/crawls/5b0c0003-6a1e-4000-8000-000000000003?from=ai",
+    "/search?q=%E6%97%A5%E6%9C%AC",
+    "/history/https%3A%2F%2Fsandbox.test%2Fpricing",
+  ]) {
+    const { auth } = setup();
+    const state = new URL(await auth.beginLogin(back)).searchParams.get("state");
+    const done = await auth.finishLogin("c", state);
+    assert.equal(done.back, back);
+  }
+});
+
+test("戻り先が画面の path でなければ、捨てて / に戻す（よそへ回さない・Location に入れられない字を持ち込まない）", async () => {
+  for (const back of [undefined, "", "//evil.test/", "https://evil.test/", "/logout", "/crawls\r\nx", "/search?q=日本"]) {
+    const { auth } = setup();
+    const state = new URL(await auth.beginLogin(back)).searchParams.get("state");
+    const done = await auth.finishLogin("c", state);
+    assert.equal(done.back, "/", String(back));
+  }
+});
+
+test("戻り先は IdP へ送らない（state と一緒に workbench が覚えるだけ）", async () => {
+  const { auth } = setup();
+  const url = await auth.beginLogin("/crawls?from=ai");
+  assert.equal(url.includes("crawls"), false);
+});

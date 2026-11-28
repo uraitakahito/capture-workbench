@@ -60,6 +60,7 @@ import {
   relay,
   relayFor,
   safePath,
+  screenAnswer,
   Told,
   TooLarge,
   WRITE_LIMIT,
@@ -228,8 +229,9 @@ const server = createServer((request, reply) => {
       );
       return;
     }
+    // 戻り先 (`?back=<画面の path>`)。IdP のフォームの POST で URL の hash が落ちても、state と一緒に覚えて /callback の後に戻す
     void auth
-      .beginLogin()
+      .beginLogin(new URLSearchParams(query).get("back") ?? undefined)
       .then((location) => {
         redirect(reply, location);
       })
@@ -248,7 +250,7 @@ const server = createServer((request, reply) => {
           reply.end(`Could not sign in / サインインできませんでした: ${done.error}\n`);
           return;
         }
-        redirect(reply, "/", { "set-cookie": sessionCookie(done.session) });
+        redirect(reply, done.back, { "set-cookie": sessionCookie(done.session) });
       })
       .catch((err) => {
         failed(reply, err);
@@ -336,16 +338,19 @@ const server = createServer((request, reply) => {
   }
 
   // 画面そのものも、サインインしてから配る。IdP の設定が無ければ配る (API の 401 が理由を言う)。
-  if (
-    (pathname === "/" || pathname === "/index.html") &&
-    auth.configured &&
-    auth.tokenOf(session) === undefined
-  ) {
-    redirect(reply, "/login");
+  // 画面の path (`/crawls/<id>` など) にも index.html を返し、サインインしていなければ戻り先を付けて回す (`lib.mjs` の `screenAnswer`)。
+  const screen = screenAnswer({
+    url,
+    method: request.method,
+    configured: auth.configured,
+    signedIn: auth.tokenOf(session) !== undefined,
+  });
+  if (screen.kind === "login") {
+    redirect(reply, screen.location);
     return;
   }
 
-  const path = safePath(PUBLIC, url);
+  const path = screen.kind === "static" ? safePath(PUBLIC, url) : resolve(PUBLIC, `${screen.kind}.html`);
   const type = path === undefined ? undefined : contentType(path);
   if (path === undefined || type === undefined) {
     reply.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
