@@ -1,5 +1,5 @@
 /**
- * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 15 個。
+ * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 16 個。
  *
  * ## なぜ要るのか
  *
@@ -71,6 +71,11 @@
  *   WACZ」「BrowserHive's WARC」は、作り手が BrowserHive なだけの WACZ（Profile に適合するとは限らない）と、Profile に
  *   適合する WACZ の両方に読める。仕様の名前（BrowserHive の WACZ Profile）は別の物なので、後ろに Profile が続く形は
  *   外す。ただの WACZ・WARC（どの作り手の物にも成り立つ文）と、「BrowserHive が WACZ に足した物」のような言い回しは見ない
+ * - **ページの JS が受け取った乱数を残すことは「乱数を記録する」、残した物は「乱数の記録」と書く。** 2026-11 に（t-azdk）、
+ *   「乱数を控える」「乱数の控え」から替えた（画面の字・docs・コメント・試験の名前）。「控える」はふつう「やめておく」と
+ *   読まれ、新しいクロールの欄が乱数を使わない設定に見えた（英語はもとから Record random values）。「記録」だけでは
+ *   WARC の記録・通信の記録と取り違えるので、名詞は「乱数の記録」と修飾を付ける。乱数と並ぶ形だけを見るので、
+ *   ほかの意味の「控え」（docs の絵の控え・控えめ）は見ない。browserhive・capture-ledger・capture-scheduler も見張っている
  *
  * 書き手（人と Claude）は長くこの形で書いてきたので、見張らなければ戻ってくる。
  *
@@ -163,6 +168,8 @@ const OLD_INLINE =
  * 足すときは、規則の `misses` に当たらないことを確かめる（走査の前に照らす）。
  */
 const BH_ARCHIVE = /BrowserHive\s*(?:の|'s)\s*WA(?:RC|CZ)(?!\s*Profile)/u;
+/** 乱数を残す意味の「控え」（t-azdk）。乱数と並ぶ形だけで、ほかの意味の「控え」は見ない。 */
+const OLD_RANDOM = /乱数\s*[をのは]\s*控え|控えた\s*乱数/u;
 /** replayweb-player の旧い名前の形（replay と、2026-11 の CAPTURE-465 までの replayweb-server・public/replayweb.js）。語の replay は禁じない（上の注記）。 */
 const OLD_REPLAY_NAMES =
   /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b|\breplayweb[-_]server\b|REPLAYWEB_SERVER|\breplaywebServer|\bpublic\/replayweb\.js\b|\btest\/replayweb\.test\.mjs\b/u;
@@ -274,6 +281,14 @@ const RULES = [
       "a BrowserHive WARC file",
       "BrowserHive が WACZ に足した物",
     ],
+  },
+  {
+    find: (line) => OLD_RANDOM.test(line),
+    say:
+      "乱数の「控え」が残っています。ページの JS が受け取った乱数を残すことは「乱数を記録する」（記録した・記録しなかった・" +
+      "記録できなかった）、残した物は「乱数の記録」と書きます（t-azdk）。",
+    hits: ["乱数を控える", "乱数の控え 3 回", "乱数は控えていない", "控えた乱数"],
+    misses: ["乱数を記録する", "乱数の記録", "shots.json の控え", "控えめな行"],
   },
 ];
 
