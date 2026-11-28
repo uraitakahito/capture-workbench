@@ -202,6 +202,9 @@ const LEDGER_SCHEDULE_RUN_KEYS = [
   "pagesCaptured",
   "pagesFailed",
   "error",
+  // 文の鍵と埋めた値 (capture-ledger v0.118.0 から。t-evv8)
+  "errorKey",
+  "errorParams",
   "change",
 ].sort();
 

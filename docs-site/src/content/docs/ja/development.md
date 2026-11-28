@@ -87,7 +87,7 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
   出す所で `phraseText` が句を引きます（`crawls.reason.<句>`）。辞書に無い句（前に保存した字や、ほかのシステムが書いた字）は、届いたまま出します。
 - **訳さない物。**
   保存された字と、ほかのシステムが書いてデータとして届く字です。`captured` のような状態、段の名前、ログの行、保存された失敗の理由（クロールの `error`・定期実行の回の理由・合本を書けなかった理由。上のとおり、引くのは workbench が自分で送った句だけです）が当たります。
-  **クロールの `error` は、画面は訳しませんが、capture-ledger が訳して返すことがあります。**画面の頼みは、みな画面の言語を持ちます（`Accept-Language: ja` か `en`。`public/app.js` の `ask` が付け、server が運びます。[ルート](/ja/routes/#api---capture-ledger-へ素通し)）。言語を見る capture-ledger は、自分で書いた文（1 枚も撮れずに終わったクロールの文）を、その言語で返します。flow が報告した文・人が打った字と、言語を見ない capture-ledger の答えは、保存された字のまま届きます。
+  **クロールの `error` は、画面は訳しませんが、capture-ledger が訳して返すことがあります。**画面の頼みは、みな画面の言語を持ちます（`Accept-Language: ja` か `en`。`public/app.js` の `ask` が付け、server が運びます。[ルート](/ja/routes/#api--capture-ledger-へ素通し)）。言語を見る capture-ledger は、自分で書いた文（1 枚も撮れずに終わったクロールの文）を、その言語で返します。flow が報告した文・人が打った字と、言語を見ない capture-ledger の答えは、保存された字のまま届きます。
   capture-ledger は、言語の付かない頼みには英語で返すので、**頼みは `fetch` を直に呼ばず、`ask` を通します**（直に呼ぶと `npm run check` の `check:ask` が落ちます）。
   固有の名前（ReplayWeb.page ↗・run ↗・WACZ・User-Agent）、単位（`ms`・`KiB`）、Claude の要約も訳しません。要約は capture-ledger が日本語で書かせた物なので、英語の画面では、変化の画面がそう断ります。
   検証の報告も workbench は訳しません。daemon が、画面の頼んだ言語で書いて返します（[WACZ](/wacz/)）。

@@ -255,7 +255,7 @@ test("書き込みのエンドポイントの上限は、capture-ledger の POST
   assert.equal(WRITE_LIMIT, 1024 * 1024);
 });
 
-test("中継で運ぶ見出しは、POST /api/crawls の Idempotency-Key だけ", () => {
+test("Idempotency-Key を運ぶのは、POST /api/crawls だけ", () => {
   const headers = { "idempotency-key": "k1", cookie: "s=1", authorization: "Bearer x" };
   assert.deepEqual(forwardedHeaders("/api/crawls", headers), { "idempotency-key": "k1" });
   // ほかの書き込みには運ばない・鍵が無ければ何も足さない

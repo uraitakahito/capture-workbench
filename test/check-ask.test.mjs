@@ -22,6 +22,12 @@ test("注と、fetch を含む別の名前は拾わない", () => {
   assert.deepEqual(found("public/x.js", "// fetch(path) は使わない"), []);
   assert.deepEqual(found("public/x.js", "const x = 1; // fetch の代わり"), []);
   assert.deepEqual(found("public/x.js", "const { status } = await fetchJson(path);\nautofetch();"), []);
+  assert.deepEqual(found("public/x.js", "const x = 1; /* fetch は使わない */"), []);
+});
+
+test("注の後ろに code が在る行は見る", () => {
+  assert.deepEqual(found("public/x.js", "/* 予定 */ fetch(p);"), [1]);
+  assert.deepEqual(found("public/x.js", "a(); /* 注 */ window.fetch(p); // 後ろの注"), [1]);
 });
 
 test("許すのは、app.js の ask の中の 1 つだけ", () => {

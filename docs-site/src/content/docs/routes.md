@@ -112,10 +112,12 @@ cannot call it directly, the server relays it to make it same-origin.
   write are the `POST` routes below).
 - **The language of the request is passed on, and nothing else from the browser is.** When the
   request's `Accept-Language` is exactly `ja` or `en` — what the page sends, the language the
-  screen is in — it goes to the ledger, which returns the sentences it writes itself (a crawl's
-  `error` when no page was captured) in that language. The value a browser adds by itself
+  screen is in — it goes to the ledger. A ledger that looks at the language returns the sentences it writes
+  itself (a crawl's `error` when no page was captured) in that language; an earlier ledger does
+  not read the header and returns the stored text. The value a browser adds by itself
   (`ja,en-US;q=0.9`) is not passed on: it is the browser's setting, not the screen's language. The
-  ledger answers a request without a language in English. The `POST` routes below pass it on too.
+  ledger that looks at the language answers a request without one in English. The `POST` routes
+  below pass it on too.
 - Your session's access token is attached as `Authorization: Bearer`. Without a session it
   answers 401 `{"error":"not signed in","params":{},"login":"/login"}`, and the page goes to `/login`.
 - **On a 401 from the ledger it gets a new token with the refresh token and retries once.** It does
@@ -164,13 +166,14 @@ secret's value (it lives in a Windmill variable, and is neither in the form nor 
   stops a page from another site from making your browser send the POST (CSRF). It does not
   rely on Chrome's Private Network Access.
 - The access token is attached, and a 401 retried, the same way as for `/api/*` above.
-- **The page puts a key (`Idempotency-Key`) on Start (始める), and the server carries that header, and
-  only that one, to capture-ledger.** The browser makes the key when you press the button
+- **The page puts a key (`Idempotency-Key`) on Start (始める), and the server carries that header
+  to capture-ledger.** The browser makes the key when you press the button
   (`crypto.randomUUID()`). While no answer has arrived (no connection, or a 5xx), pressing again
   with the same body sends the same key. capture-ledger remembers the first answer for each key, so
   pressing again after a dropped response returns the first crawl instead of starting a second one.
   Editing the form changes the body, so the key is made again; after a 202 or a 4xx the next press
-  gets a new key. No other header is carried, and the other write routes get no key.
+  gets a new key. The only other header carried is the language of the request (see `/api/*`
+  above), and the other write routes get no key.
 
 | The ledger's answer | When |
 | --- | --- |
@@ -342,8 +345,8 @@ turns a phrase into a sentence in its own language with its dictionary (the key
 sentence that says how to fix it is in the dictionary too. A refusal the ledger wrote itself is
 passed on with the ledger's body, and the page reads it with the same dictionary (the keys
 `ledger.error.<phrase>` and `ledger.hint.<key>`); a phrase or a reason the dictionary does not
-have is shown as it arrived. A crawl's `error` is not read with the dictionary: the ledger returns
-it in the language the request asked for (above). An answer that the browser shows
+have is shown as it arrived. A crawl's `error` is not read with the dictionary: a ledger that
+looks at the language returns it in the language the request asked for (above). An answer that the browser shows
 without the page (`/login`, `/callback`, and the 405 text) cannot choose a language, so it is
 written in English and Japanese side by side, separated by ` / ` or on two lines.
 

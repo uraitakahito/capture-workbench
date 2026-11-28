@@ -16,25 +16,33 @@
  *
  * ## 見ないもの
  *
- * 注の行（`*`・`//`・`/*` で始まる行）と、行の後ろの `// …`。highlight-worker.js のような、頼みをしない file も
- * 同じ決まりで見る（`fetch` を足したら、ここで止まる）。
+ * 注（`*` で始まる行・`//` の後ろ・ブロックの注の中）。ブロックの注の後ろに code が在る行は見る。
+ * highlight-worker.js のような、頼みをしない file も同じ決まりで見る（`fetch` を足したら、ここで止まる）。
+ * `.html` の中の script は見ない（いまの index.html・signin.html に `fetch` は無い。足すなら `.js` に書く）。
  */
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import { repoFiles } from "./repo-files.mjs";
 
 /** `fetch` を呼んでよい、ただ 1 つの所。 */
 const ALLOWED = { file: "public/app.js", line: /^\s*fetch\(path, \{ \.\.\.init, headers: /u };
 
-const isComment = (line) => /^\s*(?:\*|\/\/|\/\*)/u.test(line);
-const code = (line) => line.replace(/\s\/\/ .*$/u, "");
+// 注を消した、行の code の部分。ブロックの注は中身だけを消し（後ろの code は残す）、`*` で始まる行は注の続き。
+const code = (line) =>
+  /^\s*\*/u.test(line)
+    ? ""
+    : line
+        .replace(/\/\*.*?\*\//gu, "")
+        .replace(/\/\*.*$/u, "")
+        .replace(/(^|\s)\/\/.*$/u, "");
 
 /** `text` の中の、直に呼ぶ `fetch` の行（1 から数えた行の番号と、その行）。 */
 export const bareFetches = (file, text) =>
   text
     .split("\n")
     .map((line, index) => ({ n: index + 1, line }))
-    .filter(({ line }) => !isComment(line) && /\bfetch\b/u.test(code(line)))
+    .filter(({ line }) => /\bfetch\b/u.test(code(line)))
     .filter(({ line }) => !(file === ALLOWED.file && ALLOWED.line.test(line)));
 
 const main = () => {
@@ -57,4 +65,5 @@ const main = () => {
   process.stdout.write(`check:ask: ${String(files.length)} ファイルを見て、0 件\n`);
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+// 直に呼ばれた時だけ流す（試験は bareFetches を import する）。見分け方は check-i18n.mjs と同じ
+if (process.argv[1] === fileURLToPath(import.meta.url)) main();

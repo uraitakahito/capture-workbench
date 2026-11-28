@@ -141,7 +141,7 @@ the crawl's bundle.
   in the list still opens from its URL: it is fetched on its own and put on top of the table, marked
   一覧の外 (not in the list). A crawl that does not exist, or that this sign-in cannot see, shows
   このクロールは見つかりません (this crawl was not found) above the table. The ledger's
-  `error` comes first, as the ledger returned it (the ledger writes its own sentences in the screen's language; what the flow reported arrives as stored. A level sent to Windmill again comes even before it, with
+  `error` comes first, as the ledger returned it (a ledger that looks at the language writes its own sentences in the screen's language; what the flow reported arrives as stored. A level sent to Windmill again comes even before it, with
   the count and the last error): a crawl that failed at the compile step captured nothing, so
   its list of failed pages is empty and would otherwise read like a success. Next is what ran, in the
   order it ran: registered scripts with their version and a **Read** (読む) link to the

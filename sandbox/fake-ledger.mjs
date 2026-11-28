@@ -1951,7 +1951,13 @@ export const scheduleRow = (c) => ({
   createdBy: c.createdBy ?? "sandbox",
   createdAt: c.createdAt ?? "2026-11-01T00:00:00.000Z",
   // capture-ledger は、まだ比べていない回にも change を null で返す (v0.93.0・CAPTURE-167)
-  recentRuns: (c.recentRuns ?? []).map((run) => ({ ...run, change: run.change ?? null })),
+  // 回も、文の鍵と埋めた値を持つ (capture-ledger v0.118.0 から。無ければ null)
+  recentRuns: (c.recentRuns ?? []).map((run) => ({
+    ...run,
+    errorKey: run.errorKey ?? null,
+    errorParams: run.errorParams ?? null,
+    change: run.change ?? null,
+  })),
 });
 
 /** 予定の答えの回の `error` を、その言語で組む (capture-ledger は、予定の答えを返すどのエンドポイントでも同じに組む)。 */
