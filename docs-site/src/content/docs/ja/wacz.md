@@ -80,7 +80,7 @@ workbench が渡すのは `locale`（画面の言語。`ja` か `en`）と `prof
 
 画面には `spec` と `browserhive` の 2 つの button があります。
 `spec`（既定。daemon の既定と同じ）は、仕様が求めることを見ます。
-`browserhive` は、その上に [BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/) が求めることを見ます。
+`browserhive` は、その上に [BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/ja/) が求めることを見ます。
 `spec` では、BrowserHive の rule は「見なかった rule」に並びます。
 workbench は WACZ を作った BrowserHive の版を渡さないので、`browserhive` では、古い BrowserHive が作った WACZ が、後から足した rule で落ちることがあります。
 
@@ -117,7 +117,7 @@ wacz-validator の端末の画面（`@wacz-validator/tui`）と、同じ入力�
   WARC を頭から歩いた 1 件 1 行で、200 件ずつ読み、種別で絞れます。
   ▪ は索引（CDXJ）が指すレコード、▫ は索引に無いものです。
   BrowserHive が残す「撮らなかった・撮れなかった」記録（`WARC-Type: metadata`）は、ここでしか見えません。
-  [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/ja/#archive-files) の `WARC-Type: resource` のレコードは 3 種類で、一覧は URI の頭で呼び分けます。
+  [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/ja/#archive-files) の `WARC-Type: resource` のレコードは 3 種類で、一覧は URI の頭で呼び分けます。
   種別の「写し」（URI が `urn:browserhive:snapshot:` で始まる）は、BrowserHive が読み込みの後と、スクリプトを走らせた後の取り込みのページを DOM のまま写した物で、サーバの応答ではありません（組の「記録」がそう言います）。
   種別の「枠の写し」（URI が `urn:browserhive:frame-snapshot:` で始まる。BrowserHive v31.2.0 から）は、同じ時点に、取り込みのページの同じ origin の子フレーム（`<iframe>`・`<frame>`）の文書を写した物です。URI は `urn:browserhive:frame-snapshot:<時点>:<番号>:<子の文書の URL>` の形で、番号はその時点のフレームの順です（[BrowserHive WARC Profile 1.5.0](https://uraitakahito.github.io/browserhive-warc-spec/1.5.0/ja/#frame-snapshots)）。
   種別の「節目の絵」（URI が `urn:browserhive:screenshot:` で始まる。BrowserHive v30.2.0 から）は、節目のスクリーンショット（同じ 2 つの時点の viewport の絵）です。

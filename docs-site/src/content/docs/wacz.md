@@ -89,7 +89,7 @@ or `en`), and `profile`; the daemon answers in that language.
 
 The view has two buttons, `spec` and `browserhive`. `spec` (the default, and the daemon's
 default) checks what the specifications ask for. `browserhive` adds what the
-[BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/)
+[BrowserHive WACZ Profile](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/)
 asks for. Under `spec`, the BrowserHive rules are listed as not run. The workbench does not
 send the version of BrowserHive that made the WACZ, so under `browserhive` an archive from an
 older BrowserHive can fail a rule added after it.
@@ -130,7 +130,7 @@ asks for it, the findings on that entry) and its contents.
 - **Record list**: this is what you get for a `.warc.gz`. One row per record, walking the WARC
   from the start, 200 at a time, filterable by type. ▪ marks a record the index (CDXJ) points
   to, ▫ one the index does not. The records BrowserHive leaves for what it did not or could not
-  capture (`WARC-Type: metadata`) are only visible here. A [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.25.0/#archive-files) has three kinds of
+  capture (`WARC-Type: metadata`) are only visible here. A [BrowserHive WARC](https://uraitakahito.github.io/browserhive-specs/wacz-profile/1.28.0/#archive-files) has three kinds of
   `WARC-Type: resource` record, and the list names them by the start of the URI. A record of type
   **snapshot** (写し; the URI starts with `urn:browserhive:snapshot:`) is a copy BrowserHive made of
   the captured page's DOM, after the page loaded and after the capture's scripts ran, not a server
