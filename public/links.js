@@ -11,8 +11,8 @@ import { t } from "./i18n.js";
 const LINKS_HREF = /^\/links\/([0-9a-f-]{36})(?:\/([0-9]{1,18}))?$/;
 
 /** `/links/<クロールの id>[/<ページの id>]` を読む。違う形なら undefined。 */
-export const parseLinksHref = (hash) => {
-  const m = LINKS_HREF.exec(String(hash));
+export const parseLinksHref = (path) => {
+  const m = LINKS_HREF.exec(String(path));
   return m === null ? undefined : { crawlId: m[1], pageId: m[2] };
 };
 

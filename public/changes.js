@@ -21,9 +21,9 @@ const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const CHANGES_HREF = new RegExp(`^/changes/(${UUID})(?:/(${UUID}))?$`);
 
 /** `/changes`・`/changes/<クロールの id>`・`/changes/<クロールの id>/<今回の WACZ の id>`。ほかは undefined。 */
-export const parseChangesHref = (hash) => {
-  if (hash === "/changes") return { crawlId: undefined, pageId: undefined };
-  const m = CHANGES_HREF.exec(String(hash));
+export const parseChangesHref = (path) => {
+  if (path === "/changes") return { crawlId: undefined, pageId: undefined };
+  const m = CHANGES_HREF.exec(String(path));
   return m === null ? undefined : { crawlId: m[1], pageId: m[2] };
 };
 
@@ -154,7 +154,7 @@ const byUrl = (a, b) => (a.url < b.url ? -1 : a.url > b.url ? 1 : 0);
 /**
  * 回の目次。違ったページ（`pages`）と同じだったページ（`unchanged`。v0.95.0 より前の capture-ledger には無い）を 1 列に。
  * 並びは重さの順で、同じ順の中は URL の順（要約の無い差分だけは、足した行と消した行の多い順）。
- * `id` は今回の WACZ の id（hash でページを名指す）。
+ * `id` は今回の WACZ の id（URL の path でページを名指す）。
  */
 export const tocOf = (detail) => {
   const changed = (detail.pages ?? []).map((page) => ({

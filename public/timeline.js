@@ -39,8 +39,8 @@ import { errorText, t } from "./i18n.js";
 const TRACE_HREF = /^\/trace\/([0-9a-f-]{36})\/([0-9]{1,18})$/;
 
 /** `/trace/<クロールの id>/<ページの id>` を読む。違う形なら undefined。 */
-export const parseTraceHref = (hash) => {
-  const m = TRACE_HREF.exec(String(hash));
+export const parseTraceHref = (path) => {
+  const m = TRACE_HREF.exec(String(path));
   return m === null ? undefined : { crawlId: m[1], pageId: m[2] };
 };
 

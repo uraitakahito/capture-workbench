@@ -42,8 +42,8 @@ export const historyHref = (url, { beforeId, afterId } = {}) => {
 };
 
 /** `historyHref` の逆。違う形・壊れた符号・空の URL・id の形でない物は undefined。 */
-export const parseHistoryHref = (hash) => {
-  const text = String(hash);
+export const parseHistoryHref = (path) => {
+  const text = String(path);
   if (!text.startsWith("/history/")) return undefined;
   const parts = text.slice("/history/".length).split("/");
   if (parts.length > 3 || !parts.slice(1).every((id) => UUID.test(id))) return undefined;
@@ -150,7 +150,7 @@ export const slashVariantOf = (url) => {
 };
 
 /**
- * 選ぶ 2 本。`named` は hash が名指した id（`parseHistoryHref` の `beforeId`・`afterId`）。
+ * 選ぶ 2 本。`named` は URL の path が名指した id（`parseHistoryHref` の `beforeId`・`afterId`）。
  *
  *   - 名指しが無ければ、いちばん新しい比べられる行と、その 1 つ前の比べられる行。比べられる行が 1 本以下なら選ばない
  *     （続きを読めば 2 本そろいうる）

@@ -217,8 +217,8 @@ export const waczHref = (archiveId, path, n) =>
   (n === undefined ? "" : `:${String(n)}`);
 
 /** `/archive/<archiveId>[/<path>[:<n>]]` を読む。合わなければ undefined。 */
-export const parseWaczHref = (hash) => {
-  const m = /^\/archive\/([^/]+)(?:\/([^:]+)(?::(\d+))?)?$/.exec(hash);
+export const parseWaczHref = (path) => {
+  const m = /^\/archive\/([^/]+)(?:\/([^:]+)(?::(\d+))?)?$/.exec(path);
   if (m === null) return undefined;
   try {
     return {

@@ -478,7 +478,7 @@ const SHOTS = [
     box: "#reading-list",
     ready: () =>
       document.querySelector("#reading-list a.ritem.on")?.textContent.startsWith("autoscroll") === true &&
-      document.querySelector('#reading-list a.ritem[href="/scripts/types/host.d.ts"]') !== null,
+      document.querySelector('#reading-list a.ritem[href^="/scripts/types/host.d.ts"]') !== null,
   },
   {
     name: "script-read",

@@ -33,10 +33,10 @@ export const readingHref = ({ id, version, sha, line }) =>
  * `/scripts/<id>[@<版>[~<sha の頭>]][:<行>]` と `/scripts/types/host.d.ts[:<行>]` を読む。
  * 合わなければ undefined。型は `{ line }` だけ（`id` が無い）。
  */
-export const parseReading = (hash) => {
-  const types = /^\/scripts\/types\/host\.d\.ts(?::(\d+))?$/.exec(hash);
+export const parseReading = (path) => {
+  const types = /^\/scripts\/types\/host\.d\.ts(?::(\d+))?$/.exec(path);
   if (types !== null) return { line: num(types[1]) };
-  const m = /^\/scripts\/([^/@:~]+)(?:@(\d+)(?:~([0-9a-f]{6,64}))?)?(?::(\d+))?$/.exec(hash);
+  const m = /^\/scripts\/([^/@:~]+)(?:@(\d+)(?:~([0-9a-f]{6,64}))?)?(?::(\d+))?$/.exec(path);
   if (m === null) return undefined;
   try {
     return { id: decodeURIComponent(m[1]), version: num(m[2]), sha: m[3], line: num(m[4]) };

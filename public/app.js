@@ -440,6 +440,12 @@ const navigate = (href, { replace = false } = {}) => {
   route();
 };
 
+/**
+ * 画面の中の行き先の link の href。今の URL の `?lang=` を運ぶ（修飾キーで新しいタブに開いても、写しても、言語が
+ * 戻らない。同じタブで押した時は `navigate` も運ぶ）。
+ */
+const screenHref = (href) => keepLang(href, location.search);
+
 /** 画面の中の細かい選び（WACZ の行・読む所の行など）を、**route を呼ばずに** URL だけに書く。書いた URL を返す。 */
 const remember = (href) => {
   const to = keepLang(href, location.search);
@@ -451,7 +457,7 @@ const remember = (href) => {
 const screenCell = (href, text) => {
   const td = document.createElement("td");
   const a = document.createElement("a");
-  a.href = href;
+  a.href = screenHref(href);
   a.textContent = text;
   td.append(a);
   return td;
@@ -463,7 +469,7 @@ const screenCell = (href, text) => {
  */
 const historyLink = (url, archiveId) => {
   const a = document.createElement("a");
-  a.href = historyHref(url, { afterId: archiveId });
+  a.href = screenHref(historyHref(url, { afterId: archiveId }));
   a.textContent = t("history.link");
   a.className = "history-link";
   return a;
@@ -640,7 +646,7 @@ const ranOf = (one) => {
     } else {
       // 走った版を読む。番号は使い回されうるので sha256 の頭も渡し、読む所が食い違いを言う
       const read = tag("a", t("crawls.detail.read"));
-      read.href = readingHref({ id: script.id, version: script.version, sha: script.sha256.slice(0, 12) });
+      read.href = screenHref(readingHref({ id: script.id, version: script.version, sha: script.sha256.slice(0, 12) }));
       item.append(read);
     }
     list.append(item);
@@ -736,7 +742,7 @@ const linksLineOf = (one) => {
   line.className = "links-line";
   const toLinks = (text) => {
     const a = tag("a", text);
-    a.href = linksHref(one.crawlId);
+    a.href = screenHref(linksHref(one.crawlId));
     return a;
   };
   line.append(...tNodes("crawls.detail.linksLine", { a: toLinks }));
@@ -865,7 +871,7 @@ const drawLog = (state) => {
   const sealed = waczLogTarget(answer.page);
   if (sealed !== undefined) {
     const a = document.createElement("a");
-    a.href = waczHref(sealed.archiveId, sealed.path);
+    a.href = screenHref(waczHref(sealed.archiveId, sealed.path));
     a.textContent = t("crawls.log.openInWacz");
     a.title = t("crawls.log.openInWaczTitle", { path: sealed.path });
     bar.append(a);
@@ -996,15 +1002,15 @@ const pagesOf = (one) => {
       const replay = replayBundleHref(settings[viewer.setting], one.replayBundle, page);
       if (replay !== undefined) said.append(" ", bundleLink(replay, viewerText(viewer), one));
     }
-    // 取り込みの答えが在るページ（撮れた・取れなかった）には、経緯（#trace/…）への link。列は足さない
+    // 取り込みの答えが在るページ（撮れた・取れなかった）には、経緯（/trace/…）への link。列は足さない
     if (page.taskId !== null && page.taskId !== undefined) {
       const trace = document.createElement("a");
-      trace.href = traceHref(one.crawlId, page.id);
+      trace.href = screenHref(traceHref(one.crawlId, page.id));
       trace.textContent = t("crawls.pages.trace");
       trace.className = "trace-link";
       said.append(" ", trace);
     }
-    // 同じ URL の取り込みの履歴（#history/…）への link。WACZ の在るページは、その取り込みを「今」に選んだ形で開く。列は足さない
+    // 同じ URL の取り込みの履歴（/history/…）への link。WACZ の在るページは、その取り込みを「今」に選んだ形で開く。列は足さない
     said.append(" ", historyLink(String(page.url), page.archiveId));
     outcome.append(said);
     const toggle = document.createElement("td");
@@ -1261,7 +1267,7 @@ const drawCrawls = () => {
     row.append(urlCell(crawl.seeds));
     // **2 つの数を 1 つの欄に混ぜない。** リンクの数は撮れた数の分母ではない（`linksOf`）
     row.append(cell(String(crawl.pagesCaptured), "num mono"));
-    // 数を押すと、リンクの構成（#links/<クロールの id>）。1 枚も撮れていない行（−）は link にしない
+    // 数を押すと、リンクの構成（/links/<クロールの id>）。1 枚も撮れていない行（−）は link にしない
     const links = crawl.pagesCaptured === 0 ? cell(linksOf(crawl), "num mono") : screenCell(linksHref(crawl.crawlId), linksOf(crawl));
     links.className = "num mono";
     const note = linksNoteOf(crawl);
@@ -1397,7 +1403,7 @@ const drawPicks = (scripts) => {
     // 中身を読む。ふつうに押せば右の列でこの版を開き、修飾キーならスクリプト集の画面を別のタブで（data-read の
     // click）。label の中の <a> は、押してもチェックを替えない —— 押せないチェックの横でも読める
     const read = tag("a", t("start.scripts.read"), "read");
-    read.href = readingHref({ id: script.id, version: script.version });
+    read.href = screenHref(readingHref({ id: script.id, version: script.version }));
     read.dataset.read = "";
     const why = script.sites.length === 0 ? undefined : tag("span", "", "why");
     // 既定に入らないスクリプト。チェックは外れた状態で出るが、付ければ走る（capture-ledger は名指しを通す）
@@ -2087,7 +2093,7 @@ const verdictCellOf = (id) => {
   const v = checkVerdict(seen?.answer);
   if (v === undefined) return td;
   const a = tag("a", v.text, `state ${v.kind}`);
-  a.href = checkHref(id, seen.profile);
+  a.href = screenHref(checkHref(id, seen.profile));
   td.append(a);
   if (seen.profile !== DEFAULT_PROFILE) td.append(tag("span", ` ${seen.profile}`, "muted mono"));
   return td;
@@ -2244,7 +2250,7 @@ const drawCheck = () => {
   const again = button(t("check.again"), () => void validateArchive(archiveId, profile));
   again.disabled = checkView.asking === key;
   const toWacz = tag("a", t("check.openWacz"));
-  toWacz.href = waczHref(archiveId);
+  toWacz.href = screenHref(waczHref(archiveId));
   head.append(switcher, again, toWacz);
   face.append(head);
 
@@ -2399,7 +2405,7 @@ const drawHits = (hits) => {
     go.className = "hit-go";
     if (known.has(hit.archiveId)) {
       const open = document.createElement("a");
-      open.href = waczHref(hit.archiveId);
+      open.href = screenHref(waczHref(hit.archiveId));
       open.textContent = t("search.hit.open");
       go.append(open);
     }
@@ -2515,7 +2521,7 @@ const find = async (path) => {
 /** 一覧の 1 項目。ふつうの <a> なので、中ボタンで別の窓に開ける（書く欄と並べる道）。対象サイトがあれば名前に添える */
 const listItem = (href, name, version, key, sites = []) => {
   const a = document.createElement("a");
-  a.href = href;
+  a.href = screenHref(href);
   a.className = "ritem";
   a.dataset.key = key;
   const label = tag("span", name, "rname");
@@ -2758,7 +2764,7 @@ const chipsOf = (id, versions, shown, defaultVersion) => {
   box.className = "rchips";
   for (const v of versions) {
     const a = document.createElement("a");
-    a.href = readingHref({ id, version: v.version });
+    a.href = screenHref(readingHref({ id, version: v.version }));
     a.textContent =
       v.version === defaultVersion
         ? t("scripts.chip.default", { version: v.version })
@@ -2990,7 +2996,7 @@ const showStartTab = (tab) => {
 const drawStartReadHead = () => {
   const { target, doc } = startRead;
   const full = tag("a", t("start.read.openInCollection"));
-  full.href = readingHref(target);
+  full.href = screenHref(readingHref(target));
   if (target.id === undefined) {
     drawReadingHead(IN_START, { facts: metaOf(doc), actions: [copyButton(doc.source), full] });
     return;
@@ -3052,7 +3058,7 @@ $("start").addEventListener("click", (event) => {
   const a = event.target.closest("a[data-read]");
   if (a === null || !plainClick(event)) return;
   event.preventDefault();
-  void readInStart(parseReading(a.getAttribute("href")));
+  void readInStart(parseReading(new URL(a.href).pathname)); // href は ?lang= を持ちうる（screenHref）
 });
 
 // 読む窓の行を押すと印を付ける。URL は /start のまま（行を人に渡すのはスクリプト集の画面で）
@@ -3100,7 +3106,7 @@ const drawWaczBar = (status) => {
   // 結論は検証の画面と同じ言い方（rule で数える）。中身はリンクの先の検証の画面で読む（CAPTURE-457）
   const v = verdict(wacz.report);
   const toCheck = tag("a", t("wacz.bar.openCheck"));
-  toCheck.href = checkHref(archive.id);
+  toCheck.href = screenHref(checkHref(archive.id));
   bar.append(
     tag("span", v.text, `mono state ${v.kind}`),
     toCheck,
@@ -3178,7 +3184,7 @@ const openWacz = async ({ archiveId, path, n }) => {
     wacz.rows = [];
     wacz.selected = undefined;
     wacz.records = undefined;
-    wacz.href = waczHref(archiveId);
+    wacz.href = screenHref(waczHref(archiveId));
     $("wacz-tree").replaceChildren();
     $("wacz-head").replaceChildren();
     $("wacz-content").replaceChildren();
@@ -3680,7 +3686,7 @@ const changeStepsOf = (crawlId, toc, row) => {
   const step = (to, text) => {
     if (to === undefined || to.id === null) return tag("span", text, "muted");
     const a = document.createElement("a");
-    a.href = changesHref(crawlId, to.id);
+    a.href = screenHref(changesHref(crawlId, to.id));
     a.textContent = text;
     return a;
   };
@@ -3707,7 +3713,7 @@ const drawChangePane = (detail, toc, picked) => {
     return;
   }
   const title = document.createElement("h3");
-  // 見出しの URL は、その URL の履歴（#history/…。CAPTURE-462）への link。今回の取り込みを「今」に選んだ形で開く。
+  // 見出しの URL は、その URL の履歴（/history/…。CAPTURE-462）への link。今回の取り込みを「今」に選んだ形で開く。
   // 字を足さない（再生の link の行に 1 語足すと、docs の絵が 1 枚の枠を超えた）
   const toHistory = historyLink(row.url, row.page.after?.archiveId ?? row.page.before?.archiveId);
   toHistory.textContent = row.url;
@@ -3802,7 +3808,7 @@ const drawChangeToc = (detail, toc, row) => {
       li.append(...label, url);
     } else {
       const a = document.createElement("a");
-      a.href = changesHref(detail.crawlId, entry.id);
+      a.href = screenHref(changesHref(detail.crawlId, entry.id));
       a.append(...label, url);
       if (entry === row) a.setAttribute("aria-current", "page");
       li.append(a);
@@ -3819,7 +3825,7 @@ const drawChangeHead = (detail) => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = "/changes";
+  toList.href = screenHref("/changes");
   toList.textContent = t("changes.head.back");
   back.append(toList);
   head.append(back);
@@ -3914,7 +3920,7 @@ const openChanges = async (crawlId, pageId) => {
   }
 };
 
-// ── URL の履歴（#history/<URL>[/<前の id>]/<今の id>・CAPTURE-462） ─────────────────────
+// ── URL の履歴（/history/<URL>[/<前の id>]/<今の id>・CAPTURE-462） ─────────────────────
 /**
  * いま開いている履歴。同じ URL の取り込みを新しい順に並べ、「前」と「今」の 2 本を選ぶと、下に 2 本の差分を出す。タブ「変化」の
  * 画面の中で、一覧（`#changes-list`）と入れ替える（リンクの構成がクロールの一覧と入れ替えるのと同じ作り）。
@@ -3948,7 +3954,7 @@ const drawHistoryHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = "/changes";
+  toList.href = screenHref("/changes");
   toList.textContent = t("changes.head.back");
   back.append(toList);
   const h2 = document.createElement("h2");
@@ -3996,7 +4002,7 @@ const drawHistoryList = () => {
     if (variant !== undefined) {
       const hint = tag("p", t("history.empty.hint"), "muted");
       const other = document.createElement("a");
-      other.href = historyHref(variant);
+      other.href = screenHref(historyHref(variant));
       other.textContent = variant;
       other.className = "mono";
       hint.append(" ", other);
@@ -4309,7 +4315,7 @@ $("history-open").onsubmit = (event) => {
   if (url !== "") navigate(historyHref(url));
 };
 
-// ── リンクの構成（#links/<クロールの id>[/<ページの id>]・CAPTURE-246） ─────────────
+// ── リンクの構成（/links/<クロールの id>[/<ページの id>]・CAPTURE-246） ─────────────
 /**
  * クロール 1 本のリンクの構成。capture-ledger が残したリンクの記録（`GET /api/crawls/:id/links`）を、深さを列にした
  * 図に描く。**数も「どうなったか」も capture-ledger の物で、ここは描くだけ** —— 配置と字は `public/links.js`。
@@ -4344,7 +4350,7 @@ const drawLinksHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = "/crawls";
+  toList.href = screenHref("/crawls");
   toList.textContent = t("links.back");
   back.append(toList);
   head.append(back);
@@ -4615,7 +4621,7 @@ const drawLinksPanel = () => {
   const byId = new Map(graph.pages.map((one) => [one.id, one]));
   const pageLink = (id) => {
     const a = document.createElement("a");
-    a.href = linksHref(crawlId, id);
+    a.href = screenHref(linksHref(crawlId, id));
     a.className = "mono";
     a.textContent = boxLabelOf(byId.get(id)?.url ?? id, origin, 60);
     return a;
@@ -4752,7 +4758,7 @@ $("links-fold").addEventListener("click", () => {
   drawLinksGraph();
 });
 
-// ── 経緯（#trace/<クロールの id>/<ページの id>・CAPTURE-270） ─────────────────────
+// ── 経緯（/trace/<クロールの id>/<ページの id>・CAPTURE-270） ─────────────────────
 /**
  * 取り込み 1 回の経緯。capture-ledger の `GET /api/crawls/:id/pages/:page/trace`（ページ・取り込みの欄・ログ）と、
  * WACZ の中の WARC のレコードの一覧（`/wacz/<archive の id>/records`）を、1 本の時間軸に並べる。**何がいつ起きたかは
@@ -4831,7 +4837,7 @@ const drawTraceHead = () => {
   const back = document.createElement("p");
   back.className = "change-back";
   const toList = document.createElement("a");
-  toList.href = "/crawls";
+  toList.href = screenHref("/crawls");
   toList.textContent = t("trace.back");
   back.append(toList);
   head.append(back);
@@ -4877,7 +4883,7 @@ const drawTraceHead = () => {
     line.append(t("common.sep.dot"), hasTrace(answer) ? t("trace.facts.noWaczLines") : t("trace.facts.noWacz"));
   } else {
     const open = document.createElement("a");
-    open.href = waczHref(answer.archive.id);
+    open.href = screenHref(waczHref(answer.archive.id));
     open.textContent = t("trace.facts.openWacz");
     line.append(t("common.sep.dot"), open);
   }
@@ -5723,6 +5729,11 @@ const route = () => {
     navigate("/crawls", { replace: true });
     return;
   }
+  // 末の / は外して置き換える（/crawls/ → /crawls。読む関数は末の / を持たない形だけを読む）
+  if (path.length > 1 && path.endsWith("/")) {
+    navigate(path.replace(/\/+$/, "") + location.search, { replace: true });
+    return;
+  }
   // リンクの構成（/links/…）と経緯（/trace/…）は、同じ一覧を隠す。**先に両方を閉じ、後から開く** —— 片方から
   // もう片方へ移ったときに、閉じる側が一覧を出し直さないように（開く側は下の枝で、閉じた後に一覧を隠す）
   if (parseLinksHref(path) === undefined) closeLinks();
@@ -5809,8 +5820,9 @@ const bridge = () => {
   return true;
 };
 
-// ブラウザの戻る・進む。**hash の移りでは何もしない** —— 画面の中で `/#…` の link を押すと popstate と hashchange が
-// 両方来る。置き換えと route は hashchange の側で 1 度だけ（2 度読み込まない）
+// ブラウザの戻る・進む。**hash の移りでは何もしない** —— 今の path のまま hash だけが替わった時（手で
+// `/crawls#search/x` と打つ・`location.hash` を書く）は、popstate と hashchange が両方来る。置き換えと route は
+// hashchange の側で 1 度だけ（2 度読み込まない）。`/#…` へ移るのは別の文書への移りで、起動の bridge が渡す
 window.addEventListener("popstate", () => {
   if (pathFromHash(location.hash) === undefined) route();
 });
@@ -5875,6 +5887,9 @@ const refresh = async () => {
 };
 
 const start = async () => {
+  // 古い hash の URL は、何かを引く前に path へ置き換える —— 引いた答えが 401 なら、サインインの戻り先は今の URL
+  // （`signInAgain`）。置き換える前だと / が戻り先になり、行き先が落ちる
+  bridge();
   try {
     settings = await (await fetch("/healthz")).json();
     const who = settings.signedIn;
@@ -5889,7 +5904,6 @@ const start = async () => {
   syncStart(); // 上限を知ってから、欄の下の行を出す
   void refreshSchedules(); // 別の輪。クロールの表を待たせない
   await refresh();
-  bridge();
   route();
 };
 

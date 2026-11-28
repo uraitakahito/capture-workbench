@@ -25,8 +25,8 @@ export const checkHref = (archiveId, profile = DEFAULT_PROFILE) =>
   `/check/${encodeURIComponent(archiveId)}` + (profile === DEFAULT_PROFILE ? "" : `/${profile}`);
 
 /** `/check/<archiveId>[/<profile>]` を読む。知らない profile・合わない形は undefined。 */
-export const parseCheckHref = (hash) => {
-  const m = /^\/check\/([^/]+)(?:\/([^/]+))?$/.exec(hash);
+export const parseCheckHref = (path) => {
+  const m = /^\/check\/([^/]+)(?:\/([^/]+))?$/.exec(path);
   if (m === null) return undefined;
   const profile = m[2] ?? DEFAULT_PROFILE;
   if (!PROFILES.includes(profile)) return undefined;
