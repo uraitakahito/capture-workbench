@@ -48,7 +48,8 @@ the workbench on 7081.
 Opening the workbench takes you to Floci's sign-in page. Type the user and password in
 capture-ledger's `.dev/idp.env` (`IDP_USER` and `IDP_USER_PASSWORD`). Back on the workbench, the
 top of the screen says `Signed in as <user> (<groups>)`, with a **Sign out** (サインアウト)
-link.
+link. **Sign out** signs you out of both the workbench and the IdP and lands on Floci's sign-in
+page, where you can sign in as another user.
 
 That user needs permission to submit crawls for the organization.
 

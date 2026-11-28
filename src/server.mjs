@@ -78,7 +78,10 @@ const LEDGER = optional("WORKBENCH_LEDGER_URL", "http://127.0.0.1:7070");
  */
 const OIDC_ISSUER = optional("WORKBENCH_OIDC_ISSUER", "");
 const OIDC_CLIENT_ID = optional("WORKBENCH_OIDC_CLIENT_ID", "");
-/** IdP に登録した戻り先と一字一句同じでなければならない（capture-ledger の idp:bootstrap が登録する）。 */
+/**
+ * IdP に登録した戻り先と一字一句同じでなければならない（capture-ledger の idp:bootstrap が登録する）。
+ * サインアウトの後の戻り先（同じ origin の `/login`。`auth.mjs` の `logoutUrl`）も、ここから作る。
+ */
 const REDIRECT_URI = `http://127.0.0.1:${String(PORT)}/callback`;
 /**
  * 深いリンクの行き先。**workbench はこれを組み立てない** —— capture-ledger が返すのは `objectKey`・クロールの合本の鍵
@@ -257,9 +260,35 @@ const server = createServer((request, reply) => {
       });
     return;
   }
+  /**
+   * サインアウト。workbench のセッションと cookie を消してから、**IdP の logout のエンドポイントへ回す**（`auth.mjs` の注）——
+   * IdP が自分のサインインを消して `/login` へ戻し、人はサインインのフォームに着く。
+   * **セッションの有る無しに依らず回す**（workbench を起こし直した後の、古い cookie のブラウザも IdP から出す）。
+   * IdP の設定が無い・logout の URL を作れない（discovery に届かない・形が違う）時は、前のとおり `/` へ ——
+   * その時は IdP のサインインが残る（フォーム無しで入り直す）ので、黙らずに訳を書く。
+   */
   if (pathname === "/logout" && request.method === "GET") {
     auth.logout(session);
-    redirect(reply, "/", { "set-cookie": sessionCookie("", 0) });
+    const gone = { "set-cookie": sessionCookie("", 0) };
+    void auth
+      .logoutUrl()
+      .then((location) => {
+        if (location === undefined && auth.configured) {
+          throw new Error(
+            "the IdP's authorization_endpoint is not …/oauth2/authorize / IdP の authorization_endpoint が …/oauth2/authorize の形でない",
+          );
+        }
+        return location;
+      })
+      .catch((err) => {
+        process.stderr.write(
+          `/logout: IdP の logout のエンドポイントへ回せない（/ へ回す。IdP のサインインは残る）: ${err instanceof Error ? err.message : String(err)}\n`,
+        );
+        return undefined;
+      })
+      .then((location) => {
+        redirect(reply, location ?? "/", gone);
+      });
     return;
   }
 

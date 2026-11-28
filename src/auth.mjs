@@ -14,6 +14,15 @@
  * セッションにだけ置き、ブラウザには HttpOnly の cookie（セッションの ID）しか渡さない。
  * workbench を起こし直すとセッションは消え、次の要求でサインインの画面へ回る。
  *
+ * ## サインアウトは IdP からも出る
+ *
+ * workbench のセッションを消すだけでは、IdP の側のサインイン（ブラウザの cookie）が残る —— 次の `/login` が
+ * フォームを出さずに同じ名で戻ってきて、「サインアウト」を押しても変わらないように見える（t-6nje）。
+ * だから `/logout` は、セッションを消した後に IdP の logout のエンドポイント（`logoutUrl`）へ回す。IdP は自分のサインインを
+ * 消して、登録した戻り先（`/login`）へ戻し、人はサインインのフォームに着く。**戻り先は app client に登録が要る**
+ * （Cognito の「許可するサインアウト URL」。手元は capture-ledger の `pnpm run idp:bootstrap` が登録する）——
+ * IdP は、登録した物と 1 字でも違う戻り先を 400 で断る。
+ *
  * ## 入出力
  *
  * IdP と話すのは `fetch` だけで、引数で受ける —— 試験は偽物を渡す（`test/auth.test.mjs`）。
@@ -78,6 +87,23 @@ export const whoOf = (accessToken) => {
 };
 
 /**
+ * IdP の logout のエンドポイント。**discovery には載っていない**（Cognito も Floci も `end_session_endpoint` を出さない）ので、
+ * authorize のエンドポイントから作る —— Cognito の形は `…/oauth2/authorize` と `…/logout`。その形でなければ undefined。
+ */
+export const logoutEndpoint = (authorize) => {
+  let url;
+  try {
+    url = new URL(authorize);
+  } catch {
+    return undefined;
+  }
+  const tail = "/oauth2/authorize";
+  if (!url.pathname.endsWith(tail) || url.search !== "" || url.hash !== "") return undefined;
+  url.pathname = `${url.pathname.slice(0, -tail.length)}/logout`;
+  return url.href;
+};
+
+/**
  * IdP とセッション。
  *
  * @param {{ issuer: string, clientId: string, redirectUri: string, fetch?: typeof fetch, now?: () => number }} options
@@ -120,7 +146,11 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
           `${issuer} の discovery に authorization_endpoint か token_endpoint が無い`,
       );
     }
-    discovery = { authorize: body.authorization_endpoint, token: body.token_endpoint };
+    discovery = {
+      authorize: body.authorization_endpoint,
+      token: body.token_endpoint,
+      logout: logoutEndpoint(body.authorization_endpoint),
+    };
     return discovery;
   };
 
@@ -217,5 +247,22 @@ export const createAuth = ({ issuer, clientId, redirectUri, fetch: send = fetch,
     if (session !== undefined) sessions.delete(session);
   };
 
-  return { configured, beginLogin, finishLogin, tokenOf, refresh, logout };
+  /**
+   * IdP からも出るための URL（IdP の logout のエンドポイントに、client と、出た後の戻り先を付けた物）。作れなければ undefined。
+   *
+   * **discovery をまだ読んでいなければ、読みに行く** —— workbench を起こし直した直後の「サインアウト」も IdP へ回す
+   * （読み済みの時だけ回す形だと、その時に限って元の「同じ名で入り直す」に戻る）。
+   * 戻り先は `redirectUri` と同じ origin の `/login`。**query を足さない** —— IdP は登録した物と 1 字でも違えば断る。
+   *
+   * @returns {Promise<string | undefined>}
+   */
+  const logoutUrl = async () => {
+    if (!configured) return undefined;
+    const { logout: endpoint } = await endpoints();
+    if (endpoint === undefined) return undefined;
+    const query = new URLSearchParams({ client_id: clientId, logout_uri: new URL("/login", redirectUri).href });
+    return `${endpoint}?${query.toString()}`;
+  };
+
+  return { configured, beginLogin, finishLogin, tokenOf, refresh, logout, logoutUrl };
 };
