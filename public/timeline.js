@@ -601,8 +601,8 @@ export const snapshotsFromLog = (lines, capture) => {
 
 // ── 節目のスクリーンショットと、失敗の時点の絵（BrowserHive v30.2.0 から）────────────
 
-/** 絵を撮る時点。並びは取り込みの順（読み込みの後 → スクリプトの後）。 */
-export const SCREENSHOT_STAGES = ["after-load", "after-behaviors"];
+/** 絵を撮る時点。並びは取り込みの順（読み込みの後 → capture scripts の後）。 */
+export const SCREENSHOT_STAGES = ["after-load", "after-capture-scripts"];
 
 const SCREENSHOT_URN = "urn:browserhive:screenshot:";
 
@@ -638,8 +638,11 @@ export const screenshotsOf = (answer) => {
       if (typeof item.url !== "string" || typeof item.date !== "string") {
         return { stage, kept: false, skipped: typeof item.skipped === "string" ? item.skipped : "" };
       }
-      const prefix = `${SCREENSHOT_URN}${stage}:`;
-      const documentUrl = item.url.startsWith(prefix) ? item.url.slice(prefix.length) : undefined;
+      // URI の時点は、答えの `stage` でなく URI の中の字で読む —— 古い取り込み（WACZ Profile 1.30.0 より前）の URI は
+      // `after-behaviors` のまま残り、capture-ledger は `stage` だけを `after-capture-scripts` で答える（CAPTURE-506）。
+      // 写しの URI も同じ取り込みの物なので、同じ時点の字で組む
+      const named = item.url.startsWith(SCREENSHOT_URN) ? /^([a-z][a-z-]*):(.+)$/s.exec(item.url.slice(SCREENSHOT_URN.length)) : null;
+      const documentUrl = named === null ? undefined : named[2];
       const at = epoch(item.date);
       return {
         stage,
@@ -648,7 +651,7 @@ export const screenshotsOf = (answer) => {
         date: item.date,
         ...(typeof item.bytes === "number" && { bytes: item.bytes }),
         ...(typeof item.record === "string" && { record: item.record }),
-        ...(documentUrl !== undefined && { documentUrl, snapshotUri: `urn:browserhive:snapshot:${stage}:${documentUrl}` }),
+        ...(documentUrl !== undefined && { documentUrl, snapshotUri: `urn:browserhive:snapshot:${named[1]}:${documentUrl}` }),
         ...(at !== undefined && originMs !== undefined && { ms: at - originMs }),
       };
     });

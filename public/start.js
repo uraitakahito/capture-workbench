@@ -9,7 +9,7 @@
  */
 import { errorText, hintsText, t } from "./i18n.js";
 
-/** 走らせるものの欄が、何も選んでいない形（登録済みのスクリプトが無く、その場の TS も無い）。 */
+/** 走らせるものの欄が、何も選んでいない形（登録済みの capture scripts が無く、その場の TS も無い）。 */
 const NOTHING_CHOSEN = {
   order: [],
   picked: [],
@@ -40,7 +40,7 @@ export const onSeed = (script, hosts) =>
 
 /**
  * ふつうに押したか（左のボタンだけ・修飾キーなし）。チェックの横の「読む」は、このときだけ右の列で開く。
- * それ以外はブラウザに任せる（href はスクリプト集の画面なので、別のタブで開くなど）。
+ * それ以外はブラウザに任せる（href は Capture scripts の画面なので、別のタブで開くなど）。
  */
 export const plainClick = (event) =>
   event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
@@ -72,7 +72,7 @@ const written = (inline) => inline.source.trim() !== "";
  * 走る物を、走る順に（画面で番号の付く行）。起点に合ってチェックの付いたスクリプトと、読み込みの後に走るその場の TS。
  * 遷移の前に走るその場の TS は入らない —— ページの読み込みより前に入るので、順を選ぶ意味が無い（送るときは先頭）。
  *
- * 登録済みのスクリプトの `phase` は見ない。いまカタログに遷移の前に走る物は無い。足す日には、番号が走る順でなくなる。
+ * 登録済みの capture scripts の `phase` は見ない。いまカタログに遷移の前に走る物は無い。足す日には、番号が走る順でなくなる。
  */
 export const liveOrder = ({ order, picked, inline }) =>
   order.filter((id) => (id === INLINE_ROW ? written(inline) && inline.phase === "behavior" : picked.includes(id)));
@@ -90,7 +90,7 @@ export const movedOrder = (run, id, delta) => {
 
 /**
  * 画面の行の並び。走る順のまま（チェックでは行が動かない —— 次の行が手の下に来ないように）で、起点に合わない
- * サイト用のスクリプトだけ下へまとめる（押せない行が押せる行の間に挟まらないように）。
+ * サイト用の capture scripts だけ下へまとめる（押せない行が押せる行の間に挟まらないように）。
  */
 export const shownOrder = (order, scripts, hosts) => {
   const off = scripts.filter((script) => !onSeed(script, hosts)).map((script) => script.id);
@@ -100,7 +100,7 @@ export const shownOrder = (order, scripts, hosts) => {
 /**
  * 走らせるもの（capture-ledger の `scripts`）。**既定のまま —— 走るスクリプトが既定の顔ぶれ（`defaultIds`）と同じ物を同じ順で、
  * その場の TS が空 —— なら送らない**（`undefined`）。capture-ledger も起点から同じ物を同じ順で選ぶので、省いても走る物は
- * 変わらない。省くのは、登録済みのスクリプトが無いときと、起点に合う物が無いときの 400 を capture-ledger に言わせるため。
+ * 変わらない。省くのは、登録済みの capture scripts が無いときと、起点に合う物が無いときの 400 を capture-ledger に言わせるため。
  *
  * 送るときは `liveOrder` のとおり —— 画面の番号の順で、遷移の前に走るその場の TS だけ先頭に。全部外せば `[]` ——
  * 「何も走らせない」。source は削らない —— capture-ledger が打つ sha256 は、書いたバイト列の物。名前は前後の
@@ -120,7 +120,7 @@ export const scriptsOf = (run) => {
 
 /**
  * チェックしたスクリプトが宣言した、クロールごとの値（capture-scripts の `catalog.json` の `params`。capture-ledger の
- * `GET /api/scripts` が版ごとに運ぶ）。`kind`（`variable` か `secret`）で選び、**同じ名前は 1 つにまとめる** ——
+ * `GET /api/capture-scripts` が版ごとに運ぶ）。`kind`（`variable` か `secret`）で選び、**同じ名前は 1 つにまとめる** ——
  * 名前の空間は 1 クロールに 1 つ（capture-ledger の決まり）で、2 本のスクリプトが同じ名前を宣言すれば同じ値を読む。必須はどれかが
  * 必須なら必須、説明と値の形（`schema`）と WARC に残すか（`archive`）は最初の宣言の物、`by` は宣言したスクリプトの id。
  * 並びは capture-ledger の並びに宣言の順。`archive` はシークレットだけが持ち、省いた宣言は `null`（隠す。capture-scripts/6 の決まり）に
@@ -155,7 +155,7 @@ export const declaredOf = (scripts, picked, kind) => {
 
 /**
  * 欄に出す宣言。チェックしたスクリプトの宣言（`declaredOf`）の前に、その場の TS が `defineParams` で宣言した変数
- * （`inlineParams`。capture-ledger の `POST /api/scripts/check` の答え）を足す。**箱が空なら足さない** —— 消した TS の答えを残さない。
+ * （`inlineParams`。capture-ledger の `POST /api/capture-scripts/check` の答え）を足す。**箱が空なら足さない** —— 消した TS の答えを残さない。
  * 画面の `drawValues` と `variablesNow` の両方がここを読む（片方だけだと、欄は出るのに値が送られない）。
  */
 export const declaredWith = (scripts, picked, inline, inlineParams, kind) =>
@@ -164,7 +164,7 @@ export const declaredWith = (scripts, picked, inline, inlineParams, kind) =>
     : declaredOf(scripts, picked, kind);
 
 /**
- * `POST /api/scripts/check` の答えを、欄の宣言と箱の下の 1 行（`note`。無ければ空）にする。
+ * `POST /api/capture-scripts/check` の答えを、欄の宣言と箱の下の 1 行（`note`。無ければ空）にする。
  *
  * 言うのは**欄が出ない理由**だけ: 宣言を読めない（`BH0002`）・遷移の前では宣言できない（`BH0004`）・確かめられなかった。
  * ふつうの型の誤りは言わない —— 打っている途中の TS はたいてい誤りを持ち、走らせれば compile の段が言う。
@@ -527,7 +527,7 @@ export const withNocheck = (source, on) => {
 };
 
 /**
- * スクリプト 1 本を、その場の TS の下敷きにする（スクリプト集の画面の「下敷きにする」）。**替えるのは 1 つの
+ * スクリプト 1 本を、その場の TS の下敷きにする（Capture scripts の画面の「下敷きにする」）。**替えるのは 1 つの
  * 形だけ** —— `__bh.opts["<id>"]` の id を `inline-<名前>` に。capture-ledger はその場の TS を `inline-<名前>` の id で
  * 走らせ、設定もその id の下に置くので、替えないと元の id の設定を読む。報告（`__bh.report(data)`）とログの行は
  * id を取らない —— 誰の行かは BrowserHive が付ける（capture-scripts v0.7.0 の受け皿から）。

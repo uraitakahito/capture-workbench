@@ -1,18 +1,18 @@
 /**
- * スクリプト集の画面（読む所）の部品。**workbench から切り出してあるのは、ここだけ試験から呼べるようにするため。**
+ * Capture scripts の画面（読む所）の部品。**workbench から切り出してあるのは、ここだけ試験から呼べるようにするため。**
  *
  * ブラウザは `/reading.js` として読み、試験は `node --test` から import する —— 同じファイルを
  * 両方が読むので、写しが腐ることがない。import は隣の `./i18n.js` だけ（`/format.js` のような根からの path は、
  * node では fs の根になる）。読み込んだときに DOM に触らず、字も作らない（字は、呼ばれたときに辞書から引く）。
  *
- * 読む物は 2 種類: スクリプトの 1 版（`GET /api/scripts/:id/versions/:version`）と、受け皿 `__bh` の型
+ * 読む物は 2 種類: capture script の 1 版（`GET /api/capture-scripts/:id/versions/:version`）と、受け皿 `__bh` の型
  * （`GET /api/host-types`）。どちらも JS にする前の TypeScript で、走った JS（アーカイブの
  * `behaviors/custom.jsonl`）とは行が合わない。
  */
 import { t } from "./i18n.js";
 
 /** 受け皿の型の URL。スクリプトの id は encodeURIComponent してから載せるので `/` を含まず、取り違えない */
-export const TYPES_HREF = "/scripts/types/host.d.ts";
+export const TYPES_HREF = "/capture-scripts/types/host.d.ts";
 
 const num = (s) => (s === undefined ? undefined : Number(s));
 
@@ -24,19 +24,20 @@ const num = (s) => (s === undefined ? undefined : Number(s));
 export const readingHref = ({ id, version, sha, line }) =>
   (id === undefined
     ? TYPES_HREF
-    : `/scripts/${encodeURIComponent(id)}` +
+    : `/capture-scripts/${encodeURIComponent(id)}` +
       (version === undefined ? "" : `@${String(version)}`) +
       (version === undefined || sha === undefined ? "" : `~${sha}`)) +
   (line === undefined ? "" : `:${String(line)}`);
 
 /**
- * `/scripts/<id>[@<版>[~<sha の頭>]][:<行>]` と `/scripts/types/host.d.ts[:<行>]` を読む。
+ * `/capture-scripts/<id>[@<版>[~<sha の頭>]][:<行>]` と `/capture-scripts/types/host.d.ts[:<行>]` を読む（古い住所 `/scripts/…`
+ * は、画面が先に `renamedPath` で置き換える）。
  * 合わなければ undefined。型は `{ line }` だけ（`id` が無い）。
  */
 export const parseReading = (path) => {
-  const types = /^\/scripts\/types\/host\.d\.ts(?::(\d+))?$/.exec(path);
+  const types = /^\/capture-scripts\/types\/host\.d\.ts(?::(\d+))?$/.exec(path);
   if (types !== null) return { line: num(types[1]) };
-  const m = /^\/scripts\/([^/@:~]+)(?:@(\d+)(?:~([0-9a-f]{6,64}))?)?(?::(\d+))?$/.exec(path);
+  const m = /^\/capture-scripts\/([^/@:~]+)(?:@(\d+)(?:~([0-9a-f]{6,64}))?)?(?::(\d+))?$/.exec(path);
   if (m === null) return undefined;
   try {
     return { id: decodeURIComponent(m[1]), version: num(m[2]), sha: m[3], line: num(m[4]) };
@@ -79,7 +80,7 @@ export const optionsText = (options) =>
     : t("scripts.options.given", { json: JSON.stringify(options) });
 
 /**
- * その id で既定の顔ぶれに入る版。`latest` は `GET /api/scripts` の答え（id ごとに 1 行。既定に入らない id も
+ * その id で既定の顔ぶれに入る版。`latest` は `GET /api/capture-scripts` の答え（id ごとに 1 行。既定に入らない id も
  * `enabled: false` で載る）。既定に入らない id と、載っていない id は undefined。
  */
 export const defaultVersionOf = (latest, id) => {
@@ -89,7 +90,7 @@ export const defaultVersionOf = (latest, id) => {
 
 /**
  * この版と既定の顔ぶれの関係。`defaultVersion` は `defaultVersionOf` の答え（既定に入らない id なら
- * undefined）。無効な版は、名指せば走るが、既定では走らない。サイト用のスクリプト（対象サイトのある版）が既定で
+ * undefined）。無効な版は、名指せば走るが、既定では走らない。サイト用の capture scripts（対象サイトのある版）が既定で
  * 走るのは、起点のどれかが対象サイトのホストにあるときだけ。
  */
 export const standingOf = (doc, defaultVersion) => {

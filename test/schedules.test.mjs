@@ -260,7 +260,7 @@ test("操作の答えの 1 行。断られたら、始めるエンドポイン�
   assert.equal(actionAnswer("close", 200, { closed: true }).text, "締めました。");
   const refused = actionAnswer("repin", 400, { error: "unknown script ids", ids: ["gone"] });
   assert.equal(refused.kind, "bad");
-  assert.equal(refused.text, "400 —— 知らないスクリプトの id です: gone");
+  assert.equal(refused.text, "400 —— 知らない capture script の id です: gone");
 });
 
 test("cron の見本は、式を言葉にした字を引くときに作る", () => {

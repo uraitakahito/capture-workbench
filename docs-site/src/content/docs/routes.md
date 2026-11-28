@@ -20,7 +20,7 @@ not.
 | `POST /api/archives/:id/changes/summary` | the ledger (writes: has Claude summarize the diff of the two captures picked) |
 | `POST /api/robots-exemptions` | the ledger (writes: registers a robots.txt exemption) |
 | `POST /api/robots-exemptions/:id/revoke` | the ledger (writes: revokes a robots.txt exemption) |
-| `POST /api/scripts/check` | the ledger (asks what an inline script declares; writes nothing, and goes through the same checks because the source travels in the body) |
+| `POST /api/capture-scripts/check` | the ledger (asks what an inline script declares; writes nothing, and goes through the same checks because the source travels in the body) |
 | `GET /api/archives/:id/screenshots/:stage` | passed through to the ledger (a stage screenshot; passes as WebP bytes, not as text) |
 | `/api/*` (the rest) | passed through to the ledger (GET only) |
 | `/wacz/:id/…` | signed by the ledger, then answered by the daemon |
@@ -132,7 +132,7 @@ cannot call it directly, the server relays it to make it same-origin.
   [Headers that pass](#headers-that-pass)) and the bytes of the body stream through as they are.
   Read as text, the bytes that are not valid UTF-8 would be replaced and the picture broken. The
   shape is `isScreenshotRoute` in `src/lib.mjs`: a 36-character id of hex digits and hyphens, and
-  only the stages `after-load` and `after-behaviors`, with no query, nothing after it and no `%`
+  only the stages `after-load` and `after-capture-scripts`, with no query, nothing after it and no `%`
   (anything else passes through as text, like the rest). The **Look** (見た目) of the archives
   list and of the pages table ([Screens](/screens/)) loads it with an `<img>`.
 
@@ -155,8 +155,8 @@ This is one of the routes of the workbench's server that write. The form on the 
 ([Screens](/screens/)) uses it. The server does not check the contents: it hands the body that
 passed the checks below to the ledger's `POST /api/crawls` as it is, and returns the answer as
 it is. The ledger is the one that checks and decides the seed URLs, the policy (depth, page
-limit, which scripts run), the `userAgent` and the per-crawl variables (`variables`: the spelling and number of the
-names, the length and shape of the values, and whether a script that runs declared each name). Whether a
+limit, which capture scripts run), the `userAgent` and the per-crawl variables (`variables`: the spelling and number of the
+names, the length and shape of the values, and whether a capture script that runs declared each name). Whether a
 declared secret exists in Windmill is also the ledger's check; the workbench never touches a
 secret's value (it lives in a Windmill variable, and is neither in the form nor in the body).
 
@@ -178,14 +178,14 @@ secret's value (it lives in a Windmill variable, and is neither in the form nor 
 | The ledger's answer | When |
 | --- | --- |
 | 202 `{"crawlId": …}` | accepted (it does not wait for the crawl to finish) |
-| 400 `{"error": …}` | a seed URL that cannot be read, no registered scripts (with a `hint`), an unknown script id or the same id twice (with `ids`), a required variable missing or a variable no script declared (with `names`), a declared secret that is missing from Windmill or is not a secret there (with `secrets`: name and path), a hidden secret sent while the deployment's formats cannot have its value replaced (with `names` and a `hint`), and so on. From capture-ledger v0.102.0, an answer with a `hint` also carries `hints`: the same reasons as a list of `{ key?, params?, text }`, which the page reads to show them in its language |
+| 400 `{"error": …}` | a seed URL that cannot be read, no registered capture scripts (with a `hint`), an unknown capture script id or the same id twice (with `ids`), a required variable missing or a variable no capture script declared (with `names`), a declared secret that is missing from Windmill or is not a secret there (with `secrets`: name and path), a hidden secret sent while the deployment's formats cannot have its value replaced (with `names` and a `hint`), and so on. From capture-ledger v0.102.0, an answer with a `hint` also carries `hints`: the same reasons as a list of `{ key?, params?, text }`, which the page reads to show them in its language |
 | 404 | the identity may not start crawls (`{"error":"not found"}`), or the ledger has nowhere to send crawls configured and does not serve the route at all |
 | 409 `{"error": …, "crawlId": …}` | a crawl is already running (one at a time, overall); `crawlId` is the one in the way |
 | 503 `{"error": "windmill unreachable"}` | the ledger could not ask Windmill whether a declared secret exists (the flow would not run either, so it does not start the crawl) |
 
 The checks are `writeRefusal` in `src/lib.mjs`, which the tests call directly.
 
-## POST /api/scripts/check — asking what an inline script declares
+## POST /api/capture-scripts/check — asking what an inline script declares
 
 The new crawl view calls this once the box has stopped changing for 800 ms, with one request at a
 time, and draws a field for each variable declared by `defineParams` ([Screens](/screens/)). The body
@@ -235,7 +235,7 @@ the replaced lines, the rounds and the cost; the workbench only draws the answer
 | The ledger's answer | When |
 | --- | --- |
 | 200 `{ rounds, source, edits, notes, compiled, usage }` | a fix passed the check (`edits`: each replaced range with `before` and `after`; `usage.usd`: the cost) |
-| 409 `scripts compile` | the scripts type-check now; there is nothing to fix |
+| 409 `scripts compile` | the capture scripts type-check now; there is nothing to fix |
 | 422 | a required variable is missing from the crawl (`missing variables`; Claude is not called, and the view says to start again with the value), the errors are not in this script, two rounds did not pass (with the rounds and the cost), or Claude declined |
 | 429 `claude budget exhausted` | the organization reached this month's limit (with `spentUsd` and `budgetUsd`); Claude is not called |
 | 502 / 503 | Claude or ts-compile-service did not answer |

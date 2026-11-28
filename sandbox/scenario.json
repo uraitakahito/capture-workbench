@@ -20,21 +20,21 @@
     "        hidden のアーカイブは答えに出さない (見てよくない)。url を省いた行は、文書は sourceUrl、写しは urn にする。",
     "schedules: 定期実行の予定 (GET /api/schedules)。状態の語 (health) の判定は capture-ledger の物なので語を書く。時刻は絶対の時刻で書く",
     "        (画面の絵が撮るたびに変わらないように)。操作の結果は代役が起きている間だけ覚える。周回は無いので回は増えない。",
-    "emptyCatalog: true にすると、登録済みのスクリプトが無いときの赤い文が出る（読む所には受け皿の型だけが残る）。",
+    "emptyCatalog: true にすると、登録済みの capture scripts が無いときの赤い文が出る（読む所には受け皿の型だけが残る）。",
     "submit: workbench の欄から始めた行は runsSeconds 秒走ってから完走する。走っている間にもう 1 度始めると 409。",
     "        受けた行は代役が起きている間だけ在り、台本の走行中の行は「走行中 1 本」に数えない。",
     "crawls の scripts: 1 本の詳しい所の「走らせたもの」(並びが実行順)。その場の TS は id を inline-<name> にし、",
     "        頼まれた要素 inline (name・phase・source) を付ける (capture-ledger は、その場の物にだけ返す)。",
-    "        登録済みのスクリプトの sha256 は、capture-ledger のその版と同じ値にする。**5b0c0008 の autoscroll だけはわざと違う** ——",
+    "        登録済みの capture scripts の sha256 は、capture-ledger のその版と同じ値にする。**5b0c0008 の autoscroll だけはわざと違う** ——",
     "        読む所が「このクロールが走らせた v1 とは中身が違う」と言うのを見る場 (版の番号は使い回される)。",
     "catalog: スクリプトの版の並び。id の現れる順が既定の実行順 (capture-scripts の catalog.json の順)。source は file (sandbox/catalog の写し・capture-scripts v0.13.1) から読み、",
     "         sha256 と bytes は代役が source から数える。options と enabled は省けば {} と true。",
-    "         /api/scripts は各 id に 1 行 (有効な版の中の最新、無ければ最新版を enabled: false で)。",
+    "         /api/capture-scripts は各 id に 1 行 (有効な版の中の最新、無ければ最新版を enabled: false で)。",
     "         autoscroll v2 は中身が同じで設定だけ違う版。autofetch は enabled: false —— capture-scripts の",
     "         カタログの default: false を capture-ledger が写した姿 (既定では走らず、名指せば走る)。",
-    "         sites (対象サイト) のある版はサイト用のスクリプト —— 既定で走るのは、起点のどれかが対象サイトのホストにあるときだけ。",
-    "         egov-law-search は対象サイトが laws.e-gov.go.jp のサイト用のスクリプトで、本物の capture-ledger と同じ版。",
-    "         params (宣言。capture-scripts の catalog.json の params) は版ごとに持ち、一覧 (/api/scripts) と 1 版のエンドポイントに出す (capture-ledger v0.67.0)。",
+    "         sites (対象サイト) のある版はサイト用の capture scripts —— 既定で走るのは、起点のどれかが対象サイトのホストにあるときだけ。",
+    "         egov-law-search は対象サイトが laws.e-gov.go.jp のサイト用の capture scripts で、本物の capture-ledger と同じ版。",
+    "         params (宣言。capture-scripts の catalog.json の params) は版ごとに持ち、一覧 (/api/capture-scripts) と 1 版のエンドポイントに出す (capture-ledger v0.67.0)。",
     "hostTypes: 受け皿の型 (/api/host-types)。消すと、型を取り込んでいない capture-ledger の 404 になる。",
     "crawls の variables・secrets: 1 本の詳しい所の「渡した値」(変数の名前と値) と「使ったシークレット」(名前・Windmill の path・",
     "        確かめたときの editedAt・途中で替わったかの rotated・WARC に残すかの archive)。capture-ledger v0.90.0 の形で、値を持つのは variables だけ。",
@@ -2326,7 +2326,7 @@
                 "bytes": 5624
               },
               {
-                "stage": "after-behaviors",
+                "stage": "after-capture-scripts",
                 "url": "urn:browserhive:screenshot:after-behaviors:http://capture-fixtures-1-a.browserhive:8080/marked/search/public/result?tag=ss-bc7949de",
                 "date": "2026-11-13T16:36:34.517Z",
                 "record": "urn:uuid:80529e55-c548-44ed-9420-ceb5a09c59ff",
@@ -2683,7 +2683,7 @@
                 "skipped": "withheld"
               },
               {
-                "stage": "after-behaviors",
+                "stage": "after-capture-scripts",
                 "skipped": "withheld"
               }
             ]
@@ -3020,7 +3020,7 @@
                 "skipped": "secret"
               },
               {
-                "stage": "after-behaviors",
+                "stage": "after-capture-scripts",
                 "skipped": "secret"
               }
             ]
@@ -3679,7 +3679,7 @@
         "pages": [
           {
             "url": "https://sandbox.test/news",
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "state": "diffed",
             "added": 1,
             "removed": 1,
@@ -3716,7 +3716,7 @@
           },
           {
             "url": "https://sandbox.test/",
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "state": "diffed",
             "added": 1,
             "removed": 1,
@@ -3756,7 +3756,7 @@
           },
           {
             "url": "https://sandbox.test/shop",
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "state": "diffed",
             "added": 2,
             "removed": 2,
@@ -3800,7 +3800,7 @@
         "unchanged": [
           {
             "url": "https://sandbox.test/about",
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "before": {
               "archiveId": "5c0d0b37-6a1e-4000-8000-000000000b37",
               "objectKey": "sandbox/about-0300.wacz",
@@ -3841,7 +3841,7 @@
         "unchanged": [
           {
             "url": "https://sandbox.test/",
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "before": {
               "archiveId": "5c0d0b19-6a1e-4000-8000-000000000b19",
               "objectKey": "sandbox/top-0100.wacz",
@@ -3859,7 +3859,7 @@
           },
           {
             "url": "https://sandbox.test/news",
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "before": {
               "archiveId": "5c0d0b09-6a1e-4000-8000-000000000b09",
               "objectKey": "sandbox/news-0100.wacz",
@@ -3905,7 +3905,7 @@
           "recipeSha256": "359c07d0816312e3d95164371b67399aa3ebd7dd4038b4440bddf748db191ca1",
           "browserhiveVersion": "29.0.2",
           "text": {
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "sha256": "12d4588963d765fb7a67602274898628343f7721765fcd52c550a6118e74b2c8",
             "chars": 1284
           },
@@ -3924,7 +3924,7 @@
           "recipeSha256": "359c07d0816312e3d95164371b67399aa3ebd7dd4038b4440bddf748db191ca1",
           "browserhiveVersion": "29.0.2",
           "text": {
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "sha256": "5726a6edcec4045def3018444124025eddf9001f5eae734803f380caf2ed6c9c",
             "chars": 1251
           },
@@ -3977,7 +3977,7 @@
           "recipeSha256": "359c07d0816312e3d95164371b67399aa3ebd7dd4038b4440bddf748db191ca1",
           "browserhiveVersion": "29.0.1",
           "text": {
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "sha256": "9ad33ca473f554781d01f84d8703f5b0be198cc0a318d52895634ed1188076d3",
             "chars": 1251
           },
@@ -3996,7 +3996,7 @@
           "recipeSha256": "359c07d0816312e3d95164371b67399aa3ebd7dd4038b4440bddf748db191ca1",
           "browserhiveVersion": "29.0.1",
           "text": {
-            "stage": "after-behaviors",
+            "stage": "after-capture-scripts",
             "sha256": "9ad33ca473f554781d01f84d8703f5b0be198cc0a318d52895634ed1188076d3",
             "chars": 1251
           },
@@ -4137,7 +4137,7 @@
         "text": "店の中を探す\n探す語\n探す"
       },
       {
-        "stage": "after-behaviors",
+        "stage": "after-capture-scripts",
         "url": "urn:browserhive:snapshot:after-behaviors:https://sandbox.test/good.wacz/result",
         "title": "検索の結果: ランプ | サンドボックスの店",
         "text": "検索の結果: ランプ 3 件\nデスクランプ\nフロアランプ\nペンダントランプ"

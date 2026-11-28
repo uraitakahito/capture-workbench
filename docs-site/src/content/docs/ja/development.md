@@ -10,7 +10,7 @@ description: 依存の線、同梱した束、画面の文言と辞書、検査�
 framework は通さないので、workbench のためには install も lockfile も audit も要りません（[capture-scripts](https://github.com/uraitakahito/capture-scripts) と同じ判断）。
 分割したくなるほど育ったら、そのとき入れます。
 **例外は `public/vendor/` の束 2 つです。**
-スクリプトの色付け（`shiki.js`）と、辞書の文を画面の字にする library（`intl-messageformat.js`。[画面の文言](#画面の文言)）を、それぞれ 1 ファイルに束ねて commit した物で（[同梱した束](#同梱した束)）、workbench はそれを読むだけなので、install は今も要りません。
+Capture scripts の色付け（`shiki.js`）と、辞書の文を画面の字にする library（`intl-messageformat.js`。[画面の文言](#画面の文言)）を、それぞれ 1 ファイルに束ねて commit した物で（[同梱した束](#同梱した束)）、workbench はそれを読むだけなので、install は今も要りません。
 
 依存が在るのは 2 つで、どちらも npm の別 project にしてあります。
 `docs-site/`（このサイトの原稿。Astro + Starlight と、画面の絵を撮る道具）と、`highlighter/`（`public/vendor/` の束を作る元）です。
@@ -30,7 +30,7 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
 
 ## 同梱した束
 
-スクリプト集の画面は、`public/vendor/shiki.js` で source に色を付けます。
+Capture scripts の画面は、`public/vendor/shiki.js` で source に色を付けます。
 [Shiki](https://shiki.style) を、TypeScript の文法と 2 つの配色（GitHub Light High Contrast と GitHub Dark Default）だけにして、esbuild で束ねた物です（何を入れるかは `highlighter/entry.mjs`）。
 画面の字は、`public/vendor/intl-messageformat.js` が文にします。
 [intl-messageformat](https://formatjs.github.io/docs/intl-messageformat/) と、それが使う parser を束ねた物です（`highlighter/entry-i18n.mjs`）。
@@ -46,7 +46,7 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
   MIT は許します。ほかの license は、`BUNDLES` で名指した package の物だけです（いまは intl-messageformat の BSD-3-Clause）。
   束ねた物の license の本文は、束の隣に在ります（`public/vendor/shiki.LICENSES.txt`・`public/vendor/intl-messageformat.LICENSES.txt`）。
 - **色は、画面の地に対して測る。**
-  `test/highlight.test.mjs` が `public/app.css` の `--ground` を読み、スクリプトのファイルで使う色が明暗とも 4.5:1 以上かを見ます。地や配色を替えれば、測り直しになります。
+  `test/highlight.test.mjs` が `public/app.css` の `--ground` を読み、capture scripts のファイルで使う色が明暗とも 4.5:1 以上かを見ます。地や配色を替えれば、測り直しになります。
 - **`npm run check` は `innerHTML` の語を、`public/` の下の `.js` の全部で探す。** 束も含みます。
   `.html` のファイルと、ほかの API（`insertAdjacentHTML` など）は見ません。
 - **色付けは worker で走る**（`public/highlight-worker.js`）。
@@ -103,7 +103,7 @@ root の script は `pnpm run` で打っても同じです（[capture-ledger](ht
   `ledger.error.<句>` は句の文です。値を埋めず、終わりに句点を付けません。呼び手が、capture-ledger の名指した物（id や名前）と理由を後ろに繋ぐからです。
   `ledger.hint.<鍵>` は理由 1 つの文で、`params` の値を埋めます（`hintText`・`hintsText`）。`ledger.list.*` は、値の並びと、いくつかの理由を繋ぐ区切りです。
   直し方の案を断った理由（`refusalHints`）も、同じ読み方です（`refusalTexts`）。
-  訳せない物は、届いた字のまま出します。辞書に無い句と鍵（workbench より新しい capture-ledger）、鍵の無い理由（打つ命令の例・スクリプトの id の並び）、値の足りない理由、`hints` を返さない古い capture-ledger の `hint` です。
+  訳せない物は、届いた字のまま出します。辞書に無い句と鍵（workbench より新しい capture-ledger）、鍵の無い理由（打つ命令の例・capture script の id の並び）、値の足りない理由、`hints` を返さない古い capture-ledger の `hint` です。
   **日本語の `ledger.hint.*` は、capture-ledger の文と同じ字にします。** だから日本語の画面は、capture-ledger が `hints` を返しても返さなくても、同じ字を出します。
 - **capture-ledger が句や鍵を足したら、ここにも足す。**
   句は、両方の辞書に `ledger.error.<句>` で足します。
@@ -131,7 +131,7 @@ docs が 1 つの物に 2 つの語を当てていた所は、辞書で 1 つに
 
 | 鍵・まとまり | 日本語 | 英語 | 添え書き |
 | --- | --- | --- | --- |
-| `common.tab.*` | クロール・新しいクロール・定期実行・変化・アーカイブ・検索・スクリプト集・robots.txt の例外 | Crawls・New crawl・Schedules・Changes・Archives・Search・Script collection・robots.txt exemptions | 見出しとボタンは、頭の 1 語だけ大文字 |
+| `common.tab.*` | クロール・新しいクロール・定期実行・変化・アーカイブ・検索・Capture scripts・robots.txt の例外 | Crawls・New crawl・Schedules・Changes・Archives・Search・Capture scripts・robots.txt exemptions | 見出しとボタンは、頭の 1 語だけ大文字 |
 | `crawls.state.running` | 走行中 | Running | |
 | `crawls.state.completed` | 完走 | Completed | capture-ledger の `stopReason` が `completed`。finished は、終わった行の全部を指す |
 | `crawls.state.maxDepth` | 打ち切り (深さ) | Cut (depth) | `crawls.state.maxPages` は Cut (pages) |
@@ -191,13 +191,13 @@ workbench が読む設定は `sandbox/sandbox.env` だけで、あなたの `.en
 | したいこと | すること |
 | --- | --- |
 | 見せるものを変える | 台本を書き換える。代役は要求のたびに読むので、起こし直さずに画面に出る |
-| 登録済みのスクリプトが無いときを見る | 台本の `"emptyCatalog"` を `true` にする。スクリプト集の画面には受け皿の型だけが残る |
-| スクリプトを変える | 台本の `catalog` を書き換える。1 版に 1 つで、id の現れる順が既定の実行順。`sandbox/catalog/` のファイル（capture-scripts v0.13.1 のスクリプトと受け皿の型の写し。`egov-law-search` は `generated/` の物）を名指す。`sha256` と `bytes` は代役が capture-ledger と同じくファイルから数え、一覧は各 id に 1 行（有効な版の中の最新、無ければ最新版を `enabled: false` で）。autoscroll v2 は同じファイルで `options` だけが違う版。autofetch は `enabled: false` —— カタログに `"default": false` と書いたスクリプトを capture-ledger が持つ姿で、名指したときだけ走る。`sites`（対象サイト）のある版はサイト用のスクリプトで、既定で走るのは起点のどれかが対象サイトのホストにあるときだけ。`egov-law-search`（対象サイト `laws.e-gov.go.jp`）も capture-scripts の写しで、本物の capture-ledger と同じ版。版の `params` は宣言（capture-scripts の `catalog.json` の `params`）で、一覧と 1 版のエンドポイント（HTTP の method と path の組）に出る —— `egov-law-search` は変数 `query` を宣言する。`hostTypes` は受け皿の型で、消すと型を取り込んでいない capture-ledger になる。写しは `check:terms` から外してある（別の repo の言葉で、直すと行番号が実物とずれる） |
+| 登録済みの capture scripts が無いときを見る | 台本の `"emptyCatalog"` を `true` にする。Capture scripts の画面には受け皿の型だけが残る |
+| Capture scripts を変える | 台本の `catalog` を書き換える。1 版に 1 つで、id の現れる順が既定の実行順。`sandbox/catalog/` のファイル（capture-scripts v0.13.1 の capture scripts と受け皿の型の写し。`egov-law-search` は `generated/` の物）を名指す。`sha256` と `bytes` は代役が capture-ledger と同じくファイルから数え、一覧は各 id に 1 行（有効な版の中の最新、無ければ最新版を `enabled: false` で）。autoscroll v2 は同じファイルで `options` だけが違う版。autofetch は `enabled: false` —— カタログに `"default": false` と書いた capture scripts を capture-ledger が持つ姿で、名指したときだけ走る。`sites`（対象サイト）のある版はサイト用の capture scripts で、既定で走るのは起点のどれかが対象サイトのホストにあるときだけ。`egov-law-search`（対象サイト `laws.e-gov.go.jp`）も capture-scripts の写しで、本物の capture-ledger と同じ版。版の `params` は宣言（capture-scripts の `catalog.json` の `params`）で、一覧と 1 版のエンドポイント（HTTP の method と path の組）に出る —— `egov-law-search` は変数 `query` を宣言する。`hostTypes` は受け皿の型で、消すと型を取り込んでいない capture-ledger になる。写しは `check:terms` から外してある（別の repo の言葉で、直すと行番号が実物とずれる） |
 | 別の WACZ を並べる | `SANDBOX_WACZ_DIR=<dir> npm run sandbox`（相対なら、この repo から。例: `../wacz-validator/samples`）。代役と daemon の両方に同じ置き場が入る |
 | 一覧の外のクロールを開く | capture-ledger の一覧は新しい 50 本までで、台本はそれより少ないので、どの行も一覧に入る。一覧から外れたクロール（`/crawls/<id>` の URL なら開き、「一覧の外」の印が付く）を見るときは、代役を host で上限を小さくして起こし（例: `SANDBOX_CRAWLS_PAGE=5 SANDBOX_PORT=17071 SANDBOX_HOST=127.0.0.1 SANDBOX_SAMPLES=sandbox/samples node sandbox/fake-ledger.mjs`）、それに向けた workbench（`WORKBENCH_LEDGER_URL` と `WORKBENCH_OIDC_ISSUER` を 17071 に、`WORKBENCH_PORT` は別のポート）で `/crawls/5b0c0003-6a1e-4000-8000-000000000003` を開く。compose からは上限を渡せない（container-compose 1.2.0 は `environment` の値を展開しない） |
 | wacz-validator の更新を daemon に入れる | `npm run sandbox:build`。`npm run sandbox` は、image が無いときにしか建てない |
-| 新しいクロールの画面を試す | 新しいクロールの画面から始める。代役は受けた行を台本の `submit.runsSeconds` 秒だけ走らせてから完走にする。走っている間にもう 1 度押すと 409、読めない URL は 400。走らせるもの（スクリプトのチェックとその場の TS）も capture-ledger と同じ形で受け、知らないスクリプトの id・同じ id の重ね・名前の綴り・起点に合わないサイト用のスクリプトの名指し・既定が空（登録済みのスクリプトが無いか、全部が別のサイト用）は capture-ledger と同じ文で 400。capture-ledger の schema に無い鍵も capture-ledger と同じ文（`body must NOT have additional properties`）で 400。行を開くと走らせたものが出る。チェックの横の「読む」は右の列に開く（代役の autoscroll は v2 で設定つき、egov-law-search は起点に laws.e-gov.go.jp が無いと押せないが読める） |
-| クロールごとの値を試す | 起点に `https://laws.e-gov.go.jp/` を書いて egov-law-search を選ぶと、必須の変数 `query` の欄が出る。書いた値は `variables` で送られ、行を開くと「渡した値」に出る。その場の TS に `defineParams` を書いても欄が出る —— 代役は `POST /api/scripts/check` に、source を正規表現で読んで答える（代役だけの近道で、本物は ts-compile-service が構文木を歩く。型を検査しないので、`diagnostics` は `BH0002` と `BH0004` だけ）。代役は capture-ledger と同じ順（v0.90.0 から）と文（v0.107.0 の字）で 400 を言う —— 必須の変数が無い（`missing variables`。ほかの値の誤りより先）・同じ名前を別の種類か別の形で宣言している、または WARC に残すか（`archive`）が食い違う（`conflicting params`）・シークレットの名前を変数で渡している（`secrets cannot be passed as variables`）・どのスクリプトも宣言していない変数（`unknown variables`）・宣言の形に合わない値（`invalid variables`。理由は `hint`）・宣言した必須のシークレットが Windmill に無い（`unknown secrets`。名前と path と `hint`）・在るが secret でない（`not a secret variable`）・隠すシークレットを送るのに、配備の形式が値を置き換えられない（`formats that cannot hide secrets`。名前と `hint`）。代役は `hint` に並べて、capture-ledger と同じ形の `hints` も返す（鍵は `sandbox/fake-ledger.mjs` の写し `HINT_KEYS`）ので、英語の画面ではこれらの理由が英語で出る。配備の形式の代わりは台本の `captureFormats`（既定は capture-ledger と同じ `["wacz"]`。`"png"` などを足すと、この 400 を見られる）。その場の TS の宣言の形は capture-ledger の schema と同じ文で、`inline.params` に書けるのはシークレットだけで、値を WARC に残すなら `"archive": "keep"`。変数を書くか、同じ名前が 2 度あれば `invalid params`。Windmill の代わりは台本の `windmillSecrets`（在る secret 変数の名前）と `windmillVariables`（在るが secret でない名前）。シークレットの宣言は、その場の TS の `inline.params` を capture-ledger の API に直に送るときだけ試せる（画面には欄が無い）。台本のクロール `5b0c0007` は変数 `query` と、隠すシークレット `api_token`・残すシークレット `login`（`archive: "keep"`）を持ち、開いた行に「渡した値」と「使ったシークレット」（WARC で隠すか残すか）が出る。値は代役もどこにも書かない |
+| 新しいクロールの画面を試す | 新しいクロールの画面から始める。代役は受けた行を台本の `submit.runsSeconds` 秒だけ走らせてから完走にする。走っている間にもう 1 度押すと 409、読めない URL は 400。走らせるもの（capture scripts のチェックとその場の TS）も capture-ledger と同じ形で受け、知らない capture script の id・同じ id の重ね・名前の綴り・起点に合わないサイト用の capture scripts の名指し・既定が空（登録済みの capture scripts が無いか、全部が別のサイト用）は capture-ledger と同じ文で 400。capture-ledger の schema に無い鍵も capture-ledger と同じ文（`body must NOT have additional properties`）で 400。行を開くと走らせたものが出る。チェックの横の「読む」は右の列に開く（代役の autoscroll は v2 で設定つき、egov-law-search は起点に laws.e-gov.go.jp が無いと押せないが読める） |
+| クロールごとの値を試す | 起点に `https://laws.e-gov.go.jp/` を書いて egov-law-search を選ぶと、必須の変数 `query` の欄が出る。書いた値は `variables` で送られ、行を開くと「渡した値」に出る。その場の TS に `defineParams` を書いても欄が出る —— 代役は `POST /api/capture-scripts/check` に、source を正規表現で読んで答える（代役だけの近道で、本物は ts-compile-service が構文木を歩く。型を検査しないので、`diagnostics` は `BH0002` と `BH0004` だけ）。代役は capture-ledger と同じ順（v0.90.0 から）と文（v0.107.0 の字）で 400 を言う —— 必須の変数が無い（`missing variables`。ほかの値の誤りより先）・同じ名前を別の種類か別の形で宣言している、または WARC に残すか（`archive`）が食い違う（`conflicting params`）・シークレットの名前を変数で渡している（`secrets cannot be passed as variables`）・どの capture scripts も宣言していない変数（`unknown variables`）・宣言の形に合わない値（`invalid variables`。理由は `hint`）・宣言した必須のシークレットが Windmill に無い（`unknown secrets`。名前と path と `hint`）・在るが secret でない（`not a secret variable`）・隠すシークレットを送るのに、配備の形式が値を置き換えられない（`formats that cannot hide secrets`。名前と `hint`）。代役は `hint` に並べて、capture-ledger と同じ形の `hints` も返す（鍵は `sandbox/fake-ledger.mjs` の写し `HINT_KEYS`）ので、英語の画面ではこれらの理由が英語で出る。配備の形式の代わりは台本の `captureFormats`（既定は capture-ledger と同じ `["wacz"]`。`"png"` などを足すと、この 400 を見られる）。その場の TS の宣言の形は capture-ledger の schema と同じ文で、`inline.params` に書けるのはシークレットだけで、値を WARC に残すなら `"archive": "keep"`。変数を書くか、同じ名前が 2 度あれば `invalid params`。Windmill の代わりは台本の `windmillSecrets`（在る secret 変数の名前）と `windmillVariables`（在るが secret でない名前）。シークレットの宣言は、その場の TS の `inline.params` を capture-ledger の API に直に送るときだけ試せる（画面には欄が無い）。台本のクロール `5b0c0007` は変数 `query` と、隠すシークレット `api_token`・残すシークレット `login`（`archive: "keep"`）を持ち、開いた行に「渡した値」と「使ったシークレット」（WARC で隠すか残すか）が出る。値は代役もどこにも書かない |
 | User-Agent の箱を試す | 新しいクロールの画面で「Headless を外す型を入れる」を押すか、字を打つ。代役は字の形を capture-ledger と同じ文で断り、受けた字を開いた行に出す |
 | 規則を試す | 新しいクロールの画面で「リンクを辿る」を選ぶ。代役は capture-ledger v0.62.0 と同じく規則を確かめる（同じ 3 つの 400 を同じ文で、`/api/crawl-rules/check` も同じ答え）し、`/api/crawls/:id/decisions` にも答える。台本のクロール `5b0c0007` は `rules`・`decisions`・`robots` を持ち、1 度も当たらない規則が 1 本ある。**`same-site` は近似**: 代役は Public Suffix List を持たず、ホスト名の最後の 2 ラベルをサイトとする。だから `example.co.jp` と `other.co.jp` を同じサイトと読む（capture-ledger は tldts で、そう読まない） |
 | ページとログを見る | 台本のクロールに `pages` を書く（ページの行と、BrowserHive の答えの形の `log`。`counts` は省けば行から数える）。代役は capture-ledger の `/api/crawls/:id/pages`（`after` と `limit`。続きは本文の `next`）と `/api/crawls/:id/pages/:page/log` に答え、`failures` の要素に `page` を付ける。`after` が数字だけでない・`limit` が範囲の外なら 400。`log` の無いページは、ログを読めない理由を返す（台本の `logReason`。省けば taskId の無いページは `not-captured`、在れば `no-log`）。台本のクロール `5b0c0009` は、時間切れのページ（warn と error の行）・捨てた行と途中で切った行を持つページ・robots.txt で撮らなかったページを持つ。`pages` の無い行は一覧が空。「続きを読む」を見るなら、行に capture-ledger の 1 回分より多いページを書く（代役の 1 回分は capture-ledger と同じ既定で、`sandbox/fake-ledger.mjs` の `pageList` に在る） |

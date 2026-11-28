@@ -39,7 +39,7 @@ const DOC = {
 };
 const SNAPSHOT = {
   ...DOC,
-  stage: "after-behaviors",
+  stage: "after-capture-scripts",
   url: "urn:browserhive:snapshot:after-behaviors:https://shop.test/result",
 };
 const hashOf = (href) => new URLSearchParams(new URL(href).hash.slice(1));
@@ -78,7 +78,7 @@ test("時点の名前: 文書の行（stage が null）は「文書」、写し�
   assert.equal(stageLabel(null), "文書");
   assert.equal(stageLabel(undefined), "文書");
   assert.equal(stageLabel("after-load"), "after-load");
-  assert.equal(stageLabel("after-behaviors"), "after-behaviors");
+  assert.equal(stageLabel("after-capture-scripts"), "after-capture-scripts");
 });
 
 test("当たった所の断片は、<em> の中だけを印にし、ほかの山括弧は文字のまま残す", () => {
@@ -126,8 +126,8 @@ test("引けなかったときの文: 503 は OpenSearch を、404 は検索の�
 
 test("英語: 文書の行の時点は document、写しの行の時点の名前は訳さない", () => {
   assert.deepEqual(
-    inEnglish(() => [null, "", "after-load", "after-behaviors"].map(stageLabel)),
-    ["document", "document", "after-load", "after-behaviors"],
+    inEnglish(() => [null, "", "after-load", "after-capture-scripts"].map(stageLabel)),
+    ["document", "document", "after-load", "after-capture-scripts"],
   );
 });
 

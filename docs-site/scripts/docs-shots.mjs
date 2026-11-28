@@ -60,7 +60,7 @@ const CHROME_BUILD = "152.0.7977.54";
 const CACHE = join(homedir(), ".cache", "puppeteer");
 const DPR = 1;
 /**
- * 撮る窓の幅。絵は全部この幅で撮る（どの絵も同じ縮尺の workbench）。スクリプト集の画面の読む所
+ * 撮る窓の幅。絵は全部この幅で撮る（どの絵も同じ縮尺の workbench）。Capture scripts の画面の読む所
  * （窓 − 一覧 300 − 間 24 − 余白 40）が、ちょうど COLUMN になる。workbench の組み方が変われば、幅の見張りが言う
  */
 const WINDOW = 996;
@@ -463,7 +463,7 @@ const SHOTS = [
   },
   {
     name: "search",
-    // 台本の searchPages を「ランプ」で引く。good.wacz は写しの行（after-behaviors）、datapackage-bad-hash.wacz は
+    // 台本の searchPages を「ランプ」で引く。good.wacz は写しの行（after-capture-scripts）、datapackage-bad-hash.wacz は
     // 写しの無い取り込みの文書の行が当たり、見えない ghost.wacz は出ない
     path: `/search?${new URLSearchParams({ q: "ランプ" })}`,
     box: "#face-search",
@@ -474,15 +474,15 @@ const SHOTS = [
   },
   {
     name: "scripts",
-    path: "/scripts/autoscroll",
+    path: "/capture-scripts/autoscroll",
     box: "#reading-list",
     ready: () =>
       document.querySelector("#reading-list a.ritem.on")?.textContent.startsWith("autoscroll") === true &&
-      document.querySelector('#reading-list a.ritem[href^="/scripts/types/host.d.ts"]') !== null,
+      document.querySelector('#reading-list a.ritem[href^="/capture-scripts/types/host.d.ts"]') !== null,
   },
   {
     name: "script-read",
-    path: "/scripts/autoscroll",
+    path: "/capture-scripts/autoscroll",
     box: "#face-scripts .vmain",
     snap: "#reading-lines li",
     maxHeight: 300,

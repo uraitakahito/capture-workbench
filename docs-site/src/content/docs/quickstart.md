@@ -61,5 +61,5 @@ pnpm run idp:grant    # once
 The grant goes to the user's `sub` (the ID Floci gave it), not to its name. `dev:up` does this in its
 `grant` step, so if you followed capture-ledger's quickstart, it is already done. Without it, the
 top of the screen says `Not found` in red and the lists stay empty. For a user without the
-permission, the ledger returns an empty list of crawls and a 404 for the scripts, and the
+permission, the ledger returns an empty list of crawls and a 404 for the capture scripts, and the
 workbench stops at that 404 without drawing the lists.

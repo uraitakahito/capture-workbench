@@ -117,7 +117,7 @@ test("429 は、この月に使った額と上限を添える。ほかは captur
   });
   assert.deepEqual(fixAnswer(409, { error: "scripts compile", typescript: "6.0.3", hostTypes: "v0.6.0" }), {
     kind: "warn",
-    text: "409 —— スクリプトは型を通ります",
+    text: "409 —— Capture scripts は型を通ります",
   });
   assert.deepEqual(fixAnswer(503, { error: "ts-compile unreachable" }), { kind: "bad", text: "503 —— ts-compile-service に届きません" });
   // 鍵の無い capture-ledger はエンドポイントごと出さない（Fastify の 404）。行やその場の TS が無い 404 とは言い分ける

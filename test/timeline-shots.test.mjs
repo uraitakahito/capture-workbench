@@ -91,16 +91,17 @@ const realShot = screenshotsOf(withShots)[0];
 const realLine = INDEX_LINES.find((line) => line.startsWith(realShot.url));
 
 test("絵の項目は時点の順に並ぶ（after-load が先）。知らない時点は後ろで、同じ時点は届いた順", () => {
-  assert.deepEqual(SCREENSHOT_STAGES, ["after-load", "after-behaviors"]);
+  assert.deepEqual(SCREENSHOT_STAGES, ["after-load", "after-capture-scripts"]);
   // 実物: 2 枚。時点ごとに文書の URL が違う（スクリプトが検索の結果へ進めた）
   const shots = screenshotsOf(withShots);
-  assert.deepEqual(shots.map((shot) => [shot.stage, shot.kept, shot.bytes]), [["after-load", true, 5624], ["after-behaviors", true, 6656]]);
+  assert.deepEqual(shots.map((shot) => [shot.stage, shot.kept, shot.bytes]), [["after-load", true, 5624], ["after-capture-scripts", true, 6656]]);
   assert.ok(shots[0].documentUrl.endsWith("/marked/search/public?tag=ss-bc7949de"));
   assert.ok(shots[1].documentUrl.endsWith("/marked/search/public/result?tag=ss-bc7949de"));
   // 届いた並びが逆でも、時点の順に直す。項目と時点の組は崩れない（URI・時刻・大きさは、その時点の物のまま）
   const reversed = { ...withShots, capture: { ...withShots.capture, screenshots: [...withShots.capture.screenshots].reverse() } };
   assert.deepEqual(screenshotsOf(reversed), shots);
-  for (const shot of shots) assert.ok(shot.url.startsWith(`urn:browserhive:screenshot:${shot.stage}:`), shot.url);
+  // 実物は古い取り込み（WACZ Profile 1.30.0 より前）なので、2 枚目の URI の時点は古い名のまま。capture-ledger は stage だけを新しい名で答える
+  assert.deepEqual(shots.map((shot) => shot.url.split(":").slice(0, 4).join(":")), ["urn:browserhive:screenshot:after-load", "urn:browserhive:screenshot:after-behaviors"]);
   // 知らない時点は後ろ。時点の無い項目・object でない項目は捨てる
   const odd = {
     ...withShots,
@@ -109,7 +110,19 @@ test("絵の項目は時点の順に並ぶ（after-load が先）。知らない
       screenshots: [{ stage: "after-idle", skipped: "failed" }, null, { skipped: "failed" }, ...withShots.capture.screenshots],
     },
   };
-  assert.deepEqual(screenshotsOf(odd).map((shot) => shot.stage), ["after-load", "after-behaviors", "after-idle"]);
+  assert.deepEqual(screenshotsOf(odd).map((shot) => shot.stage), ["after-load", "after-capture-scripts", "after-idle"]);
+});
+
+test("写しの URI の時点は絵の URI の中の字で組む（古い取り込みは after-behaviors、新しい取り込みは after-capture-scripts。CAPTURE-506）", () => {
+  const doc = "https://site.test/page";
+  const answerWith = (url) => ({ capture: { screenshots: [{ stage: "after-capture-scripts", url, date: "2026-11-28T00:00:00.000Z" }] } });
+  const [old] = screenshotsOf(answerWith(`urn:browserhive:screenshot:after-behaviors:${doc}`));
+  assert.deepEqual([old.stage, old.documentUrl, old.snapshotUri], ["after-capture-scripts", doc, `urn:browserhive:snapshot:after-behaviors:${doc}`]);
+  const [now] = screenshotsOf(answerWith(`urn:browserhive:screenshot:after-capture-scripts:${doc}`));
+  assert.deepEqual([now.stage, now.documentUrl, now.snapshotUri], ["after-capture-scripts", doc, `urn:browserhive:snapshot:after-capture-scripts:${doc}`]);
+  // 絵の URI でない字からは、文書の URL も写しの URI も組まない
+  const [odd] = screenshotsOf(answerWith(`https://site.test/x.webp`));
+  assert.deepEqual([odd.documentUrl, odd.snapshotUri], [undefined, undefined]);
 });
 
 test("絵の位置は、撮り始めた時刻（date）から軸の 0 を引いた所。同じ時点の写しの URI は、絵の URI の文書の URL から組む", () => {
@@ -118,7 +131,8 @@ test("絵の位置は、撮り始めた時刻（date）から軸の 0 を引い�
   for (const shot of shots) {
     assert.equal(shot.ms, Date.parse(shot.date) - originMs);
     assert.ok(shot.ms > 0 && shot.ms < endMs, `${String(shot.ms)} が軸の外`);
-    assert.equal(shot.snapshotUri, `urn:browserhive:snapshot:${shot.stage}:${shot.documentUrl}`);
+    // 写しの URI の時点は、絵の URI の時点と同じ字（古い取り込みでは古い名。WACZ の中の写しのレコードの URI と合う）
+    assert.equal(shot.snapshotUri, shot.url.replace("urn:browserhive:screenshot:", "urn:browserhive:snapshot:"));
   }
   // 読み込みの後の絵が先、スクリプトの後の絵が後
   assert.ok(shots[0].ms < shots[1].ms);
@@ -156,7 +170,7 @@ test("絵が無い取り込み（欄が無い・全部が「残さなかった�
   assert.equal(readsScreenshots({ ...withShots, archive: { id: withShots.archive.id, objectKey: null } }), false);
   // 対照: 絵の項目が 1 つでも在れば行く
   assert.equal(readsScreenshots(withShots), true);
-  const mixed = { ...withShots, capture: { ...withShots.capture, screenshots: [withShots.capture.screenshots[0], { stage: "after-behaviors", skipped: "failed" }] } };
+  const mixed = { ...withShots, capture: { ...withShots.capture, screenshots: [withShots.capture.screenshots[0], { stage: "after-capture-scripts", skipped: "failed" }] } };
   assert.equal(readsScreenshots(mixed), true);
 });
 
@@ -270,7 +284,7 @@ test("窓が切った長い行（文書の URL が長い）は、その 1 行だ
   const longLine = `${screenshotIndexKey(longShot)}${JSON.stringify({ ...fields, url: longShot.url })}`;
   assert.ok(longLine.length > LINE_CAP);
   // 鍵が上限より長い行（頭が鍵の途中で切れる）と、絵でない長い行
-  const hugeShot = { ...realShot, stage: "after-behaviors", url: `${realShot.url}&q=${"y".repeat(3000)}` };
+  const hugeShot = { ...realShot, stage: "after-capture-scripts", url: `${realShot.url}&q=${"y".repeat(3000)}` };
   const hugeLine = `${screenshotIndexKey(hugeShot)}${JSON.stringify({ ...fields, url: hugeShot.url, offset: "999" })}`;
   const otherLong = `test,site)/long?${"z".repeat(3000)} 20261113163633 {"url":"https://site.test/long","mime":"text/html","status":"200","length":"10","offset":"1","filename":"data-000.warc.gz"}`;
   const lines = [otherLong, longLine, hugeLine];
@@ -340,13 +354,13 @@ test("絵の無い時点の行: 理由が全部同じなら 1 行、時点ごと
   const answerWith = (screenshots) => ({ ...withShots, capture: { ...withShots.capture, screenshots } });
   // 時点ごとに理由が違う（1 枚目が撮れず、2 枚目は試さなかった、ではなく、上限に当たった）
   assert.deepEqual(
-    screenshotSkipLines(screenshotsOf(answerWith([{ stage: "after-behaviors", skipped: "task-budget" }, { stage: "after-load", skipped: "failed" }]))),
-    [{ stage: "after-load", skipped: "failed" }, { stage: "after-behaviors", skipped: "task-budget" }],
+    screenshotSkipLines(screenshotsOf(answerWith([{ stage: "after-capture-scripts", skipped: "task-budget" }, { stage: "after-load", skipped: "failed" }]))),
+    [{ stage: "after-load", skipped: "failed" }, { stage: "after-capture-scripts", skipped: "task-budget" }],
   );
   // 絵の在る時点と混ざる: 無い時点だけを、時点の名前つきで
   assert.deepEqual(
-    screenshotSkipLines(screenshotsOf(answerWith([withShots.capture.screenshots[0], { stage: "after-behaviors", skipped: "failed" }]))),
-    [{ stage: "after-behaviors", skipped: "failed" }],
+    screenshotSkipLines(screenshotsOf(answerWith([withShots.capture.screenshots[0], { stage: "after-capture-scripts", skipped: "failed" }]))),
+    [{ stage: "after-capture-scripts", skipped: "failed" }],
   );
   // 時点が 1 つだけの取り込み（スクリプトを送らなかった）
   assert.deepEqual(screenshotSkipLines(screenshotsOf(answerWith([{ stage: "after-load", skipped: "disabled" }]))), [{ skipped: "disabled" }]);

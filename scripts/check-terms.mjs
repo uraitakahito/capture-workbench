@@ -1,5 +1,5 @@
 /**
- * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 16 個。
+ * 語の取り違えを見張る。`npm run check` の中で走る。規則は下の RULES の 17 個。
  *
  * ## なぜ要るのか
  *
@@ -25,6 +25,14 @@
  *   （sandbox/scenario.json）とスクリプト 1 本の両方を指していた。workbench は storage の目録を持たないので、
  *   「目録」は全部見る。「台本」は、代役を説明するファイル（SCENARIO）の外では全部、中では
  *   スクリプト 1 本の意味の形（TAIHON）だけを見る（capture-ledger と capture-scheduler も見張っている）
+ * - **取り込みを頼む側が付けてページで走らせる物は capture scripts（1 本は capture script）と書く。** 2026-11 に
+ *   （Jira CAPTURE-506）、「スクリプト」から一式でそろえた（日本語の文の中でも英字。文・見出し・表の枠の頭は
+ *   Capture scripts）。「スクリプト」「scripts」はページ自身の JavaScript とも読め、capture-player の題
+ *   「Snapshot after scripts」で紛れた。タブと画面は「Capture scripts」「Capture scripts の画面」、置き場は
+ *   「登録済みの capture scripts」、対象サイトのある物は「サイト用の capture scripts」、住所は `/capture-scripts`、
+ *   capture-ledger の API は `/api/capture-scripts…`、CLI は `pnpm run capture-scripts …`。ページ自身の JavaScript・
+ *   dedicated worker の script・BrowserHive 自身の「乱数を記録するスクリプト」・Windmill の script はそのまま。
+ *   古い名前の形だけを見る（17 個目）。下の古い項の「スクリプト」は、その時の言い方のまま残す
  * - **network は「通信」と書く。** 2026-11 に「網」（network の 1 字の直訳）から「通信」へそろえた（この repo では
  *   コメントの 3 か所。browserhive・capture-ledger・capture-scheduler も同じ日にそろえている）。「網」は読み手に
  *   通じにくい。基盤のネットワーク（私設ネットワーク・default ネットワーク）は「ネットワーク」と書く。
@@ -151,13 +159,12 @@ const SCENARIO =
 const TAIHON = /サイト用の台本|対象サイトの(無い|ある)台本|合わない台本|対象サイトを省いた台本|見本の台本/u;
 /**
  * 古い画面の名前（2026-11 まで）。物のスクリプトと、ふつうの言葉の中身は残すので、画面の名前だった形だけを並べる。
- * 足すときは、物の意味（`<legend>スクリプト</legend>`・登録済みのスクリプトがありません）・ふつうの言葉
- * （WACZ の中身）・新しい名前（スクリプト集の画面）・コードの名前（`#scripts`・`/api/scripts`）に当たらないことを
- * 確かめる。英語は頭の字だけ大小を許す（`/i` にすると、npm の scripts のような小文字の表の行にも当たる）。
+ * 足すときは、物の意味・ふつうの言葉（WACZ の中身）・新しい名前（Capture scripts の画面・the Capture scripts
+ * view）・コードの名前（`#scripts`）に当たらないことを確かめる。英語は頭の字だけ大小を許す（`/i` にすると、npm の scripts のような小文字の表の行にも当たる）。
  * タブの字は辞書（`public/i18n/*.json` の `common.tab.*`）に在るので、辞書の行の形（`"common.tab.scripts": "…"`）も見る。
  */
 const OLD_VIEW =
-  /スクリプトの画面|中身の画面|タブ「(?:スクリプト|中身)」|「中身」|>(?:スクリプト|中身)<\/button>|<th>中身<\/th>|"common\.tab\.[a-z]+": "(?:スクリプト|中身|Scripts|Contents)"|検証・中身・|^## スクリプト\s*$|^\| (?:スクリプト|中身) \||\b[Ss]cripts [Vv]iew\b|\b[Cc]ontents (?:[Vv]iew|[Tt]ab)\b|^## Scripts\s*$|^\| (?:Scripts|Contents) \|/u;
+  /スクリプトの画面|中身の画面|タブ「(?:スクリプト|中身)」|「中身」|>(?:スクリプト|中身)<\/button>|<th>中身<\/th>|"common\.tab\.[a-z]+": "(?:スクリプト|中身|Scripts|Contents)"|検証・中身・|^## スクリプト\s*$|^\| (?:スクリプト|中身) \||(?<![Cc]apture )\b[Ss]cripts [Vv]iew\b|\b[Cc]ontents (?:[Vv]iew|[Tt]ab)\b|^## Scripts\s*$|^\| (?:Scripts|Contents) \|/u;
 /**
  * 箱に書く物の古い呼び名（2026-11 まで）。JS になるのは変換の後なので、走った JS・変換後の JS・束ねた JS・素の JS は
  * 当てない。足すときは、それらと `jsSha256` に当たらないことを確かめる。
@@ -171,6 +178,12 @@ const OLD_INLINE =
 const BH_ARCHIVE = /BrowserHive\s*(?:の|'s)\s*WA(?:RC|CZ)(?!\s*Profile)/u;
 /** 乱数を残す意味の「控え」（t-azdk）。乱数と並ぶ形だけで、ほかの意味の「控え」は見ない。 */
 const OLD_RANDOM = /乱数\s*[をのは]\s*控え|控えた\s*乱数|控える\s*スクリプト|控え(?:た|なかった)\s*取り込み/u;
+/**
+ * Capture scripts の古い名前の形（CAPTURE-506 まで）。物の名前・画面の名前・API の path・CLI だけを並べる。足すときは、
+ * ページの JS・worker の script・乱数を記録するスクリプト・新しい名前に当たらないことを確かめる（規則の `misses`）。
+ */
+const OLD_CAPTURE_SCRIPTS =
+  /スクリプト集|\b[Ss]cript collection\b|登録済みのスクリプト|サイト用のスクリプト|pnpm run scripts(?![\w:-])|(?<!src)\/api\/scripts(?![\w-])/u;
 /** replayweb-player の旧い名前の形（replay と、2026-11 の CAPTURE-465 までの replayweb-server・public/replayweb.js）。語の replay は禁じない（上の注記）。 */
 const OLD_REPLAY_NAMES =
   /uraitakahito[/:]replay(?![\w-])|\bWORKBENCH_REPLAY_URL\b|\breplayOrigin\b|\bpublic\/replay\.js\b|\btest\/replay\.test\.mjs\b|\breplayweb[-_]server\b|REPLAYWEB_SERVER|\breplaywebServer|\bpublic\/replayweb\.js\b|\btest\/replayweb\.test\.mjs\b/u;
@@ -212,8 +225,8 @@ const RULES = [
     find: (line, file) =>
       line.includes("目録") || (SCENARIO.test(file) ? TAIHON.test(line) : line.includes("台本")),
     say:
-      "「目録」か、スクリプトの意味の「台本」が残っています。ページで走らせる物は「スクリプト」、" +
-      "置き場は「登録済みのスクリプト」（登録されていない・登録 v3）、対象サイトのある物は「サイト用のスクリプト」と書きます（代役の台本はそのまま）。",
+      "「目録」か、capture script の意味の「台本」が残っています。ページで走らせる物は capture scripts、" +
+      "置き場は「登録済みの capture scripts」（登録されていない・登録 v3）、対象サイトのある物は「サイト用の capture scripts」と書きます（代役の台本はそのまま）。",
   },
   {
     find: (line) => line.replace(NOT_NET, "").includes("網"),
@@ -224,18 +237,18 @@ const RULES = [
   {
     find: (line) => OLD_VIEW.test(line),
     say:
-      "古い画面の名前が残っています。タブは「スクリプト集」と「WACZ」、画面は「スクリプト集の画面」と「WACZ の画面」、" +
-      "英語は the script collection view と the WACZ view と書きます（物のスクリプトと、ふつうの言葉の中身はそのまま）。",
+      "古い画面の名前が残っています。タブは「Capture scripts」と「WACZ」、画面は「Capture scripts の画面」と「WACZ の画面」、" +
+      "英語は the Capture scripts view と the WACZ view と書きます（ふつうの言葉の中身はそのまま）。",
   },
   {
     find: (line) => OLD_INLINE.test(line),
     say:
-      "箱の古い呼び名が残っています。箱に書く物は TypeScript なので、「その場の TS」「スクリプトの名前」「TS の箱」と" +
+      "箱の古い呼び名が残っています。箱に書く物は TypeScript なので、「その場の TS」「Capture script の名前」「TS の箱」と" +
       "書きます（変換後の JS・束ねた JS・jsSha256 はそのまま）。",
   },
   {
     find: (line) => line.includes("札"),
-    say: "「札」が残っています。スクリプトの `sites` は「対象サイト」、版を選ぶ小さなボタンは「版のリンク」と書きます。",
+    say: "「札」が残っています。Capture script の `sites` は「対象サイト」、版を選ぶ小さなボタンは「版のリンク」と書きます。",
   },
   {
     find: (line) => OLD_SUITE.test(line),
@@ -265,7 +278,7 @@ const RULES = [
   {
     find: (line) => line.includes("台帳"),
     say:
-      "「台帳」が残っています。システムは capture-ledger、置き場は「登録済みのスクリプト」（登録する・登録されていない・登録 v3）、" +
+      "「台帳」が残っています。システムは capture-ledger、置き場は「登録済みの capture scripts」（登録する・登録されていない・登録 v3）、" +
       "DB に入ったことは「capture-ledger に載る」と書きます（CAPTURE-186）。",
   },
   {
@@ -290,6 +303,35 @@ const RULES = [
       "記録できなかった）、残した物は「乱数の記録」と書きます（t-azdk）。",
     hits: ["乱数を控える", "乱数の控え 3 回", "乱数は控えていない", "控えた乱数", "先に控えるスクリプト", "控えた取り込み", "控えなかった取り込み"],
     misses: ["乱数を記録する", "乱数の記録", "shots.json の控え", "控えめな行"],
+  },
+  {
+    find: (line) => OLD_CAPTURE_SCRIPTS.test(line),
+    say:
+      "capture scripts の古い名前が残っています。タブと画面は「Capture scripts」「Capture scripts の画面」（英語は the Capture scripts view）、" +
+      "置き場は「登録済みの capture scripts」、対象サイトのある物は「サイト用の capture scripts」、capture-ledger の API は " +
+      "`/api/capture-scripts…`、CLI は `pnpm run capture-scripts …` と書きます（ページの JS・乱数を記録するスクリプトはそのまま。CAPTURE-506）。",
+    hits: [
+      "スクリプト集の画面",
+      "タブ「スクリプト集」",
+      "Open in the script collection view",
+      "Script collection",
+      "登録済みのスクリプトがありません",
+      "サイト用のスクリプト",
+      "pnpm run scripts import .upstream/capture-scripts",
+      "GET /api/scripts/:id/versions",
+      "POST /api/scripts/check",
+    ],
+    misses: [
+      "Capture scripts の画面",
+      "the Capture scripts view",
+      "登録済みの capture scripts がありません",
+      "サイト用の capture scripts",
+      "pnpm run capture-scripts import .upstream/capture-scripts",
+      "POST /api/capture-scripts/check",
+      "乱数を記録するスクリプト",
+      "dedicated worker の script",
+      "npm run scripts:check",
+    ],
   },
 ];
 
