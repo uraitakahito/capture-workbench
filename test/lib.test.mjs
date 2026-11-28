@@ -26,6 +26,7 @@ import {
   relay,
   relayFor,
   safePath,
+  screenAnswer,
   Told,
   TooLarge,
   WRITE_LIMIT,
@@ -353,4 +354,38 @@ test("relay は状態と content-type と本文の字を返す（ほかの見出
   await done;
   assert.deepEqual(reply.head, { status: 200, headers: { "content-type": "application/json; charset=utf-8" } });
   assert.equal(reply.bytes().toString("utf8"), '{"archives":[]}');
+});
+
+test("index.html を配る所の決め: 画面の path には index.html、サインインしていなければ戻り先を付けて回す", () => {
+  const crawl = "5b0c0003-6a1e-4000-8000-000000000003";
+  const ask = (url, { method = "GET", configured = true, signedIn = false } = {}) =>
+    screenAnswer({ url, method, configured, signedIn });
+  // サインインしている
+  assert.deepEqual(ask("/", { signedIn: true }), { kind: "index" });
+  assert.deepEqual(ask("/index.html", { signedIn: true }), { kind: "index" });
+  assert.deepEqual(ask(`/crawls/${crawl}?from=ai`, { signedIn: true }), { kind: "index" });
+  assert.deepEqual(ask("/history/https%3A%2F%2Fsandbox.test%2F", { signedIn: true }), { kind: "index" });
+  assert.deepEqual(ask("/app.js", { signedIn: true }), { kind: "static" });
+  assert.deepEqual(ask("/nope", { signedIn: true }), { kind: "static" });
+  // サインインしていない: / は hash を拾う signin.html、画面の path は戻り先を付けて /login へ
+  assert.deepEqual(ask("/"), { kind: "signin" });
+  assert.deepEqual(ask("/?lang=en"), { kind: "signin" });
+  assert.deepEqual(ask(`/crawls/${crawl}?from=ai`), {
+    kind: "login",
+    location: `/login?back=${encodeURIComponent(`/crawls/${crawl}?from=ai`)}`,
+  });
+  // 画面の file はサインインの前にも配る（signin.html が /signin.js と /paths.js を読む）
+  assert.deepEqual(ask("/signin.js"), { kind: "static" });
+  assert.deepEqual(ask("/paths.js"), { kind: "static" });
+  // サインインの設定が無ければ、どこも配る（API の 401 が理由を言う）
+  assert.deepEqual(ask("/", { configured: false }), { kind: "index" });
+  assert.deepEqual(ask(`/trace/${crawl}/1`, { configured: false }), { kind: "index" });
+  // GET の外・画面でない path・壊れた path は今までどおり静的な file の側（無ければ 404）
+  assert.deepEqual(ask("/crawls", { method: "POST", signedIn: true }), { kind: "static" });
+  assert.deepEqual(ask("/crawls/../logout"), { kind: "static" });
+  assert.deepEqual(ask("/wacz/a1/lines"), { kind: "static" });
+  // 長い画面の URL も画面（404 にしない）。戻り先には長すぎるので、サインインの後は最初の画面に戻る
+  const long = `/history/${"a".repeat(2001)}`;
+  assert.deepEqual(ask(long, { signedIn: true }), { kind: "index" });
+  assert.deepEqual(ask(long), { kind: "login", location: "/login" });
 });

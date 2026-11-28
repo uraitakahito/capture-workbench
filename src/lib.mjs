@@ -9,6 +9,8 @@ import { normalize, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
+import { isScreenPath, loginHref } from "../public/paths.js";
+
 /**
  * 画面の JS（`public/`）が受け取る誤りの句。**server は文を書かず、句と値を返す**（`{ error: 句, params: { … } }`）。
  * 文にするのは画面の辞書（`public/i18n/*.json` の `workbench.error.<句>`）で、言語は画面が決める。
@@ -78,6 +80,28 @@ const TYPES = new Map([
 export const contentType = (path) => {
   const dot = path.lastIndexOf(".");
   return dot === -1 ? undefined : TYPES.get(path.slice(dot));
+};
+
+/**
+ * workbench の index.html を配る所の決め（API・サインイン・書き込みの経路の後、静的な file の前）。`server.mjs` はこの答えを配るだけ。
+ *
+ *   index   `public/index.html` を返す（画面の path。画面が `route` で path から開く —— 段 2（t-jfky）から。それまでは最初の画面）
+ *   signin  `public/signin.html` を返す（サインインしていない時の `/`。server は hash を見られないので、画面の側で
+ *           古い hash の URL（`/#trace/…`）を戻り先に替えてから `/login` へ回す）
+ *   login   `302` でサインインへ回す（サインインしていない時の画面の path。戻り先を `?back=` に載せる。長すぎれば載せない）
+ *   static  今までどおり `public/` の file（無ければ 404）
+ *
+ * サインインの設定が無ければ（`configured` が false）、どこも配る —— API の 401 が理由を言う（今と同じ）。
+ *
+ * @param {{ url: string, method: string | undefined, configured: boolean, signedIn: boolean }} request
+ * @returns {{ kind: "index" | "signin" | "static" } | { kind: "login", location: string }}
+ */
+export const screenAnswer = ({ url, method, configured, signedIn }) => {
+  const [pathname] = url.split("?");
+  const gated = configured && !signedIn;
+  if (pathname === "/" || pathname === "/index.html") return { kind: gated ? "signin" : "index" };
+  if (method !== "GET" || !isScreenPath(url)) return { kind: "static" };
+  return gated ? { kind: "login", location: loginHref(url) } : { kind: "index" };
 };
 
 /**
