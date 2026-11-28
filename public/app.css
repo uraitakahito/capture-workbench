@@ -336,6 +336,11 @@ a {
 #search-hits td {
   vertical-align: top;
 }
+/* 時点の欄は「-」の後で折り返してよい。after-capture-scripts（CAPTURE-506）は after-behaviors より 6 字長く、
+   1 行のままだと表が段組の幅をはみ出す。幅が足りれば 1 行のまま */
+#search-hits td:first-child {
+  white-space: normal;
+}
 #search-hits td.hit-go a {
   display: block;
 }
