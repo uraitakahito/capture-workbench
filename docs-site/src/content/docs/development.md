@@ -116,7 +116,7 @@ hold keys, and the sentences are in one dictionary per language, `public/i18n/ja
   crawl's `error`, but the ledger may have:** every request the page makes carries the screen's
   language (`Accept-Language: ja` or `en`, added by `ask` in `public/app.js` and passed on by the
   server; see [Routes](/routes/#api--passed-through-to-the-ledger)), and a ledger that looks at
-  it returns the sentences it wrote itself — a crawl that ended with no page captured — in that
+  it (capture-ledger v0.119.0 or later) returns the sentences it wrote itself — a crawl that ended with no page captured — in that
   language. What the flow reported, what a person typed, and anything from a ledger that does
   not look at the language still arrive as stored. Because the ledger answers a request without
   a language in English, **a request must not call `fetch` directly**: `npm run check` fails on

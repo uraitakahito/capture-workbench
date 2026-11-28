@@ -112,7 +112,7 @@ cannot call it directly, the server relays it to make it same-origin.
   write are the `POST` routes below).
 - **The language of the request is passed on, and nothing else from the browser is.** When the
   request's `Accept-Language` is exactly `ja` or `en` — what the page sends, the language the
-  screen is in — it goes to the ledger. A ledger that looks at the language returns the sentences it writes
+  screen is in — it goes to the ledger. A ledger that looks at the language (capture-ledger v0.119.0 or later) returns the sentences it writes
   itself (a crawl's `error` when no page was captured) in that language; an earlier ledger does
   not read the header and returns the stored text. The value a browser adds by itself
   (`ja,en-US;q=0.9`) is not passed on: it is the browser's setting, not the screen's language. The
