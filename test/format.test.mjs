@@ -249,6 +249,8 @@ test("一覧の URL は、ホストの字を直さない（大文字・IDN・use
   assert.deepEqual(siteLinesOf("https://WWW.Site.TEST/A"), { top: "WWW.Site.TEST", bottom: "/A" });
   assert.deepEqual(siteLinesOf("https://日本語.jp/ページ"), { top: "日本語.jp", bottom: "/ページ" });
   assert.deepEqual(siteLinesOf("https://xn--wgv71a119e.jp/"), { top: "xn--wgv71a119e.jp", bottom: undefined });
+  // userinfo も外さない（字を直さない決まり。起点に書く使い方は稀で、全文は title にも在る）
+  assert.deepEqual(siteLinesOf("https://u:p@site.test/a"), { top: "u:p@site.test", bottom: "/a" });
 });
 
 test("一覧の URL は、URL の形でない字とホストの無い URL を、そのまま上の行", () => {

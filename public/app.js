@@ -919,7 +919,8 @@ const restoreScroll = () => {
  * （本文の幅）に収まらなかった（2026-11-05 に測った）。同じ理由で、途中の版でも字は増やさず、色と説明だけを付ける。
  *
  * 撮った時の絵（capture-ledger の行の `screenshot`。CAPTURE-432）も列を足さず、URL の欄の中の左に出す。URL はその右で、
- * 一覧と同じ 2 行にする（1 行のままでは、絵の分だけ表が docs の絵の幅を超えた）。
+ * 2 行にする（1 行のままでは、絵の分だけ表が docs の絵の幅を超えた）。上下は一覧と逆で、上が path と query、下が origin
+ * （ページはたいてい起点と同じサイト。t-ub5w）。
  */
 const pagesOf = (one) => {
   const box = document.createElement("div");
@@ -951,7 +952,8 @@ const pagesOf = (one) => {
   table.append(head);
   for (const { page, log, look } of rows) {
     const row = document.createElement("tr");
-    // URL は一覧と同じ 2 行（上が path と query、下が origin）。1 行のままでは表が docs の絵の幅（632px）を超える
+    // URL は 2 行で、上下は一覧と逆（上が path と query、下が origin。ページはたいてい起点と同じサイト）。1 行のままでは
+    // 表が docs の絵の幅（632px）を超える
     const url = tag("td", "", "page-url");
     url.title = String(page.url);
     const line = tag("span", "", "page-line");
